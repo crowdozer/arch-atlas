@@ -640,6 +640,7 @@ cds-header {
 
 .atlas-stage__bar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -648,44 +649,39 @@ cds-header {
   max-width: 100%;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid #27272a;
-  /* Allow controls to wrap under caption on narrow stage widths */
-  flex-wrap: wrap;
 }
 
-/* Compact Carbon controls: weight dropdown + drill/inspect switcher */
+/* Weight + drill/inspect stay on one horizontal strip (right of caption) */
 .atlas-stage__controls {
   display: flex;
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem 0.75rem;
+  gap: 0.75rem;
   min-width: 0;
-  max-width: 100%;
 }
 
 /*
- * Carbon form-items default to flex: 1 1 auto and grow past the stage.
- * Pin the weight dropdown so the bar never overflows the viewport.
+ * Carbon form-items default to flex: 1 1 auto (full width).
+ * Keep host compact so Weight + Drill/Inspect sit on one line.
+ * type="inline" lays label beside the field inside the host.
  */
+cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
-  flex: 0 1 13rem !important;
-  width: 13rem;
-  max-width: min(13rem, 100%);
+  flex: 0 0 auto !important;
+  flex-grow: 0 !important;
+  flex-shrink: 0 !important;
+  width: 14rem;
+  max-width: 14rem;
   min-width: 0;
-}
-
-/* List box fills the host; long option labels truncate in the field */
-.atlas-stage__weight::part(trigger-button),
-.atlas-stage__weight .cds--list-box,
-.atlas-stage__weight .cds--list-box__field {
-  max-width: 100%;
+  align-self: center;
 }
 
 .atlas-stage__mode {
   flex: 0 0 auto;
-  max-width: 100%;
+  align-self: center;
 }
 
 /* Inspect modal body */
@@ -977,10 +973,6 @@ cds-header {
   }
   .atlas-stage__holder {
     min-height: 240px;
-  }
-  .atlas-stage__weight {
-    width: min(13rem, 100%);
-    flex-basis: min(13rem, 100%) !important;
   }
 }
 
