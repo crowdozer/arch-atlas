@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
-import { projectAlluvial } from '@core/view/alluvial.ts';
+import {
+	alluvialTooltipCustomHTML,
+	isAlluvialRailName,
+	projectAlluvial,
+} from '@core/view/alluvial.ts';
 import {
 	preferFileImportersView,
 	projectFileImporters,
@@ -335,5 +339,41 @@ describe('projectModuleFocus', () => {
 	it('returns null for folder with no package edges', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		expect(projectModuleFocus(graph, 'definitely/missing')).toBeNull();
+	});
+});
+
+describe('alluvial pad-rail tooltip hygiene', () => {
+	it('detects rail ids', () => {
+		expect(isAlluvialRailName('\u200b·in-rail·h2')).toBe(true);
+		expect(isAlluvialRailName('·in-rail·h2 (57)')).toBe(true);
+		expect(isAlluvialRailName('app/dashboard/page.tsx')).toBe(false);
+	});
+
+	it('strips rail endpoint from band tooltip', () => {
+		const html = alluvialTooltipCustomHTML(
+			null,
+			'<p>default</p>',
+			{
+				source: { name: '\u200b·in-rail·h2' },
+				target: { name: 'app/dashboard/page.tsx' },
+				value: 57,
+			},
+		);
+		expect(html).toContain('app/dashboard/page.tsx');
+		expect(html).toContain('57');
+		expect(html).not.toMatch(/in-rail/i);
+	});
+
+	it('suppresses rail→rail tooltip', () => {
+		const html = alluvialTooltipCustomHTML(
+			null,
+			'<p>default</p>',
+			{
+				source: { name: '\u200b·in-rail·h3' },
+				target: { name: '\u200b·in-rail·h2' },
+				value: 57,
+			},
+		);
+		expect(html).toBe('');
 	});
 });

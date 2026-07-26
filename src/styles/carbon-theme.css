@@ -640,13 +640,29 @@ cds-tag.ui-tag--yellow {
   stroke: var(--atlas-select-strong, #a78bfa);
 }
 
-/* Invisible hop-padding rails (import/export layer holders) */
+/*
+ * Pad rails: layer holders only. Bars/chips hidden; no hit target.
+ * Rail→file band tooltips are cleaned in alluvialTooltipCustomHTML.
+ */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail {
-  pointer-events: none;
+  pointer-events: none !important;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node {
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail * {
+  pointer-events: none !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node-text-bg {
   opacity: 0 !important;
   stroke: none !important;
+  fill: none !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail text.node-text,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail g[id*='alluvial-node-title'] {
+  display: none !important;
+}
+/* Scaffold ribbons between rails — no hover */
+.ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-rail-link {
+  pointer-events: none !important;
 }
 
 /* Drill-down affordance: clickable nodes and bands */

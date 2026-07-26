@@ -162,7 +162,11 @@ export function buildAlluvialPayload(args: {
 				nodeAlignment: 'center',
 			},
 			color: { scale: colorScale },
-			tooltip: { enabled: true },
+			tooltip: {
+				enabled: true,
+				// Pad rails (·in-rail·hN) must not appear in band tooltips
+				customHTML: alluvialTooltipCustomHTML,
+			},
 		},
 		meta: {
 			...(startId !== undefined ? { startId } : {}),
@@ -171,6 +175,94 @@ export function buildAlluvialPayload(args: {
 			nodeRank,
 		},
 	};
+}
+
+/**
+ * Pad-rail node ids used for sankey layer alignment (not real importers).
+ * Matches ZWSP names and value-suffixed tooltip forms.
+ */
+export function isAlluvialRailName(name: string): boolean {
+	const n = name
+		.replace(/^\u200b+/u, '')
+		.replace(/\s+\([\d,.]+[kKmM]?\)$/u, '')
+		.trim();
+	if (!n) return false;
+	if (n.includes('·in-rail') || n.includes('·out-rail')) return true;
+	if (n.startsWith('in-rail') || n.startsWith('out-rail')) return true;
+	// ·in-rail·h2
+	return /^(?:·)?(?:in|out)-rail(?:·h\d+)?$/iu.test(n);
+}
+
+function linkEndsFromUnknown(
+	raw: unknown,
+): { source: string; target: string; value?: number } | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const o = raw as Record<string, unknown>;
+	// Direct link shape
+	const pickName = (end: unknown): string | null => {
+		if (typeof end === 'string' && end) return end;
+		if (end && typeof end === 'object') {
+			const n = (end as { name?: unknown }).name;
+			if (typeof n === 'string' && n) return n;
+		}
+		return null;
+	};
+	let source = pickName(o.source);
+	let target = pickName(o.target);
+	let value = typeof o.value === 'number' ? o.value : undefined;
+	if (source && target) return { source, target, value };
+
+	// Sometimes wrapped: { datum } or array of links
+	if (Array.isArray(raw) && raw.length) {
+		return linkEndsFromUnknown(raw[0]);
+	}
+	if (o.datum) return linkEndsFromUnknown(o.datum);
+	if (Array.isArray(o.data) && o.data.length) {
+		return linkEndsFromUnknown(o.data[0]);
+	}
+	return null;
+}
+
+/**
+ * Carbon alluvial tooltip: strip pad-rail endpoints so bands never show
+ * `·in-rail·h2 → app/…`. Rail→rail: empty (no tooltip).
+ */
+export function alluvialTooltipCustomHTML(
+	data: unknown,
+	defaultHTML: string,
+	datum: unknown,
+): string {
+	const ends =
+		linkEndsFromUnknown(datum) ??
+		linkEndsFromUnknown(data);
+	if (!ends) return defaultHTML;
+
+	const sRail = isAlluvialRailName(ends.source);
+	const tRail = isAlluvialRailName(ends.target);
+	if (sRail && tRail) return '';
+
+	const unitsMatch = defaultHTML.match(/\(([^)]*)\)\s*<\/| \(([^)]+)\)/);
+	// Prefer rewriting when a rail is involved
+	if (!sRail && !tRail) return defaultHTML;
+
+	const real = sRail ? ends.target : ends.source;
+	const val =
+		ends.value !== undefined
+			? String(ends.value)
+			: (unitsMatch?.[1] ?? unitsMatch?.[2] ?? '').trim();
+	// Minimal Carbon-like markup
+	const label = sRail
+		? `→ ${escapeTooltipText(real)}${val ? ` (${escapeTooltipText(val)})` : ''}`
+		: `${escapeTooltipText(real)} →${val ? ` (${escapeTooltipText(val)})` : ''}`;
+	return `<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">${label}</p></div></li></ul>`;
+}
+
+function escapeTooltipText(s: string): string {
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
 }
 
 /**
