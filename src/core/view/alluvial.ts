@@ -181,20 +181,55 @@ export function buildAlluvialPayload(args: {
 	};
 }
 
+/** Pad-rail side: import free-source scaffolding vs export intermediate mass. */
+export type AlluvialRailKind = 'in' | 'out';
+
 /**
- * Pad-rail node ids used for sankey layer alignment (not real importers).
- * Matches ZWSP names and value-suffixed tooltip forms.
+ * Normalize rail-ish labels (ZWSP prefix, Carbon "name (value)" suffix).
  */
-export function isAlluvialRailName(name: string): boolean {
-	const n = name
+export function normalizeAlluvialRailLabel(name: string): string {
+	return name
 		.replace(/^\u200b+/u, '')
 		.replace(/\s+\([\d,.]+[kKmM]?\)$/u, '')
 		.trim();
-	if (!n) return false;
-	if (n.includes('·in-rail') || n.includes('·out-rail')) return true;
-	if (n.startsWith('in-rail') || n.startsWith('out-rail')) return true;
-	// ·in-rail·h2
-	return /^(?:·)?(?:in|out)-rail(?:·h\d+)?$/iu.test(n);
+}
+
+/**
+ * Classify pad-rail node ids used for sankey layer alignment.
+ * - `in`  — import free-source scaffolding (ghost bars/bands hide)
+ * - `out` — export intermediate mass carriers (bands stay painted)
+ * Matches ZWSP names and value-suffixed tooltip forms.
+ */
+export function alluvialRailKind(name: string): AlluvialRailKind | null {
+	const n = normalizeAlluvialRailLabel(name);
+	if (!n) return null;
+	if (n.includes('·in-rail') || n.startsWith('in-rail')) return 'in';
+	if (n.includes('·out-rail') || n.startsWith('out-rail')) return 'out';
+	if (/^(?:·)?in-rail(?:·h\d+)?$/iu.test(n)) return 'in';
+	if (/^(?:·)?out-rail(?:·h\d+)?$/iu.test(n)) return 'out';
+	return null;
+}
+
+/** True for either in-rail or out-rail pad ids. */
+export function isAlluvialRailName(name: string): boolean {
+	return alluvialRailKind(name) !== null;
+}
+
+export function isInRailName(name: string): boolean {
+	return alluvialRailKind(name) === 'in';
+}
+
+export function isOutRailName(name: string): boolean {
+	return alluvialRailKind(name) === 'out';
+}
+
+/**
+ * Import free-source scaffolding link — either end is an **in-rail**.
+ * These bands are undrawn (ghost columns). Export File→out-rail→target
+ * ribbons carry real File mass and must **not** match.
+ */
+export function isImportPadScaffoldLink(source: string, target: string): boolean {
+	return isInRailName(source) || isInRailName(target);
 }
 
 function linkEndsFromUnknown(

@@ -425,10 +425,9 @@ function edgeWeightIntoSet(
  * Reverse multi-hop: outer importers → … → Imports (dist-1) → File.
  * Mass = focus-incident reverse edges, routed outward for structure.
  * Outer hops ranked by connectivity into the kept inner ring.
- */
-/**
- * Reverse multi-hop rings. Returns display names of reverse-hop files that were
- * **padded** (no outer reverse parent) — hub terminators for polish chrome.
+ *
+ * Returns display names of reverse-hop files that were **padded** (no outer
+ * reverse parent) — hub terminators for polish chrome.
  */
 function addImportRings(
 	args: LinkBuilder & {

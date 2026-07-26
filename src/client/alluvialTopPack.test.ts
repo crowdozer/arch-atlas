@@ -132,10 +132,11 @@ describe('isExportSideCategory', () => {
 });
 
 describe('isFileCategory / isImportRailLabel', () => {
-	it('identifies File category and import rails', () => {
+	it('identifies File category and import (in-rail) labels only', () => {
 		expect(isFileCategory('File')).toBe(true);
 		expect(isFileCategory('Imports')).toBe(false);
 		expect(isImportRailLabel('\u200b·in-rail·h2')).toBe(true);
+		expect(isImportRailLabel('\u200b·out-rail·h1')).toBe(false);
 		expect(isImportRailLabel('src/lib/x.ts')).toBe(false);
 	});
 });
@@ -246,7 +247,7 @@ class MiniEl {
 
 /**
  * DOM fixture for pad-rail / terminator polish — **no Carbon mount**.
- * Gates class contract: rail hide, pad-band, terminator wrap.
+ * Gates class contract: rail hide, in-rail pad-band, out-rail paint, terminator wrap.
  */
 describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () => {
 	function fixtureHolder(): MiniEl {
@@ -270,7 +271,7 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		term.appendChild(termText);
 		svg.appendChild(term);
 
-		// Pad rail node
+		// Import pad rail node
 		const rail = new MiniEl('g', ['node-group']);
 		rail.__data__ = {
 			name: '\u200b·in-rail·h2',
@@ -286,7 +287,23 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		rail.appendChild(railText);
 		svg.appendChild(rail);
 
-		// Pad band: rail → file
+		// Export out-rail node (bar hidden; bands stay painted)
+		const outRail = new MiniEl('g', ['node-group']);
+		outRail.__data__ = {
+			name: '\u200b·out-rail·h1',
+			category: 'Exports',
+			x0: 100,
+			x1: 110,
+			y0: 0,
+			y1: 20,
+		};
+		outRail.appendChild(new MiniEl('rect', ['node']));
+		const outText = new MiniEl('text', ['node-text']);
+		outText.textContent = '\u200b·out-rail·h1 (11)';
+		outRail.appendChild(outText);
+		svg.appendChild(outRail);
+
+		// Import pad band: in-rail → file (invisible scaffold)
 		const padPath = new MiniEl('path', ['link']);
 		padPath.__data__ = {
 			source: { name: '\u200b·in-rail·h2' },
@@ -296,6 +313,28 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 			width: 3,
 		};
 		svg.appendChild(padPath);
+
+		// Export mass: File → out-rail (must stay painted)
+		const fileToOut = new MiniEl('path', ['link']);
+		fileToOut.__data__ = {
+			source: { name: 'UserCard.tsx' },
+			target: { name: '\u200b·out-rail·h1' },
+			y0: 10,
+			y1: 10,
+			width: 11,
+		};
+		svg.appendChild(fileToOut);
+
+		// Export mass: out-rail → deep target (must stay painted)
+		const outToDeep = new MiniEl('path', ['link']);
+		outToDeep.__data__ = {
+			source: { name: '\u200b·out-rail·h1' },
+			target: { name: 'src/types.ts' },
+			y0: 10,
+			y1: 10,
+			width: 11,
+		};
+		svg.appendChild(outToDeep);
 
 		// Real band: importer → File
 		const realPath = new MiniEl('path', ['link']);
@@ -311,7 +350,7 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		return holder;
 	}
 
-	it('hides rail nodes and classifies pad bands', () => {
+	it('hides rail nodes; in-rail pad-band; out-rail links stay paint-eligible', () => {
 		const holder = fixtureHolder();
 		hideAlluvialRails(holder as unknown as HTMLElement);
 
@@ -320,12 +359,45 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		);
 		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
 
+		const outRailG = holder.querySelectorAll('g.node-group').find((g) =>
+			String((g.__data__ as { name?: string })?.name ?? '').includes('out-rail'),
+		);
+		// Out-rail **nodes** still hide chrome
+		expect(outRailG?.classList.contains('atlas-alluvial-rail')).toBe(true);
+
 		const pad = holder.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as { source?: { name?: string } };
 			return d?.source?.name?.includes('in-rail');
 		});
 		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 		expect(pad?.getAttribute('pointer-events')).toBe('none');
+
+		// Law: export out-rail mass carriers must NOT be pad-band
+		const fileToOut = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				d?.source?.name === 'UserCard.tsx' &&
+				String(d?.target?.name ?? '').includes('out-rail')
+			);
+		});
+		expect(fileToOut?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+		expect(fileToOut?.getAttribute('pointer-events')).toBeNull();
+
+		const outToDeep = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('out-rail') &&
+				d?.target?.name === 'src/types.ts'
+			);
+		});
+		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+		expect(outToDeep?.getAttribute('pointer-events')).toBeNull();
 
 		const real = holder.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as { source?: { name?: string } };
@@ -356,8 +428,13 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 			const d = p.__data__ as { source?: { name?: string } };
 			return d?.source?.name?.includes('in-rail');
 		});
+		const outLink = holder2.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as { target?: { name?: string } };
+			return String(d?.target?.name ?? '').includes('out-rail');
+		});
 		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
 		expect(term2?.classList.contains('atlas-alluvial-terminator')).toBe(true);
 		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		expect(outLink?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
 	});
 });

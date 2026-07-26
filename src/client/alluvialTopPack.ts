@@ -11,7 +11,11 @@
 
 import { toString } from '@carbon/icon-helpers';
 import Document16 from '@carbon/icons/es/document/16.js';
-import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import {
+	isAlluvialRailName,
+	isImportPadScaffoldLink,
+	isInRailName,
+} from '@core/view/alluvial.ts';
 
 /** Max visible characters for node name (value suffix kept). Right end wins. */
 export const ALLUVIAL_LABEL_MAX_CHARS = 36;
@@ -181,15 +185,16 @@ export function rightTruncateLabel(text: string, maxChars: number): string {
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
  * Full original string goes on title + aria-label for hover/a11y.
  */
-/** Prefer {@link isAlluvialRailName} — same predicate (pad-rail ids). */
+/** Prefer {@link isInRailName} — import free-source pad labels. */
 export function isImportRailLabel(name: string): boolean {
-	return isAlluvialRailName(name);
+	return isInRailName(name);
 }
 
 /**
- * Hide pad-rail **nodes** (unlabeled bars on outer hops) and make any band with
- * a rail endpoint invisible + non-interactive (layout mass kept; no ghost paint).
- * Link tooltips for residual rail→file are cleaned via {@link alluvialTooltipCustomHTML}.
+ * Hide pad-rail **nodes** (in-rail and out-rail bars/chips).
+ * Undraw **import free-source scaffolding bands only** (either end is in-rail).
+ * Export File→out-rail→deep-target ribbons stay painted (real File mass).
+ * Tooltips still scrub rail names via {@link alluvialTooltipCustomHTML}.
  */
 export function hideAlluvialRails(holder: HTMLElement): void {
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
@@ -229,7 +234,7 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		}
 	}
 
-	// Any band with a rail endpoint is scaffolding — invisible + no hover
+	// Import free-source scaffolding only — NOT export out-rail mass carriers
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<{
 			source?: { name?: string } | string;
@@ -243,13 +248,11 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 			typeof link?.target === 'string'
 				? link.target
 				: (link?.target?.name ?? '');
-		const sRail = isAlluvialRailName(sn);
-		const tRail = isAlluvialRailName(tn);
-		if (!sRail && !tRail) continue;
+		if (!isImportPadScaffoldLink(sn, tn)) continue;
 		path.classList.add('atlas-alluvial-pad-band');
 		path.setAttribute('pointer-events', 'none');
-		// Rail→rail also keep the older class for selectors that already use it
-		if (sRail && tRail) {
+		// in-rail → in-rail pure scaffolding
+		if (isInRailName(sn) && isInRailName(tn)) {
 			path.classList.add('atlas-alluvial-rail-link');
 		}
 	}

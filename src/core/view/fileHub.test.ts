@@ -11,7 +11,11 @@ import {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
-import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import {
+	isAlluvialRailName,
+	isImportPadScaffoldLink,
+	isOutRailName,
+} from '@core/view/alluvial.ts';
 import {
 	exportHopCategory,
 	importHopCategory,
@@ -419,6 +423,22 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const focus = payload.meta.focus.label;
 		const { depMass } = hubIncidentMass(payload, focus);
 		expect(depMass).toBe(fileOutDegree(simpleGraph, id));
+
+		// Paint law: export File→out-rail→deep-target links exist and are NOT
+		// import free-source scaffold (must remain paint-eligible under polish).
+		const outRailLinks = payload.data.filter(
+			(l) => isOutRailName(l.source) || isOutRailName(l.target),
+		);
+		expect(
+			outRailLinks.length,
+			'UserCard depth 3 should pad export mass through out-rails',
+		).toBeGreaterThan(0);
+		for (const l of outRailLinks) {
+			expect(
+				isImportPadScaffoldLink(l.source, l.target),
+				`export pad must not be import scaffold: ${l.source}→${l.target}`,
+			).toBe(false);
+		}
 	});
 
 	function packageNodes(

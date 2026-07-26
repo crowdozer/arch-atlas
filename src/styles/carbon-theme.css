@@ -641,9 +641,10 @@ cds-tag.ui-tag--yellow {
 }
 
 /*
- * Pad rails: layer holders only. Bars/chips hidden; no hit target.
- * Pad bands (any rail endpoint) are undrawn — mass stays in sankey layout.
- * Residual rail→file tooltips cleaned in alluvialTooltipCustomHTML.
+ * Pad rails: layer holders only. Bars/chips hidden; no hit target (in + out).
+ * Pad bands = **import free-source scaffolding only** (in-rail endpoints).
+ * Export File→out-rail→target ribbons stay painted (real File mass).
+ * Residual rail tooltips cleaned in alluvialTooltipCustomHTML.
  */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail {
   pointer-events: none !important;
@@ -661,7 +662,7 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail g[id*='alluvial-node-title'] {
   display: none !important;
 }
-/* Scaffold ribbons: invisible + non-interactive (layout mass preserved) */
+/* Import free-source scaffold ribbons only — not export out-rail mass */
 .ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-pad-band,
 .ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-rail-link {
   pointer-events: none !important;
