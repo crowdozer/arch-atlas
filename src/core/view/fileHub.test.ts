@@ -406,8 +406,9 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		// Clipped to Depth 3 — both pin at hop 3 (not multi-hop clones)
 		expect(rrd[0]!.category).toBe('Export hop 3');
 		expect(react[0]!.category).toBe('Export hop 3');
-		expect(rrd[0]!.name).not.toMatch(/package/);
-		expect(react[0]!.name).not.toMatch(/package/);
+		// Pin-far labels stay plain (hop is column category only)
+		expect(rrd[0]!.name).toBe('react-router-dom');
+		expect(react[0]!.name).toBe('react');
 	});
 
 	it('main.tsx pin-overdraw: may exceed Depth; still one node per package', () => {
@@ -423,6 +424,8 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const react = packageNodes(payload, 'react');
 		expect(rrd).toHaveLength(1);
 		expect(react).toHaveLength(1);
+		expect(rrd[0]!.name).toBe('react-router-dom');
+		expect(react[0]!.name).toBe('react');
 		// useUser at hop 3 → react natural pin 4 (overdraw past Depth)
 		expect(react[0]!.category).toMatch(/^Export hop \d+$/);
 		const hop = Number(react[0]!.category.replace('Export hop ', ''));
@@ -476,6 +479,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		expect(rrd).toHaveLength(1);
 		// App also imports rrd → pin at hop 2 even when Depth=1
 		expect(rrd[0]!.category).toBe('Export hop 2');
+		expect(rrd[0]!.name).toBe('react-router-dom');
 	});
 
 	it('resolvePackageLeafMode accepts the three modes', () => {

@@ -1299,11 +1299,9 @@ function routeExportMassPinFar(args: {
 		pinByKey.set(rec.key, pin);
 		maxPin = Math.max(maxPin, pin);
 
-		const preferred =
-			pin <= 1
-				? rec.preferredLabel
-				: hopFileLabel(rec.preferredLabel, 'out', pin, Math.max(pin, hubRadius));
-		const name = claimName(usedNames, preferred, rec.ref.kind);
+		// Pin-far: one node per package id — plain name (no · out hN). Hop lives
+		// in the column category only. claimName still disambiguates rare clashes.
+		const name = claimName(usedNames, rec.preferredLabel, rec.ref.kind);
 		displayByKey.set(rec.key, name);
 		nodeRef[name] = rec.ref;
 		nodeMeta.set(name, {
@@ -1323,9 +1321,7 @@ function routeExportMassPinFar(args: {
 		maxPin = Math.max(maxPin, overflowPin);
 		const otherName = claimName(
 			usedNames,
-			overflowPin <= 1
-				? moreCountLabel(overflowCount)
-				: hopOverflowLabel(moreCountLabel(overflowCount), 'out', overflowPin),
+			moreCountLabel(overflowCount),
 			'export-pkgs-pin',
 		);
 		nodeRef[otherName] = { kind: 'bucket', id: 'other-export-pkgs-pin' };
