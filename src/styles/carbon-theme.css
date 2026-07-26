@@ -409,8 +409,12 @@ body.cds--g100 {
   font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
-/* UI shell — zinc header with teal product name */
+/* UI shell — zinc header with teal product name.
+ * Carbon cds-header defaults to position:fixed (covers the next sibling).
+ * Keep it in document flow so the workspace sub-bar (Clear session) stays visible.
+ */
 cds-header,
+cds-header.atlas-header,
 .atlas-header {
   --cds-background: #18181b;
   --cds-background-hover: #27272a;
@@ -419,14 +423,41 @@ cds-header,
   --cds-text-secondary: #a1a1aa;
   --cds-link-primary: #fafafa;
   --cds-link-primary-hover: #2dd4bf;
+  /* Carbon :host(cds-header) is position:fixed + inset 0 — must beat shadow cascade */
+  position: relative !important;
+  inset: auto !important;
+  z-index: 10;
   background: #18181b;
   border-block-end: 1px solid #27272a;
   /* Light-DOM siblings (tagline / on-device note) sit beside HeaderName */
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   min-block-size: 3rem;
+  block-size: 3rem;
   padding-inline: 1rem;
   width: 100%;
+  box-sizing: border-box;
+}
+
+/* Workspace sub-bar: visible only when session active (JS toggles .hidden / .flex) */
+#atlas-subbar {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  min-block-size: 2.5rem;
+  background: #09090b;
+}
+
+#atlas-subbar.flex {
+  display: flex;
+}
+
+/* Ensure Clear session remains visible against the sub-bar */
+#atlas-subbar .atlas-reset,
+cds-button.atlas-reset {
+  flex-shrink: 0;
+  margin-inline-start: auto;
 }
 
 .atlas-header__tagline {
@@ -539,11 +570,6 @@ cds-header-name.ui-header-name::part(prefix) {
 
 .atlas-alluvial-back.hidden {
   display: none !important;
-}
-
-/* Ghost clear-session in subbar */
-.atlas-reset {
-  flex-shrink: 0;
 }
 
 /* —— Workspace shell: left drawer + full-bleed stage —— */
