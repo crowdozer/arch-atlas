@@ -938,22 +938,24 @@ function renderTreeNode(
 	return btn;
 }
 
-/** Badge text that distinguishes out-bound deps vs inbound importers. */
-function edgeBadgeLabel(outDegree: number, inDegree: number): string {
-	if (outDegree === 0 && inDegree > 0) {
-		return inDegree === 1 ? '1 in' : `${inDegree} in`;
-	}
-	if (inDegree === 0 && outDegree > 0) {
-		return outDegree === 1 ? '1 out' : `${outDegree} out`;
-	}
-	const total = outDegree + inDegree;
-	return total === 1 ? '1 edge' : `${total} edges`;
-}
-
+/**
+ * Catalog edge chips: cyan count = inbound (imports), yellow count = outbound
+ * (exports). Label is the number only; omit a side when its count is 0.
+ */
 function edgeBadge(outDegree: number, inDegree: number): string {
-	const label = edgeBadgeLabel(outDegree, inDegree);
-	const title = `out ${outDegree} · in ${inDegree}`;
-	return `<cds-tag type="teal" size="sm" class="atlas-edge-badge ui-tag" title="${escapeHtml(title)}">${escapeHtml(label)}</cds-tag>`;
+	const parts: string[] = [];
+	if (inDegree > 0) {
+		parts.push(
+			`<cds-tag type="teal" size="sm" class="atlas-edge-badge atlas-edge-badge--in ui-tag" title="in ${inDegree}">${inDegree}</cds-tag>`,
+		);
+	}
+	if (outDegree > 0) {
+		parts.push(
+			`<cds-tag size="sm" class="atlas-edge-badge atlas-edge-badge--out ui-tag ui-tag--yellow" title="out ${outDegree}">${outDegree}</cds-tag>`,
+		);
+	}
+	if (!parts.length) return '';
+	return `<span class="atlas-edge-badges">${parts.join('')}</span>`;
 }
 
 /** Catalog / subbar chip via Carbon tag (dynamic create). */

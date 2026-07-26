@@ -1177,13 +1177,28 @@ cds-inline-notification.atlas-inspect__banner {
   gap: 0.5rem;
 }
 
-/* Edge badges are cds-tag teal — keep alignment in list rows */
+/* Catalog in/out chips: cyan = in, yellow = out (count only) */
+.atlas-edge-badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+}
+
 .atlas-edge-badge,
 cds-tag.atlas-edge-badge {
   flex-shrink: 0;
-  margin-top: 0.1rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  min-inline-size: 1.5rem;
+  justify-content: center;
+}
+
+/* Outbound chip — product yellow (matches export bands) */
+cds-tag.atlas-edge-badge--out.ui-tag--yellow {
+  background-color: #5c4d00 !important;
+  color: #f1c21b !important;
 }
 
 .atlas-summary-tag,
