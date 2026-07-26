@@ -162,7 +162,10 @@ export function buildAlluvialPayload(args: {
 			alluvial: {
 				units,
 				nodes,
-				nodeAlignment: 'center',
+				// Carbon: only left|right override; default is justify which pushes
+				// leaf nodes (e.g. logger with no hub outs) to the rightmost column
+				// under External. left keeps depth = column (hub law).
+				nodeAlignment: 'left',
 			},
 			color: { scale: colorScale },
 			tooltip: {

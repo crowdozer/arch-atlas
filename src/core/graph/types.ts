@@ -256,7 +256,12 @@ export type AlluvialPayload = {
 		alluvial: {
 			units: string;
 			nodes: AlluvialNode[];
-			nodeAlignment: 'center';
+			/**
+			 * Carbon only honors `left` | `right`; anything else falls through to
+			 * d3-sankey **justify** (leaves without outbound links snap to the
+			 * rightmost column). We send `left` so hub depth matches category columns.
+			 */
+			nodeAlignment: 'left' | 'right' | 'center';
 		};
 		color: { scale: Record<string, string> };
 		tooltip: { enabled: boolean };

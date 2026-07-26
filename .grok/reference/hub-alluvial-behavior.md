@@ -172,17 +172,17 @@ Client polish may treat reverse free-source display names as **terminators**.
 
 | Mechanism | Effect |
 | --- | --- |
-| Column **x0** | Path length from **free sources** (no inbound link), not `categoryOrder` alone |
-| Header text | Category of nodes at that x0 |
+| Column **x0** | d3-sankey placement (depth + **nodeAlign**), not `categoryOrder` |
+| Header text at x0 | **Last** node.category among nodes at that x0 (Carbon overwrite map) |
 | Free-source packages | Sit **leftmost** next to export free-sources → false “External” on left — packages must be **sinks** |
-| Dual-path / pad rails | Extra path lengths; right-side files can align with deep hops or look next to External while `category === 'Imports'` |
+| Dual-path / pad rails | Extra path lengths so packages sit past file Imports |
 | `categoryOrder` | Builder L→R rank; **does not override** sankey free-source layering |
-| Header text at x0 | **Last** node.category among nodes at that depth (Carbon overwrite map) |
+| **nodeAlignment** | Carbon only maps `left` / `right`. Default (and ignored `center`) is **justify**: nodes with **no outbound links** snap to the **rightmost** column. Hub payloads must send **`left`** so leaf file seeds (logger) stay on Imports depth. Package pad alone is not enough under justify. |
 
 Membership green ≠ screenshot correct. Goldens that care about **visible columns**
 must use `layoutAlluvialLikeCarbon` (`src/core/view/alluvialCarbonLayout.ts`) —
-same d3-sankey + last-category-wins headers Carbon uses — not payload category
-alone.
+same d3-sankey align + last-category-wins headers Carbon uses — not payload
+category alone.
 
 ---
 

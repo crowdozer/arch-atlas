@@ -204,6 +204,8 @@ describe('hub orientation hard law (golden catalog)', () => {
 
 		it('post-Carbon: logger under Imports header; ioredis under External (not co-located)', () => {
 			const payload = hub(graph, focusId);
+			// Hub must request left align — Carbon default justify snaps leaf files right
+			expect(payload.options.alluvial.nodeAlignment).toBe('left');
 			const layout = layoutAlluvialLikeCarbon(payload);
 			const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
 			const ioLabs = labelsForPackage(payload, 'ioredis');

@@ -369,7 +369,7 @@ describe('layoutAlluvialLikeCarbon (post-Carbon geometry)', () => {
 				alluvial: {
 					units: 'edges',
 					nodes: nodes.map((n, rank) => ({ ...n, rank })),
-					nodeAlignment: 'center',
+					nodeAlignment: 'left',
 				},
 				color: { scale: {} },
 				tooltip: { enabled: false },
@@ -382,30 +382,22 @@ describe('layoutAlluvialLikeCarbon (post-Carbon geometry)', () => {
 		};
 	}
 
-	it('last category wins when Imports file and External pkg share depth', () => {
-		// Repro redis pre-fix: File → logger and File → ioredis same hop
-		const payload = syntheticPayload(
-			[
-				{ name: 'free', category: 'Exports' },
-				{ name: 'File', category: 'File' },
-				{ name: 'logger', category: 'Imports' },
-				{ name: 'ioredis', category: 'External' },
-			],
-			[
-				{ source: 'free', target: 'File', value: 10 },
-				{ source: 'File', target: 'logger', value: 5 },
-				{ source: 'File', target: 'ioredis', value: 5 },
-			],
-		);
-		const layout = layoutAlluvialLikeCarbon(payload);
-		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(true);
-		// Carbon header = last category at that depth → External
-		expect(carbonColumnHeader(layout, 'logger')).toBe('External');
-		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
-	});
+	function withAlign(
+		payload: AlluvialPayload,
+		nodeAlignment: 'left' | 'right' | 'center',
+	): AlluvialPayload {
+		return {
+			...payload,
+			options: {
+				...payload.options,
+				alluvial: { ...payload.options.alluvial, nodeAlignment },
+			},
+		};
+	}
 
-	it('separate depths keep Imports and External headers', () => {
-		const payload = syntheticPayload(
+	it('justify (Carbon default): leaf logger snaps under External with ioredis', () => {
+		// Pad on package only; logger is a sink → justify pushes it rightmost
+		const base = syntheticPayload(
 			[
 				{ name: 'free', category: 'Exports' },
 				{ name: 'File', category: 'File' },
@@ -420,7 +412,30 @@ describe('layoutAlluvialLikeCarbon (post-Carbon geometry)', () => {
 				{ source: 'rail', target: 'ioredis', value: 5 },
 			],
 		);
-		const layout = layoutAlluvialLikeCarbon(payload);
+		// Carbon treats unknown/center as justify
+		const layout = layoutAlluvialLikeCarbon(withAlign(base, 'center'));
+		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(true);
+		expect(carbonColumnHeader(layout, 'logger')).toBe('External');
+		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
+	});
+
+	it('left align: logger stays Imports; ioredis External after pad', () => {
+		const base = syntheticPayload(
+			[
+				{ name: 'free', category: 'Exports' },
+				{ name: 'File', category: 'File' },
+				{ name: 'logger', category: 'Imports' },
+				{ name: 'rail', category: 'Imports' },
+				{ name: 'ioredis', category: 'External' },
+			],
+			[
+				{ source: 'free', target: 'File', value: 10 },
+				{ source: 'File', target: 'logger', value: 5 },
+				{ source: 'File', target: 'rail', value: 5 },
+				{ source: 'rail', target: 'ioredis', value: 5 },
+			],
+		);
+		const layout = layoutAlluvialLikeCarbon(withAlign(base, 'left'));
 		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(false);
 		expect(carbonColumnHeader(layout, 'logger')).toBe('Imports');
 		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
