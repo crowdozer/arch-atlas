@@ -1,0 +1,27 @@
+---
+/**
+ * GA4 gtag snippet — same property as mainframe/sentinel (one dashboard).
+ * Events carry app='arch-atlas' so Explore can split products.
+ * Disabled in local dev and when GOOGLE_ANALYTICS_ID is unset.
+ */
+const GA_ID = import.meta.env.GOOGLE_ANALYTICS_ID as string | undefined;
+const enabled = !import.meta.env.DEV && Boolean(GA_ID);
+const vercel_env = import.meta.env.VERCEL_ENV || import.meta.env.MODE;
+const app = 'arch-atlas';
+---
+
+{
+	enabled && (
+		<>
+			<script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+			<script is:inline define:vars={{ GA_ID, vercel_env, app }}>
+				window.dataLayer = window.dataLayer || [];
+				function gtag() {
+					dataLayer.push(arguments);
+				}
+				gtag('js', new Date());
+				gtag('config', GA_ID, { vercel_env, app });
+			</script>
+		</>
+	)
+}

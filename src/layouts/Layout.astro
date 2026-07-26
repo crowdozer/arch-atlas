@@ -1,5 +1,7 @@
 ---
+import Analytics from '@vercel/analytics/astro';
 import '../styles/global.css';
+import GoogleAnalytics from '../components/Analytics.astro';
 import SkipToContent from '../components/ui/SkipToContent.astro';
 import Header from '../components/ui/Header.astro';
 import HeaderName from '../components/ui/HeaderName.astro';
@@ -26,6 +28,7 @@ const {
 		<meta name="generator" content={Astro.generator} />
 		<meta name="description" content={description} />
 		<title>{title}</title>
+		<GoogleAnalytics />
 	</head>
 	<body class="cds--g100 flex h-full min-h-screen flex-col bg-zinc-950 text-zinc-50">
 		<SkipToContent href="#main-content">Skip to content</SkipToContent>
@@ -57,5 +60,6 @@ const {
 		<script>
 			import '../components/ui/register.ts';
 		</script>
+		<Analytics />
 	</body>
 </html>
