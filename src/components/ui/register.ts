@@ -5,6 +5,7 @@
 import '@carbon/web-components/es/components/button/index.js';
 import '@carbon/web-components/es/components/tag/index.js';
 import '@carbon/web-components/es/components/tile/tile.js';
+import '@carbon/web-components/es/components/accordion/index.js';
 import '@carbon/web-components/es/components/ui-shell/header.js';
 import '@carbon/web-components/es/components/ui-shell/header-name.js';
 import '@carbon/web-components/es/components/ui-shell/header-nav.js';

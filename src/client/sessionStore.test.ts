@@ -42,6 +42,7 @@ describe('sessionStore encode/parse', () => {
 			catalog: {
 				starts: [],
 				ends: [],
+				hotspots: [],
 				views: [],
 				summary: {
 					sourceCount: 2,

@@ -482,12 +482,39 @@ function renderTreeNode(
 	return btn;
 }
 
+function edgeBadge(count: number, title?: string): string {
+	const label = count === 1 ? '1 edge' : `${count} edges`;
+	const t = title ? ` title="${escapeHtml(title)}"` : '';
+	return `<span class="atlas-edge-badge"${t}>${label}</span>`;
+}
+
+function setAccordionTitle(id: string, title: string): void {
+	const el = $(id) as (HTMLElement & { title: string }) | null;
+	if (!el) return;
+	// Carbon cds-accordion-item uses the `title` property/attribute for the heading
+	el.setAttribute('title', title);
+	el.title = title;
+}
+
 function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 	const summary = $('atlas-catalog-summary');
 	if (summary) {
 		const langs = catalog.summary.languages.join(' · ') || 'JS/TS';
 		summary.textContent = `${langs} · ${catalog.summary.sourceCount} src · ${catalog.summary.edgeCount} edges · ${catalog.summary.packageCount} pkgs`;
 	}
+
+	// Accordion section titles with counts (Carbon cds-accordion-item title prop)
+	const hotspotN = catalog.hotspots?.length ?? 0;
+	const viewsN = catalog.views.length;
+	const startsN = Math.min(catalog.starts.length, 25);
+	const endsN = Math.min(catalog.ends.length, 30);
+	setAccordionTitle(
+		'atlas-acc-hotspots',
+		`High edges${hotspotN ? ` (${hotspotN})` : ''}`,
+	);
+	setAccordionTitle('atlas-acc-views', `Suggested views${viewsN ? ` (${viewsN})` : ''}`);
+	setAccordionTitle('atlas-acc-starts', `Starts${startsN ? ` (${startsN})` : ''}`);
+	setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
 
 	const tags = $('atlas-summary-tags');
 	if (tags) {
@@ -511,6 +538,31 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		tags.appendChild(inf);
 	}
 
+	const hotspotsHost = $('atlas-hotspots');
+	if (hotspotsHost) {
+		hotspotsHost.innerHTML = '';
+		const list = catalog.hotspots ?? [];
+		for (const h of list.slice(0, 15)) {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'atlas-list-btn';
+			if (selectedStart === h.id) btn.classList.add('is-selected');
+			const detail = `out ${h.outDegree} · in ${h.inDegree}` +
+				(h.packageOut ? ` · ${h.packageOut} pkg` : '');
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(h.path)}</span>
+					${edgeBadge(h.edgeCount, detail)}
+				</span>
+				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
+			btn.addEventListener('click', () => selectStart(h.id));
+			hotspotsHost.appendChild(btn);
+		}
+		if (!list.length) {
+			hotspotsHost.innerHTML = `<p class="text-xs text-zinc-600">No edges yet.</p>`;
+		}
+	}
+
 	const viewsHost = $('atlas-views');
 	if (viewsHost) {
 		viewsHost.innerHTML = '';
@@ -519,7 +571,16 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === v.startId) btn.classList.add('is-selected');
-			btn.innerHTML = `<strong class="text-sm text-zinc-100">${escapeHtml(v.title)}</strong><span class="meta">${escapeHtml(v.description)}</span>`;
+			const badge =
+				typeof v.edgeCount === 'number'
+					? edgeBadge(v.edgeCount)
+					: '';
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<strong class="text-sm text-zinc-100">${escapeHtml(v.title)}</strong>
+					${badge}
+				</span>
+				<span class="meta">${escapeHtml(v.description)}</span>`;
 			btn.addEventListener('click', () => selectStart(v.startId));
 			viewsHost.appendChild(btn);
 		}
@@ -536,7 +597,13 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === s.id) btn.classList.add('is-selected');
-			btn.innerHTML = `<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(s.path)}</span><span class="meta">inferred · ${escapeHtml(s.reason)}</span>`;
+			const total = s.outDegree + s.inDegree;
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(s.path)}</span>
+					${edgeBadge(total, `out ${s.outDegree} · in ${s.inDegree}`)}
+				</span>
+				<span class="meta">inferred · ${escapeHtml(s.reason)} · out ${s.outDegree} · in ${s.inDegree}</span>`;
 			btn.addEventListener('click', () => selectStart(s.id));
 			startsHost.appendChild(btn);
 		}
@@ -546,16 +613,24 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 	if (endsHost) {
 		endsHost.innerHTML = '';
 		for (const e of catalog.ends.slice(0, 30)) {
-			const row = document.createElement('div');
-			row.className =
-				'mb-1 flex items-center justify-between gap-2 rounded border border-zinc-800 px-2 py-1 text-xs';
+			const row = document.createElement('button');
+			row.type = 'button';
+			row.className = 'atlas-list-btn atlas-list-btn--end';
 			const kindColor =
 				e.kind === 'unresolved'
 					? 'text-amber-400'
 					: e.kind === 'builtin'
 						? 'text-teal-300'
-						: 'text-zinc-300';
-			row.innerHTML = `<span class="${kindColor} truncate" title="${escapeHtml(e.id)}">${escapeHtml(e.label)}</span><span class="shrink-0 text-zinc-600">${e.kind} · in ${e.inDegree}</span>`;
+						: 'text-zinc-200';
+			row.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="${kindColor} truncate text-sm font-medium" title="${escapeHtml(e.id)}">${escapeHtml(e.label)}</span>
+					${edgeBadge(e.inDegree, `${e.kind} · ${e.inDegree} importers`)}
+				</span>
+				<span class="meta">${escapeHtml(e.kind)} · ${e.inDegree} importer${e.inDegree === 1 ? '' : 's'}</span>`;
+			row.addEventListener('click', () => {
+				pushView({ type: 'package', packageId: e.id, label: e.label });
+			});
 			endsHost.appendChild(row);
 		}
 	}

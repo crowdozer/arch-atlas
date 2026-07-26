@@ -6,6 +6,8 @@ declare namespace astroHTML.JSX {
 		'cds-button': Record<string, unknown>;
 		'cds-tag': Record<string, unknown>;
 		'cds-tile': Record<string, unknown>;
+		'cds-accordion': Record<string, unknown>;
+		'cds-accordion-item': Record<string, unknown>;
 		'cds-header': Record<string, unknown>;
 		'cds-header-name': Record<string, unknown>;
 		'cds-header-nav': Record<string, unknown>;

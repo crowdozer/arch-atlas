@@ -3,6 +3,7 @@
  */
 
 import { catalogEnds } from '@core/catalog/ends.ts';
+import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
 import type { CodeGraph, MapCatalog, SuggestedView } from '@core/graph/types.ts';
 
@@ -21,6 +22,7 @@ function languageTags(graph: CodeGraph): string[] {
 export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 	const starts = catalogStarts(graph);
 	const ends = catalogEnds(graph);
+	const hotspots = catalogHotspots(graph);
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
@@ -31,6 +33,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 			description:
 				'Start file → intermediate modules (folder clusters) → packages and sinks',
 			startId: primary.id,
+			edgeCount: primary.outDegree + primary.inDegree,
 			epistemic: 'inferred',
 		});
 	}
@@ -42,13 +45,31 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 			title: `Import surface · ${basename(s.path)}`,
 			description: `Alternate start (${s.reason})`,
 			startId: s.id,
+			edgeCount: s.outDegree + s.inDegree,
 			epistemic: 'inferred',
 		});
+	}
+
+	// High-edge hotspots as suggested entry points (skip already listed starts)
+	const listed = new Set(views.map((v) => v.startId));
+	for (const h of hotspots.slice(0, 5)) {
+		if (listed.has(h.id)) continue;
+		views.push({
+			id: `high-edges:${h.id}`,
+			title: `High edges · ${basename(h.path)}`,
+			description: `${h.edgeCount} edges · out ${h.outDegree} · in ${h.inDegree}`,
+			startId: h.id,
+			edgeCount: h.edgeCount,
+			epistemic: 'observed',
+		});
+		listed.add(h.id);
+		if (views.length >= 8) break;
 	}
 
 	return {
 		starts,
 		ends,
+		hotspots,
 		views,
 		summary: {
 			sourceCount: graph.stats.sourceCount,

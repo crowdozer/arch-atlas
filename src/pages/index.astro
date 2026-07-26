@@ -104,27 +104,55 @@ import Layout from '../layouts/Layout.astro';
 					<div id="atlas-tree" class="atlas-tree" role="tree"></div>
 				</div>
 
-				<!-- Catalog panel -->
+				<!-- Catalog panel (Carbon accordion sections) -->
 				<div class="atlas-drawer__panel atlas-drawer__panel--catalog">
 					<div class="atlas-drawer__head">
 						<div class="ui-tile__label mb-0">Map catalog</div>
 						<p id="atlas-catalog-summary" class="mt-1 text-[0.7rem] leading-snug text-zinc-500"></p>
 					</div>
-					<div class="atlas-drawer__scroll">
-						<h2 class="atlas-section-label">Suggested views</h2>
-						<div id="atlas-views" class="mb-3"></div>
-
-						<h2 class="atlas-section-label">
-							Starts
-							<span class="atlas-section-label__hint">· inferred</span>
-						</h2>
-						<div id="atlas-starts" class="mb-3"></div>
-
-						<h2 class="atlas-section-label">
-							Ends
-							<span class="atlas-section-label__hint">· packages & sinks</span>
-						</h2>
-						<div id="atlas-ends"></div>
+					<div class="atlas-drawer__scroll atlas-catalog">
+						<cds-accordion
+							id="atlas-catalog-accordion"
+							class="atlas-catalog-accordion"
+							size="sm"
+							alignment="start"
+						>
+							<cds-accordion-item
+								id="atlas-acc-hotspots"
+								class="atlas-catalog-acc-item"
+								title="High edges"
+								open
+							>
+								<p class="atlas-catalog-hint">
+									Files with the most observed import edges — good drill starts.
+								</p>
+								<div id="atlas-hotspots"></div>
+							</cds-accordion-item>
+							<cds-accordion-item
+								id="atlas-acc-views"
+								class="atlas-catalog-acc-item"
+								title="Suggested views"
+								open
+							>
+								<div id="atlas-views"></div>
+							</cds-accordion-item>
+							<cds-accordion-item
+								id="atlas-acc-starts"
+								class="atlas-catalog-acc-item"
+								title="Starts"
+							>
+								<p class="atlas-catalog-hint">Inferred entry points</p>
+								<div id="atlas-starts"></div>
+							</cds-accordion-item>
+							<cds-accordion-item
+								id="atlas-acc-ends"
+								class="atlas-catalog-acc-item"
+								title="Ends"
+							>
+								<p class="atlas-catalog-hint">Packages & sinks · click to reverse fan-in</p>
+								<div id="atlas-ends"></div>
+							</cds-accordion-item>
+						</cds-accordion>
 					</div>
 				</div>
 			</aside>

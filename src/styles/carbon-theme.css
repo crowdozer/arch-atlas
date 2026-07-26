@@ -797,6 +797,60 @@ cds-header {
   margin-top: 0.15rem;
 }
 
+.atlas-list-btn__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.atlas-edge-badge {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  border-radius: 999px;
+  border: 1px solid #3f3f46;
+  background: rgb(24 24 27 / 0.9);
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #5eead4; /* teal-300 */
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.atlas-catalog-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #71717a;
+}
+
+/* Carbon accordion in drawer — g100 + zinc shell */
+.atlas-catalog-accordion {
+  width: 100%;
+  --cds-layer: #18181b;
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
+  --cds-layer-selected: rgb(13 148 136 / 0.15);
+  --cds-border-subtle: #27272a;
+  --cds-border-subtle-selected: #3f3f46;
+  --cds-text-primary: #f4f4f5;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #e4e4e7;
+  --cds-icon-secondary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+  --cds-link-primary: #2dd4bf;
+}
+
+.atlas-catalog-accordion cds-accordion-item {
+  border-color: #27272a;
+}
+
+.atlas-catalog .atlas-list-btn:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 900px) {
   .atlas-workspace {
     flex-direction: column;

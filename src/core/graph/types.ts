@@ -72,6 +72,10 @@ export type CatalogStart = {
 	path: string;
 	reason: string;
 	score: number;
+	/** Observed outgoing import edges from this file. */
+	outDegree: number;
+	/** Observed incoming file-import edges to this file. */
+	inDegree: number;
 	epistemic: Epistemic;
 };
 
@@ -83,17 +87,34 @@ export type CatalogEnd = {
 	epistemic: Epistemic;
 };
 
+/** Source file ranked by total observed import edges (explorability). */
+export type CatalogHotspot = {
+	id: string;
+	path: string;
+	/** outDegree + inDegree (file→file in only). */
+	edgeCount: number;
+	outDegree: number;
+	inDegree: number;
+	/** Outgoing edges to packages / unresolved. */
+	packageOut: number;
+	epistemic: 'observed';
+};
+
 export type SuggestedView = {
 	id: string;
 	title: string;
 	description: string;
 	startId: string;
+	/** Outgoing edges from the start (when known). */
+	edgeCount?: number;
 	epistemic: Epistemic;
 };
 
 export type MapCatalog = {
 	starts: CatalogStart[];
 	ends: CatalogEnd[];
+	/** High-edge files for one-click exploration. */
+	hotspots: CatalogHotspot[];
 	views: SuggestedView[];
 	summary: {
 		sourceCount: number;

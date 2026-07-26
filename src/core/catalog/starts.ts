@@ -165,6 +165,8 @@ export function catalogStarts(graph: CodeGraph, limit = 40): CatalogStart[] {
 			path,
 			reason: v.reasons.join('; '),
 			score: v.score,
+			outDegree: outDeg.get(path) ?? 0,
+			inDegree: inDeg.get(path) ?? 0,
 			epistemic: 'inferred' as const,
 		}))
 		.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
@@ -180,6 +182,8 @@ export function catalogStarts(graph: CodeGraph, limit = 40): CatalogStart[] {
 				path: f.path,
 				reason: 'fallback source file',
 				score: 1,
+				outDegree: outDeg.get(f.path) ?? 0,
+				inDegree: inDeg.get(f.path) ?? 0,
 				epistemic: 'inferred',
 			});
 		}
