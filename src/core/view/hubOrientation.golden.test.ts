@@ -32,6 +32,11 @@ import { describe, expect, it } from 'vitest';
 import type { AlluvialPayload, CodeGraph, VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import {
+	carbonColumnHeader,
+	carbonSameColumn,
+	layoutAlluvialLikeCarbon,
+} from '@core/view/alluvialCarbonLayout.ts';
 import { projectFileHub } from '@core/view/fileHub.ts';
 
 const fixturesRoot = path.join(
@@ -187,13 +192,42 @@ describe('hub orientation hard law (golden catalog)', () => {
 			const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
 			expect(loggerLabs.length).toBeGreaterThan(0);
 			for (const lab of loggerLabs) {
-				expect(isImportCategory(categoryOf(payload, lab))).toBe(true);
+				expect(categoryOf(payload, lab)).toBe('Imports');
 				expect(isExternalCategory(categoryOf(payload, lab))).toBe(false);
 			}
 			const ioLabs = labelsForPackage(payload, 'ioredis');
 			expect(ioLabs.length).toBeGreaterThan(0);
 			for (const lab of ioLabs) {
 				expect(isExternalCategory(categoryOf(payload, lab))).toBe(true);
+			}
+		});
+
+		it('post-Carbon: logger under Imports header; ioredis under External (not co-located)', () => {
+			const payload = hub(graph, focusId);
+			const layout = layoutAlluvialLikeCarbon(payload);
+			const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
+			const ioLabs = labelsForPackage(payload, 'ioredis');
+			expect(loggerLabs.length).toBeGreaterThan(0);
+			expect(ioLabs.length).toBeGreaterThan(0);
+			for (const lab of loggerLabs) {
+				expect(
+					carbonColumnHeader(layout, lab),
+					`logger Carbon header for ${lab}`,
+				).toBe('Imports');
+			}
+			for (const lab of ioLabs) {
+				expect(
+					carbonColumnHeader(layout, lab),
+					`ioredis Carbon header for ${lab}`,
+				).toBe('External');
+			}
+			for (const lLab of loggerLabs) {
+				for (const pLab of ioLabs) {
+					expect(
+						carbonSameColumn(layout, lLab, pLab),
+						'logger and ioredis must not share a Carbon column',
+					).toBe(false);
+				}
 			}
 		});
 
@@ -389,6 +423,11 @@ describe('hub Carbon topology tooling', () => {
 				inbound.every((l) => !isAlluvialRailName(l.source)),
 				'logger must not be fed only via pad rails',
 			).toBe(true);
+		}
+		// Post-Carbon: Imports header, not co-located under External packages
+		const layout = layoutAlluvialLikeCarbon(payload);
+		for (const lab of loggerLabs) {
+			expect(carbonColumnHeader(layout, lab)).toBe('Imports');
 		}
 	});
 

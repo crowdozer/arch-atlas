@@ -20,11 +20,11 @@
  * - **Imports / Import hop k (right of File):** outbound **file** deps only.
  *   Never reverse consumers; never package leaves.
  * - **External:** pure package/unresolved leaves (node_modules / unresolved).
- *   Display links are **parent → package** (sinks). Never free sources —
- *   Carbon headers = category of nodes at each d3-sankey x0; free-source
- *   packages would share the leftmost layer with free-source export consumers
- *   (e.g. app/layout.tsx under an "External" header). Do **not** pad package
- *   mass through ·in-rail· (polish undraws those bands → floating packages).
+ *   Display links are **parent → [in-rails] → package** (sinks). Never free
+ *   sources — Carbon headers = last category at each d3-sankey depth; free-source
+ *   packages would share the leftmost layer with free-source export consumers.
+ *   When file Imports exist, pad packages one hop past max file import dist so
+ *   File→seed and File→package are not co-located (logger under External header).
  *
  * **Edge orientation** remains A → B means A imports B.
  *
@@ -294,7 +294,14 @@ export function projectFileHub(
 		classicLabels,
 	});
 
-	// --- External: focus packages as File → package sinks (direct, painted) ---
+	// External package sinks must land **one topology hop** past the deepest
+	// file import hop. Carbon/d3-sankey columns = path depth; direct File→pkg
+	// co-locates with File→seed (logger) and last-category-wins paints External
+	// over Imports. Pad with in-rails when maxFileDist ≥ 1 (still sinks).
+	const maxFileDist = importTreeResult.maxFileDist;
+	const externalDist = maxFileDist >= 1 ? maxFileDist + 1 : 1;
+
+	// --- External: focus packages as sinks (File → [rails] → package) ---
 	if (focusPkgEdges.length) {
 		addFocusPackageImports({
 			graph,
@@ -302,6 +309,8 @@ export function projectFileHub(
 			outEdges: focusPkgEdges,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
+			externalDist,
+			padFromFile: importTreeResult.padFromFile,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -309,13 +318,15 @@ export function projectFileHub(
 		});
 	}
 
-	// --- External: packages of import-tree files as parent → package sinks ---
+	// --- External: packages of import-tree files as parent → [rails] → package ---
 	if (importTreeResult.tree.size) {
 		addExportTreePackageImports({
 			graph,
 			importTree: importTreeResult.tree,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
+			externalDist,
+			padBetween: importTreeResult.padBetween,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -477,21 +488,27 @@ function edgeWeightIntoSet(
 
 /**
  * Focus-incident package/unresolved → **External** sinks.
- * **File → package** only (no in-rail pad — those bands are undrawn by polish).
+ * Links are File → package when externalDist === 1, else File → in-rails →
+ * package so Carbon places packages one hop past deepest file Imports.
+ * Rails stay sinks (packages never free sources). Paint law keeps File↔rail
+ * and rail→package bands visible; only pure rail↔rail is undrawn.
  */
 function addFocusPackageImports(
 	args: LinkBuilder & {
 		outEdges: ImportEdge[];
 		maxPerHop: number;
+		/** Hub dist for package nodes (File = 0). */
+		externalDist: number;
+		padFromFile: (targetLab: string, toDist: number, w: number) => void;
 	},
 ): void {
 	const {
 		graph,
-		fileLabel,
 		outEdges,
 		maxPerHop,
 		weightAxis,
-		addLink,
+		externalDist,
+		padFromFile,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -542,8 +559,8 @@ function addFocusPackageImports(
 			category: EXTERNAL_IMPORT_CATEGORY,
 			color: entry.color,
 		});
-		// Direct File → package (visible band; not free-source)
-		addLink(fileLabel, name, entry.weight);
+		// Topology hop for Carbon: pad when file Imports also leave File
+		padFromFile(name, externalDist, entry.weight);
 	}
 	if (overflow.length) {
 		const otherName = claimName(
@@ -557,20 +574,29 @@ function addFocusPackageImports(
 			color: TEAL.other,
 		});
 		for (const entry of overflow) {
-			addLink(fileLabel, otherName, entry.weight);
+			padFromFile(otherName, externalDist, entry.weight);
 		}
 	}
 }
 
 /**
- * Packages of kept import-tree files → **External** sinks (**parent → package**).
- * Direct edges only (no in-rail pad). Never free sources; never Export*.
+ * Packages of kept import-tree files → **External** sinks
+ * (**parent → [rails] → package**). Never free sources; never Export*.
  */
 function addExportTreePackageImports(
 	args: LinkBuilder & {
 		/** path → { label, dist } for kept non-bucket import-tree files */
 		importTree: Map<string, { lab: string; dist: number }>;
 		maxPerHop: number;
+		/** Hub dist for package nodes (File = 0). */
+		externalDist: number;
+		padBetween: (
+			fromLab: string,
+			fromDist: number,
+			toLab: string,
+			toDist: number,
+			w: number,
+		) => void;
 	},
 ): void {
 	const {
@@ -578,7 +604,8 @@ function addExportTreePackageImports(
 		importTree,
 		maxPerHop,
 		weightAxis,
-		addLink,
+		externalDist,
+		padBetween,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -670,8 +697,10 @@ function addExportTreePackageImports(
 		for (const [fPath, w] of parents) {
 			const parent = importTree.get(fPath);
 			if (!parent || nodeRef[parent.lab]?.kind === 'bucket') continue;
-			// Direct parent → package (visible band; sink External)
-			addLink(parent.lab, pkgName, w);
+			// Parent at file hop d → package at externalDist (pad if gap)
+			const fromDist = parent.dist;
+			const toDist = Math.max(externalDist, fromDist + 1);
+			padBetween(parent.lab, fromDist, pkgName, toDist, w);
 		}
 	};
 

@@ -89,6 +89,35 @@ function fileOutFileDegree(
 	return n;
 }
 
+/**
+ * True when `target` is reachable from `source` along payload links
+ * (allows File → in-rail → External package pads).
+ */
+function linkPathExists(
+	payload: AlluvialPayload,
+	source: string,
+	target: string,
+): boolean {
+	const adj = new Map<string, string[]>();
+	for (const l of payload.data) {
+		const list = adj.get(l.source) ?? [];
+		list.push(l.target);
+		adj.set(l.source, list);
+	}
+	const seen = new Set<string>([source]);
+	const q = [source];
+	while (q.length) {
+		const cur = q.shift()!;
+		if (cur === target) return true;
+		for (const n of adj.get(cur) ?? []) {
+			if (seen.has(n)) continue;
+			seen.add(n);
+			q.push(n);
+		}
+	}
+	return false;
+}
+
 /** Focus out-edges to package/unresolved (import-side package mass). */
 function fileOutPackageDegree(
 	graph: { edges: { from: string; toKind: string }[] },
@@ -313,14 +342,15 @@ describe('projectFileHub demo-next-complex', () => {
 		})!;
 		const focus = payload.meta.focus.label;
 
-		// Focus package ioredis on External (package → File)
+		// Focus package ioredis on External (File → [rails] → package sink)
 		const ioredis = packageNodesOnCategory(payload, 'ioredis', 'External');
 		expect(ioredis).toHaveLength(1);
+		expect(linkPathExists(payload, focus, ioredis[0]!.name)).toBe(true);
 		expect(
 			payload.data.some(
-				(l) => l.source === focus && l.target === ioredis[0]!.name,
+				(l) => l.source === ioredis[0]!.name && l.target === focus,
 			),
-		).toBe(true);
+		).toBe(false);
 
 		// logger is the sole file out → Imports
 		const loggerNodes = payload.options.alluvial.nodes.filter((n) => {
@@ -366,15 +396,10 @@ describe('projectFileHub demo-next-complex', () => {
 		})!;
 		const focus = payload.meta.focus.label;
 
-		// Focus package next → File on Imports
+		// Focus package next on External (File → [rails] → package)
 		const nextImport = packageNodesOnCategory(payload, 'next', 'External');
 		expect(nextImport.length).toBeGreaterThanOrEqual(1);
-		expect(
-			payload.data.some(
-				(l) =>
-					l.source === focus && l.target === nextImport[0]!.name,
-			),
-		).toBe(true);
+		expect(linkPathExists(payload, focus, nextImport[0]!.name)).toBe(true);
 
 		// Tree package zod on External (types → zod), not Export*
 		const zodImport = packageNodesOnCategory(payload, 'zod', 'External');
@@ -472,14 +497,10 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		expect(intoFile).toHaveLength(1); // midIn
 		expect(fromFile.length).toBe(2); // midOut + zod
 
-		// zod External: File → package (sink)
+		// zod External: File → [rails] → package (sink; one hop past file Imports)
 		const zodImport = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(zodImport).toHaveLength(1);
-		expect(
-			payload.data.some(
-				(l) => l.source === focus && l.target === zodImport[0]!.name,
-			),
-		).toBe(true);
+		expect(linkPathExists(payload, focus, zodImport[0]!.name)).toBe(true);
 	});
 
 	it('depth=3 shows Import hop 2 and Export hop 2 with conserved File mass', () => {
@@ -804,13 +825,9 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const importRrd = packageNodesOnCategory(payload, 'react-router-dom', 'External');
 		expect(importRrd).toHaveLength(1);
 		expect(importRrd[0]!.name).toBe('react-router-dom');
-		// Focus mass: File → package (External sink)
+		// Focus mass: File → [rails] → package (External sink)
 		expect(
-			payload.data.some(
-				(l) =>
-					l.source === payload.meta.focus.label &&
-					l.target === importRrd[0]!.name,
-			),
+			linkPathExists(payload, payload.meta.focus.label, importRrd[0]!.name),
 		).toBe(true);
 		// No export package leaves; no overdraw columns at depth 1
 		const exportRrd = packageNodesOnCategory(
@@ -1157,11 +1174,7 @@ describe('projectFileHub focus packages on External', () => {
 		expect(nextExport).toHaveLength(0);
 
 		const focus = payload.meta.focus.label;
-		expect(
-			payload.data.some(
-				(l) => l.source === focus && l.target === nextImport[0]!.name,
-			),
-		).toBe(true);
+		expect(linkPathExists(payload, focus, nextImport[0]!.name)).toBe(true);
 		// package→File must not be the display orientation (sink External)
 		expect(
 			payload.data.some(

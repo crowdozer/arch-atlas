@@ -13,6 +13,12 @@ import {
 	projectAlluvial,
 } from '@core/view/alluvial.ts';
 import {
+	carbonColumnHeader,
+	carbonSameColumn,
+	layoutAlluvialLikeCarbon,
+} from '@core/view/alluvialCarbonLayout.ts';
+import type { AlluvialPayload } from '@core/graph/types.ts';
+import {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
@@ -342,6 +348,82 @@ describe('projectModuleFocus', () => {
 	it('returns null for folder with no package edges', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		expect(projectModuleFocus(graph, 'definitely/missing')).toBeNull();
+	});
+});
+
+describe('layoutAlluvialLikeCarbon (post-Carbon geometry)', () => {
+	function syntheticPayload(
+		nodes: { name: string; category: string }[],
+		links: { source: string; target: string; value: number }[],
+	): AlluvialPayload {
+		return {
+			data: links,
+			options: {
+				title: '',
+				theme: 'g100',
+				height: '400px',
+				animations: false,
+				toolbar: { enabled: false },
+				legend: { enabled: false, clickable: false },
+				accessibility: { svgAriaLabel: 'test' },
+				alluvial: {
+					units: 'edges',
+					nodes: nodes.map((n, rank) => ({ ...n, rank })),
+					nodeAlignment: 'center',
+				},
+				color: { scale: {} },
+				tooltip: { enabled: false },
+			},
+			meta: {
+				focus: { kind: 'file', id: 'f', label: 'f' },
+				nodeRef: {},
+				nodeRank: {},
+			},
+		};
+	}
+
+	it('last category wins when Imports file and External pkg share depth', () => {
+		// Repro redis pre-fix: File → logger and File → ioredis same hop
+		const payload = syntheticPayload(
+			[
+				{ name: 'free', category: 'Exports' },
+				{ name: 'File', category: 'File' },
+				{ name: 'logger', category: 'Imports' },
+				{ name: 'ioredis', category: 'External' },
+			],
+			[
+				{ source: 'free', target: 'File', value: 10 },
+				{ source: 'File', target: 'logger', value: 5 },
+				{ source: 'File', target: 'ioredis', value: 5 },
+			],
+		);
+		const layout = layoutAlluvialLikeCarbon(payload);
+		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(true);
+		// Carbon header = last category at that depth → External
+		expect(carbonColumnHeader(layout, 'logger')).toBe('External');
+		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
+	});
+
+	it('separate depths keep Imports and External headers', () => {
+		const payload = syntheticPayload(
+			[
+				{ name: 'free', category: 'Exports' },
+				{ name: 'File', category: 'File' },
+				{ name: 'logger', category: 'Imports' },
+				{ name: 'rail', category: 'Imports' },
+				{ name: 'ioredis', category: 'External' },
+			],
+			[
+				{ source: 'free', target: 'File', value: 10 },
+				{ source: 'File', target: 'logger', value: 5 },
+				{ source: 'File', target: 'rail', value: 5 },
+				{ source: 'rail', target: 'ioredis', value: 5 },
+			],
+		);
+		const layout = layoutAlluvialLikeCarbon(payload);
+		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(false);
+		expect(carbonColumnHeader(layout, 'logger')).toBe('Imports');
+		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
 	});
 });
 

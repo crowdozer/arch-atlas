@@ -14,6 +14,7 @@ import {
 	fileInDegree,
 	fileOutDegree,
 } from '@core/view/fileImporters.ts';
+import { isAlluvialRailName } from '@core/view/alluvial.ts';
 import {
 	preferFileHubView,
 	projectFileHub,
@@ -139,11 +140,28 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 		}
 		return categories.get(name) === 'External';
 	};
-	/** File that fans structural mass into External packages (out may exceed in). */
-	const emitsPackageStructural = (name: string): boolean =>
-		payload.data.some(
-			(l) => l.source === name && isPackageLike(l.target),
-		);
+	/**
+	 * File/rail that fans structural mass into External packages (out may
+	 * exceed in). Includes File → in-rail → package pads (Carbon External hop).
+	 */
+	const emitsPackageStructural = (name: string): boolean => {
+		const seen = new Set<string>();
+		const q = [name];
+		seen.add(name);
+		while (q.length) {
+			const cur = q.shift()!;
+			for (const l of payload.data) {
+				if (l.source !== cur) continue;
+				if (isPackageLike(l.target)) return true;
+				// Follow pad rails only (do not walk real file→file mass)
+				if (isAlluvialRailName(l.target) && !seen.has(l.target)) {
+					seen.add(l.target);
+					q.push(l.target);
+				}
+			}
+		}
+		return false;
+	};
 
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
 		if (focusNames.has(name)) continue;
@@ -151,6 +169,7 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 		// split (accepted hub default) — skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
 		if (isPackageLike(name)) continue;
+		if (isAlluvialRailName(name)) continue; // pad scaffolding
 		if (emitsPackageStructural(name)) continue;
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;

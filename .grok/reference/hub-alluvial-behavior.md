@@ -109,13 +109,24 @@ be green while screenshots look wrong — diagnose geometry before changing clam
 
 | Source of package | Link pattern | Free source? |
 | --- | --- | --- |
-| Focus package/unresolved out-edge | **`File → package`** | No |
-| Package of a kept import-tree file | **`parentFile → package`** | No |
+| Focus package/unresolved out-edge | **`File → [in-rails] → package`** | No |
+| Package of a kept import-tree file | **`parentFile → [in-rails] → package`** | No |
 | Same package from focus + tree | One External node; extra parents link in | No |
 | Overflow | Bucket on External; parents link to bucket | No |
 
+**Topology hop (Carbon):** package nodes sit at hub dist
+`externalDist = maxFileDist + 1` when there is at least one import-tree file
+(`maxFileDist ≥ 1`); otherwise direct `File → package` (`externalDist = 1`).
+Pads use existing `·in-rail·hN` so d3-sankey depth places External **one column
+right of the deepest file Imports hop**. Without this, `File → logger` and
+`File → ioredis` share depth and Carbon’s last-category-wins header paints
+**External** over the Imports column.
+
+Paint law: pure rail↔rail undrawn; `File`/`file`/`package` endpoints keep ribbons
+(rail **nodes** stay hidden by polish). Packages remain sinks.
+
 **Never:** package free sources; packages on Export*; packages only reachable via
-undrawn `·in-rail·` pads (produces floating External / wrong left headers).
+undrawn pure rail↔rail scaffolds (floating External / wrong left headers).
 
 ---
 
@@ -166,9 +177,12 @@ Client polish may treat reverse free-source display names as **terminators**.
 | Free-source packages | Sit **leftmost** next to export free-sources → false “External” on left — packages must be **sinks** |
 | Dual-path / pad rails | Extra path lengths; right-side files can align with deep hops or look next to External while `category === 'Imports'` |
 | `categoryOrder` | Builder L→R rank; **does not override** sankey free-source layering |
+| Header text at x0 | **Last** node.category among nodes at that depth (Carbon overwrite map) |
 
-Membership green ≠ screenshot correct. Prefer free-source / inbound / path-length
-dumps before membership rewrites.
+Membership green ≠ screenshot correct. Goldens that care about **visible columns**
+must use `layoutAlluvialLikeCarbon` (`src/core/view/alluvialCarbonLayout.ts`) —
+same d3-sankey + last-category-wins headers Carbon uses — not payload category
+alone.
 
 ---
 
@@ -180,7 +194,8 @@ dumps before membership rewrites.
 | Golden C (redis) | logger → Imports; ioredis → External; consumers → Exports |
 | Golden D (errors.ts) | Importers of errors → Exports only |
 | Topology: no package free sources | Packages always have inbound |
-| Topology: users route logger | `cat === 'Imports'`, `File→logger`, not rail-only inbound |
+| Topology: users route logger | `cat === 'Imports'`, `File→logger`, not rail-only inbound; Carbon header Imports |
+| Topology: redis post-Carbon | logger Carbon header Imports; ioredis External; not same depth |
 | Topology: External kinds | Only package/unresolved/bucket |
 | fileHub mass helpers | File in = reverse; File out = files + focus packages |
 | Paint law tests | Pure in-rail scaffold undrawn; File↔rail carriers paint |
