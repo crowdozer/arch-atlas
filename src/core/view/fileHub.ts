@@ -16,7 +16,9 @@
  * **Mass:** route focus-incident edge weights through consecutive rings.
  * File in-mass = reverse edge total; File out-mass = focus out-edge total
  * (including packages/unresolved from focus). Outer export rings also show
- * package leaves of intermediate files (structural; not added to File mass).
+ * package leaves of intermediate files at hop d+1 only (structural; not File
+ * mass). Packages are never folded onto the parent ring (that splits Carbon
+ * hop headers) and share one display node per (package id, hop dist).
  *
  * Integer multi-parent split (multiHop-style): a node with mass 1 and N outer
  * neighbors lights only one outer link (`floor(1/N)=0`, remainder to the first
@@ -800,12 +802,64 @@ function addExportRings(
 	}
 
 	// --- Route mass: consecutive file children + package leaves (conserving) ---
-	// Packages of intermediate files appear at hop d+1 (capped at hubRadius).
+	//
+	// Package leaves of files at dist d appear at hop d+1 only (never same
+	// column). Capping to hubRadius must not fold packages back onto the parent
+	// ring — that creates same-category edges and Carbon splits "Export hop N"
+	// headers. When d+1 > hubRadius, drop structural packages for that parent.
+	//
+	// One display node per (package id, hop dist) so Layout/Home/useUser all
+	// share a single `react · out h3` instead of claimName suffixes.
+	const packageNodeAt = new Map<string, string>(); // `${pkgDist}\0${ref.id}`
+	const packageOverflowAt = new Map<number, string>(); // pkgDist → display name
+
+	const ensureOuterPackageNode = (
+		preferredLabel: string,
+		ref: AlluvialNodeRef,
+		color: string,
+		pkgDist: number,
+	): string => {
+		const key = `${pkgDist}\0${ref.id}`;
+		const existing = packageNodeAt.get(key);
+		if (existing) return existing;
+		const preferred = hopFileLabel(preferredLabel, 'out', pkgDist, hubRadius);
+		const name = claimName(usedNames, preferred, ref.kind);
+		packageNodeAt.set(key, name);
+		nodeRef[name] = ref;
+		nodeMeta.set(name, {
+			category: exportHopCategory(pkgDist),
+			color,
+		});
+		return name;
+	};
+
+	const ensureOuterPackageOverflow = (pkgDist: number, count: number): string => {
+		const existing = packageOverflowAt.get(pkgDist);
+		if (existing) return existing;
+		const name = claimName(
+			usedNames,
+			hopOverflowLabel(moreCountLabel(count), 'out', pkgDist),
+			`pkg-h${pkgDist}`,
+		);
+		packageOverflowAt.set(pkgDist, name);
+		nodeRef[name] = {
+			kind: 'bucket',
+			id: `other-export-pkg-h${pkgDist}`,
+		};
+		nodeMeta.set(name, {
+			category: exportHopCategory(pkgDist),
+			color: TEAL.exportOther,
+		});
+		return name;
+	};
+
 	for (let d = 1; d <= radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
 		);
-		const pkgDist = Math.min(d + 1, hubRadius);
+		// Next ring only — never min(d+1, hubRadius) which collides at the rim.
+		const canPlacePackages = d + 1 <= hubRadius;
+		const pkgDist = d + 1;
 
 		for (const f of parents) {
 			const m = mass.get(f) ?? 0;
@@ -838,73 +892,72 @@ function addExportRings(
 				rank: number;
 			};
 			const pkgCands: PkgCand[] = [];
-			for (const e of graph.edges) {
-				if (e.from !== f || e.toKind === 'file') continue;
-				const pkgLabel =
-					e.toKind === 'unresolved'
-						? e.specifier
-						: e.to.replace(/^unresolved:/, '');
-				pkgCands.push({
-					preferredLabel: pkgLabel,
-					ref: {
-						kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
-						id: e.to,
-					},
-					color: e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
-					rank: edgeWeight(e, graph, weightAxis),
-				});
+			let overflowPkg: PkgCand[] = [];
+			if (canPlacePackages) {
+				for (const e of graph.edges) {
+					if (e.from !== f || e.toKind === 'file') continue;
+					const pkgLabel =
+						e.toKind === 'unresolved'
+							? e.specifier
+							: e.to.replace(/^unresolved:/, '');
+					pkgCands.push({
+						preferredLabel: pkgLabel,
+						ref: {
+							kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
+							id: e.to,
+						},
+						color:
+							e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
+						rank: edgeWeight(e, graph, weightAxis),
+					});
+				}
+				pkgCands.sort(
+					(a, b) =>
+						b.rank - a.rank ||
+						a.preferredLabel.localeCompare(b.preferredLabel),
+				);
+				const fileChildCount = children.length;
+				const pkgBudget = Math.max(0, maxPerHop - fileChildCount);
+				for (const p of pkgCands.slice(0, pkgBudget)) {
+					children.push({
+						kind: 'package',
+						preferredLabel: p.preferredLabel,
+						ref: p.ref,
+						color: p.color,
+					});
+				}
+				overflowPkg = pkgCands.slice(pkgBudget);
 			}
-			pkgCands.sort(
-				(a, b) =>
-					b.rank - a.rank || a.preferredLabel.localeCompare(b.preferredLabel),
-			);
-			const fileChildCount = children.length;
-			const pkgBudget = Math.max(0, maxPerHop - fileChildCount);
-			for (const p of pkgCands.slice(0, pkgBudget)) {
-				children.push({
-					kind: 'package',
-					preferredLabel: p.preferredLabel,
-					ref: p.ref,
-					color: p.color,
-				});
-			}
-			const overflowPkg = pkgCands.slice(pkgBudget);
 
 			if (!children.length && !overflowPkg.length) continue;
 
-			const targets: { lab: string; path?: string }[] = [];
+			// Defer package node registration until a positive share is assigned
+			// (unit import-edges often leave remainder-only mass on one child).
+			type Target =
+				| { kind: 'file'; lab: string; path: string }
+				| {
+						kind: 'package';
+						preferredLabel: string;
+						ref: AlluvialNodeRef;
+						color: string;
+				  }
+				| { kind: 'overflow'; count: number };
+
+			const targets: Target[] = [];
 			for (const ch of children) {
 				if (ch.kind === 'file') {
-					targets.push({ lab: ch.lab, path: ch.path });
+					targets.push({ kind: 'file', lab: ch.lab, path: ch.path });
 				} else {
-					const name = claimName(
-						usedNames,
-						hopFileLabel(ch.preferredLabel, 'out', pkgDist, hubRadius),
-						ch.ref.kind,
-					);
-					nodeRef[name] = ch.ref;
-					nodeMeta.set(name, {
-						category: exportHopCategory(pkgDist),
+					targets.push({
+						kind: 'package',
+						preferredLabel: ch.preferredLabel,
+						ref: ch.ref,
 						color: ch.color,
 					});
-					targets.push({ lab: name });
 				}
 			}
 			if (overflowPkg.length) {
-				const otherName = claimName(
-					usedNames,
-					hopOverflowLabel(moreCountLabel(overflowPkg.length), 'out', pkgDist),
-					`pkg-h${pkgDist}`,
-				);
-				nodeRef[otherName] = {
-					kind: 'bucket',
-					id: `other-export-pkg-h${pkgDist}`,
-				};
-				nodeMeta.set(otherName, {
-					category: exportHopCategory(pkgDist),
-					color: TEAL.exportOther,
-				});
-				targets.push({ lab: otherName });
+				targets.push({ kind: 'overflow', count: overflowPkg.length });
 			}
 
 			if (!targets.length) continue;
@@ -914,10 +967,23 @@ function addExportRings(
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
-				addLink(fromLab, t.lab, share);
-				if (t.path) mass.set(t.path, (mass.get(t.path) ?? 0) + share);
+				if (t.kind === 'file') {
+					addLink(fromLab, t.lab, share);
+					mass.set(t.path, (mass.get(t.path) ?? 0) + share);
+				} else if (t.kind === 'package') {
+					const name = ensureOuterPackageNode(
+						t.preferredLabel,
+						t.ref,
+						t.color,
+						pkgDist,
+					);
+					addLink(fromLab, name, share);
+				} else {
+					const name = ensureOuterPackageOverflow(pkgDist, t.count);
+					addLink(fromLab, name, share);
+				}
 			}
-			// Mass fully spent outward from this file
+			// Mass fully spent outward from this file (integer split may drop rem=0 tails)
 			mass.set(f, 0);
 		}
 	}

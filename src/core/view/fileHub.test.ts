@@ -325,10 +325,13 @@ function longestPathLayers(payload: AlluvialPayload): Map<number, Set<string>> {
 }
 
 describe('projectFileHub export longest-path (demo-react-simple)', () => {
+	const { graph: simpleGraph } = indexFiles(
+		walk(path.join(fixturesRoot, 'demo-react-simple')),
+	);
+
 	it('UserCard shows format → types → zod as export hops', () => {
-		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		const id = 'src/components/UserCard.tsx';
-		const payload = projectFileHub(graph, id, {
+		const payload = projectFileHub(simpleGraph, id, {
 			maxDepth: 3,
 			maxDeps: 48,
 			maxImporters: 48,
@@ -358,7 +361,63 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		// File out-mass still focus-incident only
 		const focus = payload.meta.focus.label;
 		const { outMass } = hubIncidentMass(payload, focus);
-		expect(outMass).toBe(fileOutDegree(graph, id));
+		expect(outMass).toBe(fileOutDegree(simpleGraph, id));
+	});
+
+	it('main.tsx depth=3: one shared react package at hop 3; no same-category edges', () => {
+		const id = 'src/main.tsx';
+		// importer-loc matches UI default — enough mass to fan out package leaves
+		const payload = projectFileHub(simpleGraph, id, {
+			maxDepth: 3,
+			maxDeps: 48,
+			maxImporters: 48,
+			weightAxis: 'importer-loc',
+		})!;
+		const catOf = new Map(
+			payload.options.alluvial.nodes.map((n) => [n.name, n.category] as const),
+		);
+
+		// Outer package leaves must not sit in the parent file's category
+		// (that splits Carbon into duplicate "Export hop N" headers).
+		for (const l of payload.data) {
+			expect(
+				catOf.get(l.source),
+				`${l.source} → ${l.target}`,
+			).not.toBe(catOf.get(l.target));
+		}
+
+		// Layout / Home / … all import react — one chart node at Export hop 3,
+		// not react · out h3 / · package / · package 2.
+		const hop3React = payload.options.alluvial.nodes.filter((n) => {
+			if (n.category !== 'Export hop 3') return false;
+			const ref = payload.meta.nodeRef[n.name];
+			return ref?.kind === 'package' && ref.id === 'react';
+		});
+		expect(hop3React).toHaveLength(1);
+		expect(hop3React[0]!.name).toMatch(/react/);
+		expect(hop3React[0]!.name).not.toMatch(/package/);
+
+		// Focus still has its own direct react export on dist-1
+		const focusReact = payload.options.alluvial.nodes.filter((n) => {
+			if (n.category !== 'Exports') return false;
+			const ref = payload.meta.nodeRef[n.name];
+			return ref?.kind === 'package' && ref.id === 'react';
+		});
+		expect(focusReact).toHaveLength(1);
+	});
+
+	it('main.tsx depth=1: no same-column package suffix on Exports', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 1,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+		})!;
+		const exportNames = payload.options.alluvial.nodes
+			.filter((n) => n.category === 'Exports')
+			.map((n) => n.name);
+		// Depth-1 must not attach deps-of-deps as sibling "react-router-dom · package"
+		expect(exportNames.some((n) => n.includes(' · package'))).toBe(false);
+		expect(exportNames.filter((n) => n === 'react-router-dom')).toHaveLength(1);
 	});
 });
 
