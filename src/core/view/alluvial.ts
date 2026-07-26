@@ -1,10 +1,11 @@
 /**
  * Project CodeGraph + start → Carbon Charts alluvial payload.
- * Columns (L→R): Packages/ends → Module groups → Code (start)
+ * Columns (L→R): Imports → Hop 1 (importer files) → File
  *
  * Flow unit: one observed package/unresolved import edge in the reachable set.
- * Links are conserved: for each module, sum(in) === sum(out).
- * Direct package imports by the start go Ends → Code (skip modules).
+ * Links are conserved through intermediate file leaves.
+ * Path folders are never hop stages — only file labels (or +N more).
+ * Direct package imports by the start go Imports → File.
  */
 
 import { reachableFiles } from '@core/graph/build.ts';
@@ -195,12 +196,17 @@ export function buildAlluvialPayload(args: {
 
 /**
  * Build alluvial from a start file. Returns null if start missing or no flow.
+ *
+ * Columns L→R: Imports → Hop 1 (importer files) → File
+ * Path folders are never intermediate stages — only file leaves (or +N more).
+ * Labels match multi-hop / hub: Imports + File (not Ends/Modules/Code).
  */
 export function projectAlluvial(
 	graph: CodeGraph,
 	startId: string,
 	opts?: {
 		heightPx?: number;
+		/** Max intermediate importer files (was maxModules). */
 		maxModules?: number;
 		maxEnds?: number;
 		weightAxis?: WeightAxis;
@@ -208,7 +214,7 @@ export function projectAlluvial(
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
 
-	const maxModules = opts?.maxModules ?? 12;
+	const maxFiles = opts?.maxModules ?? 12;
 	const maxEnds = opts?.maxEnds ?? 16;
 	const heightPx = opts?.heightPx ?? 360;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
@@ -222,18 +228,19 @@ export function projectAlluvial(
 		label: startLabel,
 	};
 
-	// end → module (or '__code__' for direct start imports), weighted mass
-	const endToModule = new Map<string, Map<string, number>>();
+	// package/unresolved → importer file path (or '__code__' for start itself)
+	const endToFile = new Map<string, Map<string, number>>();
 	const endMeta = new Map<string, EndInfo>();
+	const importerPaths = new Set<string>();
 
-	const bump = (endKey: string, moduleKey: string, info: EndInfo, w: number) => {
+	const bump = (endKey: string, fileKey: string, info: EndInfo, w: number) => {
 		endMeta.set(endKey, info);
-		let row = endToModule.get(endKey);
+		let row = endToFile.get(endKey);
 		if (!row) {
 			row = new Map();
-			endToModule.set(endKey, row);
+			endToFile.set(endKey, row);
 		}
-		row.set(moduleKey, (row.get(moduleKey) ?? 0) + w);
+		row.set(fileKey, (row.get(fileKey) ?? 0) + w);
 	};
 
 	for (const e of graph.edges) {
@@ -242,58 +249,57 @@ export function projectAlluvial(
 
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const endKey = e.to;
 		const info: EndInfo = { label, kind: e.toKind };
-		const moduleKey = e.from === startId ? '__code__' : topFolder(e.from);
-		bump(endKey, moduleKey, info, edgeWeight(e, graph, weightAxis));
+		const fileKey = e.from === startId ? '__code__' : e.from;
+		if (fileKey !== '__code__') importerPaths.add(fileKey);
+		bump(e.to, fileKey, info, edgeWeight(e, graph, weightAxis));
 	}
 
 	const nodeRef: Record<string, AlluvialNodeRef> = {
 		[startLabel]: { kind: 'file', id: startId },
 	};
 
-	if (!endToModule.size) {
+	if (!endToFile.size) {
 		const emptyLabel = '(no package imports)';
 		nodeRef[emptyLabel] = { kind: 'bucket', id: emptyLabel };
 		return buildAlluvialPayload({
 			heightPx,
 			links: [{ source: emptyLabel, target: startLabel, value: 1 }],
 			nodeMeta: new Map([
-				[startLabel, { category: 'Code', color: TEAL.start }],
-				[emptyLabel, { category: 'Ends', color: TEAL.other }],
+				[startLabel, { category: 'File', color: TEAL.start }],
+				[emptyLabel, { category: 'Imports', color: TEAL.other }],
 			]),
-			categoryOrder: ['Ends', 'Modules', 'Code'],
+			categoryOrder: ['Imports', 'File'],
 			focus,
 			nodeRef,
 			startId,
 			units,
-			ariaLabel: `Modules to code alluvial for ${startLabel}`,
+			ariaLabel: `Imports for ${startLabel}`,
 		});
 	}
 
-	// Totals for ranking / overflow buckets
 	const endTotals = new Map<string, number>();
-	const moduleTotals = new Map<string, number>();
-
-	for (const [endKey, row] of endToModule) {
+	const fileTotals = new Map<string, number>();
+	for (const [endKey, row] of endToFile) {
 		let endSum = 0;
-		for (const [mod, n] of row) {
+		for (const [fileKey, n] of row) {
 			endSum += n;
-			if (mod !== '__code__') {
-				moduleTotals.set(mod, (moduleTotals.get(mod) ?? 0) + n);
+			if (fileKey !== '__code__') {
+				fileTotals.set(fileKey, (fileTotals.get(fileKey) ?? 0) + n);
 			}
 		}
 		endTotals.set(endKey, endSum);
 	}
 
-	const topModules = [...moduleTotals.entries()]
-		.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-		.slice(0, maxModules)
-		.map(([k]) => k);
-	const keptModules = new Set(topModules);
-	if ([...moduleTotals.keys()].some((k) => !keptModules.has(k))) {
-		keptModules.add('(other modules)');
-	}
+	const fileLabels = uniqueFileLabels([...fileTotals.keys()]);
+	const rankedFiles = [...fileTotals.entries()].sort(
+		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+	);
+	const keptFilePaths = new Set(rankedFiles.slice(0, maxFiles).map(([p]) => p));
+	const hasOtherFiles = rankedFiles.some(([p]) => !keptFilePaths.has(p));
+	const otherFiles = moreCountLabel(
+		rankedFiles.filter(([p]) => !keptFilePaths.has(p)).length,
+	);
 
 	const topEnds = [...endTotals.entries()]
 		.sort(
@@ -305,12 +311,6 @@ export function projectAlluvial(
 		.map(([k]) => k);
 	const keptEnds = new Set(topEnds);
 
-	const remapModule = (mod: string): string => {
-		if (mod === '__code__') return '__code__';
-		return keptModules.has(mod) ? mod : '(other modules)';
-	};
-
-	// Conserved link multiset after bucketing
 	const linkMap = new Map<string, number>();
 	const addLink = (source: string, target: string, value: number) => {
 		if (value <= 0) return;
@@ -318,57 +318,69 @@ export function projectAlluvial(
 		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
 	};
 
-	// endKey → display label after bucketing (for nodeRef)
 	const endDisplayId = new Map<string, string>();
+	const displayForFile = (path: string): string => {
+		if (keptFilePaths.has(path)) return fileLabels.get(path) ?? basename(path);
+		return otherFiles;
+	};
 
-	for (const [endKey, row] of endToModule) {
+	for (const [endKey, row] of endToFile) {
 		const sourceLabel = keptEnds.has(endKey)
 			? (endMeta.get(endKey)?.label ?? endKey)
 			: '(other ends)';
 		if (keptEnds.has(endKey)) endDisplayId.set(sourceLabel, endKey);
 
-		for (const [mod, n] of row) {
-			const m = remapModule(mod);
-			if (m === '__code__') addLink(sourceLabel, startLabel, n);
-			else addLink(sourceLabel, m, n);
+		for (const [fileKey, n] of row) {
+			if (fileKey === '__code__') addLink(sourceLabel, startLabel, n);
+			else addLink(sourceLabel, displayForFile(fileKey), n);
 		}
 	}
 
-	// Module → code: exactly the inflow to each module (conservation)
-	const moduleIn = new Map<string, number>();
+	// Intermediate file leaves → File (conservation)
+	const fileIn = new Map<string, number>();
 	for (const [k, value] of linkMap) {
 		const target = k.split('\0')[1]!;
 		if (target === startLabel) continue;
-		moduleIn.set(target, (moduleIn.get(target) ?? 0) + value);
+		fileIn.set(target, (fileIn.get(target) ?? 0) + value);
 	}
-	for (const [mod, n] of moduleIn) {
-		addLink(mod, startLabel, n);
+	for (const [lab, n] of fileIn) {
+		addLink(lab, startLabel, n);
 	}
 
 	const nodeMeta = new Map<string, NodeMetaEntry>();
-	nodeMeta.set(startLabel, { category: 'Code', color: TEAL.start });
+	nodeMeta.set(startLabel, { category: 'File', color: TEAL.start });
 
-	for (const [mod] of moduleIn) {
-		nodeMeta.set(mod, {
-			category: 'Modules',
-			color: mod.startsWith('(') ? TEAL.other : TEAL.module,
+	for (const [lab] of fileIn) {
+		const isOther = lab === otherFiles || lab.startsWith('+');
+		nodeMeta.set(lab, {
+			category: 'Hop 1',
+			color: isOther ? TEAL.other : TEAL.module,
 		});
-		if (mod.startsWith('(')) {
-			nodeRef[mod] = { kind: 'bucket', id: mod };
+		if (isOther) {
+			nodeRef[lab] = { kind: 'bucket', id: 'other-files' };
 		} else {
-			nodeRef[mod] = { kind: 'module', id: mod };
+			// Resolve path from label
+			let path: string | undefined;
+			for (const [p, l] of fileLabels) {
+				if (l === lab) {
+					path = p;
+					break;
+				}
+			}
+			if (path) nodeRef[lab] = { kind: 'file', id: path };
+			else nodeRef[lab] = { kind: 'bucket', id: lab };
 		}
 	}
 
 	const endLabelsSeen = new Set<string>();
 	for (const [k] of linkMap) {
 		const source = k.split('\0')[0]!;
-		if (source === startLabel || moduleIn.has(source)) continue;
+		if (source === startLabel || fileIn.has(source)) continue;
 		endLabelsSeen.add(source);
 	}
 	for (const label of endLabelsSeen) {
 		if (label.startsWith('(')) {
-			nodeMeta.set(label, { category: 'Ends', color: TEAL.other });
+			nodeMeta.set(label, { category: 'Imports', color: TEAL.other });
 			nodeRef[label] = { kind: 'bucket', id: label };
 			continue;
 		}
@@ -387,7 +399,7 @@ export function projectAlluvial(
 				: kind === 'package' && graph.packages.get(endKey)?.source === 'builtin'
 					? TEAL.builtin
 					: TEAL.package;
-		nodeMeta.set(label, { category: 'Ends', color });
+		nodeMeta.set(label, { category: 'Imports', color });
 		nodeRef[label] = {
 			kind: kind === 'unresolved' ? 'unresolved' : 'package',
 			id: endKey,
@@ -399,15 +411,20 @@ export function projectAlluvial(
 		return { source, target, value };
 	});
 
+	const hasHop = fileIn.size > 0;
+	const categoryOrder = hasHop
+		? ['Imports', 'Hop 1', 'File']
+		: ['Imports', 'File'];
+
 	return buildAlluvialPayload({
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['Ends', 'Modules', 'Code'],
+		categoryOrder,
 		focus,
 		nodeRef,
 		startId,
 		units,
-		ariaLabel: `Modules to code alluvial for ${startLabel}`,
+		ariaLabel: `Imports for ${startLabel}`,
 	});
 }

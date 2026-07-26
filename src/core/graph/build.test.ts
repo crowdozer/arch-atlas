@@ -66,14 +66,17 @@ describe('buildGraph fixture', () => {
 		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
-	it('projects alluvial from start (modules → code)', () => {
+	it('projects alluvial from start (imports → file)', () => {
 		const payload = projectAlluvial(graph, 'src/index.ts');
 		expect(payload).not.toBeNull();
 		expect(payload!.data.length).toBeGreaterThan(0);
-		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'Code')).toBe(
+		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'File')).toBe(
 			true,
 		);
-		// links flow toward code (start basename), not outward from it
+		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'Modules')).toBe(
+			false,
+		);
+		// links flow toward file (start basename), not outward from it
 		const startBase = 'index.ts';
 		const intoCode = payload!.data.some((l) => l.target === startBase);
 		const outFromCode = payload!.data.some((l) => l.source === startBase);

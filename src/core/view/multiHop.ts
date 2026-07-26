@@ -31,9 +31,9 @@ import type {
 import {
 	basename,
 	buildAlluvialPayload,
+	moreCountLabel,
 	projectAlluvial,
 	TEAL,
-	topFolder,
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
@@ -43,7 +43,6 @@ import {
 	unitsForAxis,
 } from '@core/view/weight.ts';
 
-const FILE_PROMOTE_THRESHOLD = 12;
 const DEFAULT_MAX_DEPTH = 7;
 
 /**
@@ -194,12 +193,19 @@ export function projectMultiHopAlluvial(
 		{ stage: number; ref: AlluvialNodeRef; category: string }
 	>();
 
+	// Always file leaves inside hop stages — folders are not hop depth.
+	// Overflow to "+ N more" when a stage has too many files.
 	for (const [stage, files] of filesAtStage) {
 		const category = hopCategory(stage);
-		const useFiles = files.length <= FILE_PROMOTE_THRESHOLD;
-		if (useFiles) {
-			const labels = uniqueFileLabels(files);
-			for (const f of files) {
+		const ranked = [...files].sort((a, b) => a.localeCompare(b));
+		const kept = ranked.slice(0, maxNodesPerHop);
+		const keptSet = new Set(kept);
+		const otherCount = ranked.length - kept.length;
+		const otherName =
+			otherCount > 0 ? hopNodeLabel(moreCountLabel(otherCount), stage) : '';
+		const labels = uniqueFileLabels(kept);
+		for (const f of files) {
+			if (keptSet.has(f)) {
 				const base = labels.get(f) ?? basename(f);
 				const name = hopNodeLabel(base, stage);
 				fileDisplay.set(f, name);
@@ -208,38 +214,13 @@ export function projectMultiHopAlluvial(
 					ref: { kind: 'file', id: f },
 					category,
 				});
-			}
-		} else {
-			const byMod = new Map<string, string[]>();
-			for (const f of files) {
-				const m = topFolder(f);
-				const list = byMod.get(m) ?? [];
-				list.push(f);
-				byMod.set(m, list);
-			}
-			const ranked = [...byMod.entries()].sort(
-				(a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]),
-			);
-			const kept = new Set(ranked.slice(0, maxNodesPerHop).map(([k]) => k));
-			const otherName = hopNodeLabel('(other)', stage);
-			for (const f of files) {
-				const m = topFolder(f);
-				if (kept.has(m)) {
-					const name = hopNodeLabel(m, stage);
-					fileDisplay.set(f, name);
-					displayMeta.set(name, {
-						stage,
-						ref: { kind: 'module', id: m },
-						category,
-					});
-				} else {
-					fileDisplay.set(f, otherName);
-					displayMeta.set(otherName, {
-						stage,
-						ref: { kind: 'bucket', id: otherName },
-						category,
-					});
-				}
+			} else if (otherName) {
+				fileDisplay.set(f, otherName);
+				displayMeta.set(otherName, {
+					stage,
+					ref: { kind: 'bucket', id: otherName },
+					category,
+				});
 			}
 		}
 	}

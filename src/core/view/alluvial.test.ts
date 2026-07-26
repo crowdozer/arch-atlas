@@ -43,37 +43,38 @@ function flowTotals(data: { source: string; target: string; value: number }[]) {
 }
 
 describe('projectAlluvial conservation', () => {
-	it('conserves module in/out on next middleware start', () => {
+	it('uses Imports / Hop 1 / File — never Modules folders', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const payload = projectAlluvial(graph, 'middleware.ts');
 		expect(payload).not.toBeNull();
+		const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('File')).toBe(true);
+		expect(cats.has('Modules')).toBe(false);
+		expect(cats.has('Ends')).toBe(false);
+		expect(cats.has('Code')).toBe(false);
+
 		const { out, inn } = flowTotals(payload!.data);
-
-		const modules = payload!.options.alluvial.nodes
-			.filter((n) => n.category === 'Modules')
-			.map((n) => n.name);
-
-		for (const m of modules) {
-			expect(inn.get(m) ?? 0, `module ${m} inflow`).toBe(out.get(m) ?? 0);
+		// Hop 1 file leaves conserve
+		for (const n of payload!.options.alluvial.nodes) {
+			if (n.category !== 'Hop 1') continue;
+			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
 		}
-
-		// code inflow equals total end outflow
-		const ends = payload!.options.alluvial.nodes
-			.filter((n) => n.category === 'Ends')
-			.map((n) => n.name);
-		const endOut = ends.reduce((s, e) => s + (out.get(e) ?? 0), 0);
-		const codeIn = inn.get('middleware.ts') ?? 0;
-		expect(codeIn).toBe(endOut);
-		expect(codeIn).toBeGreaterThan(0);
+		const endOut = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.reduce((s, e) => s + (out.get(e.name) ?? 0), 0);
+		const fileIn = inn.get('middleware.ts') ?? 0;
+		expect(fileIn).toBe(endOut);
+		expect(fileIn).toBeGreaterThan(0);
 	});
 
-	it('react main keeps modules→code flow conserved', () => {
+	it('react main keeps hop conservation', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		const payload = projectAlluvial(graph, 'src/main.tsx');
 		expect(payload).not.toBeNull();
 		const { out, inn } = flowTotals(payload!.data);
 		for (const n of payload!.options.alluvial.nodes) {
-			if (n.category !== 'Modules') continue;
+			if (n.category !== 'Hop 1') continue;
 			expect(inn.get(n.name) ?? 0).toBe(out.get(n.name) ?? 0);
 		}
 	});
@@ -92,8 +93,9 @@ describe('projectAlluvial conservation', () => {
 			kind: 'file',
 			id: 'middleware.ts',
 		});
-		// At least one package end should be drillable
-		const endNodes = payload!.options.alluvial.nodes.filter((n) => n.category === 'Ends');
+		const endNodes = payload!.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports',
+		);
 		const drillableEnd = endNodes.find((n) => !n.name.startsWith('('));
 		expect(drillableEnd).toBeTruthy();
 		const ref = payload!.meta.nodeRef[drillableEnd!.name];
@@ -102,26 +104,25 @@ describe('projectAlluvial conservation', () => {
 	});
 
 	it.each(['importer-loc', 'target-loc'] as WeightAxis[])(
-		'conserves modules under weightAxis=%s',
+		'conserves under weightAxis=%s',
 		(weightAxis) => {
 			const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 			const payload = projectAlluvial(graph, 'middleware.ts', { weightAxis });
 			expect(payload).not.toBeNull();
 			const { out, inn } = flowTotals(payload!.data);
 			for (const n of payload!.options.alluvial.nodes) {
-				if (n.category !== 'Modules') continue;
+				if (n.category !== 'Hop 1') continue;
 				expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
 			}
 			const ends = payload!.options.alluvial.nodes
-				.filter((n) => n.category === 'Ends')
+				.filter((n) => n.category === 'Imports')
 				.map((n) => n.name);
 			const endOut = ends.reduce((s, e) => s + (out.get(e) ?? 0), 0);
-			const codeIn = inn.get('middleware.ts') ?? 0;
-			expect(codeIn).toBe(endOut);
-			expect(codeIn).toBeGreaterThan(0);
-			// LOC axes should inflate mass above unit-1 edge count for non-trivial graphs
+			const fileIn = inn.get('middleware.ts') ?? 0;
+			expect(fileIn).toBe(endOut);
+			expect(fileIn).toBeGreaterThan(0);
 			if (weightAxis === 'importer-loc') {
-				expect(codeIn).toBeGreaterThan(ends.length > 0 ? 1 : 0);
+				expect(fileIn).toBeGreaterThan(ends.length > 0 ? 1 : 0);
 			}
 		},
 	);

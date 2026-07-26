@@ -263,7 +263,7 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 function captionForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file':
-			return `Modules → code for ${view.fileId}`;
+			return `Imports → ${view.fileId}`;
 		case 'file-multihop':
 			return `Dependency tree · ${view.fileId}`;
 		case 'file-importers':
