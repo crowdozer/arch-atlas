@@ -95,10 +95,10 @@ export function edgeWeight(
 }
 
 /**
- * Carbon `units` string for the axis.
- * `context` only affects the import-edges label (forward package-mass vs reverse edges).
- * LOC labels are honest: package/unresolved under target-loc fall back to 1, not package LOC.
- * target-loc is always an estimate under Level-1 (whole target file).
+ * Carbon `units` string for the axis (honest names — see UI Weight dropdown).
+ * - importer-loc: whole-file LOC of the **importer** (`e.from`)
+ * - target-loc: whole-file LOC of the **target** when file (`e.to`); packages = 1
+ * Tree-shaken “imported surface LOC” is not an axis (UI-gated; needs LSP).
  */
 export function unitsForAxis(
 	axis: WeightAxis = DEFAULT_AXIS,
@@ -108,15 +108,21 @@ export function unitsForAxis(
 		case 'import-edges':
 			return context === 'package-mass' ? 'package imports' : 'import edges';
 		case 'importer-loc':
-			return 'importer lines of code';
+			return 'importer file LOC';
 		case 'target-loc':
-			return 'estimated imported file lines (packages = 1)';
+			return 'target file LOC (whole file; packages = 1)';
 		default: {
 			const _exhaustive: never = axis;
 			return _exhaustive;
 		}
 	}
 }
+
+/** UI-only weight choice — not a real axis until LSP surface analysis exists. */
+export const IMPORTED_SURFACE_LOC_UI = 'imported-loc' as const;
+
+export const IMPORTED_SURFACE_LOC_MESSAGE =
+	'Imported LOC (tree-shaken surface) requires a language server and is not implemented at Level-1. Use “Target file LOC” for whole-file size of the linked module, or “Importer file LOC” for the caller’s size.';
 
 export function resolveWeightAxis(axis?: WeightAxis): WeightAxis {
 	return axis ?? DEFAULT_AXIS;

@@ -7,6 +7,8 @@ import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	HUB_DEFAULT_MAX_DEPTH,
+	IMPORTED_SURFACE_LOC_MESSAGE,
+	IMPORTED_SURFACE_LOC_UI,
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
@@ -569,30 +571,41 @@ function closeInspectModal(): void {
 	if (modal) modal.open = false;
 }
 
-function openExactNotImplementedModal(detail?: string): void {
-	const modal = $('atlas-exact-modal') as (HTMLElement & { open?: boolean }) | null;
-	const body = $('atlas-exact-body');
-	if (body) {
-		body.textContent =
-			detail?.trim() ||
-			EXACT_NOT_IMPLEMENTED_MESSAGE +
-				' Charts stay on estimate (whole-file) weights.';
-	}
+/** Carbon alert modal for Level-1-unavailable weight/precision options. */
+function openUnavailableModal(opts: {
+	label?: string;
+	heading: string;
+	body: string;
+}): void {
+	const modal = $('atlas-unavailable-modal') as (HTMLElement & { open?: boolean }) | null;
+	const labelEl = $('atlas-unavailable-label');
+	const headingEl = $('atlas-unavailable-heading');
+	const bodyEl = $('atlas-unavailable-body');
+	if (labelEl) labelEl.textContent = opts.label ?? 'Not available';
+	if (headingEl) headingEl.textContent = opts.heading;
+	if (bodyEl) bodyEl.textContent = opts.body;
 	if (modal) modal.open = true;
 }
 
-function closeExactNotImplementedModal(): void {
-	const modal = $('atlas-exact-modal') as (HTMLElement & { open?: boolean }) | null;
+function closeUnavailableModal(): void {
+	const modal = $('atlas-unavailable-modal') as (HTMLElement & { open?: boolean }) | null;
 	if (modal) modal.open = false;
 }
 
-/** Revert precision UI + state to estimate (exact is not selectable). */
-function revertPrecisionToEstimate(
-	precisionDropdown: HTMLElement & { value?: string },
+function syncWeightDropdown(
+	el: HTMLElement & { value?: string },
+	axis: WeightAxis,
 ): void {
-	locPrecision = 'estimate';
-	precisionDropdown.value = 'estimate';
-	precisionDropdown.setAttribute('value', 'estimate');
+	el.value = axis;
+	el.setAttribute('value', axis);
+}
+
+function syncPrecisionDropdown(
+	el: HTMLElement & { value?: string },
+	precision: LocPrecision,
+): void {
+	el.value = precision;
+	el.setAttribute('value', precision);
 }
 
 function appendCodeBlock(
@@ -1461,7 +1474,7 @@ function wireUi() {
 
 	const weightDropdown = $('atlas-weight-axis') as (HTMLElement & { value?: string }) | null;
 	if (weightDropdown) {
-		weightDropdown.value = weightAxis;
+		syncWeightDropdown(weightDropdown, weightAxis);
 		weightDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
 			const detail = (e as CustomEvent).detail as {
 				item?: { value?: string };
@@ -1469,7 +1482,18 @@ function wireUi() {
 			const next =
 				detail?.item?.value ??
 				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
+			// UI-only gated option (not a real WeightAxis)
+			if (next === IMPORTED_SURFACE_LOC_UI || next === 'imported-loc') {
+				syncWeightDropdown(weightDropdown, weightAxis);
+				openUnavailableModal({
+					label: 'Weight',
+					heading: 'Imported LOC not available',
+					body: IMPORTED_SURFACE_LOC_MESSAGE,
+				});
+				return;
+			}
 			weightAxis = parseWeightAxis(next);
+			syncWeightDropdown(weightDropdown, weightAxis);
 			remountCurrentView();
 		}) as EventListener);
 	}
@@ -1494,7 +1518,7 @@ function wireUi() {
 		value?: string;
 	}) | null;
 	if (precisionDropdown) {
-		precisionDropdown.value = locPrecision;
+		syncPrecisionDropdown(precisionDropdown, locPrecision);
 		precisionDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
 			const detail = (e as CustomEvent).detail as {
 				item?: { value?: string };
@@ -1507,20 +1531,25 @@ function wireUi() {
 			const parsed = parseLocPrecision(next);
 			if (parsed === 'exact') {
 				// Exact imported surface is not implemented — block with modal, stay on estimate
-				revertPrecisionToEstimate(precisionDropdown);
-				openExactNotImplementedModal(
-					EXACT_NOT_IMPLEMENTED_MESSAGE +
+				syncPrecisionDropdown(precisionDropdown, 'estimate');
+				locPrecision = 'estimate';
+				openUnavailableModal({
+					label: 'Precision',
+					heading: 'Exact mode not available',
+					body:
+						EXACT_NOT_IMPLEMENTED_MESSAGE +
 						' Charts stay on estimate (whole-file) weights.',
-				);
+				});
 				return;
 			}
 			locPrecision = 'estimate';
+			syncPrecisionDropdown(precisionDropdown, 'estimate');
 			remountCurrentView();
 		}) as EventListener);
 	}
 
-	$('atlas-exact-close')?.addEventListener('click', () => {
-		closeExactNotImplementedModal();
+	$('atlas-unavailable-close')?.addEventListener('click', () => {
+		closeUnavailableModal();
 	});
 
 	const modeSwitch = $('atlas-interaction-mode') as (HTMLElement & { value?: string }) | null;

@@ -42,6 +42,8 @@ export { projectAlluvial } from '@core/view/alluvial.ts';
 export type { LocPrecision, WeightAxis, WeightResolution } from '@core/view/weight.ts';
 export {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	IMPORTED_SURFACE_LOC_MESSAGE,
+	IMPORTED_SURFACE_LOC_UI,
 	axisNeedsImportedSurface,
 	edgeWeight,
 	fileLineCount,

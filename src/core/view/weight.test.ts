@@ -128,9 +128,10 @@ describe('unitsForAxis', () => {
 		expect(unitsForAxis('import-edges', 'import-edges')).toBe('import edges');
 	});
 
-	it('LOC units are honest about package fallback and estimate', () => {
-		expect(unitsForAxis('importer-loc')).toMatch(/importer/i);
-		expect(unitsForAxis('target-loc')).toMatch(/estimated/i);
+	it('LOC units name importer vs target file size honestly', () => {
+		expect(unitsForAxis('importer-loc')).toMatch(/importer file/i);
+		expect(unitsForAxis('target-loc')).toMatch(/target file/i);
+		expect(unitsForAxis('target-loc')).toMatch(/whole file/i);
 		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
 	});
 });

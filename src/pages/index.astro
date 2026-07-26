@@ -258,13 +258,14 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Weight"
-								titleText="Weight"
+								titleText="Band weight axis"
 								value="importer-loc"
 								aria-labelledby="atlas-weight-label"
 							>
-								<DropdownItem value="import-edges">Import edges</DropdownItem>
-								<DropdownItem value="importer-loc">Importer lines of code</DropdownItem>
-								<DropdownItem value="target-loc">Imported file lines (estimate)</DropdownItem>
+								<DropdownItem value="import-edges">Import edges (count)</DropdownItem>
+								<DropdownItem value="importer-loc">Importer file LOC</DropdownItem>
+								<DropdownItem value="target-loc">Target file LOC (whole file)</DropdownItem>
+								<DropdownItem value="imported-loc">Imported LOC (surface)</DropdownItem>
 							</Dropdown>
 						</div>
 						<div class="atlas-stage__control-group">
@@ -277,7 +278,7 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Precision"
-								titleText="Imported LOC precision"
+								titleText="LOC precision (estimate vs exact LSP)"
 								value="estimate"
 								aria-labelledby="atlas-precision-label"
 							>
@@ -324,27 +325,26 @@ import Tag from '../components/ui/Tag.astro';
 		</ModalFooter>
 	</Modal>
 
-	<!-- Blocking notice: Exact LOC / imported surface not implemented -->
+	<!-- Blocking notice: unimplemented weight/precision features (Exact, imported surface LOC) -->
 	<Modal
-		id="atlas-exact-modal"
-		class="atlas-exact-modal"
+		id="atlas-unavailable-modal"
+		class="atlas-unavailable-modal"
 		size="sm"
 		alert
-		aria-label="Exact precision not available"
+		aria-label="Feature not available"
 	>
 		<ModalHeader>
 			<ModalCloseButton />
-			<ModalLabel>Precision</ModalLabel>
-			<ModalHeading id="atlas-exact-heading">Exact mode not available</ModalHeading>
+			<ModalLabel id="atlas-unavailable-label">Not available</ModalLabel>
+			<ModalHeading id="atlas-unavailable-heading">Not available</ModalHeading>
 		</ModalHeader>
 		<ModalBody>
-			<p id="atlas-exact-body" class="atlas-exact-modal__body-text">
-				Exact imported LOC requires a language server and is not implemented at Level-1.
-				Charts stay on estimate (whole-file) weights.
+			<p id="atlas-unavailable-body" class="atlas-unavailable-modal__body-text">
+				This option is not implemented at Level-1.
 			</p>
 		</ModalBody>
 		<ModalFooter>
-			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-exact-close">
+			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-unavailable-close">
 				OK
 			</ModalFooterButton>
 		</ModalFooter>

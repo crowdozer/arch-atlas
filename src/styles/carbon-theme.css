@@ -881,8 +881,8 @@ cds-dropdown.atlas-stage__precision {
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
-/* Exact-not-implemented alert (blocking) */
-.atlas-exact-modal__body-text {
+/* Unavailable feature alert (Exact precision, imported-surface LOC) */
+.atlas-unavailable-modal__body-text {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.45;
