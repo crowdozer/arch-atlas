@@ -1,6 +1,51 @@
 {
-  "generated_at": null,
-  "root": null,
-  "count": 0,
-  "entries": []
+  "generated_at": "2026-07-26T21:56:35Z",
+  "root": "/home/crwdzr/git-personal/arch-atlas",
+  "count": 1,
+  "entries": [
+    {
+      "id": "dual-host-shell-stage",
+      "kind": "plan",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/dual-host-shell-stage.md",
+      "scope": [
+        "dual-host",
+        "shell",
+        "stage",
+        "vscode-extension",
+        "core-engine",
+        "alluvial-viz",
+        "web-host",
+        "injectors"
+      ],
+      "applies_when": [
+        "dual-host architecture",
+        "VS Code extension adapter",
+        "extract shell or stage from app.ts",
+        "shared engine and graph viz",
+        "injectable host shells",
+        "webview stage bundle",
+        "workspace index vs ZIP ingest",
+        "map catalog TreeView",
+        "browser vs extension packaging",
+        "host ports SourcePort CatalogPort StagePort"
+      ],
+      "touches": [
+        "src/core",
+        "src/shell",
+        "src/stage",
+        "src/client/app.ts",
+        "extension/",
+        "hosts as injectors",
+        "AlluvialChart mount",
+        "viewStack navigation",
+        "indexFiles"
+      ],
+      "related": [],
+      "rationale_quality": "full",
+      "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
+    }
+  ]
 }
