@@ -46,6 +46,12 @@ export {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
+export {
+	edgesForBand,
+	edgesForNode,
+	snippetsForEdges,
+} from '@core/view/inspect.ts';
+export type { ImportSnippet } from '@core/view/inspect.ts';
 export { extractImports } from '@core/parse/imports.ts';
 export { ingestZip } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';

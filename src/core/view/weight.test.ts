@@ -16,6 +16,7 @@ function edge(partial: Partial<ImportEdge> & Pick<ImportEdge, 'from' | 'to' | 't
 		specifier: partial.specifier ?? partial.to,
 		epistemic: 'observed',
 		form: 'import',
+		line: 1,
 		...partial,
 	};
 }

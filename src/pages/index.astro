@@ -179,7 +179,7 @@ import Layout from '../layouts/Layout.astro';
 
 			<section class="atlas-stage" aria-label="Alluvial projection">
 				<div class="atlas-stage__bar">
-					<div class="min-w-0 flex flex-1 items-start gap-3">
+					<div class="min-w-0 flex flex-1 items-center gap-3">
 						<button
 							type="button"
 							id="atlas-alluvial-back"
@@ -193,26 +193,39 @@ import Layout from '../layouts/Layout.astro';
 							<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
 								Select a start to project modules → code.
 							</p>
-							<p class="mt-0.5 text-[0.7rem] text-zinc-600">
-								Click a band or label to drill in
-							</p>
 						</div>
 					</div>
-					<div class="flex shrink-0 flex-col items-end gap-1.5">
-						<label class="atlas-weight-axis">
-							<span class="atlas-weight-axis__label">Weight</span>
-							<select id="atlas-weight-axis" class="atlas-weight-axis__select">
-								<option value="import-edges">Import edges</option>
-								<option value="importer-loc">Importer lines of code</option>
-								<option value="target-loc">Imported file lines of code</option>
-							</select>
-						</label>
-						<span
-							id="atlas-epistemic"
-							class="rounded bg-zinc-800 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-zinc-400"
+					<div class="atlas-stage__controls">
+						<cds-dropdown
+							id="atlas-weight-axis"
+							class="atlas-stage__weight"
+							size="sm"
+							label-text="Weight"
+							title-text="Weight"
+							value="import-edges"
 						>
-							Observed edges
-						</span>
+							<cds-dropdown-item value="import-edges">Import edges</cds-dropdown-item>
+							<cds-dropdown-item value="importer-loc"
+								>Importer lines of code</cds-dropdown-item
+							>
+							<cds-dropdown-item value="target-loc"
+								>Imported file lines of code</cds-dropdown-item
+							>
+						</cds-dropdown>
+						<cds-content-switcher
+							id="atlas-interaction-mode"
+							class="atlas-stage__mode"
+							size="sm"
+							value="drill"
+							aria-label="Click mode"
+						>
+							<cds-content-switcher-item value="drill" name="atlas-mode"
+								>Drill</cds-content-switcher-item
+							>
+							<cds-content-switcher-item value="inspect" name="atlas-mode"
+								>Inspect</cds-content-switcher-item
+							>
+						</cds-content-switcher>
 					</div>
 				</div>
 				<div
@@ -225,6 +238,22 @@ import Layout from '../layouts/Layout.astro';
 			</section>
 		</section>
 	</div>
+
+	<cds-modal id="atlas-inspect-modal" size="lg" aria-label="Import evidence">
+		<cds-modal-header>
+			<cds-modal-close-button></cds-modal-close-button>
+			<cds-modal-label>Observed imports</cds-modal-label>
+			<cds-modal-heading id="atlas-inspect-heading">Import evidence</cds-modal-heading>
+		</cds-modal-header>
+		<cds-modal-body>
+			<div id="atlas-inspect-body" class="atlas-inspect"></div>
+		</cds-modal-body>
+		<cds-modal-footer>
+			<cds-modal-footer-button kind="primary" data-modal-primary-focus id="atlas-inspect-close">
+				Close
+			</cds-modal-footer-button>
+		</cds-modal-footer>
+	</cds-modal>
 
 	<script>
 		import '../client/app.ts';

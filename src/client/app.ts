@@ -6,6 +6,8 @@ import { AlluvialChart } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import {
 	alluvialForStart,
+	edgesForBand,
+	edgesForNode,
 	indexFiles,
 	ingestZip,
 	isSourceFile,
@@ -14,9 +16,11 @@ import {
 	projectModuleFocus,
 	projectMultiHopAlluvial,
 	projectPackageImporters,
+	snippetsForEdges,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type CodeGraph,
+	type ImportSnippet,
 	type MapCatalog,
 	type VirtualFile,
 	type WeightAxis,
@@ -64,11 +68,18 @@ let viewStack: AtlasView[] = [];
 let currentPayload: AlluvialPayload | null = null;
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'import-edges';
+/** Click behavior: drill navigates; inspect opens import-line evidence. */
+type InteractionMode = 'drill' | 'inspect';
+let interactionMode: InteractionMode = 'drill';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
 
 function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'import-edges';
+}
+
+function parseInteractionMode(raw: string): InteractionMode {
+	return raw === 'inspect' ? 'inspect' : 'drill';
 }
 
 function weightOpts(): { weightAxis: WeightAxis } {
@@ -380,10 +391,99 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 	}
 }
 
+function closeInspectModal(): void {
+	const modal = $('atlas-inspect-modal') as (HTMLElement & { open?: boolean }) | null;
+	if (modal) modal.open = false;
+}
+
+function openInspectModal(title: string, snippets: ImportSnippet[], emptyHint: string): void {
+	const modal = $('atlas-inspect-modal') as (HTMLElement & { open?: boolean }) | null;
+	const heading = $('atlas-inspect-heading');
+	const body = $('atlas-inspect-body');
+	if (!modal || !heading || !body) return;
+
+	heading.textContent = title;
+	body.replaceChildren();
+
+	if (!snippets.length) {
+		const p = document.createElement('p');
+		p.className = 'atlas-inspect__empty';
+		p.textContent = emptyHint;
+		body.appendChild(p);
+	} else {
+		const meta = document.createElement('p');
+		meta.className = 'atlas-inspect__meta';
+		meta.textContent =
+			snippets.length === 1
+				? '1 observed import statement'
+				: `${snippets.length} observed import statements`;
+		body.appendChild(meta);
+
+		const list = document.createElement('ul');
+		list.className = 'atlas-inspect__list';
+		for (const sn of snippets) {
+			const li = document.createElement('li');
+			li.className = 'atlas-inspect__item';
+			const path = document.createElement('div');
+			path.className = 'atlas-inspect__path';
+			path.innerHTML = `${escapeHtml(sn.path)} <span class="atlas-inspect__line-num">L${sn.line}</span> <span class="atlas-inspect__form">${escapeHtml(sn.form)}</span>`;
+			const code = document.createElement('pre');
+			code.className = 'atlas-inspect__code';
+			code.textContent = sn.text;
+			li.append(path, code);
+			list.appendChild(li);
+		}
+		body.appendChild(list);
+	}
+
+	modal.open = true;
+}
+
+function inspectNode(name: string, ref: AlluvialNodeRef): void {
+	if (!session) return;
+	if (ref.kind === 'bucket') {
+		openInspectModal(
+			name,
+			[],
+			'Aggregate buckets have no single import statement — drill or pick a concrete node.',
+		);
+		return;
+	}
+	const edges = edgesForNode(session.graph, ref);
+	const snippets = snippetsForEdges(session.graph, edges);
+	openInspectModal(
+		name,
+		snippets,
+		'No observed import lines for this node in the current graph.',
+	);
+}
+
+function inspectBand(sourceName: string | null, targetName: string | null): void {
+	if (!session) return;
+	const sourceRef = sourceName ? refForName(sourceName) : null;
+	const targetRef = targetName ? refForName(targetName) : null;
+	const title = [sourceName, targetName].filter(Boolean).join(' → ') || 'Band';
+	const edges = edgesForBand(session.graph, sourceRef, targetRef);
+	const snippets = snippetsForEdges(session.graph, edges);
+	openInspectModal(
+		title,
+		snippets,
+		'No observed import lines for this band (aggregate or unresolved topology).',
+	);
+}
+
 function handleNodeClick(name: string): void {
 	const ref = refForName(name);
 	if (!ref) {
-		setStatus(`No drill target for “${name}”`);
+		setStatus(
+			interactionMode === 'inspect'
+				? `No inspect target for “${name}”`
+				: `No drill target for “${name}”`,
+		);
+		return;
+	}
+	if (interactionMode === 'inspect') {
+		inspectNode(name, ref);
 		return;
 	}
 	drillFromRef(ref, name);
@@ -391,8 +491,14 @@ function handleNodeClick(name: string): void {
 
 /**
  * Line click: prefer file target, else package source, else module source, else package target.
+ * Inspect mode opens import-line evidence instead of navigating.
  */
 function handleLineClick(sourceName: string | null, targetName: string | null): void {
+	if (interactionMode === 'inspect') {
+		inspectBand(sourceName, targetName);
+		return;
+	}
+
 	const sourceRef = sourceName ? refForName(sourceName) : null;
 	const targetRef = targetName ? refForName(targetName) : null;
 
@@ -1020,14 +1126,39 @@ function wireUi() {
 		popView();
 	});
 
-	const weightSelect = $('atlas-weight-axis') as HTMLSelectElement | null;
-	if (weightSelect) {
-		weightSelect.value = weightAxis;
-		weightSelect.addEventListener('change', () => {
-			weightAxis = parseWeightAxis(weightSelect.value);
+	const weightDropdown = $('atlas-weight-axis') as (HTMLElement & { value?: string }) | null;
+	if (weightDropdown) {
+		weightDropdown.value = weightAxis;
+		weightDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
+			weightAxis = parseWeightAxis(next);
 			remountCurrentView();
-		});
+		}) as EventListener);
 	}
+
+	const modeSwitch = $('atlas-interaction-mode') as (HTMLElement & { value?: string }) | null;
+	if (modeSwitch) {
+		modeSwitch.value = interactionMode;
+		modeSwitch.addEventListener('cds-content-switcher-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof modeSwitch.value === 'string' ? modeSwitch.value : 'drill');
+			interactionMode = parseInteractionMode(next);
+			setStatus(interactionMode === 'inspect' ? 'Inspect mode — click for import lines' : 'Drill mode');
+		}) as EventListener);
+	}
+
+	$('atlas-inspect-close')?.addEventListener('click', () => {
+		closeInspectModal();
+	});
 
 	$('atlas-demo-react-simple')?.addEventListener('click', () => {
 		handleDemo('react-simple');

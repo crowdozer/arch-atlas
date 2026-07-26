@@ -36,6 +36,8 @@ export type ImportEdge = {
 	epistemic: Epistemic;
 	/** static import | export-from | require | dynamic import() */
 	form: 'import' | 'export' | 'require' | 'dynamic';
+	/** 1-based line of the import statement in `from` (observed). */
+	line: number;
 };
 
 export type CodeGraph = {

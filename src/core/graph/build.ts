@@ -154,6 +154,7 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 				specifier: imp.specifier,
 				epistemic: 'observed',
 				form: imp.form,
+				line: imp.line,
 			});
 		}
 	}
