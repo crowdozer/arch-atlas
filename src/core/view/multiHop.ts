@@ -25,7 +25,13 @@ import {
 	TEAL,
 	topFolder,
 	uniqueFileLabels,
+	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import {
+	edgeWeight,
+	resolveWeightAxis,
+	unitsForAxis,
+} from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
 const DEFAULT_MAX_HOP_STAGES = 5;
@@ -61,6 +67,7 @@ export function projectMultiHopAlluvial(
 		maxHopStages?: number;
 		maxEnds?: number;
 		maxNodesPerHop?: number;
+		weightAxis?: WeightAxis;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
@@ -69,12 +76,15 @@ export function projectMultiHopAlluvial(
 	const maxHopStages = opts?.maxHopStages ?? DEFAULT_MAX_HOP_STAGES;
 	const maxEnds = opts?.maxEnds ?? 16;
 	const maxNodesPerHop = opts?.maxNodesPerHop ?? 12;
+	const weightAxis = resolveWeightAxis(opts?.weightAxis);
+	const units = unitsForAxis(weightAxis, 'package-mass');
+	const passOpts = { heightPx, maxEnds, weightAxis };
 
 	const fwd = fileImportAdj(graph);
 	const { dist, maxHops } = fileDistances(graph, startId, fwd);
 
 	if (maxHops < 2) {
-		return projectAlluvial(graph, startId, { heightPx, maxEnds });
+		return projectAlluvial(graph, startId, passOpts);
 	}
 
 	const stagesUsed = Math.min(maxHops, maxHopStages);
@@ -89,25 +99,26 @@ export function projectMultiHopAlluvial(
 	// --- package mass per file ---
 	const filePkgMass = new Map<string, number>();
 	const endMeta = new Map<string, { label: string; kind: string }>();
-	const endToFile = new Map<string, Map<string, number>>(); // end → file → n
+	const endToFile = new Map<string, Map<string, number>>(); // end → file → mass
 
 	for (const e of graph.edges) {
 		if (!dist.has(e.from)) continue;
 		if (e.toKind === 'file') continue;
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
+		const w = edgeWeight(e, graph, weightAxis);
 		endMeta.set(e.to, { label, kind: e.toKind });
-		filePkgMass.set(e.from, (filePkgMass.get(e.from) ?? 0) + 1);
+		filePkgMass.set(e.from, (filePkgMass.get(e.from) ?? 0) + w);
 		let row = endToFile.get(e.to);
 		if (!row) {
 			row = new Map();
 			endToFile.set(e.to, row);
 		}
-		row.set(e.from, (row.get(e.from) ?? 0) + 1);
+		row.set(e.from, (row.get(e.from) ?? 0) + w);
 	}
 
 	if (!endToFile.size) {
-		return projectAlluvial(graph, startId, { heightPx, maxEnds });
+		return projectAlluvial(graph, startId, passOpts);
 	}
 
 	// --- display grouping: files at each stage → module or file label ---
@@ -369,7 +380,7 @@ export function projectMultiHopAlluvial(
 		focus,
 		nodeRef,
 		startId,
-		units: 'package imports',
+		units,
 		ariaLabel: `Multi-hop dependency tree for ${startId} (${maxHops} hops)`,
 	});
 }

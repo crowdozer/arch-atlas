@@ -19,6 +19,7 @@ import {
 	type CodeGraph,
 	type MapCatalog,
 	type VirtualFile,
+	type WeightAxis,
 } from '@core/index.ts';
 import {
 	buildFileTree,
@@ -61,6 +62,18 @@ let chart: InstanceType<typeof AlluvialChart> | null = null;
 let viewStack: AtlasView[] = [];
 /** Last mounted payload (for click resolution). */
 let currentPayload: AlluvialPayload | null = null;
+/** Band-width axis for all projectors (session-local; not persisted). */
+let weightAxis: WeightAxis = 'import-edges';
+
+const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
+
+function parseWeightAxis(raw: string): WeightAxis {
+	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'import-edges';
+}
+
+function weightOpts(): { weightAxis: WeightAxis } {
+	return { weightAxis };
+}
 
 function persistCheckbox(): HTMLInputElement | null {
 	return $('atlas-persist') as HTMLInputElement | null;
@@ -126,17 +139,18 @@ function currentView(): AtlasView | null {
 
 function payloadForView(view: AtlasView): AlluvialPayload | null {
 	if (!session) return null;
+	const opts = weightOpts();
 	switch (view.type) {
 		case 'file':
-			return alluvialForStart(session.graph, view.fileId);
+			return alluvialForStart(session.graph, view.fileId, opts);
 		case 'file-multihop':
-			return projectMultiHopAlluvial(session.graph, view.fileId);
+			return projectMultiHopAlluvial(session.graph, view.fileId, opts);
 		case 'file-importers':
-			return projectFileImporters(session.graph, view.fileId);
+			return projectFileImporters(session.graph, view.fileId, opts);
 		case 'package':
-			return projectPackageImporters(session.graph, view.packageId);
+			return projectPackageImporters(session.graph, view.packageId, opts);
 		case 'module':
-			return projectModuleFocus(session.graph, view.moduleId);
+			return projectModuleFocus(session.graph, view.moduleId, opts);
 	}
 }
 
@@ -1005,6 +1019,15 @@ function wireUi() {
 	$('atlas-alluvial-back')?.addEventListener('click', () => {
 		popView();
 	});
+
+	const weightSelect = $('atlas-weight-axis') as HTMLSelectElement | null;
+	if (weightSelect) {
+		weightSelect.value = weightAxis;
+		weightSelect.addEventListener('change', () => {
+			weightAxis = parseWeightAxis(weightSelect.value);
+			remountCurrentView();
+		});
+	}
 
 	$('atlas-demo-react-simple')?.addEventListener('click', () => {
 		handleDemo('react-simple');

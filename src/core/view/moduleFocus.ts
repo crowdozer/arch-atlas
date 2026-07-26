@@ -16,7 +16,13 @@ import {
 	buildAlluvialPayload,
 	TEAL,
 	topFolder,
+	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import {
+	edgeWeight,
+	resolveWeightAxis,
+	unitsForAxis,
+} from '@core/view/weight.ts';
 
 /**
  * Project package imports for files whose topFolder matches moduleFolder.
@@ -25,12 +31,14 @@ import {
 export function projectModuleFocus(
 	graph: CodeGraph,
 	moduleFolder: string,
-	opts?: { heightPx?: number; maxEnds?: number },
+	opts?: { heightPx?: number; maxEnds?: number; weightAxis?: WeightAxis },
 ): AlluvialPayload | null {
 	const heightPx = opts?.heightPx ?? 360;
 	const maxEnds = opts?.maxEnds ?? 16;
+	const weightAxis = resolveWeightAxis(opts?.weightAxis);
+	const units = unitsForAxis(weightAxis, 'package-mass');
 
-	// endKey → { label, kind, count }
+	// endKey → { label, kind, mass }
 	const endCounts = new Map<string, { label: string; kind: string; n: number }>();
 
 	for (const e of graph.edges) {
@@ -39,9 +47,10 @@ export function projectModuleFocus(
 
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
+		const w = edgeWeight(e, graph, weightAxis);
 		const prev = endCounts.get(e.to);
-		if (prev) prev.n += 1;
-		else endCounts.set(e.to, { label, kind: e.toKind, n: 1 });
+		if (prev) prev.n += w;
+		else endCounts.set(e.to, { label, kind: e.toKind, n: w });
 	}
 
 	if (!endCounts.size) return null;
@@ -105,7 +114,7 @@ export function projectModuleFocus(
 		categoryOrder: ['Module', 'Ends'],
 		focus,
 		nodeRef,
-		units: 'package imports',
+		units,
 		ariaLabel: `Package ends for module ${moduleFolder}`,
 	});
 }

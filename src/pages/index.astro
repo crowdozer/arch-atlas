@@ -198,12 +198,22 @@ import Layout from '../layouts/Layout.astro';
 							</p>
 						</div>
 					</div>
-					<span
-						id="atlas-epistemic"
-						class="shrink-0 rounded bg-zinc-800 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-zinc-400"
-					>
-						Observed edges
-					</span>
+					<div class="flex shrink-0 flex-col items-end gap-1.5">
+						<label class="atlas-weight-axis">
+							<span class="atlas-weight-axis__label">Weight</span>
+							<select id="atlas-weight-axis" class="atlas-weight-axis__select">
+								<option value="import-edges">Import edges</option>
+								<option value="importer-loc">Importer lines of code</option>
+								<option value="target-loc">Imported file lines of code</option>
+							</select>
+						</label>
+						<span
+							id="atlas-epistemic"
+							class="rounded bg-zinc-800 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-zinc-400"
+						>
+							Observed edges
+						</span>
+					</div>
 				</div>
 				<div
 					id="atlas-alluvial"

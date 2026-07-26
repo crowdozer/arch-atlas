@@ -11,6 +11,7 @@ import {
 } from '@core/view/fileImporters.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
 import { projectPackageImporters } from '@core/view/packageImporters.ts';
+import { fileLineCount, type WeightAxis } from '@core/view/weight.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -99,6 +100,31 @@ describe('projectAlluvial conservation', () => {
 		expect(ref).toBeTruthy();
 		expect(['package', 'unresolved']).toContain(ref.kind);
 	});
+
+	it.each(['importer-loc', 'target-loc'] as WeightAxis[])(
+		'conserves modules under weightAxis=%s',
+		(weightAxis) => {
+			const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+			const payload = projectAlluvial(graph, 'middleware.ts', { weightAxis });
+			expect(payload).not.toBeNull();
+			const { out, inn } = flowTotals(payload!.data);
+			for (const n of payload!.options.alluvial.nodes) {
+				if (n.category !== 'Modules') continue;
+				expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
+			}
+			const ends = payload!.options.alluvial.nodes
+				.filter((n) => n.category === 'Ends')
+				.map((n) => n.name);
+			const endOut = ends.reduce((s, e) => s + (out.get(e) ?? 0), 0);
+			const codeIn = inn.get('middleware.ts') ?? 0;
+			expect(codeIn).toBe(endOut);
+			expect(codeIn).toBeGreaterThan(0);
+			// LOC axes should inflate mass above unit-1 edge count for non-trivial graphs
+			if (weightAxis === 'importer-loc') {
+				expect(codeIn).toBeGreaterThan(ends.length > 0 ? 1 : 0);
+			}
+		},
+	);
 });
 
 describe('projectPackageImporters', () => {
@@ -156,6 +182,20 @@ describe('projectPackageImporters', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		expect(projectPackageImporters(graph, 'definitely-not-a-pkg-xyz')).toBeNull();
 	});
+
+	it('target-loc total equals inDegree (package fallback weight 1)', () => {
+		const { graph, catalog } = indexFiles(
+			walk(path.join(fixturesRoot, 'demo-next-complex')),
+		);
+		const end = catalog.ends.find((e) => e.id === 'nodemailer') ?? catalog.ends[0];
+		expect(end).toBeTruthy();
+		const payload = projectPackageImporters(graph, end!.id, {
+			weightAxis: 'target-loc',
+		});
+		expect(payload).not.toBeNull();
+		const total = payload!.data.reduce((s, l) => s + l.value, 0);
+		expect(total).toBe(end!.inDegree);
+	});
 });
 
 describe('projectFileImporters', () => {
@@ -202,6 +242,21 @@ describe('projectFileImporters', () => {
 			.reduce((s, [, v]) => s + v, 0);
 		expect(fileOut).toBe(importerIn);
 		expect(fileOut).toBeGreaterThan(5); // many demo modules import logger
+	});
+
+	it('target-loc total = inDegree * LOC(focus) for redis.ts', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const fileId = 'src/lib/redis.ts';
+		const inDegree = graph.edges.filter(
+			(e) => e.toKind === 'file' && e.to === fileId,
+		).length;
+		expect(inDegree).toBe(12);
+		const loc = fileLineCount(graph, fileId);
+		expect(loc).toBeGreaterThan(1);
+
+		const rev = projectFileImporters(graph, fileId, { weightAxis: 'target-loc' })!;
+		const total = rev.data.reduce((s, l) => s + l.value, 0);
+		expect(total).toBe(inDegree * loc);
 	});
 });
 

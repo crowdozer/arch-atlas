@@ -1,0 +1,132 @@
+import { describe, expect, it } from 'vitest';
+import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
+import { indexFiles } from '@core/index.ts';
+import {
+	edgeWeight,
+	fileLineCount,
+	lineCount,
+	unitsForAxis,
+	type WeightAxis,
+} from '@core/view/weight.ts';
+
+function edge(partial: Partial<ImportEdge> & Pick<ImportEdge, 'from' | 'to' | 'toKind'>): ImportEdge {
+	return {
+		id: `${partial.from}->${partial.to}`,
+		kind: 'imports',
+		specifier: partial.specifier ?? partial.to,
+		epistemic: 'observed',
+		form: 'import',
+		...partial,
+	};
+}
+
+function tinyGraph(): CodeGraph {
+	const { graph } = indexFiles([
+		{
+			path: 'a.ts',
+			// 3 lines
+			content: "import './b';\nimport 'zod';\nexport const a = 1;\n",
+			byteLength: 50,
+		},
+		{
+			path: 'b.ts',
+			// 2 lines (no trailing newline after last)
+			content: "export const b = 2;\n// end",
+			byteLength: 30,
+		},
+	]);
+	return graph;
+}
+
+describe('lineCount', () => {
+	it('returns 0 for empty', () => {
+		expect(lineCount('')).toBe(0);
+	});
+
+	it('counts single line without newline', () => {
+		expect(lineCount('hello')).toBe(1);
+	});
+
+	it('counts trailing newline as no extra empty line', () => {
+		// "a\nb\n" → lines a, b → 2
+		expect(lineCount('a\nb\n')).toBe(2);
+	});
+
+	it('counts non-empty trailing content after last newline', () => {
+		expect(lineCount('a\nb')).toBe(2);
+		expect(lineCount('a\nb\nc')).toBe(3);
+	});
+});
+
+describe('edgeWeight matrix', () => {
+	const graph = tinyGraph();
+	const fileEdge = edge({ from: 'a.ts', to: 'b.ts', toKind: 'file', specifier: './b' });
+	const pkgEdge = edge({ from: 'a.ts', to: 'zod', toKind: 'package', specifier: 'zod' });
+	const axes: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
+
+	it('import-edges is always 1 for file and package', () => {
+		expect(edgeWeight(fileEdge, graph, 'import-edges')).toBe(1);
+		expect(edgeWeight(pkgEdge, graph, 'import-edges')).toBe(1);
+	});
+
+	it('importer-loc uses LOC of from (min 1)', () => {
+		const aLoc = fileLineCount(graph, 'a.ts');
+		expect(aLoc).toBeGreaterThan(1);
+		expect(edgeWeight(fileEdge, graph, 'importer-loc')).toBe(aLoc);
+		expect(edgeWeight(pkgEdge, graph, 'importer-loc')).toBe(aLoc);
+	});
+
+	it('target-loc uses LOC of file targets; packages fall back to 1', () => {
+		const bLoc = fileLineCount(graph, 'b.ts');
+		expect(bLoc).toBeGreaterThan(0);
+		expect(edgeWeight(fileEdge, graph, 'target-loc')).toBe(bLoc);
+		expect(edgeWeight(pkgEdge, graph, 'target-loc')).toBe(1);
+	});
+
+	it('unresolved under target-loc falls back to 1', () => {
+		const u = edge({
+			from: 'a.ts',
+			to: 'unresolved:./missing',
+			toKind: 'unresolved',
+			specifier: './missing',
+		});
+		expect(edgeWeight(u, graph, 'target-loc')).toBe(1);
+	});
+
+	it('covers all three axes for file vs package', () => {
+		for (const axis of axes) {
+			const fw = edgeWeight(fileEdge, graph, axis);
+			const pw = edgeWeight(pkgEdge, graph, axis);
+			expect(fw).toBeGreaterThan(0);
+			expect(pw).toBeGreaterThan(0);
+			if (axis === 'import-edges') {
+				expect(fw).toBe(1);
+				expect(pw).toBe(1);
+			}
+			if (axis === 'target-loc') {
+				expect(pw).toBe(1);
+				expect(fw).toBe(fileLineCount(graph, 'b.ts'));
+			}
+			if (axis === 'importer-loc') {
+				expect(fw).toBe(pw);
+			}
+		}
+	});
+
+	it('missing content yields min-1 for importer-loc', () => {
+		const e = edge({ from: 'missing.ts', to: 'zod', toKind: 'package' });
+		expect(edgeWeight(e, graph, 'importer-loc')).toBe(1);
+	});
+});
+
+describe('unitsForAxis', () => {
+	it('preserves legacy labels on import-edges', () => {
+		expect(unitsForAxis('import-edges', 'package-mass')).toBe('package imports');
+		expect(unitsForAxis('import-edges', 'import-edges')).toBe('import edges');
+	});
+
+	it('LOC units are honest about package fallback', () => {
+		expect(unitsForAxis('importer-loc')).toMatch(/importer/i);
+		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
+	});
+});
