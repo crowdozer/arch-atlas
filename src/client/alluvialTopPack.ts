@@ -190,14 +190,44 @@ export function isImportRailLabel(name: string): boolean {
 	return isInRailName(name);
 }
 
+/** Construction-time parent→package identity for External straighten + undraw. */
+export type ExternalStraightPair = {
+	parent: string;
+	packageName: string;
+	width: number;
+};
+
+/**
+ * True when `(source, target)` is a construction pair parent→package.
+ * Used so direct deepest-hop attaches (no rail) undraw before straighten paints
+ * the single straight ribbon.
+ */
+export function isExternalStraightPairLink(
+	source: string,
+	target: string,
+	pairs: readonly Pick<ExternalStraightPair, 'parent' | 'packageName'>[],
+): boolean {
+	if (!source || !target || !pairs.length) return false;
+	for (const p of pairs) {
+		if (p.parent === source && p.packageName === target) return true;
+	}
+	return false;
+}
+
 /**
  * Hide pad-rail **nodes** (in-rail and out-rail bars/chips).
  * Undraw import pad scaffolds: pure in-rail↔in-rail and External package hops
- * (parent→in-rail→External). Export File→out-rail→deep-target ribbons stay painted.
+ * (parent→in-rail→External). When `pairs` is non-empty, also undraw any Carbon
+ * link whose ends match a construction pair (including **direct** parent→package
+ * attaches that skip rails) so straighten can paint once.
+ * Export File→out-rail→deep-target ribbons stay painted.
  * Tooltips still scrub rail names via {@link alluvialTooltipCustomHTML}.
  * Pair with {@link straightenExternalPackageBands} for straight External bands.
  */
-export function hideAlluvialRails(holder: HTMLElement): void {
+export function hideAlluvialRails(
+	holder: HTMLElement,
+	opts?: { pairs?: readonly Pick<ExternalStraightPair, 'parent' | 'packageName'>[] },
+): void {
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
 		const d = readData<{ name?: string }>(el);
 		const fromData = typeof d?.name === 'string' ? d.name : '';
@@ -235,8 +265,12 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		}
 	}
 
+	const pairs = opts?.pairs;
+	const usePairs = Boolean(pairs?.length);
+
 	// Import pad scaffold + External package hop pads (parent→in-rail→External).
-	// Export out-rail mass carriers stay painted.
+	// When pairs present: also undraw direct pair-covered parent→package Carbon links.
+	// Export out-rail mass carriers stay painted (unless pair-covered, which they aren't).
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<{
 			source?: { name?: string; category?: string } | string;
@@ -258,7 +292,13 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 			typeof link?.target === 'object' && link?.target
 				? link.target.category
 				: undefined;
-		if (!isImportPadScaffoldLink(sn, tn, { sourceCategory: sc, targetCategory: tc })) {
+		const scaffold = isImportPadScaffoldLink(sn, tn, {
+			sourceCategory: sc,
+			targetCategory: tc,
+		});
+		const pairCovered =
+			usePairs && isExternalStraightPairLink(sn, tn, pairs!);
+		if (!scaffold && !pairCovered) {
 			continue;
 		}
 		path.classList.add('atlas-alluvial-pad-band');
@@ -266,7 +306,7 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		if (isInRailName(sn) && isInRailName(tn)) {
 			path.classList.add('atlas-alluvial-rail-link');
 		}
-		if (isInRailName(sn) || isInRailName(tn)) {
+		if (isInRailName(sn) || isInRailName(tn) || pairCovered) {
 			path.classList.add('atlas-alluvial-external-pad');
 		}
 	}
@@ -290,13 +330,6 @@ export type ExternalStraightBandPlan = {
 	y0: number;
 	x1: number;
 	y1: number;
-};
-
-/** Construction-time parent→package identity for External straighten. */
-export type ExternalStraightPair = {
-	parent: string;
-	packageName: string;
-	width: number;
 };
 
 /**
@@ -850,8 +883,9 @@ export function polishAlluvialHolder(
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
-	hideAlluvialRails(holder);
-	// Undraw File→in-rail→External kinks, then paint straight parent→package
+	// Undraw scaffolds + any pair-covered parent→package (incl. direct deepest attaches)
+	hideAlluvialRails(holder, { pairs: opts?.externalStraightPairs });
+	// Then paint one straight parent→package band per construction pair
 	straightenExternalPackageBands(holder, {
 		pairs: opts?.externalStraightPairs,
 	});

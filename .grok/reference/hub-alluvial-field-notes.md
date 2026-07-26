@@ -144,6 +144,14 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Cause:** terminator collection gated on `radiusL >= 2` (multi-hop pad only). With max reverse BFS hops = 1, `radiusL = 1` → empty terminators.
 - **Landed:** terminators = **all** reverse free sources (no kept outer parent): single-column Exports, multi-hop padded free sources, outer rim. Pads still only when multi-hop.
 
+### E13 — Deepest-hop direct package double paint (main.tsx → react / useUser)
+
+- **Symptom:** demo-react-simple hub `src/main.tsx`: External **react** has 4 true parents but draws **5** bands; package ribbon thin+thick at once on deepest parent (`useUser`).
+- **Cause:** `padBetween` short-circuits when `toDist === fromDist + 1` → direct `useUser → react`. That link is not an import pad scaffold → Carbon keeps painting it. Package still has in-rail inbound from shallow parents → straighten draws **all** `externalStraightPairs` including useUser → second ribbon (`Math.max(1, plan.width)` over residual stroke).
+- **Rejected:** always force ≥1 rail hop for packages (topology/mass churn); drop direct parents from pairs (leaves Carbon residual width inconsistent with straighten); multi-instance rewrite (useUser not duplicated).
+- **Landed:** when `externalStraightPairs` present, undraw **any** Carbon link matching a pair `(parent, packageName)` (including direct attaches), then straighten once. Scaffold undraw unchanged for pairless / BFS fallback charts.
+- **Tests:** main.tsx react pairs length 4; direct useUser→react undrawn only with pairs; straighten plans for react length 4.
+
 ---
 
 ## 4. Stable “do not redo” list
@@ -157,6 +165,7 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 7. **Do not** trust payload-only goldens for column **headers** after Carbon changes.
 8. **Do not** gate reverse terminator chrome on multi-hop pads only.
 9. **Do not** retcon the matrix document to match an accidental cascade.
+10. **Do not** leave pair-covered direct parent→package Carbon links painted when straighten will redraw them.
 10. **Do not** duplicate External package nodes for dual-path (files may multi-instance; packages collapse).
 
 ---
