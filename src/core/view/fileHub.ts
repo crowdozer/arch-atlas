@@ -28,11 +28,11 @@
  *
  * **Edge orientation** remains A → B means A imports B.
  *
- * **Import-tree placement (dual-path seeds):**
- * Focus-incident file deps (seeds) always sit on **Imports** (dist 1) with a
- * direct File → seed link. Longest-path dist only expands **non-seed** files
- * (e.g. format → types). Placing seeds at longest dist forced File → in-rail →
- * seed pads that looked like floating External nodes (logger on users route).
+ * **Import-tree placement (multi-instance dual-path):**
+ * Focus-incident file deps (seeds) always get an instance on **Imports** (dist 1)
+ * with File → seed. Edge expansion creates additional instances at hop d+1 so
+ * analytics → redis/logger branches even when redis/logger are also seeds.
+ * One node per (path, dist); packages still collapse by package id on External.
  *
  * **Mass (chart File node):**
  * - Into File: reverse importer edges only
@@ -344,6 +344,10 @@ export function projectFileHub(
 	}
 	for (const name of [...nodeMeta.keys()]) {
 		if (!used.has(name)) nodeMeta.delete(name);
+	}
+	// Drop unused multi-instance labels from nodeRef (drill map must match nodes)
+	for (const name of Object.keys(nodeRef)) {
+		if (!used.has(name) && name !== fileLabel) delete nodeRef[name];
 	}
 
 	const links = [...linkMap.entries()].map(([k, value]) => {
@@ -1208,36 +1212,71 @@ function addExportRings(
 		};
 	}
 
-	// Place files: seeds (focus direct file deps) always dist 1 (Imports).
-	// Non-seeds use longest-path dist so format→types still expands.
+	/**
+	 * Multi-instance placement: one file node per (path, hop dist).
+	 * Seeds always get an instance at dist 1 (File→seed). Edge expansion then
+	 * creates deeper instances so analytics→redis/logger branches even when
+	 * redis/logger are also direct focus seeds (single-path identity collapsed
+	 * those edges). Packages still collapse by package id later.
+	 */
 	const filesAt = new Map<number, string[]>();
 	const placeAt = (path: string, d: number) => {
-		if (d < 1 || path === fileId) return;
+		if (d < 1 || d > radiusR || path === fileId) return false;
 		const list = filesAt.get(d) ?? [];
-		if (!list.includes(path)) list.push(path);
+		if (list.includes(path)) return false;
+		list.push(path);
 		filesAt.set(d, list);
+		return true;
 	};
-	for (const [path, rawD] of dist) {
-		if (rawD < 1 || path === fileId) continue;
-		if (fileSeed.has(path)) {
-			placeAt(path, 1);
-			continue;
-		}
-		placeAt(path, Math.min(rawD, radiusR));
-	}
-	// Seeds missing from dist — force Imports
+
+	// Seeds on Imports
 	for (const path of fileSeed.keys()) {
 		if (path === fileId) continue;
+		placeAt(path, 1);
+	}
+	// Edge expansion from every instance (fixed-point within radius)
+	let grew = true;
+	while (grew) {
+		grew = false;
+		for (let d = 1; d < radiusR; d++) {
+			for (const path of [...(filesAt.get(d) ?? [])]) {
+				for (const child of fwdAdj.get(path) ?? []) {
+					if (child === fileId) continue;
+					if (placeAt(child, d + 1)) grew = true;
+				}
+			}
+		}
+	}
+	// Non-seed files only on longest path (not edge-expanded) — rare orphans
+	for (const [path, rawD] of dist) {
+		if (rawD < 1 || path === fileId || fileSeed.has(path)) continue;
+		const d = Math.min(rawD, radiusR);
 		if (![...filesAt.values()].some((list) => list.includes(path))) {
-			placeAt(path, 1);
+			placeAt(path, d);
 		}
 	}
 
-	const display = new Map<string, string>();
-	const keptByDist = new Map<number, string[]>();
-	const mass = new Map<string, number>();
+	/** Instance key path@dist for mass / labels (multi-instance safe). */
+	const ik = (path: string, d: number) => `${path}\0${d}`;
+	const display = new Map<string, string>(); // ik → label
+	const keptByDist = new Map<number, string[]>(); // dist → paths kept
+	const mass = new Map<string, number>(); // ik → mass
+	/** Mass that reached each path (any instance) — package budget (not leftover after file children). */
+	const arrivedByPath = new Map<string, number>();
+	const noteArrived = (path: string, w: number) => {
+		if (w <= 0) return;
+		arrivedByPath.set(path, (arrivedByPath.get(path) ?? 0) + w);
+	};
 
-	// --- Place files hop by hop (longest-path dist) ---
+	const fileHasPackageOut = (path: string): boolean => {
+		for (const e of graph.edges) {
+			if (e.from !== path) continue;
+			if (e.toKind === 'package' || e.toKind === 'unresolved') return true;
+		}
+		return false;
+	};
+
+	// --- Materialize nodes hop by hop ---
 	for (let d = 1; d <= radiusR; d++) {
 		const files = filesAt.get(d) ?? [];
 		const keptInner = new Set(keptByDist.get(d - 1) ?? []);
@@ -1273,7 +1312,7 @@ function addExportRings(
 				plainHopLabels ? 'more' : `out h${d}`,
 			);
 			for (const f of files) {
-				if (!keptSet.has(f)) display.set(f, otherName);
+				if (!keptSet.has(f)) display.set(ik(f, d), otherName);
 			}
 			nodeRef[otherName] = { kind: 'bucket', id: `other-export-h${d}` };
 			nodeMeta.set(otherName, {
@@ -1286,13 +1325,21 @@ function addExportRings(
 			d === 1 && classicLabels ? classicLabels : uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
-			const preferred = hopNodeDisplay(base, 'out', d, radiusR, plainHopLabels);
+			// Any second+ hop instance of a path needs a distinct label
+			// (seed extras and multi-hop non-seeds — avoid claimName "· file")
+			const hasShallower = [...Array(d).keys()].some(
+				(sd) => sd >= 1 && display.has(ik(f, sd)),
+			);
+			const isExtraInstance = d > 1 && (fileSeed.has(f) || hasShallower);
+			const preferred = isExtraInstance
+				? `${base} · h${d}`
+				: hopNodeDisplay(base, 'out', d, radiusR, plainHopLabels);
 			const name = claimName(
 				usedNames,
 				preferred,
-				plainHopLabels ? 'file' : `out h${d}`,
+				isExtraInstance ? `h${d}` : plainHopLabels ? 'file' : `out h${d}`,
 			);
-			display.set(f, name);
+			display.set(ik(f, d), name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
 				category: importHopCategory(d),
@@ -1301,55 +1348,38 @@ function addExportRings(
 		}
 	}
 
-	// Display dist for all placed files (incl. overflow members → hop bucket)
-	const displayDist = new Map<string, number>();
-	for (const [d, paths] of filesAt) {
-		for (const f of paths) displayDist.set(f, d);
-	}
-
-	// --- Seed focus out-mass: always File → seed (dist 1, no pad rails) ---
+	// --- Seed focus out-mass: File → seed instance @ dist 1 only ---
 	for (const [f, w] of fileSeed) {
 		if (w <= 0) continue;
-		const lab = display.get(f);
+		const lab = display.get(ik(f, 1));
 		if (!lab) continue;
-		// Direct only — seeds are on Imports; pad rails created fake topology
-		// (logger shared invisible rail with types/user).
 		addLink(fileLabel, lab, w);
 		if (nodeRef[lab]?.kind !== 'bucket') {
-			mass.set(f, (mass.get(f) ?? 0) + w);
+			mass.set(ik(f, 1), (mass.get(ik(f, 1)) ?? 0) + w);
+			noteArrived(f, w);
 		}
 	}
 
-	// --- Route outward mass file→file only along display hops (equal-split) ---
-	// Prefer package-bearing children when allocating scarce integer remainder so
-	// External sinks still get residual when possible under unit import-edges.
-	const fileHasPackageOut = (path: string): boolean => {
-		for (const e of graph.edges) {
-			if (e.from !== path) continue;
-			if (e.toKind === 'package' || e.toKind === 'unresolved') return true;
-		}
-		return false;
-	};
-	for (let d = 1; d <= radiusR; d++) {
+	// --- Route mass parent@d → child@(d+1) when real edge exists ---
+	for (let d = 1; d < radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
 		);
 		for (const f of parents) {
-			const m = mass.get(f) ?? 0;
+			const fromKey = ik(f, d);
+			const m = mass.get(fromKey) ?? 0;
 			if (m <= 0) continue;
-			const fromLab = display.get(f);
+			const fromLab = display.get(fromKey);
 			if (!fromLab || nodeRef[fromLab]?.kind === 'bucket') continue;
 
-			const targets: { lab: string; path: string }[] = [];
-			if (d < radiusR) {
-				for (const c of fwdAdj.get(f) ?? []) {
-					if (displayDist.get(c) !== d + 1 || !display.has(c)) continue;
-					targets.push({ lab: display.get(c)!, path: c });
-				}
+			const targets: { lab: string; path: string; key: string }[] = [];
+			for (const c of fwdAdj.get(f) ?? []) {
+				const toLab = display.get(ik(c, d + 1));
+				if (!toLab) continue;
+				targets.push({ lab: toLab, path: c, key: ik(c, d + 1) });
 			}
 			if (!targets.length) continue;
 
-			// Package-bearing leaves first, then alpha (stable remainder priority)
 			targets.sort(
 				(a, b) =>
 					Number(fileHasPackageOut(b.path)) -
@@ -1364,26 +1394,43 @@ function addExportRings(
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
 				addLink(fromLab, t.lab, share);
-				mass.set(t.path, (mass.get(t.path) ?? 0) + share);
+				if (nodeRef[t.lab]?.kind !== 'bucket') {
+					mass.set(t.key, (mass.get(t.key) ?? 0) + share);
+					noteArrived(t.path, share);
+				}
 			}
-			mass.set(f, 0);
+			mass.set(fromKey, 0);
 		}
 	}
 
-	// Kept non-bucket import-tree files + display dist for External packages
+	// Packages: one tree entry per path → deepest kept instance (packages collapse)
+	// Budget = mass that **arrived** at the path (not leftover after file children),
+	// so redis→ioredis still appears when redis also forwards mass to logger.
 	const tree = new Map<string, { lab: string; dist: number }>();
 	const residualMass = new Map<string, number>();
 	let maxFileDist = 0;
+	const pathDepths = new Map<string, number[]>();
 	for (const [d, paths] of keptByDist) {
 		for (const f of paths) {
-			const lab = display.get(f);
-			if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
-			tree.set(f, { lab, dist: d });
-			const rem = mass.get(f) ?? 0;
-			if (rem > 0) residualMass.set(f, rem);
+			const list = pathDepths.get(f) ?? [];
+			list.push(d);
+			pathDepths.set(f, list);
 			if (d > maxFileDist) maxFileDist = d;
 		}
 	}
+	for (const [f, depths] of pathDepths) {
+		// Attach packages from the **shallowest** instance (usually the seed).
+		// Deepest multi-instances can be free sources if mass never reached them,
+		// which pulled External packages into the leftmost Carbon free-source layer.
+		const shallow = Math.min(...depths);
+		const lab = display.get(ik(f, shallow));
+		if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
+		tree.set(f, { lab, dist: shallow });
+		const arrived = arrivedByPath.get(f) ?? 0;
+		if (arrived > 0) residualMass.set(f, arrived);
+	}
+	// silence unused longest map when multi-instance fully covers
+	void dist;
 	return {
 		tree,
 		maxFileDist,

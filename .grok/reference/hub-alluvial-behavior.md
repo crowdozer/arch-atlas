@@ -90,16 +90,17 @@ alternate reverse paths — known asymmetry vs import side.
 | Non-seed file in import tree | Reachable by longest path from focus, not a seed | `importHopCategory(min(rawLongest, radius))` | Mass from kept parent at `displayDist − 1` when real edge exists | `padBetween` / `padFromFile` helpers exist; seeds must not use File→seed pads |
 | Overflow “+N more” | Ranked cut at maxPerHop | Same hop category as that dist | Bucket display name | — |
 
-**Seed clamp (dual-path law):**
+**Seed clamp + multi-instance (dual-path law):**
 
 ```text
-if path is a focus file dep → place at dist 1 (Imports)
-else → place at min(longestDist, radius)
+seed instance: focus file dep → always an instance at dist 1 with File → seed
+edge expansion: for each instance of A at dist d < radius, each edge A→B
+  creates instance of B at d+1 (even if B is also a seed)
 ```
 
-A dual-path file (focus → logger **and** focus → … → logger) is **one node on
-Imports** with direct `File → logger`. Longest path only expands **non-seeds**
-(e.g. format → types when types is not itself a seed).
+So focus → logger (seed on Imports) **and** analytics → logger · h2 (second
+instance) can both exist. Fingerprinting later may merge same-code instances.
+**Packages still collapse** to one External node per package id.
 
 **Geometry caveat:** an Imports node can still *look* External-adjacent if Carbon
 path length from free sources deepens its column. Category membership tests can
