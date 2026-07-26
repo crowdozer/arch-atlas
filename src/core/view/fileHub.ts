@@ -18,6 +18,11 @@
  * (including packages/unresolved from focus). Outer rings carry routed mass only —
  * they do not union all edges in the radius.
  *
+ * Integer multi-parent split (multiHop-style): a node with mass 1 and N outer
+ * neighbors lights only one outer link (`floor(1/N)=0`, remainder to the first
+ * path). Outer fan-out may therefore under-draw structure under unit edge
+ * weights; accepted product default for conserving File incident mass.
+ *
  * dist-1 categories stay `Imports` / `Exports`; outer rings `Import hop k` /
  * `Export hop k` (k≥2). Packages/unresolved appear only on export dist-1 from
  * focus out-edges. Folder collapse (importerGroupKey) only at depth=1.
@@ -119,7 +124,19 @@ export function projectFileHub(
 	const outEdges = graph.edges.filter((e) => e.from === fileId);
 	if (!inEdges.length && !outEdges.length) return null;
 
-	const fileLabel = basename(fileId);
+	const importerPaths = [...new Set(inEdges.map((e) => e.from))];
+	const depFilePaths = [
+		...new Set(outEdges.filter((e) => e.toKind === 'file').map((e) => e.to)),
+	];
+
+	// Depth=1: classic uniqueFileLabels over focus∪importers∪deps for path disambiguation
+	let classicLabels: Map<string, string> | undefined;
+	let fileLabel = basename(fileId);
+	if (hubRadius === 1) {
+		classicLabels = uniqueFileLabels([fileId, ...importerPaths, ...depFilePaths]);
+		fileLabel = classicLabels.get(fileId) ?? fileLabel;
+	}
+
 	const focus: AlluvialFocus = {
 		kind: 'file',
 		id: fileId,
@@ -144,7 +161,6 @@ export function projectFileHub(
 
 	// --- left: reverse BFS (importers) ---
 	if (inEdges.length) {
-		const importerPaths = [...new Set(inEdges.map((e) => e.from))];
 		// Folder leaf collapse only at depth=1 when fan-in is large
 		if (hubRadius === 1 && importerPaths.length > FILE_PROMOTE_THRESHOLD) {
 			addImportModules({
@@ -175,6 +191,7 @@ export function projectFileHub(
 				nodeRef,
 				nodeMeta,
 				usedNames,
+				classicLabels,
 			});
 		}
 	}
@@ -193,6 +210,7 @@ export function projectFileHub(
 			nodeRef,
 			nodeMeta,
 			usedNames,
+			classicLabels,
 		});
 	}
 
@@ -294,8 +312,28 @@ function exportHopColor(dist: number, maxDist: number): string {
 }
 
 /**
+ * Count file→file edges from `from` into any of `targets` (weight units via edges).
+ */
+function edgeWeightIntoSet(
+	graph: CodeGraph,
+	from: string,
+	targets: ReadonlySet<string>,
+	weightAxis: WeightAxis,
+): number {
+	if (!targets.size) return 0;
+	let n = 0;
+	for (const e of graph.edges) {
+		if (e.from !== from || e.toKind !== 'file') continue;
+		if (!targets.has(e.to)) continue;
+		n += edgeWeight(e, graph, weightAxis);
+	}
+	return n;
+}
+
+/**
  * Reverse multi-hop: outer importers → … → Imports (dist-1) → File.
  * Mass = focus-incident reverse edges, routed outward for structure.
+ * Outer hops ranked by connectivity into the kept inner ring.
  */
 function addImportRings(
 	args: LinkBuilder & {
@@ -303,6 +341,7 @@ function addImportRings(
 		inEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
+		classicLabels?: Map<string, string>;
 	},
 ): void {
 	const {
@@ -317,6 +356,7 @@ function addImportRings(
 		nodeRef,
 		nodeMeta,
 		usedNames,
+		classicLabels,
 	} = args;
 
 	const revAdj = fileImportedByAdj(graph); // file → who imports it
@@ -339,28 +379,36 @@ function addImportRings(
 		filesAt.set(d, list);
 	}
 
-	// Rank per hop by seed mass (dist-1) or connectivity; keep top maxPerHop
 	const display = new Map<string, string>();
-	const allKept: string[] = [];
-	const overflowByDist = new Map<number, string>();
+	const keptByDist = new Map<number, string[]>();
+	const mass = new Map<string, number>();
+
+	// Build rings inside-out: dist-1 by seed mass; outer by connectivity into kept inner
 	for (let d = 1; d <= radiusL; d++) {
 		const files = filesAt.get(d) ?? [];
-		const ranked = [...files].sort(
-			(a, b) =>
-				(seedMass.get(b) ?? 0) - (seedMass.get(a) ?? 0) ||
-				a.localeCompare(b),
-		);
+		const keptInner = new Set(keptByDist.get(d - 1) ?? []);
+		const ranked = [...files].sort((a, b) => {
+			const sa =
+				d === 1
+					? (seedMass.get(a) ?? 0)
+					: edgeWeightIntoSet(graph, a, keptInner, weightAxis);
+			const sb =
+				d === 1
+					? (seedMass.get(b) ?? 0)
+					: edgeWeightIntoSet(graph, b, keptInner, weightAxis);
+			return sb - sa || a.localeCompare(b);
+		});
 		const kept = ranked.slice(0, maxPerHop);
 		const keptSet = new Set(kept);
+		keptByDist.set(d, kept);
 		const otherCount = ranked.length - kept.length;
-		allKept.push(...kept);
+
 		if (otherCount > 0) {
 			const preferred =
 				radiusL <= 1
 					? moreCountLabel(otherCount)
 					: hopOverflowLabel(moreCountLabel(otherCount), 'in', d);
 			const otherName = claimName(usedNames, preferred, `in h${d}`);
-			overflowByDist.set(d, otherName);
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(f, otherName);
 			}
@@ -370,24 +418,25 @@ function addImportRings(
 				color: TEAL.other,
 			});
 		}
+
+		const pathLabels =
+			d === 1 && classicLabels
+				? classicLabels
+				: uniqueFileLabels(kept);
+		for (const f of kept) {
+			const base = pathLabels.get(f) ?? basename(f);
+			const preferred = hopFileLabel(base, 'in', d, radiusL);
+			const name = claimName(usedNames, preferred, `in h${d}`);
+			display.set(f, name);
+			nodeRef[name] = { kind: 'file', id: f };
+			nodeMeta.set(name, {
+				category: importHopCategory(d),
+				color: importHopColor(d, radiusL),
+			});
+		}
 	}
 
-	const pathLabels = uniqueFileLabels(allKept);
-	for (const f of allKept) {
-		const d = dist.get(f) ?? 1;
-		const base = pathLabels.get(f) ?? basename(f);
-		const preferred = hopFileLabel(base, 'in', d, radiusL);
-		const name = claimName(usedNames, preferred, `in h${d}`);
-		display.set(f, name);
-		nodeRef[name] = { kind: 'file', id: f };
-		nodeMeta.set(name, {
-			category: importHopCategory(d),
-			color: importHopColor(d, radiusL),
-		});
-	}
-
-	// Mass on nodes (starts as seed at dist-1; routed outward)
-	const mass = new Map<string, number>();
+	// Seed mass at dist-1 (including overflow members so mass reaches File)
 	for (const [f, w] of seedMass) {
 		if ((dist.get(f) ?? 0) === 1) mass.set(f, w);
 	}
@@ -401,8 +450,7 @@ function addImportRings(
 		addLink(lab, fileLabel, m);
 	}
 
-	// Route mass outward: for each dist d, split among reverse-neighbors at d+1
-	// so flow reads L→R: outer → … → dist-1 → File
+	// Route mass outward: outer (d+1) → inner (d); include overflow via display.has
 	for (let d = 1; d < radiusL; d++) {
 		const filesHere = [...(filesAt.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -413,15 +461,14 @@ function addImportRings(
 			const innerLab = display.get(f);
 			if (!innerLab) continue;
 
-			// Who imports f at dist d+1 (BFS-consistent consecutive ring)
-			const outer = (revAdj.get(f) ?? []).filter((p) => dist.get(p) === d + 1);
-			const outerKept = outer.filter((p) => display.has(p));
-			if (!outerKept.length) continue;
+			const outer = (revAdj.get(f) ?? []).filter(
+				(p) => dist.get(p) === d + 1 && display.has(p),
+			);
+			if (!outer.length) continue;
 
-			// Prefer parents that actually have seed-descended mass path; split evenly
-			const base = Math.floor(m / outerKept.length);
-			let rem = m - base * outerKept.length;
-			for (const p of outerKept) {
+			const base = Math.floor(m / outer.length);
+			let rem = m - base * outer.length;
+			for (const p of outer) {
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
@@ -436,6 +483,8 @@ function addImportRings(
 /**
  * Forward multi-hop: File → Exports (dist-1 files + pkgs) → … → Export hop N.
  * Mass = focus-incident out edges; packages only from focus on dist-1.
+ * Outer hops ranked by connectivity from the kept inner ring; overflow buckets
+ * receive routed mass (file or bucket via display map).
  */
 function addExportRings(
 	args: LinkBuilder & {
@@ -443,6 +492,7 @@ function addExportRings(
 		outEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
+		classicLabels?: Map<string, string>;
 	},
 ): void {
 	const {
@@ -457,6 +507,7 @@ function addExportRings(
 		nodeRef,
 		nodeMeta,
 		usedNames,
+		classicLabels,
 	} = args;
 
 	const fwdAdj = fileImportAdj(graph);
@@ -508,54 +559,11 @@ function addExportRings(
 		filesAt.set(d, list);
 	}
 
-	// Rank per hop (files only). Dist-1 files later compete with packages for slots.
 	const display = new Map<string, string>();
 	const keptByDist = new Map<number, string[]>();
-	for (let d = 1; d <= radiusR; d++) {
-		const files = filesAt.get(d) ?? [];
-		const ranked = [...files].sort(
-			(a, b) =>
-				(fileSeed.get(b) ?? 0) - (fileSeed.get(a) ?? 0) ||
-				a.localeCompare(b),
-		);
-		// Outer hops use full per-hop cap; dist-1 shares budget with packages below
-		const cap = d === 1 ? ranked.length : maxPerHop;
-		const kept = ranked.slice(0, cap);
-		const keptSet = new Set(kept);
-		keptByDist.set(d, kept);
-		const otherCount = ranked.length - kept.length;
-		if (otherCount > 0) {
-			const preferred = hopOverflowLabel(moreCountLabel(otherCount), 'out', d);
-			const otherName = claimName(usedNames, preferred, `out h${d}`);
-			for (const f of files) {
-				if (!keptSet.has(f)) display.set(f, otherName);
-			}
-			nodeRef[otherName] = { kind: 'bucket', id: `other-export-h${d}` };
-			nodeMeta.set(otherName, {
-				category: exportHopCategory(d),
-				color: TEAL.exportOther,
-			});
-		}
-	}
+	const mass = new Map<string, number>();
 
-	// Claim file labels for hops ≥ 2 first (dist-1 waits for combined ranking)
-	for (let d = 2; d <= radiusR; d++) {
-		const kept = keptByDist.get(d) ?? [];
-		const pathLabels = uniqueFileLabels(kept);
-		for (const f of kept) {
-			const base = pathLabels.get(f) ?? basename(f);
-			const preferred = hopFileLabel(base, 'out', d, radiusR);
-			const name = claimName(usedNames, preferred, `out h${d}`);
-			display.set(f, name);
-			nodeRef[name] = { kind: 'file', id: f };
-			nodeMeta.set(name, {
-				category: exportHopCategory(d),
-				color: exportHopColor(d, radiusR),
-			});
-		}
-	}
-
-	// Combined dist-1 ranking: files + packages (parity with classic maxDeps)
+	// --- dist-1: combined files + packages under maxPerHop (classic maxDeps) ---
 	type RankedExport = {
 		kind: 'file' | 'nonfile';
 		key: string;
@@ -563,10 +571,11 @@ function addExportRings(
 		preferredLabel: string;
 		entry?: NonFileDep;
 	};
-	const dist1Files = keptByDist.get(1) ?? filesAt.get(1) ?? [];
-	const dist1Labels = uniqueFileLabels(dist1Files);
+	const dist1Candidates = filesAt.get(1) ?? [];
+	const dist1Labels =
+		classicLabels ?? uniqueFileLabels(dist1Candidates);
 	const combined: RankedExport[] = [];
-	for (const f of dist1Files) {
+	for (const f of dist1Candidates) {
 		combined.push({
 			kind: 'file',
 			key: f,
@@ -579,7 +588,6 @@ function addExportRings(
 			),
 		});
 	}
-	// Disambiguate duplicate package preferred labels before ranking
 	const pkgLabelCount = new Map<string, number>();
 	for (const entry of nonFile.values()) {
 		pkgLabelCount.set(
@@ -621,8 +629,7 @@ function addExportRings(
 				)
 			: '';
 
-	const mass = new Map<string, number>();
-
+	const keptDist1Files: string[] = [];
 	for (const item of keptCombined) {
 		if (item.kind === 'file') {
 			const w = item.weight;
@@ -636,6 +643,7 @@ function addExportRings(
 			});
 			mass.set(item.key, w);
 			addLink(fileLabel, name, w);
+			keptDist1Files.push(item.key);
 		} else if (item.entry) {
 			const name = claimName(usedNames, item.preferredLabel, item.entry.ref.kind);
 			addLink(fileLabel, name, item.weight);
@@ -647,11 +655,16 @@ function addExportRings(
 		}
 	}
 
+	// Overflow dist-1 (files + packages) still contribute File out-mass
 	for (const item of overflowCombined) {
 		if (!exportOtherLabel) continue;
 		addLink(fileLabel, exportOtherLabel, item.weight);
+		if (item.kind === 'file') {
+			display.set(item.key, exportOtherLabel);
+			// No further hop routing from overflowed dist-1 files unless they
+			// share display — mass already spent into overflow bucket at File.
+		}
 	}
-
 	if (exportOtherLabel) {
 		nodeRef[exportOtherLabel] = { kind: 'bucket', id: 'other-exports' };
 		nodeMeta.set(exportOtherLabel, {
@@ -659,29 +672,72 @@ function addExportRings(
 			color: TEAL.exportOther,
 		});
 	}
+	keptByDist.set(1, keptDist1Files);
 
-	// Route file mass outward along consecutive export distances
-	for (let d = 1; d < radiusR; d++) {
-		const filesHere = [...(filesAt.get(d) ?? [])].sort((a, b) =>
+	// --- outer hops: rank by connectivity from kept inner; route mass ---
+	for (let d = 2; d <= radiusR; d++) {
+		const files = filesAt.get(d) ?? [];
+		const keptInner = new Set(keptByDist.get(d - 1) ?? []);
+		const ranked = [...files].sort((a, b) => {
+			// Connectivity: edges from kept parents at d−1 into candidate
+			const sa = edgeWeightFromSet(graph, keptInner, a, weightAxis);
+			const sb = edgeWeightFromSet(graph, keptInner, b, weightAxis);
+			return sb - sa || a.localeCompare(b);
+		});
+		const kept = ranked.slice(0, maxPerHop);
+		const keptSet = new Set(kept);
+		keptByDist.set(d, kept);
+		const otherCount = ranked.length - kept.length;
+
+		if (otherCount > 0) {
+			const preferred = hopOverflowLabel(moreCountLabel(otherCount), 'out', d);
+			const otherName = claimName(usedNames, preferred, `out h${d}`);
+			for (const f of files) {
+				if (!keptSet.has(f)) display.set(f, otherName);
+			}
+			nodeRef[otherName] = { kind: 'bucket', id: `other-export-h${d}` };
+			nodeMeta.set(otherName, {
+				category: exportHopCategory(d),
+				color: TEAL.exportOther,
+			});
+		}
+
+		const pathLabels = uniqueFileLabels(kept);
+		for (const f of kept) {
+			const base = pathLabels.get(f) ?? basename(f);
+			const preferred = hopFileLabel(base, 'out', d, radiusR);
+			const name = claimName(usedNames, preferred, `out h${d}`);
+			display.set(f, name);
+			nodeRef[name] = { kind: 'file', id: f };
+			nodeMeta.set(name, {
+				category: exportHopCategory(d),
+				color: exportHopColor(d, radiusR),
+			});
+		}
+
+		// Route mass from dist d−1 → d (file or overflow bucket via display)
+		const parents = [...(filesAt.get(d - 1) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
 		);
-		for (const f of filesHere) {
+		for (const f of parents) {
 			const m = mass.get(f) ?? 0;
 			if (m <= 0) continue;
 			const fromLab = display.get(f);
 			if (!fromLab) continue;
+			// Skip if parent was folded into dist-1 overflow bucket only (no file node)
+			if (nodeRef[fromLab]?.kind === 'bucket' && (dist.get(f) ?? 0) === 1) {
+				// Dist-1 overflow: mass already linked File → overflow; do not fan out
+				continue;
+			}
 
-			// Only route to kept file nodes (not overflow buckets)
-			const childFiles = (fwdAdj.get(f) ?? []).filter((c) => {
-				if (dist.get(c) !== d + 1) return false;
-				const lab = display.get(c);
-				return lab !== undefined && nodeRef[lab]?.kind === 'file';
-			});
-			if (!childFiles.length) continue;
+			const children = (fwdAdj.get(f) ?? []).filter(
+				(c) => dist.get(c) === d && display.has(c),
+			);
+			if (!children.length) continue;
 
-			const base = Math.floor(m / childFiles.length);
-			let rem = m - base * childFiles.length;
-			for (const c of childFiles) {
+			const base = Math.floor(m / children.length);
+			let rem = m - base * children.length;
+			for (const c of children) {
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
@@ -691,6 +747,23 @@ function addExportRings(
 			}
 		}
 	}
+}
+
+/** Sum edge weights from any of `froms` into `to`. */
+function edgeWeightFromSet(
+	graph: CodeGraph,
+	froms: ReadonlySet<string>,
+	to: string,
+	weightAxis: WeightAxis,
+): number {
+	if (!froms.size) return 0;
+	let n = 0;
+	for (const e of graph.edges) {
+		if (e.toKind !== 'file' || e.to !== to) continue;
+		if (!froms.has(e.from)) continue;
+		n += edgeWeight(e, graph, weightAxis);
+	}
+	return n;
 }
 
 /** Display label: plain at dist-1 when single-hop; hop/side suffix when multi-hop. */

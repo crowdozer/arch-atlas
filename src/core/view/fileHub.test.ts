@@ -273,6 +273,145 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 	});
 });
 
+describe('projectFileHub hop overflow and folder collapse', () => {
+	/**
+	 * Wide export hop-2 fan-out:
+	 *   left → focus → m0, m1 → (3 children each = 6 hop-2 files)
+	 * maxDeps=2 keeps 2 hop-2 leaves; overflow bucket must carry mass.
+	 */
+	function wideExportHopFiles(): VirtualFile[] {
+		const files: VirtualFile[] = [
+			{
+				path: 'left.ts',
+				content: "import './focus';\nexport const left = 1;\n",
+				byteLength: 40,
+			},
+			{
+				path: 'focus.ts',
+				content:
+					"import './m0';\nimport './m1';\nexport const focus = 1;\n",
+				byteLength: 50,
+			},
+		];
+		for (const mid of ['m0', 'm1']) {
+			const kids = ['a', 'b', 'c'].map((k) => `./${mid}${k}`);
+			files.push({
+				path: `${mid}.ts`,
+				content:
+					kids.map((k) => `import '${k}';`).join('\n') +
+					`\nexport const ${mid} = 1;\n`,
+				byteLength: 80,
+			});
+			for (const k of ['a', 'b', 'c']) {
+				const name = `${mid}${k}`;
+				files.push({
+					path: `${name}.ts`,
+					content: `export const ${name} = 1;\n`,
+					byteLength: 30,
+				});
+			}
+		}
+		return files;
+	}
+
+	it('export hop≥2 overflow bucket receives positive mass under small maxDeps', () => {
+		const { graph } = indexFiles(wideExportHopFiles());
+		const payload = projectFileHub(graph, 'focus.ts', {
+			maxDepth: 2,
+			maxDeps: 2,
+			maxImporters: 8,
+		})!;
+		const cats = categories(payload);
+		expect(cats.has('Export hop 2')).toBe(true);
+
+		const hop2Nodes = payload.options.alluvial.nodes.filter(
+			(n) => n.category === 'Export hop 2',
+		);
+		const overflow = hop2Nodes.find((n) => n.name.includes('more'));
+		expect(overflow, 'expected +N more on Export hop 2').toBeTruthy();
+
+		const { out, inn } = flowTotals(payload.data);
+		const incident =
+			(out.get(overflow!.name) ?? 0) + (inn.get(overflow!.name) ?? 0);
+		expect(incident, overflow!.name).toBeGreaterThan(0);
+
+		// File out-mass still matches focus out-degree
+		const focus = payload.meta.focus.label;
+		const { outMass } = hubIncidentMass(payload, focus);
+		expect(outMass).toBe(fileOutDegree(graph, 'focus.ts'));
+	});
+
+	/**
+	 * Fan-in > FILE_PROMOTE_THRESHOLD (12): depth=1 collapses to module leaves;
+	 * depth=3 uses file leaves (no folder collapse).
+	 */
+	function fanInHubFiles(): VirtualFile[] {
+		const files: VirtualFile[] = [
+			{
+				path: 'focus.ts',
+				content: "import './out';\nexport const focus = 1;\n",
+				byteLength: 40,
+			},
+			{
+				path: 'out.ts',
+				content: 'export const out = 1;\n',
+				byteLength: 25,
+			},
+		];
+		for (let i = 0; i < 13; i++) {
+			const id = String(i).padStart(2, '0');
+			files.push({
+				path: `src/mod/imp${id}.ts`,
+				content: "import '../../focus';\nexport const x = 1;\n",
+				byteLength: 45,
+			});
+		}
+		return files;
+	}
+
+	it('folder collapse only at maxDepth 1; depth 3 keeps file leaves', () => {
+		const { graph } = indexFiles(fanInHubFiles());
+		const shallow = projectFileHub(graph, 'focus.ts', {
+			maxDepth: 1,
+			maxModules: 8,
+			maxImporters: 48,
+		})!;
+		const deep = projectFileHub(graph, 'focus.ts', {
+			maxDepth: 3,
+			maxModules: 8,
+			maxImporters: 48,
+		})!;
+
+		// depth=1: module refs on Imports (folder collapse)
+		const shallowImportNodes = shallow.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports',
+		);
+		expect(shallowImportNodes.length).toBeGreaterThan(0);
+		const shallowKinds = shallowImportNodes.map(
+			(n) => shallow.meta.nodeRef[n.name]?.kind,
+		);
+		expect(shallowKinds.some((k) => k === 'module')).toBe(true);
+		expect(shallowKinds.every((k) => k === 'module' || k === 'bucket')).toBe(
+			true,
+		);
+
+		// depth=3: file leaves (no module collapse)
+		const deepImportNodes = deep.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports' || n.category.startsWith('Import hop'),
+		);
+		const deepKinds = deepImportNodes.map((n) => deep.meta.nodeRef[n.name]?.kind);
+		expect(deepKinds.some((k) => k === 'file')).toBe(true);
+		expect(deepKinds.every((k) => k !== 'module')).toBe(true);
+
+		// Mass conserved both depths
+		for (const p of [shallow, deep]) {
+			const { inMass, outMass } = hubIncidentMass(p, p.meta.focus.label);
+			expect(inMass).toBe(13);
+			expect(outMass).toBe(1);
+		}
+	});
+});
+
 describe('projectFileHub artillery public.ts barrel', () => {
 	it('shows 64-edge hub (25 in + 39 out) without package placeholder', () => {
 		let buf: Buffer;
