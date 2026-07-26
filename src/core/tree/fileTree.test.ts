@@ -75,4 +75,23 @@ describe('buildFileTree', () => {
 		expect(nodeMatchesFilter(src, 'b.ts')).toBe(true);
 		expect(nodeMatchesFilter(src, 'zzz')).toBe(false);
 	});
+
+	it('does not emit folder-prefix paths as source file leaves', () => {
+		// Simulates ZIP dir markers listed alongside real children
+		const root = buildFileTree(
+			['client', 'client/boot', 'client/main.ts', 'client/boot/run.ts'],
+			{ importParseable: new Set(['client/main.ts', 'client/boot/run.ts']) },
+		);
+		const client = root.children.find((c) => c.name === 'client')!;
+		expect(client.kind).toBe('dir');
+		expect(root.children.filter((c) => c.name === 'client')).toHaveLength(1);
+		const boot = client.children.find((c) => c.name === 'boot')!;
+		expect(boot.kind).toBe('dir');
+		expect(client.children.some((c) => c.name === 'boot' && c.kind === 'file')).toBe(
+			false,
+		);
+		expect(client.children.some((c) => c.name === 'main.ts' && c.kind === 'file')).toBe(
+			true,
+		);
+	});
 });

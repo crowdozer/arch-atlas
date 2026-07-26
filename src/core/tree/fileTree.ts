@@ -35,6 +35,22 @@ export type BuildFileTreeOpts = {
 };
 
 /**
+ * Paths that are strict prefixes of other paths (directory markers that were
+ * incorrectly listed as file leaves, e.g. from ZIP folder entries).
+ */
+export function directoryPrefixPaths(paths: readonly string[]): Set<string> {
+	const prefixes = new Set<string>();
+	for (const full of paths) {
+		if (!full) continue;
+		const parts = full.split('/').filter(Boolean);
+		for (let i = 1; i < parts.length; i++) {
+			prefixes.add(parts.slice(0, i).join('/'));
+		}
+	}
+	return prefixes;
+}
+
+/**
  * Build a sorted directory tree from a list of file paths.
  */
 export function buildFileTree(
@@ -53,9 +69,13 @@ export function buildFileTree(
 		parseNote: '',
 	};
 
-	const sorted = [...paths].sort((a, b) => a.localeCompare(b));
+	// Never emit a file leaf for a path that is only a folder prefix of others
+	const dirPrefixes = directoryPrefixPaths(paths);
+	const sorted = [...paths]
+		.filter((p) => p && !dirPrefixes.has(p))
+		.sort((a, b) => a.localeCompare(b));
+
 	for (const full of sorted) {
-		if (!full) continue;
 		const parts = full.split('/').filter(Boolean);
 		let cur = root;
 		for (let i = 0; i < parts.length; i++) {
@@ -63,7 +83,19 @@ export function buildFileTree(
 			const isFile = i === parts.length - 1;
 			const childPath = parts.slice(0, i + 1).join('/');
 			const kind: 'dir' | 'file' = isFile ? 'file' : 'dir';
+			// Prefer directory when a phantom file leaf shares the name
+			if (!isFile) {
+				const phantom = cur.children.findIndex(
+					(c) => c.name === name && c.kind === 'file',
+				);
+				if (phantom >= 0) cur.children.splice(phantom, 1);
+			}
 			let next = cur.children.find((c) => c.name === name && c.kind === kind);
+			if (!next && isFile) {
+				// Skip dual file sibling if this name is already a directory
+				const asDir = cur.children.find((c) => c.name === name && c.kind === 'dir');
+				if (asDir) break;
+			}
 			if (!next) {
 				const fileParseable = isFile
 					? parseable
