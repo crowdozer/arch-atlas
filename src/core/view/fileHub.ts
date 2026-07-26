@@ -5,15 +5,15 @@
  *
  *   Import hop N … → Imports → File → Exports → Export hop N
  *
- * - **Left (Imports, cyan):** who imports the focus (reverse BFS) **and**
- *   packages/unresolved the focus itself imports (display: package → File).
+ * - **Left (Imports, cyan):** who imports the focus (reverse BFS); packages/
+ *   unresolved the focus itself imports (package → File); **and** packages
+ *   imported by kept export-tree files (package → that file). Import-side
+ *   teal package colors.
  * - **Right (Exports, yellow):** **file→file only** forward longest-path tree.
- *   Packages of intermediate export-tree files are **not** export leaves —
- *   re-hub that file to see its packages on Imports.
+ *   No package/unresolved leaves on Export hops.
  *
- * **Cascade purity:** import hops must not absorb forward-only candidates;
- * export hops must not absorb reverse importers or package/unresolved outs of
- * any export-tree file (including terminals). Focus packages stay on Imports.
+ * **Cascade purity:** export hops must not absorb reverse importers or any
+ * package/unresolved (focus or intermediate). Those packages live on Imports.
  *
  * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
  *
@@ -29,6 +29,7 @@
  * - File **in-mass** = reverse importer edges + focus package/unresolved out-edges
  * - File **out-mass** = focus → **file** edges only
  * Graph out-degree still counts packages; they sit on the import side of the chart.
+ * Export-tree package → intermediate-file links are structural (not File mass).
  *
  * **{@link PackageLeafMode}** no longer places export-side packages (file-pure
  * cascade). Modes still control plain hop labels: `per-hop` keeps · in/out hN
@@ -283,8 +284,9 @@ export function projectFileHub(
 
 	// --- right: forward longest-path file deps only (cascade purity) ---
 	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
+	let exportFileDisplay = new Map<string, string>();
 	if (fileOutEdges.length) {
-		addExportRings({
+		exportFileDisplay = addExportRings({
 			graph,
 			fileId,
 			fileLabel,
@@ -298,6 +300,21 @@ export function projectFileHub(
 			nodeMeta,
 			usedNames,
 			classicLabels,
+		});
+	}
+
+	// --- left: packages of kept export-tree files (package → that file) ---
+	if (exportFileDisplay.size) {
+		addExportTreePackageImports({
+			graph,
+			fileLabel,
+			exportFileDisplay,
+			maxPerHop: Math.min(48, maxDeps),
+			weightAxis,
+			addLink,
+			nodeRef,
+			nodeMeta,
+			usedNames,
 		});
 	}
 
@@ -532,6 +549,147 @@ function addFocusPackageImports(
 			category: 'Imports',
 			color: TEAL.other,
 		});
+	}
+}
+
+/**
+ * Packages imported by kept **export-tree** files appear on **Imports**
+ * (display: package → importingFile). Never on Export hops.
+ *
+ * One display node per package id (reuses focus package node when the same
+ * package is already on Imports). Structural mass only — does not change File
+ * in/out mass (links target intermediate export-tree files, not File).
+ */
+function addExportTreePackageImports(
+	args: LinkBuilder & {
+		/** path → display name for kept non-bucket export-tree files */
+		exportFileDisplay: Map<string, string>;
+		maxPerHop: number;
+	},
+): void {
+	const {
+		graph,
+		exportFileDisplay,
+		maxPerHop,
+		weightAxis,
+		addLink,
+		nodeRef,
+		nodeMeta,
+		usedNames,
+	} = args;
+
+	type PkgRec = {
+		key: string;
+		preferredLabel: string;
+		ref: AlluvialNodeRef;
+		color: string;
+		rank: number;
+		/** parent file path → weight */
+		parents: Map<string, number>;
+	};
+	const recs = new Map<string, PkgRec>();
+
+	for (const fPath of exportFileDisplay.keys()) {
+		const fLab = exportFileDisplay.get(fPath)!;
+		if (nodeRef[fLab]?.kind === 'bucket') continue;
+		for (const e of graph.edges) {
+			if (e.from !== fPath) continue;
+			if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
+			const w = edgeWeight(e, graph, weightAxis);
+			if (w <= 0) continue;
+			const pkgLabel =
+				e.toKind === 'unresolved'
+					? e.specifier
+					: e.to.replace(/^unresolved:/, '');
+			const key = `${e.toKind}:${e.to}`;
+			const prev = recs.get(key);
+			if (prev) {
+				prev.rank += w;
+				prev.parents.set(fPath, (prev.parents.get(fPath) ?? 0) + w);
+			} else {
+				recs.set(key, {
+					key,
+					preferredLabel: pkgLabel,
+					ref: {
+						kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
+						id: e.to,
+					},
+					color:
+						e.toKind === 'unresolved' ? TEAL.unresolved : TEAL.package,
+					rank: w,
+					parents: new Map([[fPath, w]]),
+				});
+			}
+		}
+	}
+	if (!recs.size) return;
+
+	const findExistingImportPkg = (
+		kind: AlluvialNodeRef['kind'],
+		id: string,
+	): string | undefined => {
+		for (const [name, ref] of Object.entries(nodeRef)) {
+			if (ref.kind !== kind || ref.id !== id) continue;
+			if (nodeMeta.get(name)?.category === 'Imports') return name;
+		}
+		return undefined;
+	};
+
+	// Packages already on Imports (focus) always get tree→file links; new ones
+	// compete for maxPerHop budget by rank.
+	const already: PkgRec[] = [];
+	const fresh: PkgRec[] = [];
+	for (const rec of recs.values()) {
+		if (findExistingImportPkg(rec.ref.kind, rec.ref.id)) already.push(rec);
+		else fresh.push(rec);
+	}
+	fresh.sort(
+		(a, b) =>
+			b.rank - a.rank || a.preferredLabel.localeCompare(b.preferredLabel),
+	);
+	const keptFresh = fresh.slice(0, maxPerHop);
+	const overflowFresh = fresh.slice(maxPerHop);
+
+	const ensurePkgNode = (rec: PkgRec): string => {
+		const existing = findExistingImportPkg(rec.ref.kind, rec.ref.id);
+		if (existing) return existing;
+		const name = claimName(usedNames, rec.preferredLabel, rec.ref.kind);
+		nodeRef[name] = rec.ref;
+		nodeMeta.set(name, {
+			category: 'Imports',
+			color: rec.color,
+		});
+		return name;
+	};
+
+	const linkParents = (pkgName: string, parents: Map<string, number>) => {
+		for (const [fPath, w] of parents) {
+			const fLab = exportFileDisplay.get(fPath);
+			if (!fLab || nodeRef[fLab]?.kind === 'bucket') continue;
+			addLink(pkgName, fLab, w);
+		}
+	};
+
+	for (const rec of already) {
+		linkParents(ensurePkgNode(rec), rec.parents);
+	}
+	for (const rec of keptFresh) {
+		linkParents(ensurePkgNode(rec), rec.parents);
+	}
+	if (overflowFresh.length) {
+		const otherName = claimName(
+			usedNames,
+			moreCountLabel(overflowFresh.length),
+			'import-tree-pkgs',
+		);
+		nodeRef[otherName] = { kind: 'bucket', id: 'other-import-tree-pkgs' };
+		nodeMeta.set(otherName, {
+			category: 'Imports',
+			color: TEAL.other,
+		});
+		for (const rec of overflowFresh) {
+			linkParents(otherName, rec.parents);
+		}
 	}
 }
 
@@ -792,7 +950,10 @@ function padImportRailsInto(
  * {@link addFocusPackageImports}). File columns use **longest simple path**
  * so chains like focus→format→types expand even when types is also a direct
  * dep. Focus file out-mass is conserved along file children; package outs of
- * export-tree files are never materialised on export hops (cascade purity).
+ * export-tree files are never materialised on export hops — see
+ * {@link addExportTreePackageImports} (Imports side).
+ *
+ * @returns path → display name for kept non-bucket export-tree files
  */
 function addExportRings(
 	args: LinkBuilder & {
@@ -804,7 +965,7 @@ function addExportRings(
 		packageLeafMode: PackageLeafMode;
 		classicLabels?: Map<string, string>;
 	},
-): void {
+): Map<string, string> {
 	const {
 		graph,
 		fileId,
@@ -1020,6 +1181,17 @@ function addExportRings(
 			mass.set(f, 0);
 		}
 	}
+
+	// Kept non-bucket export-tree files (for Imports-side package placement)
+	const keptDisplay = new Map<string, string>();
+	for (const [, paths] of keptByDist) {
+		for (const f of paths) {
+			const lab = display.get(f);
+			if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
+			keptDisplay.set(f, lab);
+		}
+	}
+	return keptDisplay;
 }
 
 /** Sum edge weights from any of `froms` into `to`. */

@@ -104,6 +104,8 @@ function focusOutflow(payload: AlluvialPayload): number {
 /**
  * Intermediate columns: sum(in) === sum(out) for nodes that both receive and emit.
  * Dual-hub focus is exempt — left in-mass and right out-mass are independent.
+ * Export-tree files that sink package free-source mass (package → file on Imports)
+ * may have in > out; that excess is structural, not File-routed mass.
  */
 function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	const { out, inn } = flowTotals(payload.data);
@@ -124,11 +126,30 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 			focusNames.add(n.name);
 		}
 	}
+	const isPackageLikeSource = (src: string): boolean => {
+		const ref = payload.meta.nodeRef[src];
+		if (!ref) return false;
+		if (ref.kind === 'package' || ref.kind === 'unresolved') return true;
+		if (
+			ref.kind === 'bucket' &&
+			(ref.id.includes('pkg') || ref.id.includes('import-tree'))
+		) {
+			return true;
+		}
+		return false;
+	};
+	const sinksPackageStructural = (name: string): boolean =>
+		payload.data.some(
+			(l) => l.target === name && isPackageLikeSource(l.source),
+		);
+
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
 		if (focusNames.has(name)) continue;
 		// Overflow / aggregate buckets may under-draw under integer multi-parent
 		// split (accepted hub default) — skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
+		// package → export-tree file free-source mass ends at the file
+		if (sinksPackageStructural(name)) continue;
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {

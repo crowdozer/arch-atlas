@@ -357,7 +357,7 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(ioredisExport).toHaveLength(0);
 	});
 
-	it('stripe route: next on Imports; no zod on Export*; file deps on Exports', () => {
+	it('stripe route: next + tree packages on Imports; no packages on Export*', () => {
 		const id = 'app/api/webhooks/stripe/route.ts';
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
@@ -365,42 +365,50 @@ describe('projectFileHub demo-next-complex', () => {
 			maxImporters: 48,
 			maxDeps: 48,
 		})!;
+		const focus = payload.meta.focus.label;
 
+		// Focus package next → File on Imports
 		const nextImport = packageNodesOnCategory(payload, 'next', 'Imports');
 		expect(nextImport.length).toBeGreaterThanOrEqual(1);
 		expect(
 			payload.data.some(
 				(l) =>
-					l.source === nextImport[0]!.name &&
-					l.target === payload.meta.focus.label,
+					l.source === nextImport[0]!.name && l.target === focus,
 			),
 		).toBe(true);
 
-		// Focus package next is not an export leaf
-		const nextExport = packageNodesOnCategory(
-			payload,
-			'next',
-			(c) => c === 'Exports' || c.startsWith('Export hop'),
-		);
-		expect(nextExport).toHaveLength(0);
-
-		// Intermediate package zod must not appear on any Export* category
-		const zodExport = packageNodesOnCategory(
-			payload,
-			'zod',
-			(c) => c === 'Exports' || c.startsWith('Export hop'),
-		);
-		expect(zodExport).toHaveLength(0);
+		// Tree package zod on Imports (from types/* under export tree), not Export*
+		const zodImport = packageNodesOnCategory(payload, 'zod', 'Imports');
+		expect(zodImport.length).toBeGreaterThanOrEqual(1);
 		expect(
-			payload.options.alluvial.nodes.some((n) => {
-				const ref = payload.meta.nodeRef[n.name];
+			payload.data.some((l) => {
+				if (l.source !== zodImport[0]!.name) return false;
+				const ref = payload.meta.nodeRef[l.target];
 				return (
-					ref?.kind === 'package' &&
-					ref.id === 'zod' &&
-					(n.category === 'Exports' || n.category.startsWith('Export hop'))
+					ref?.kind === 'file' &&
+					(l.target !== focus) &&
+					typeof ref.id === 'string' &&
+					ref.id.includes('types')
 				);
 			}),
-		).toBe(false);
+		).toBe(true);
+
+		// No package on export side
+		for (const pkgId of ['next', 'zod'] as const) {
+			const onExport = packageNodesOnCategory(
+				payload,
+				pkgId,
+				(c) => c === 'Exports' || c.startsWith('Export hop'),
+			);
+			expect(onExport, pkgId).toHaveLength(0);
+		}
+		const anyExportPkg = payload.options.alluvial.nodes.filter(
+			(n) =>
+				(n.category === 'Exports' || n.category.startsWith('Export hop')) &&
+				(payload.meta.nodeRef[n.name]?.kind === 'package' ||
+					payload.meta.nodeRef[n.name]?.kind === 'unresolved'),
+		);
+		expect(anyExportPkg).toHaveLength(0);
 
 		// File export cascade present (stripe / services / logger etc.)
 		const exportFiles = payload.options.alluvial.nodes.filter(
@@ -423,14 +431,12 @@ describe('projectFileHub demo-next-complex', () => {
 			),
 		).toBe(true);
 
-		// No package nodes of any id on export side
-		const anyExportPkg = payload.options.alluvial.nodes.filter(
-			(n) =>
-				(n.category === 'Exports' || n.category.startsWith('Export hop')) &&
-				(payload.meta.nodeRef[n.name]?.kind === 'package' ||
-					payload.meta.nodeRef[n.name]?.kind === 'unresolved'),
+		// File mass law: tree packages do not inflate File in-mass
+		const { depMass, importerMass } = hubIncidentMass(payload, focus);
+		expect(depMass).toBe(fileOutFileDegree(graph, id));
+		expect(importerMass).toBe(
+			fileInDegree(graph, id) + fileOutPackageDegree(graph, id),
 		);
-		expect(anyExportPkg).toHaveLength(0);
 	});
 });
 
@@ -540,17 +546,39 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 });
 
 /**
- * Longest-path layers (Carbon/d3-sankey column proxy).
+ * Longest-path layers (Carbon/d3-sankey column proxy) for **file/rail** rings.
  * Each layer must carry a single import/export category family so headers
  * never show "Imports Imports File …".
+ *
+ * Package/unresolved free sources on Imports (focus + export-tree packages)
+ * are excluded — they share free-source depth with reverse free sources by
+ * design (category columns still place them under Imports).
  */
 function longestPathLayers(payload: AlluvialPayload): Map<number, Set<string>> {
-	const names = new Set(payload.options.alluvial.nodes.map((n) => n.name));
+	const isPackageLike = (name: string): boolean => {
+		const ref = payload.meta.nodeRef[name];
+		if (!ref) return false;
+		if (ref.kind === 'package' || ref.kind === 'unresolved') return true;
+		if (
+			ref.kind === 'bucket' &&
+			(ref.id.includes('pkg') || ref.id.includes('import-tree'))
+		) {
+			return true;
+		}
+		return false;
+	};
+	const names = new Set(
+		payload.options.alluvial.nodes
+			.map((n) => n.name)
+			.filter((n) => !isPackageLike(n)),
+	);
 	const catOf = new Map(
 		payload.options.alluvial.nodes.map((n) => [n.name, n.category] as const),
 	);
 	const ins = new Map<string, string[]>();
 	for (const l of payload.data) {
+		if (isPackageLike(l.source) || isPackageLike(l.target)) continue;
+		if (!names.has(l.target) || !names.has(l.source)) continue;
 		const list = ins.get(l.target) ?? [];
 		list.push(l.source);
 		ins.set(l.target, list);
@@ -585,7 +613,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		walk(path.join(fixturesRoot, 'demo-react-simple')),
 	);
 
-	it('UserCard shows format → types file hops; zod only when re-hubbed', () => {
+	it('UserCard shows format → types export hops; zod on Imports (not Export*)', () => {
 		const id = 'src/components/UserCard.tsx';
 		const payload = projectFileHub(simpleGraph, id, {
 			maxDepth: 3,
@@ -596,27 +624,25 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('Exports')).toBe(true);
 		expect(cats.has('Export hop 2')).toBe(true);
-		// File chain ends at types (hop 2); package terminal zod is not an export leaf
+		// File chain ends at types (hop 2); package terminal not an export leaf
 		expect(cats.has('Export hop 3')).toBe(false);
 
 		const names = payload.options.alluvial.nodes.map((n) => n.name);
 		expect(names.some((n) => n.includes('format'))).toBe(true);
 		expect(names.some((n) => n.includes('types'))).toBe(true);
-		// Cascade purity: no intermediate package leaves on export hops
-		expect(names.some((n) => n.includes('zod'))).toBe(false);
 
-		// Import-edge chain: File → format → types (file→file only)
+		// Import-edge chain: File → format → types (file→file only on export side)
 		const linkKeys = payload.data.map((l) => `${l.source}→${l.target}`);
 		expect(
 			linkKeys.some(
 				(k) => k.includes('format') && k.includes('types'),
 			),
 		).toBe(true);
-		expect(linkKeys.some((k) => k.includes('zod'))).toBe(false);
 
 		const focus = payload.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		// UserCard has no direct packages; out is file-only; in is reverse only
+		// UserCard has no direct packages; File mass is reverse-only + file outs
+		// (tree package zod → types is structural, not File in-mass)
 		expect(depMass).toBe(fileOutFileDegree(simpleGraph, id));
 		expect(importerMass).toBe(
 			fileInDegree(simpleGraph, id) + fileOutPackageDegree(simpleGraph, id),
@@ -624,25 +650,37 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		expect(total).toBe(
 			fileInDegree(simpleGraph, id) + fileOutDegree(simpleGraph, id),
 		);
-		const focusZod = packageNodesOnCategory(payload, 'zod', 'Imports');
-		expect(focusZod).toHaveLength(0);
 
-		// Re-hub types: zod appears as focus package on Imports
-		const typesId = 'src/types.ts';
-		const typesHub = projectFileHub(simpleGraph, typesId, {
-			maxDepth: 1,
-			maxDeps: 48,
-			weightAxis: 'import-edges',
-		})!;
-		const typesZod = packageNodesOnCategory(typesHub, 'zod', 'Imports');
-		expect(typesZod).toHaveLength(1);
+		// types is kept in export tree → zod on Imports, package → types
+		const treeZod = packageNodesOnCategory(payload, 'zod', 'Imports');
+		expect(treeZod).toHaveLength(1);
+		const typesLab = payload.options.alluvial.nodes.find((n) => {
+			const ref = payload.meta.nodeRef[n.name];
+			return (
+				ref?.kind === 'file' &&
+				ref.id === 'src/types.ts' &&
+				(n.category === 'Exports' || n.category.startsWith('Export hop'))
+			);
+		})?.name;
+		expect(typesLab).toBeTruthy();
 		expect(
-			typesHub.data.some(
-				(l) =>
-					l.source === typesZod[0]!.name &&
-					l.target === typesHub.meta.focus.label,
+			payload.data.some(
+				(l) => l.source === treeZod[0]!.name && l.target === typesLab,
 			),
 		).toBe(true);
+		// Not on export hops
+		const exportZod = packageNodesOnCategory(
+			payload,
+			'zod',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		expect(exportZod).toHaveLength(0);
+		// Not into File (UserCard does not import zod)
+		expect(
+			payload.data.some(
+				(l) => l.source === treeZod[0]!.name && l.target === focus,
+			),
+		).toBe(false);
 
 		// Paint law: export File→out-rail→deep-target links exist and are NOT
 		// import free-source scaffold (must remain paint-eligible under polish).
