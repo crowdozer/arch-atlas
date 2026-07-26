@@ -293,9 +293,45 @@ describe('projectFileHub demo-next-complex', () => {
 	});
 
 	/**
+	 * Single reverse hop only (max reverse BFS = 1): Exports free sources still
+	 * get cyan terminators — pad rails require radiusL≥2, but chrome does not.
+	 * AdminFlags ← app/dashboard/page.tsx only.
+	 */
+	it('AdminFlags: single-hop Exports free source is a reverse terminator', () => {
+		const focus = 'src/features/admin/AdminFlags.tsx';
+		const payload = projectFileHub(graph, focus, {
+			maxDepth: 3,
+			weightAxis: 'import-edges',
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		expect(payload).not.toBeNull();
+		const exportNodes = payload.options.alluvial.nodes.filter(
+			(n) => n.category === 'Exports',
+		);
+		expect(
+			exportNodes.some((n) => n.name.includes('dashboard')),
+			'dashboard on Exports',
+		).toBe(true);
+		const terminators = payload.meta.terminators ?? [];
+		const dashLabel =
+			exportNodes.find((n) => n.name.includes('dashboard'))?.name ??
+			'app/dashboard/page.tsx';
+		expect(
+			terminators,
+			'single-hop export dead-end must be reverse terminator',
+		).toContain(dashLabel);
+		// No multi-hop reverse → no out-rail pads required
+		const rails = payload.options.alluvial.nodes
+			.map((n) => n.name)
+			.filter((n) => isOutRailName(n));
+		expect(rails.length, 'no out-rails when max reverse hops is 1').toBe(0);
+	});
+
+	/**
 	 * Observability for ghost pad-rail chrome (redis Import hop 2/3).
 	 * No Carbon mount — gates payload contract only: rails exist for layout;
-	 * terminators list padded free-source files (not rail ids).
+	 * terminators list reverse free sources (not rail ids).
 	 */
 	it('redis depth 3: reverse terminators + forward leaves; rails not marked', () => {
 		const id = 'src/lib/redis.ts';
@@ -978,6 +1014,45 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 			(n) => n.category === 'Imports',
 		);
 		expect(importNodes.length).toBeGreaterThan(0);
+	});
+
+	it('userService: externalStraightPairs are true importers only (no mesh)', () => {
+		const id = 'src/services/userService.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		expect(pairs.length, 'construction pairs present').toBeGreaterThan(0);
+
+		const labelFor = (fileId: string): string | undefined =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'file' && r.id === fileId,
+			)?.[0];
+		const pkgLabel = (pkgId: string): string | undefined =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'package' && r.id === pkgId,
+			)?.[0];
+
+		const redis = labelFor('src/lib/redis.ts');
+		const email = labelFor('src/lib/email.ts');
+		const typesUser = labelFor('src/types/user.ts');
+		const ioredis = pkgLabel('ioredis');
+		const nodemailer = pkgLabel('nodemailer');
+		const zod = pkgLabel('zod');
+		expect(redis && email && typesUser && ioredis && nodemailer && zod).toBeTruthy();
+
+		const keys = new Set(pairs.map((p) => `${p.parent}\0${p.packageName}`));
+		expect(keys.has(`${redis}\0${ioredis}`)).toBe(true);
+		expect(keys.has(`${email}\0${nodemailer}`)).toBe(true);
+		expect(keys.has(`${typesUser}\0${zod}`)).toBe(true);
+		// Cross-product must not be construction truth
+		expect(keys.has(`${email}\0${ioredis}`)).toBe(false);
+		expect(keys.has(`${redis}\0${nodemailer}`)).toBe(false);
+		expect(keys.has(`${email}\0${zod}`)).toBe(false);
+		expect(keys.has(`${typesUser}\0${ioredis}`)).toBe(false);
 	});
 
 	it('legacyHelpers: all direct file deps on Imports; packages External far right', () => {

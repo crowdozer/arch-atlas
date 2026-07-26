@@ -126,15 +126,19 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 Paint law: pure rail↔rail undrawn; **External package hop** bands
 (`parent → in-rail → External`) are undrawn and **redrawn as a straight**
 `parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
-Imports column does not show a package kink. **Out-rail free-source pads**
-(reverse column alignment into Exports free sources) are undrawn past/into
-terminators. Rail **nodes** stay hidden. Packages remain sinks.
+Imports column does not show a package kink. Straighten identity comes from
+construction-time `meta.externalStraightPairs` (true residual parent→package
+widths), **not** from BFS ancestry on shared `·in-rail·hN` (shared rails merge
+multi-commodity pads; rail recovery invents parent×package cross-products).
+BFS remains a fallback only when meta pairs are absent. **Out-rail free-source
+pads** (reverse column alignment into Exports free sources) are undrawn
+past/into terminators. Rail **nodes** stay hidden. Packages remain sinks.
 
 **Terminator chrome (contrast with column family):**
 
 | List | Nodes | Side | Wrap color |
 | ---- | ----- | ---- | ---------- |
-| `meta.terminators` | Reverse free-source pad targets | Exports* (yellow) | **Cyan** |
+| `meta.terminators` | Reverse free sources / export-tree dead-ends (no kept outer reverse parent): single-column Exports, multi-hop padded free sources, outer rim | Exports* (yellow) | **Cyan** |
 | `meta.exportTerminators` | Forward file leaves (no non-rail out) | Imports* (cyan) | **Yellow** |
 | `meta.exportTerminators` | Packages / unresolved / External buckets | External | **Purple** (unique package chrome; future icons can target same class) |
 

@@ -229,8 +229,18 @@ export function projectFileHub(
 
 	// Shared display-name registry so import/export sides never collide
 	const usedNames = new Set<string>([fileLabel]);
-	/** Reverse-hop display names that received free-source pad rails. */
+	/** Reverse free sources / export-tree dead-ends (cyan polish chrome). */
 	const terminators: string[] = [];
+	/**
+	 * Construction-time parent → External package widths (display labels).
+	 * Polish straighten uses this list so shared in-rails do not invent a
+	 * parent×package cross-product.
+	 */
+	const externalStraightPairs: {
+		parent: string;
+		packageName: string;
+		width: number;
+	}[] = [];
 
 	// --- Exports side: reverse BFS (who imports the focus) ---
 	if (inEdges.length) {
@@ -311,6 +321,7 @@ export function projectFileHub(
 			weightAxis,
 			externalDist,
 			padFromFile: importTreeResult.padFromFile,
+			externalStraightPairs,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -329,6 +340,7 @@ export function projectFileHub(
 			weightAxis,
 			externalDist,
 			padBetween: importTreeResult.padBetween,
+			externalStraightPairs,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -413,6 +425,9 @@ export function projectFileHub(
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: exportTerminators.length
 			? exportTerminators
+			: undefined,
+		externalStraightPairs: externalStraightPairs.length
+			? externalStraightPairs
 			: undefined,
 	});
 }
@@ -548,15 +563,23 @@ function addFocusPackageImports(
 		/** Hub dist for package nodes (File = 0). */
 		externalDist: number;
 		padFromFile: (targetLab: string, toDist: number, w: number) => void;
+		/** Display parent/package widths for polish straighten (shared rails). */
+		externalStraightPairs: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	},
 ): void {
 	const {
 		graph,
+		fileLabel,
 		outEdges,
 		maxPerHop,
 		weightAxis,
 		externalDist,
 		padFromFile,
+		externalStraightPairs,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -609,6 +632,12 @@ function addFocusPackageImports(
 		});
 		// Topology hop for Carbon: pad when file Imports also leave File
 		padFromFile(name, externalDist, entry.weight);
+		recordExternalStraightPair(
+			externalStraightPairs,
+			fileLabel,
+			name,
+			entry.weight,
+		);
 	}
 	if (overflow.length) {
 		const otherName = claimName(
@@ -623,6 +652,12 @@ function addFocusPackageImports(
 		});
 		for (const entry of overflow) {
 			padFromFile(otherName, externalDist, entry.weight);
+			recordExternalStraightPair(
+				externalStraightPairs,
+				fileLabel,
+				otherName,
+				entry.weight,
+			);
 		}
 	}
 }
@@ -652,6 +687,12 @@ function addExportTreePackageImports(
 			toDist: number,
 			w: number,
 		) => void;
+		/** Display parent/package widths for polish straighten (shared rails). */
+		externalStraightPairs: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	},
 ): void {
 	const {
@@ -662,6 +703,7 @@ function addExportTreePackageImports(
 		weightAxis,
 		externalDist,
 		padBetween,
+		externalStraightPairs,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -791,6 +833,12 @@ function addExportTreePackageImports(
 			const fromDist = parent.dist;
 			const toDist = Math.max(externalDist, fromDist + 1);
 			padBetween(parent.lab, fromDist, pkgName, toDist, w);
+			recordExternalStraightPair(
+				externalStraightPairs,
+				parent.lab,
+				pkgName,
+				w,
+			);
 		}
 	};
 
@@ -812,6 +860,21 @@ function addExportTreePackageImports(
 			linkParentAlloc(otherName, rec);
 		}
 	}
+}
+
+/** Merge construction-time External straighten pairs by (parent, package). */
+function recordExternalStraightPair(
+	pairs: { parent: string; packageName: string; width: number }[],
+	parent: string,
+	packageName: string,
+	width: number,
+): void {
+	if (width <= 0 || !parent || !packageName || parent === packageName) return;
+	const existing = pairs.find(
+		(p) => p.parent === parent && p.packageName === packageName,
+	);
+	if (existing) existing.width += width;
+	else pairs.push({ parent, packageName, width });
 }
 
 /**
@@ -854,8 +917,9 @@ function allocateProportional(
  * Mass = focus-incident reverse edges, routed outward for structure.
  * Outer hops ranked by connectivity into the kept inner ring.
  *
- * Returns display names of reverse-hop files that were **padded** (no outer
- * reverse parent) — hub terminators for polish chrome.
+ * Returns display names of reverse free sources (no kept outer reverse parent)
+ * — hub terminators for cyan polish chrome. Includes single-hop Exports leaves
+ * (no pad) and multi-hop free sources (padded when d < radiusL).
  */
 function addImportRings(
 	args: LinkBuilder & {
@@ -1012,13 +1076,13 @@ function addImportRings(
 		}
 	}
 
-	// Pad short reverse paths so every BFS dist shares one sankey column.
-	// Without this, dist-1 sources sit beside hop-2 sources → dual "Imports" headers.
-	const terminators: string[] = [];
+	// Reverse free sources = no kept outer reverse parent (export-tree dead-ends).
+	// Multi-hop: pad short free sources so BFS dist shares one sankey column.
+	// Single-hop (radiusL === 1): still mark Exports free sources for cyan chrome
+	// (e.g. AdminFlags ← dashboard only — no Export hop 2, previously skipped).
+	const receivesOuter = new Set<string>();
 	if (radiusL >= 2) {
 		ensureImportRails(nodeMeta, nodeRef, radiusL);
-		// Display names that already receive a real outer→inner reverse edge
-		const receivesOuter = new Set<string>();
 		for (let d = 1; d < radiusL; d++) {
 			for (const f of filesAt.get(d) ?? []) {
 				if ((mass.get(f) ?? 0) <= 0) continue;
@@ -1033,32 +1097,32 @@ function addImportRings(
 				if (outer.length) receivesOuter.add(innerLab);
 			}
 		}
+	}
 
-		const terminatorSet = new Set<string>();
-		for (let d = 1; d <= radiusL; d++) {
-			for (const f of filesAt.get(d) ?? []) {
-				const m = mass.get(f) ?? 0;
-				if (m <= 0) continue;
-				const lab = display.get(f);
-				if (!lab) continue;
-				if (receivesOuter.has(lab)) continue;
-				// Free-source: pad short paths to radius (no-op when d >= radiusL).
-				if (d < radiusL) {
-					padImportRailsInto(addLink, lab, d, radiusL, m);
-					// Only real file leaves (not rails / overflow buckets).
-					if (
-						nodeRef[lab]?.kind === 'file' &&
-						!lab.includes('·in-rail') &&
-						!lab.includes('·out-rail')
-					) {
-						terminatorSet.add(lab);
-					}
-				}
+	const terminatorSet = new Set<string>();
+	for (let d = 1; d <= radiusL; d++) {
+		for (const f of filesAt.get(d) ?? []) {
+			const m = mass.get(f) ?? 0;
+			if (m <= 0) continue;
+			const lab = display.get(f);
+			if (!lab) continue;
+			if (receivesOuter.has(lab)) continue;
+			// Pad short paths only when multi-hop columns exist (d < radiusL).
+			if (radiusL >= 2 && d < radiusL) {
+				padImportRailsInto(addLink, lab, d, radiusL, m);
+			}
+			// Cyan chrome: all reverse free sources (padded short paths, outer rim
+			// at radiusL, and single-column Exports when max reverse hops is 1).
+			if (
+				nodeRef[lab]?.kind === 'file' &&
+				!lab.includes('·in-rail') &&
+				!lab.includes('·out-rail')
+			) {
+				terminatorSet.add(lab);
 			}
 		}
-		terminators.push(...terminatorSet);
 	}
-	return terminators;
+	return [...terminatorSet];
 }
 
 /** Register shared import rails (hidden labels) for stages 2..radius. */

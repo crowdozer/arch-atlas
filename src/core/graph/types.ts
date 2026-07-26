@@ -274,9 +274,10 @@ export type AlluvialPayload = {
 		nodeRef: Record<string, AlluvialNodeRef>;
 		nodeRank: Record<string, number>;
 		/**
-		 * Reverse free-source pad targets (Exports* free sources, left).
-		 * Polish: **cyan** wrap (contrast on yellow export columns).
-		 * Never includes rail ids.
+		 * Reverse free sources / export-tree dead-ends (Exports* left): no kept
+		 * outer reverse parent. Includes single-column Exports (max reverse hops
+		 * 1) and multi-hop padded free sources + outer rim. Polish: **cyan** wrap
+		 * (contrast on yellow export columns). Never includes rail ids.
 		 */
 		terminators?: string[];
 		/**
@@ -285,5 +286,16 @@ export type AlluvialPayload = {
 		 * Never includes rail ids. Field name is historical (`exportTerminators`).
 		 */
 		exportTerminators?: string[];
+		/**
+		 * Construction-time External package attachments (display labels +
+		 * residual/package widths). Polish straighten uses these instead of
+		 * recovering pairs via shared in-rail BFS (which cross-products parents
+		 * × packages on a merged rail).
+		 */
+		externalStraightPairs?: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	};
 };

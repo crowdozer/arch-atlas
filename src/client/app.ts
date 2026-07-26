@@ -425,6 +425,7 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 		const colorScale = payload.options.color.scale;
 		const terminators = payload.meta.terminators;
 		const exportTerminators = payload.meta.exportTerminators;
+		const externalStraightPairs = payload.meta.externalStraightPairs;
 		const applyPolish = () => {
 			// Chart may have been destroyed between schedule and fire.
 			if (!chart) return;
@@ -432,6 +433,7 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 				colorScale,
 				terminators,
 				exportTerminators,
+				externalStraightPairs,
 			});
 		};
 		// Immediate pass for the constructor paint; re-apply on every later paint.

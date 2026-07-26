@@ -292,9 +292,20 @@ export type ExternalStraightBandPlan = {
 	y1: number;
 };
 
+/** Construction-time parent→package identity for External straighten. */
+export type ExternalStraightPair = {
+	parent: string;
+	packageName: string;
+	width: number;
+};
+
 /**
  * Pure planner: given layout nodes + links, find External packages only
  * reachable via in-rail pads and return straight parent→package bands.
+ *
+ * When `pairs` is non-empty (hub construction meta), use those parent×package
+ * widths instead of BFS through shared in-rails (which cross-products every
+ * parent that padded into a rail with every package that left it).
  */
 export function planExternalStraightBands(
 	nodes: readonly {
@@ -312,6 +323,7 @@ export function planExternalStraightBands(
 		stroke?: string;
 		opacity?: string;
 	}[],
+	pairs?: readonly ExternalStraightPair[],
 ): ExternalStraightBandPlan[] {
 	const nodeByName = new Map(nodes.map((n) => [n.name, n]));
 	const inbound = new Map<
@@ -332,6 +344,17 @@ export function planExternalStraightBands(
 	const externalNames = nodes
 		.filter((n) => n.category === 'External' && !isAlluvialRailName(n.name))
 		.map((n) => n.name);
+
+	const styleFromInbound = (
+		pkg: string,
+	): { stroke: string; opacity: string } => {
+		const directIn = inbound.get(pkg) ?? [];
+		const railIn = directIn.find((e) => isInRailName(e.source));
+		return {
+			stroke: railIn?.stroke || directIn[0]?.stroke || '#0d9488',
+			opacity: railIn?.opacity || directIn[0]?.opacity || '0.5',
+		};
+	};
 
 	const realParents = (
 		pkg: string,
@@ -381,14 +404,45 @@ export function planExternalStraightBands(
 
 	const plans: ExternalStraightBandPlan[] = [];
 	const drawn = new Set<string>();
+	const usePairs = Boolean(pairs?.length);
+
+	// Optional construction pairs: merge widths for same parent×package
+	const pairsByPkg = new Map<
+		string,
+		{ parent: string; width: number }[]
+	>();
+	if (usePairs) {
+		for (const p of pairs!) {
+			if (p.width <= 0 || !p.parent || !p.packageName) continue;
+			const list = pairsByPkg.get(p.packageName) ?? [];
+			const prev = list.find((x) => x.parent === p.parent);
+			if (prev) prev.width += p.width;
+			else list.push({ parent: p.parent, width: p.width });
+			pairsByPkg.set(p.packageName, list);
+		}
+	}
+
 	for (const pkg of externalNames) {
 		// Must have at least one inbound from an in-rail (pad topology)
 		const directIn = inbound.get(pkg) ?? [];
 		if (!directIn.some((e) => isInRailName(e.source))) continue;
 
-		const parents = realParents(pkg);
 		const pkgNode = nodeByName.get(pkg);
-		if (!pkgNode || !parents.length) continue;
+		if (!pkgNode) continue;
+
+		const parents = usePairs
+			? (pairsByPkg.get(pkg) ?? []).map((p) => {
+					const style = styleFromInbound(pkg);
+					return {
+						parent: p.parent,
+						width: p.width,
+						stroke: style.stroke,
+						opacity: style.opacity,
+					};
+				})
+			: realParents(pkg);
+		if (!parents.length) continue;
+
 		for (const { parent, width, stroke, opacity } of parents) {
 			const key = `${parent}\0${pkg}`;
 			if (drawn.has(key)) continue;
@@ -417,7 +471,10 @@ export function planExternalStraightBands(
  * single straight band from the real parent to the External package so the chart
  * does not show an intermediate hop on Imports.
  */
-export function straightenExternalPackageBands(holder: HTMLElement): void {
+export function straightenExternalPackageBands(
+	holder: HTMLElement,
+	opts?: { pairs?: readonly ExternalStraightPair[] },
+): void {
 	const nodes: {
 		name: string;
 		category?: string;
@@ -486,7 +543,7 @@ export function straightenExternalPackageBands(holder: HTMLElement): void {
 		});
 	}
 
-	const plans = planExternalStraightBands(nodes, linkSpecs);
+	const plans = planExternalStraightBands(nodes, linkSpecs, opts?.pairs);
 	if (!plans.length) return;
 
 	// Prefer the Carbon link layer group
@@ -784,13 +841,20 @@ export function polishAlluvialHolder(
 		 * @see markAlluvialExportTerminators
 		 */
 		exportTerminators?: readonly string[];
+		/**
+		 * Construction-time External parent→package pairs (hub meta).
+		 * @see straightenExternalPackageBands / planExternalStraightBands
+		 */
+		externalStraightPairs?: readonly ExternalStraightPair[];
 	},
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	hideAlluvialRails(holder);
 	// Undraw File→in-rail→External kinks, then paint straight parent→package
-	straightenExternalPackageBands(holder);
+	straightenExternalPackageBands(holder, {
+		pairs: opts?.externalStraightPairs,
+	});
 	// Contrast: cyan on yellow Exports free sources; yellow on cyan Imports leaves
 	markAlluvialTerminators(holder, opts?.terminators);
 	markAlluvialExportTerminators(holder, opts?.exportTerminators);
