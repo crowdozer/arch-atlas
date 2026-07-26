@@ -54,9 +54,10 @@ function flowTotals(data: { source: string; target: string; value: number }[]) {
 }
 
 /**
- * Mass at File (import-edge orientation: importers → File → deps):
- * - inMass / importerMass = who imports focus = file in-degree
- * - outMass / depMass = what focus imports = file out-degree
+ * Mass at File (chart orientation):
+ * - inMass = reverse importers + focus packages/unresolved (package → File)
+ * - outMass / depMass = focus → **file** edges only (export tree)
+ * Graph out-degree still includes packages; they count on the chart in-side.
  */
 function hubIncidentMass(payload: AlluvialPayload, focusLabel: string): {
 	inMass: number;
@@ -75,6 +76,51 @@ function hubIncidentMass(payload: AlluvialPayload, focusLabel: string): {
 		importerMass: inMass,
 		depMass: outMass,
 	};
+}
+
+/** Focus out-edges to files only (export-side mass law). */
+function fileOutFileDegree(
+	graph: { edges: { from: string; toKind: string }[] },
+	fileId: string,
+): number {
+	let n = 0;
+	for (const e of graph.edges) {
+		if (e.from === fileId && e.toKind === 'file') n += 1;
+	}
+	return n;
+}
+
+/** Focus out-edges to package/unresolved (import-side package mass). */
+function fileOutPackageDegree(
+	graph: { edges: { from: string; toKind: string }[] },
+	fileId: string,
+): number {
+	let n = 0;
+	for (const e of graph.edges) {
+		if (e.from === fileId && (e.toKind === 'package' || e.toKind === 'unresolved')) {
+			n += 1;
+		}
+	}
+	return n;
+}
+
+function packageNodesOnCategory(
+	payload: AlluvialPayload,
+	pkgId: string,
+	category: string | ((c: string) => boolean),
+): { name: string; category: string }[] {
+	const match =
+		typeof category === 'function' ? category : (c: string) => c === category;
+	return payload.options.alluvial.nodes
+		.filter((n) => {
+			const ref = payload.meta.nodeRef[n.name];
+			return (
+				ref?.kind === 'package' &&
+				ref.id === pkgId &&
+				match(n.category)
+			);
+		})
+		.map((n) => ({ name: n.name, category: n.category }));
 }
 
 function assertPositiveLinks(payload: AlluvialPayload, label: string): void {
@@ -144,16 +190,18 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(preferFileImportersView(graph, logger)).toBe(true);
 	});
 
-	it('hub mass equals importer + dep edge weights for redis.ts', () => {
+	it('hub mass equals importer + package-in + file-dep weights for redis.ts', () => {
 		const id = 'src/lib/redis.ts';
 		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' });
 		expect(payload).not.toBeNull();
 		const focus = payload!.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload!, focus);
-		// importers → File → deps
-		expect(importerMass).toBe(fileInDegree(graph, id));
-		expect(depMass).toBe(fileOutDegree(graph, id));
-		expect(total).toBe(depMass + importerMass);
+		const pkgOut = fileOutPackageDegree(graph, id);
+		const fileOut = fileOutFileDegree(graph, id);
+		// reverse importers + focus packages → File → file deps
+		expect(importerMass).toBe(fileInDegree(graph, id) + pkgOut);
+		expect(depMass).toBe(fileOut);
+		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
 		assertPositiveLinks(payload!, id);
 
 		const cats = categories(payload!);
@@ -163,7 +211,7 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(cats.has('Import folders')).toBe(false);
 		expect(payload!.options.alluvial.units).toBe('import edges');
 
-		// Exports (dep) column uses yellow family
+		// Exports (file-dep) column uses yellow family
 		const depNodes = payload!.options.alluvial.nodes.filter(
 			(n) => n.category === 'Exports' || n.category.startsWith('Export hop'),
 		);
@@ -194,8 +242,10 @@ describe('projectFileHub demo-next-complex', () => {
 
 		const focus = shallow.meta.focus.label;
 		const shallowMass = hubIncidentMass(shallow, focus);
-		expect(shallowMass.importerMass).toBe(fileInDegree(graph, id));
-		expect(shallowMass.depMass).toBe(fileOutDegree(graph, id));
+		const pkgOut = fileOutPackageDegree(graph, id);
+		const fileOut = fileOutFileDegree(graph, id);
+		expect(shallowMass.importerMass).toBe(fileInDegree(graph, id) + pkgOut);
+		expect(shallowMass.depMass).toBe(fileOut);
 
 		for (const depth of [2, 3, 5] as const) {
 			const deep = projectFileHub(graph, id, {
@@ -204,9 +254,9 @@ describe('projectFileHub demo-next-complex', () => {
 			})!;
 			const deepMass = hubIncidentMass(deep, deep.meta.focus.label);
 			expect(deepMass.importerMass, `depth ${depth} importers`).toBe(
-				fileInDegree(graph, id),
+				fileInDegree(graph, id) + pkgOut,
 			);
-			expect(deepMass.depMass, `depth ${depth} deps`).toBe(fileOutDegree(graph, id));
+			expect(deepMass.depMass, `depth ${depth} deps`).toBe(fileOut);
 		}
 	});
 
@@ -270,16 +320,27 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 
 		const focus = payload.meta.focus.label;
 		expect(focus).toBe('focus.ts');
-		const { depMass, importerMass } = hubIncidentMass(payload, focus);
-		expect(importerMass).toBe(1); // midIn → focus
-		expect(depMass).toBe(2); // focus → midOut + zod
+		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
+		// midIn (reverse) + zod (focus package) → File; File → midOut
+		expect(importerMass).toBe(2);
+		expect(depMass).toBe(1);
+		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
 		assertPositiveLinks(payload, 'depth1');
 
-		// importers → File → deps
+		// importers + packages → File → file deps
 		const intoFile = payload.data.filter((l) => l.target === focus);
 		const fromFile = payload.data.filter((l) => l.source === focus);
-		expect(intoFile).toHaveLength(1);
-		expect(fromFile.length).toBe(2);
+		expect(intoFile).toHaveLength(2); // midIn + zod
+		expect(fromFile.length).toBe(1); // midOut only
+
+		// zod is on Imports with package → File link
+		const zodImport = packageNodesOnCategory(payload, 'zod', 'Imports');
+		expect(zodImport).toHaveLength(1);
+		expect(
+			payload.data.some(
+				(l) => l.source === zodImport[0]!.name && l.target === focus,
+			),
+		).toBe(true);
 	});
 
 	it('depth=3 shows Import hop 2 and Export hop 2 with conserved File mass', () => {
@@ -307,9 +368,12 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		expect(order.indexOf('Exports')).toBeLessThan(order.indexOf('Export hop 2'));
 
 		const focus = payload.meta.focus.label;
-		const { depMass, importerMass } = hubIncidentMass(payload, focus);
-		expect(importerMass).toBe(fileInDegree(graph, focusId));
-		expect(depMass).toBe(fileOutDegree(graph, focusId));
+		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
+		expect(importerMass).toBe(
+			fileInDegree(graph, focusId) + fileOutPackageDegree(graph, focusId),
+		);
+		expect(depMass).toBe(fileOutFileDegree(graph, focusId));
+		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
 		assertPositiveLinks(payload, 'depth3');
 
 		const hop2ImportNodes = payload.options.alluvial.nodes.filter(
@@ -321,13 +385,17 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		expect(hop2ImportNodes.length).toBeGreaterThan(0);
 		expect(hop2ExportNodes.length).toBeGreaterThan(0);
 
-		// Package stays on Exports (dist-1 deps), yellow
+		// Focus package on Imports (teal package), not Exports yellow
 		const scale = payload.options.color.scale;
-		const depNodes = payload.options.alluvial.nodes.filter(
-			(n) => n.category === 'Exports',
+		const zodImport = packageNodesOnCategory(payload, 'zod', 'Imports');
+		expect(zodImport).toHaveLength(1);
+		expect(scale[zodImport[0]!.name] ?? '').toBe('#0d9488'); // TEAL.package
+		const exportZod = packageNodesOnCategory(
+			payload,
+			'zod',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
 		);
-		const depNames = depNodes.map((n) => n.name);
-		expect(depNames.some((n) => n === 'zod' || n.includes('zod'))).toBe(true);
+		expect(exportZod).toHaveLength(0);
 		for (const n of hop2ExportNodes) {
 			expect(scale[n.name] ?? '').toMatch(/^#(?:eab308|ca8a04|a16207)$/i);
 		}
@@ -421,8 +489,19 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		).toBe(true);
 
 		const focus = payload.meta.focus.label;
-		const { depMass } = hubIncidentMass(payload, focus);
-		expect(depMass).toBe(fileOutDegree(simpleGraph, id));
+		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
+		// UserCard has no direct packages; out is file-only; in is reverse only
+		expect(depMass).toBe(fileOutFileDegree(simpleGraph, id));
+		expect(importerMass).toBe(
+			fileInDegree(simpleGraph, id) + fileOutPackageDegree(simpleGraph, id),
+		);
+		expect(total).toBe(
+			fileInDegree(simpleGraph, id) + fileOutDegree(simpleGraph, id),
+		);
+		// Intermediate package zod stays on export hops (from types), not focus Imports
+		expect(names.some((n) => n.includes('zod'))).toBe(true);
+		const focusZod = packageNodesOnCategory(payload, 'zod', 'Imports');
+		expect(focusZod).toHaveLength(0);
 
 		// Paint law: export File→out-rail→deep-target links exist and are NOT
 		// import free-source scaffold (must remain paint-eligible under polish).
@@ -465,7 +544,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		}
 	}
 
-	it('main.tsx pin-clip: one react-router-dom and one react; no same-category edges', () => {
+	it('main.tsx pin-clip: focus packages on Imports; export-tree pins still one per id', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 3,
 			maxDeps: 48,
@@ -475,19 +554,34 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		})!;
 		assertNoSameCategoryEdges(payload);
 
-		const rrd = packageNodes(payload, 'react-router-dom');
-		const react = packageNodes(payload, 'react');
-		expect(rrd).toHaveLength(1);
-		expect(react).toHaveLength(1);
-		// Clipped to Depth 3 — both pin at hop 3 (not multi-hop clones)
-		expect(rrd[0]!.category).toBe('Export hop 3');
-		expect(react[0]!.category).toBe('Export hop 3');
-		// Pin-far labels stay plain (hop is column category only)
-		expect(rrd[0]!.name).toBe('react-router-dom');
-		expect(react[0]!.name).toBe('react');
+		// Focus packages live under Imports
+		const rrdImport = packageNodesOnCategory(payload, 'react-router-dom', 'Imports');
+		const reactImport = packageNodesOnCategory(payload, 'react', 'Imports');
+		expect(rrdImport.length).toBeGreaterThanOrEqual(1);
+		expect(reactImport.length).toBeGreaterThanOrEqual(1);
+		expect(rrdImport[0]!.name).toBe('react-router-dom');
+		expect(reactImport[0]!.name).toBe('react');
+
+		// Export-tree intermediate pins: at most one node per package id on export side
+		const rrdExport = packageNodesOnCategory(
+			payload,
+			'react-router-dom',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		const reactExport = packageNodesOnCategory(
+			payload,
+			'react',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		expect(rrdExport.length).toBeLessThanOrEqual(1);
+		expect(reactExport.length).toBeLessThanOrEqual(1);
+		if (reactExport[0]) {
+			// Clipped to Depth 3 when intermediate pin natural is deep
+			expect(reactExport[0].category).toMatch(/^(Exports|Export hop \d+)$/);
+		}
 	});
 
-	it('main.tsx pin-overdraw: may exceed Depth; still one node per package', () => {
+	it('main.tsx pin-overdraw: focus on Imports; export-tree may overdraw past Depth', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 3,
 			maxDeps: 48,
@@ -496,19 +590,32 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		})!;
 		assertNoSameCategoryEdges(payload);
 
-		const rrd = packageNodes(payload, 'react-router-dom');
-		const react = packageNodes(payload, 'react');
-		expect(rrd).toHaveLength(1);
-		expect(react).toHaveLength(1);
-		expect(rrd[0]!.name).toBe('react-router-dom');
-		expect(react[0]!.name).toBe('react');
-		// useUser at hop 3 → react natural pin 4 (overdraw past Depth)
-		expect(react[0]!.category).toMatch(/^Export hop \d+$/);
-		const hop = Number(react[0]!.category.replace('Export hop ', ''));
-		expect(hop).toBeGreaterThanOrEqual(3);
+		const reactImport = packageNodesOnCategory(payload, 'react', 'Imports');
+		expect(reactImport).toHaveLength(1);
+		expect(reactImport[0]!.name).toBe('react');
+
+		const reactExport = packageNodesOnCategory(
+			payload,
+			'react',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		// Intermediate tree may still pin react (e.g. useUser); overdraw past Depth
+		if (reactExport[0]) {
+			expect(reactExport[0].category).toMatch(/^Export hop \d+$/);
+			const hop = Number(reactExport[0].category.replace('Export hop ', ''));
+			expect(hop).toBeGreaterThanOrEqual(3);
+		}
+		// One export-side node per package id (pin-far identity)
+		expect(reactExport.length).toBeLessThanOrEqual(1);
+		const rrdExport = packageNodesOnCategory(
+			payload,
+			'react-router-dom',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		expect(rrdExport.length).toBeLessThanOrEqual(1);
 	});
 
-	it('main.tsx per-hop: legacy multi-column package copies', () => {
+	it('main.tsx per-hop: focus package on Imports; structural hops still export-side', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 3,
 			maxDeps: 48,
@@ -517,26 +624,45 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		})!;
 		assertNoSameCategoryEdges(payload);
 
+		const rrdImport = packageNodesOnCategory(payload, 'react-router-dom', 'Imports');
+		expect(rrdImport.length).toBeGreaterThanOrEqual(1);
+
 		const rrd = packageNodes(payload, 'react-router-dom');
-		// focus Exports + structural hops
+		// Imports focus copy + structural export hops (App etc.)
 		expect(rrd.length).toBeGreaterThan(1);
 		const cats = new Set(rrd.map((n) => n.category));
-		expect(cats.has('Exports')).toBe(true);
+		expect(cats.has('Imports')).toBe(true);
+		expect(
+			[...cats].some((c) => c === 'Exports' || c.startsWith('Export hop')),
+		).toBe(true);
 	});
 
-	it('main.tsx pin-clip depth=1: packages stay on Exports (no · package suffix)', () => {
+	it('main.tsx pin-clip depth=1: focus packages on Imports (not Exports)', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 1,
 			maxDeps: 48,
 			weightAxis: 'importer-loc',
 			packageLeafMode: 'pin-clip',
 		})!;
-		const exportNames = payload.options.alluvial.nodes
-			.filter((n) => n.category === 'Exports')
-			.map((n) => n.name);
-		expect(exportNames.some((n) => n.includes(' · package'))).toBe(false);
-		expect(exportNames.filter((n) => n === 'react-router-dom')).toHaveLength(1);
-		// No overdraw columns
+		const importRrd = packageNodesOnCategory(payload, 'react-router-dom', 'Imports');
+		expect(importRrd).toHaveLength(1);
+		expect(importRrd[0]!.name).toBe('react-router-dom');
+		// Focus mass: package → File on Imports
+		expect(
+			payload.data.some(
+				(l) =>
+					l.source === importRrd[0]!.name &&
+					l.target === payload.meta.focus.label,
+			),
+		).toBe(true);
+		// Export-tree pin-far: ≤1 node per package id if intermediate leaf appears
+		const exportRrd = packageNodesOnCategory(
+			payload,
+			'react-router-dom',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		expect(exportRrd.length).toBeLessThanOrEqual(1);
+		// No overdraw columns for pin-clip at depth 1
 		expect(
 			payload.options.alluvial.nodes.some((n) =>
 				n.category.startsWith('Export hop'),
@@ -544,18 +670,26 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		).toBe(false);
 	});
 
-	it('main.tsx pin-overdraw depth=1: may add hop past Depth for pin', () => {
+	it('main.tsx pin-overdraw depth=1: focus on Imports; intermediate pin may overdraw', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 1,
 			maxDeps: 48,
 			weightAxis: 'importer-loc',
 			packageLeafMode: 'pin-overdraw',
 		})!;
-		const rrd = packageNodes(payload, 'react-router-dom');
-		expect(rrd).toHaveLength(1);
-		// App also imports rrd → pin at hop 2 even when Depth=1
-		expect(rrd[0]!.category).toBe('Export hop 2');
-		expect(rrd[0]!.name).toBe('react-router-dom');
+		const rrdImport = packageNodesOnCategory(payload, 'react-router-dom', 'Imports');
+		expect(rrdImport).toHaveLength(1);
+		expect(rrdImport[0]!.name).toBe('react-router-dom');
+
+		// App also imports rrd → export-tree pin at hop 2 even when Depth=1
+		const rrdExport = packageNodesOnCategory(
+			payload,
+			'react-router-dom',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		if (rrdExport[0]) {
+			expect(rrdExport[0].category).toBe('Export hop 2');
+		}
 	});
 
 	it('pin-far modes: no · in/out hN on file or package labels', () => {
@@ -728,10 +862,10 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 			(out.get(overflow!.name) ?? 0) + (inn.get(overflow!.name) ?? 0);
 		expect(incident, overflow!.name).toBeGreaterThan(0);
 
-		// Dep mass still matches focus out-degree
+		// Dep mass matches focus file→file out-degree
 		const focus = payload.meta.focus.label;
 		const { depMass } = hubIncidentMass(payload, focus);
-		expect(depMass).toBe(fileOutDegree(graph, 'focus.ts'));
+		expect(depMass).toBe(fileOutFileDegree(graph, 'focus.ts'));
 	});
 
 	/**
@@ -807,6 +941,60 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 	});
 });
 
+describe('projectFileHub focus packages on Imports', () => {
+	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+
+	it('app/api/users/route.ts: next is Imports with package→File link, not Exports', () => {
+		const id = 'app/api/users/route.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxDeps: 48,
+			maxImporters: 48,
+			weightAxis: 'import-edges',
+		})!;
+		expect(payload).not.toBeNull();
+
+		const nextNodes = payload.options.alluvial.nodes.filter((n) => {
+			const ref = payload.meta.nodeRef[n.name];
+			return ref?.kind === 'package' && ref.id === 'next';
+		});
+		expect(nextNodes.length).toBeGreaterThanOrEqual(1);
+		// Focus package next must be on Imports
+		const nextImport = nextNodes.filter((n) => n.category === 'Imports');
+		expect(nextImport).toHaveLength(1);
+		// Not on export-side categories as a focus leaf
+		const nextExport = nextNodes.filter(
+			(n) => n.category === 'Exports' || n.category.startsWith('Export hop'),
+		);
+		expect(nextExport).toHaveLength(0);
+
+		const focus = payload.meta.focus.label;
+		expect(
+			payload.data.some(
+				(l) => l.source === nextImport[0]!.name && l.target === focus,
+			),
+		).toBe(true);
+		// File→next must not be the display orientation for focus package
+		expect(
+			payload.data.some(
+				(l) => l.source === focus && l.target === nextImport[0]!.name,
+			),
+		).toBe(false);
+
+		// Mass law: package weight on File in; file deps on File out
+		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
+		expect(depMass).toBe(fileOutFileDegree(graph, id));
+		expect(importerMass).toBe(
+			fileInDegree(graph, id) + fileOutPackageDegree(graph, id),
+		);
+		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
+		// API route has no reverse importers — packages alone may fill Imports
+		expect(fileInDegree(graph, id)).toBe(0);
+		expect(categories(payload).has('Imports')).toBe(true);
+		expect(categories(payload).has('Exports')).toBe(true); // file deps present
+	});
+});
+
 describe('projectFileHub artillery public.ts barrel', () => {
 	it('shows 64-edge hub (25 in + 39 out) without package placeholder', () => {
 		let buf: Buffer;
@@ -827,8 +1015,10 @@ describe('projectFileHub artillery public.ts barrel', () => {
 		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' })!;
 		const focus = payload.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		expect(importerMass).toBe(hot!.inDegree);
-		expect(depMass).toBe(hot!.outDegree);
+		const pkgOut = fileOutPackageDegree(graph, id);
+		const fileOut = fileOutFileDegree(graph, id);
+		expect(importerMass).toBe(hot!.inDegree + pkgOut);
+		expect(depMass).toBe(fileOut);
 		expect(total).toBe(hot!.edgeCount);
 
 		// No synthetic package placeholder

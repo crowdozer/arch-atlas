@@ -21,6 +21,29 @@ import {
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
 import { projectPackageImporters } from '@core/view/packageImporters.ts';
 
+/** Focus out-edges that are file→file (export-side hub mass). */
+function fileOutFileDegree(graph: CodeGraph, fileId: string): number {
+	let n = 0;
+	for (const e of graph.edges) {
+		if (e.from === fileId && e.toKind === 'file') n += 1;
+	}
+	return n;
+}
+
+/** Focus package/unresolved outs (import-side hub mass with reverse importers). */
+function fileOutPackageDegree(graph: CodeGraph, fileId: string): number {
+	let n = 0;
+	for (const e of graph.edges) {
+		if (
+			e.from === fileId &&
+			(e.toKind === 'package' || e.toKind === 'unresolved')
+		) {
+			n += 1;
+		}
+	}
+	return n;
+}
+
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
 	'../../../fixtures',
@@ -172,8 +195,11 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			);
 			// Optional hop columns when both sides and depth allows (default radius 3)
 			const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
-			const hasImportSide = fileInDegree(graph, d.id) > 0;
-			const hasExportSide = fileOutDegree(graph, d.id) > 0;
+			// Imports: reverse importers and/or focus packages
+			const hasImportSide =
+				fileInDegree(graph, d.id) > 0 || fileOutPackageDegree(graph, d.id) > 0;
+			// Exports: file→file outs only (packages live on Imports)
+			const hasExportSide = fileOutFileDegree(graph, d.id) > 0;
 			if (hasImportSide) expect(cats.has('Imports')).toBe(true);
 			if (hasExportSide) expect(cats.has('Exports')).toBe(true);
 		}
@@ -205,14 +231,18 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			assertColumnConservation(payload!, `hotspot ${h.path}`);
 			assertNodeRefCoversNamedNodes(payload!, `hotspot ${h.path}`);
 
-			// Hub: incident mass === in + out (catalog edgeCount); one-sided OK
+			// Hub: incident mass === in + out (catalog edgeCount); packages count on File in
 			expect(focusIncidentMass(payload!), `${h.path} hub mass`).toBe(h.edgeCount);
 			expect(payload!.meta.focus.kind).toBe('file');
 			const cats = new Set(
 				payload!.options.alluvial.nodes.map((n) => n.category),
 			);
-			if (h.inDegree > 0) expect(cats.has('Imports')).toBe(true);
-			if (h.outDegree > 0) expect(cats.has('Exports')).toBe(true);
+			if (h.inDegree > 0 || fileOutPackageDegree(graph, h.id) > 0) {
+				expect(cats.has('Imports')).toBe(true);
+			}
+			if (fileOutFileDegree(graph, h.id) > 0) {
+				expect(cats.has('Exports')).toBe(true);
+			}
 			expect(cats.has('Import folders')).toBe(false);
 		}
 	});
