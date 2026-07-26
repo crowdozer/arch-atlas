@@ -881,11 +881,43 @@ cds-dropdown.atlas-stage__precision {
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
-/* Unavailable feature alert (Exact precision, imported-surface LOC) */
+/* Unavailable feature alert — thinner than sm, more airy padding */
+.atlas-unavailable-modal::part(dialog) {
+  max-inline-size: 18rem; /* ~288px; Carbon xs is still wide on some builds */
+  inline-size: min(18rem, calc(100vw - 2rem));
+}
+
+/* Light-DOM children (header/body/footer) sit inside the dialog */
+.atlas-unavailable-modal cds-modal-header {
+  padding: 1.35rem 1.35rem 0.85rem !important;
+}
+
+.atlas-unavailable-modal cds-modal-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.atlas-unavailable-modal cds-modal-heading {
+  margin: 0.25rem 0 0 !important;
+  padding-right: 1.75rem; /* clear close button */
+  line-height: 1.35;
+}
+
+.atlas-unavailable-modal cds-modal-body {
+  padding: 0.85rem 1.35rem 1.35rem !important;
+}
+
+.atlas-unavailable-modal cds-modal-footer {
+  padding: 0.85rem 1.35rem 1.25rem !important;
+  gap: 0.5rem;
+}
+
 .atlas-unavailable-modal__body-text {
   margin: 0;
+  padding: 0.35rem 0 0.15rem;
   font-size: 0.875rem;
-  line-height: 1.45;
+  line-height: 1.6;
   color: #e4e4e7;
 }
 
