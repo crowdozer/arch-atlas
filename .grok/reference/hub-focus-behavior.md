@@ -35,7 +35,7 @@ connectivity for External is **`externalStraightPairs` only**.
 | Seed | When | Product law |
 | ---- | ---- | ----------- |
 | **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ aliases) |
-| **file** | Hover a file label | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
+| **file** | Hover a file label | Ancestors = nodes on any **shortest path** File-spine→seed (forward on fileEdges; fallback reverseBFS if unreachable); ∪ forward descendants; packages only if pair parent ∈ hovered∪**forward** descendants |
 | **package** | Hover External package / unresolved chip | Reverse-path **union** from all pair parents of that package |
 | **file-spine** | Hover the hub File column spine | Same as **file** for `meta.startId` / File focus label |
 
@@ -60,7 +60,14 @@ Straighten key: `ext:parent\0packageName`
 
 ```text
 descendants = forwardBFS(hovered) on fileEdges   // includes hovered
-ancestors   = reverseBFS(hovered) on fileEdges   // includes hovered
+targets    = aliasExpand({ hovered })
+if fileSpineName known and some target reachable from spine (forward):
+  ancestors = nodes on any shortest path spine → target (forward on fileEdges)
+              ∪ targets
+              // multi-instance: D = min dist among reached goals; paths to
+              // goals with dist==D only; then aliasExpand so ·hN lights
+else:
+  ancestors = reverseBFS(hovered) on fileEdges   // fallback (includes hovered)
 packageParentFiles = aliasExpand(descendants)    // NOT reverse-only ancestors
 activeFiles = ancestors ∪ descendants
 packages = { pkg | pair parent ∈ packageParentFiles }
@@ -70,7 +77,13 @@ focusedBands =
   ∪ every externalEdge whose parent ∈ packageParentFiles
 ```
 
-**App vs main→react-dom:** hovering `App` lights reverse ancestors (e.g. `main`)
+**Why shortest-path (not full reverseBFS):** shared hooks (e.g. `useCodebreaker`
+imported by many game components) must not light every co-importer. Only the
+hub start→seed chain (shortest paths) plus the seed’s forward deps light.
+Longer paths through sibling consumers stay dim. Radius-1 reverse would still
+light every direct consumer — wrong product.
+
+**App vs main→react-dom:** hovering `App` lights spine-path ancestors (e.g. `main`)
 but **does not** light packages whose only parents are reverse-only (main→react-dom).
 
 ### 3c. Package label — reverse-path law (`L-pkg-*`)
@@ -167,7 +180,8 @@ Pure plan (`logicalFocusGraph.test.ts`) cites these IDs in test names:
 | `L-band-file` | carbon `main→App` band only |
 | `L-band-ext` | straighten `main→react` only (not react-dom sibling) |
 | `L-file-main` | main label: full forward + main’s packages |
-| `L-file-app` | App: ancestors∪descendants; not logger; not main→react-dom |
+| `L-file-app` | App: spine-shortest-path ancestors∪descendants; not logger; not main→react-dom |
+| `L-file-hook` | shared-hook shape: spine→shell→hook shortest path; co-importers dim |
 | `L-pkg-react` | reverse-path union from all react parents |
 | `L-pkg-react-dom` | parents of react-dom only (main); not Layout/Home unless reverse-ancestors |
 | `L-pkg-zod` | multi-parent reverse unions |

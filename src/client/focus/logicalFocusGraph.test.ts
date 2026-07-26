@@ -12,6 +12,7 @@ import { isAlluvialRailName } from '@core/view/alluvial.ts';
 import { projectFileHub } from '@core/view/fileHub.ts';
 import {
 	buildLogicalFocusGraph,
+	buildLogicalFocusGraphFromParts,
 	externalBandKey,
 	fileBandKey,
 	planFocus,
@@ -377,7 +378,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		);
 	});
 
-	it('L-spine: hover File spine = full reverse∪forward of hub focus file', () => {
+	it('L-spine: hover File spine = file neighborhood of hub focus file', () => {
 		const spine = planFocus(mainGraph, { kind: 'file-spine' });
 		const asFile = planFocus(mainGraph, { kind: 'file', name: MAIN });
 		assertNoRails(spine);
@@ -389,6 +390,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		);
 		expect(mainGraph.fileSpineName).toBe(MAIN);
 	});
+
 
 	it('L-rails: rails never in activeLabels or focusedBandKeys', () => {
 		// Inject a rail into a synthetic neighborhood by ensuring build strips them
@@ -446,5 +448,133 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 				);
 			}
 		}
+	});
+});
+
+/**
+ * Codebreaker-shaped shared hook: spine→shell→hook is shortest;
+ * shell→A/B→hook are longer co-importer paths and must stay dim.
+ */
+describe('LogicalFocusGraph L-file-hook (shared-hook shortest-path ancestors)', () => {
+	const PAGE = 'app/page.tsx';
+	const INDEX = 'app/components/codebreaker/index.tsx';
+	const HOOK = 'app/components/codebreaker/useCodebreaker.ts';
+	const HOOK_ALIAS = 'app/components/codebreaker/useCodebreaker.ts · h3';
+	const BUFFER = 'app/components/codebreaker/components/Buffer.tsx';
+	const TIMER = 'app/components/codebreaker/components/Timer.tsx';
+	const REDUCER = 'app/components/codebreaker/reducer.ts';
+	const TYPES = 'app/components/codebreaker/types.ts';
+
+	function makeHookGraph(opts?: {
+		fileSpineName?: string | null;
+		withAlias?: boolean;
+		/** Drop spine→shell so hook is unreachable forward from spine. */
+		orphanHook?: boolean;
+	}): LogicalFocusGraph {
+		const data = opts?.orphanHook
+			? [
+					// spine only connects to unrelated leaf; hook is reverse-only mesh
+					{ source: PAGE, target: 'app/unrelated.ts' },
+					{ source: INDEX, target: HOOK },
+					{ source: BUFFER, target: HOOK },
+					{ source: TIMER, target: HOOK },
+					{ source: HOOK, target: REDUCER },
+					{ source: HOOK, target: TYPES },
+				]
+			: [
+					// page → index → hook (shortest = 2)
+					{ source: PAGE, target: INDEX },
+					{ source: INDEX, target: HOOK },
+					// co-importers: longer paths page→index→A→hook
+					{ source: INDEX, target: BUFFER },
+					{ source: INDEX, target: TIMER },
+					{ source: BUFFER, target: HOOK },
+					{ source: TIMER, target: HOOK },
+					// forward deps of hook
+					{ source: HOOK, target: REDUCER },
+					{ source: HOOK, target: TYPES },
+				];
+
+		const nodeRef: Record<string, { kind: string; id: string }> = {
+			[PAGE]: { kind: 'file', id: PAGE },
+			[INDEX]: { kind: 'file', id: INDEX },
+			[HOOK]: { kind: 'file', id: HOOK },
+			[BUFFER]: { kind: 'file', id: BUFFER },
+			[TIMER]: { kind: 'file', id: TIMER },
+			[REDUCER]: { kind: 'file', id: REDUCER },
+			[TYPES]: { kind: 'file', id: TYPES },
+			'app/unrelated.ts': { kind: 'file', id: 'app/unrelated.ts' },
+		};
+		if (opts?.withAlias) {
+			nodeRef[HOOK_ALIAS] = { kind: 'file', id: HOOK };
+			data.push({ source: INDEX, target: HOOK_ALIAS });
+		}
+
+		return buildLogicalFocusGraphFromParts({
+			data,
+			nodeRef,
+			fileSpineName:
+				opts?.fileSpineName === undefined ? PAGE : opts.fileSpineName,
+		});
+	}
+
+	it('L-file-hook: hover hook — spine+shell+hook lit; Buffer/Timer dim; forward lit', () => {
+		const graph = makeHookGraph();
+		const plan = planFocus(graph, { kind: 'file', name: HOOK });
+		assertNoRails(plan);
+		assertFocusedBandsSubsetOfLogical(graph, plan);
+
+		// shortest path page → index → hook
+		expect(plan.activeLabels.has(PAGE)).toBe(true);
+		expect(plan.activeLabels.has(INDEX)).toBe(true);
+		expect(plan.activeLabels.has(HOOK)).toBe(true);
+		// co-importers on longer paths only — dim
+		expect(plan.activeLabels.has(BUFFER)).toBe(false);
+		expect(plan.activeLabels.has(TIMER)).toBe(false);
+		// forward deps of hook
+		expect(plan.activeLabels.has(REDUCER)).toBe(true);
+		expect(plan.activeLabels.has(TYPES)).toBe(true);
+
+		expect(plan.focusedBandKeys.has(fileBandKey(PAGE, INDEX))).toBe(true);
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(true);
+		expect(plan.focusedBandKeys.has(fileBandKey(BUFFER, HOOK))).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(TIMER, HOOK))).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(HOOK, REDUCER))).toBe(true);
+	});
+
+	it('L-file-hook: multi-instance ·hN seed still alias-expands path membership', () => {
+		const graph = makeHookGraph({ withAlias: true });
+		const plan = planFocus(graph, { kind: 'file', name: HOOK_ALIAS });
+		assertNoRails(plan);
+
+		expect(plan.activeLabels.has(HOOK)).toBe(true);
+		expect(plan.activeLabels.has(HOOK_ALIAS)).toBe(true);
+		expect(plan.activeLabels.has(PAGE)).toBe(true);
+		expect(plan.activeLabels.has(INDEX)).toBe(true);
+		expect(plan.activeLabels.has(BUFFER)).toBe(false);
+		expect(plan.activeLabels.has(TIMER)).toBe(false);
+	});
+
+	it('L-file-hook: null spine falls back to reverseBFS (co-importers lit)', () => {
+		const graph = makeHookGraph({ fileSpineName: null });
+		const plan = planFocus(graph, { kind: 'file', name: HOOK });
+		// reverseBFS lights every importer of the hook
+		expect(plan.activeLabels.has(INDEX)).toBe(true);
+		expect(plan.activeLabels.has(BUFFER)).toBe(true);
+		expect(plan.activeLabels.has(TIMER)).toBe(true);
+		// forward still lit
+		expect(plan.activeLabels.has(REDUCER)).toBe(true);
+	});
+
+	it('L-file-hook: unreachable from spine falls back to reverseBFS', () => {
+		const graph = makeHookGraph({ orphanHook: true });
+		const plan = planFocus(graph, { kind: 'file', name: HOOK });
+		// hook not forward-reachable from page → reverse fallback
+		expect(plan.activeLabels.has(INDEX)).toBe(true);
+		expect(plan.activeLabels.has(BUFFER)).toBe(true);
+		expect(plan.activeLabels.has(TIMER)).toBe(true);
+		// unrelated spine fork not on reverse of hook
+		expect(plan.activeLabels.has('app/unrelated.ts')).toBe(false);
+		expect(plan.activeLabels.has(REDUCER)).toBe(true);
 	});
 });

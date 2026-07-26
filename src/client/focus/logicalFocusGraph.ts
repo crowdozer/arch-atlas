@@ -305,6 +305,70 @@ function forwardClosure(
 	return expandFileAliases(out, graph.nodeRef);
 }
 
+/**
+ * Nodes on any shortest path from spine → targets (forward on fileEdges).
+ *
+ * Multi-instance aliases: goals = targets; D = min distance among reached
+ * goals; include nodes on all shortest paths to every goal with dist == D.
+ * Returns null when spine is empty or no target is reachable from spine
+ * (caller falls back to reverseBFS).
+ *
+ * Does not alias-expand the result — caller should expand so ·hN labels
+ * light with the primary path.
+ */
+function shortestPathNodesFromSpine(
+	fwd: Map<string, string[]>,
+	spine: string,
+	targets: ReadonlySet<string>,
+): Set<string> | null {
+	if (!spine || targets.size === 0) return null;
+
+	const dist = new Map<string, number>();
+	const parents = new Map<string, string[]>();
+	const q: string[] = [spine];
+	dist.set(spine, 0);
+
+	while (q.length) {
+		const cur = q.shift()!;
+		const d = dist.get(cur)!;
+		for (const n of fwd.get(cur) ?? []) {
+			const nd = dist.get(n);
+			if (nd === undefined) {
+				dist.set(n, d + 1);
+				parents.set(n, [cur]);
+				q.push(n);
+			} else if (nd === d + 1) {
+				const ps = parents.get(n)!;
+				if (!ps.includes(cur)) ps.push(cur);
+			}
+		}
+	}
+
+	let D = Infinity;
+	for (const t of targets) {
+		const d = dist.get(t);
+		if (d !== undefined && d < D) D = d;
+	}
+	if (D === Infinity) return null;
+
+	const goalsAtD: string[] = [];
+	for (const t of targets) {
+		if (dist.get(t) === D) goalsAtD.push(t);
+	}
+
+	const out = new Set<string>();
+	const stack = [...goalsAtD];
+	while (stack.length) {
+		const cur = stack.pop()!;
+		if (out.has(cur)) continue;
+		out.add(cur);
+		for (const p of parents.get(cur) ?? []) {
+			if (!out.has(p)) stack.push(p);
+		}
+	}
+	return out;
+}
+
 function bothEndsIn(
 	source: string,
 	target: string,
@@ -354,7 +418,27 @@ function planFile(
 ): FocusPlan {
 	const { fwd, rev } = buildAdjacency(graph);
 	const descendants = forwardClosure(graph, fwd, name);
-	const ancestors = reverseClosure(graph, rev, name);
+
+	// Ancestors: nodes on any shortest path spine → seed (forward), not full
+	// reverseBFS — shared hooks must not light every co-importer.
+	// Fallback to reverseClosure when spine is null or seed unreachable.
+	const targets = expandFileAliases(new Set([name]), graph.nodeRef);
+	const spine = graph.fileSpineName;
+	let ancestors: Set<string>;
+	if (spine) {
+		const pathNodes = shortestPathNodesFromSpine(fwd, spine, targets);
+		if (pathNodes) {
+			ancestors = expandFileAliases(
+				new Set([...pathNodes, ...targets]),
+				graph.nodeRef,
+			);
+		} else {
+			ancestors = reverseClosure(graph, rev, name);
+		}
+	} else {
+		ancestors = reverseClosure(graph, rev, name);
+	}
+
 	const packageParentFiles = expandFileAliases(descendants, graph.nodeRef);
 	const activeFiles = expandFileAliases(
 		new Set([...ancestors, ...descendants]),
