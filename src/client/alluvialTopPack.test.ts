@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { recomputeLinkBreadths, topPackColumns } from './alluvialTopPack.ts';
+import {
+	ALLUVIAL_LABEL_PAD,
+	alluvialPaddedViewBox,
+	recomputeLinkBreadths,
+	topPackColumns,
+} from './alluvialTopPack.ts';
 
 type N = {
 	name: string;
@@ -88,5 +93,19 @@ describe('recomputeLinkBreadths', () => {
 		expect(l2.y0).toBe(10 + 40 + 30); // mid of second 60-wide band on source
 		expect(l1.y1).toBe(10 + 20); // mid on t1 (only target link)
 		expect(l2.y1).toBe(60 + 30); // mid on t2
+	});
+});
+
+describe('alluvialPaddedViewBox', () => {
+	it('insets with label pad so hanging text clears edges', () => {
+		const vb = alluvialPaddedViewBox(800, 400);
+		expect(vb).toBe(
+			`${-ALLUVIAL_LABEL_PAD.left} ${-ALLUVIAL_LABEL_PAD.top} ${800 + ALLUVIAL_LABEL_PAD.left + ALLUVIAL_LABEL_PAD.right} ${400 + ALLUVIAL_LABEL_PAD.top + ALLUVIAL_LABEL_PAD.bottom}`,
+		);
+	});
+
+	it('returns null for invalid size', () => {
+		expect(alluvialPaddedViewBox(0, 400)).toBeNull();
+		expect(alluvialPaddedViewBox(800, -1)).toBeNull();
 	});
 });

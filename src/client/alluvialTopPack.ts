@@ -1,10 +1,8 @@
 /**
- * Post-process Carbon alluvial SVG so each column packs to the top.
- *
- * d3-sankey (used by Carbon) distributes leftover vertical space and runs
- * link-relaxation, which leaves sparse columns (File / Modules) floating
- * mid/low while the dense Importers column sits near the top. Shift every
- * column so its topmost node shares the global top y, then rewrite links.
+ * Post-process Carbon alluvial SVG after mount:
+ * 1. Top-pack columns (d3-sankey floats sparse File/Modules mid/low).
+ * 2. Pad the SVG viewBox so entry labels (“config.ts (186)”, “+ N more”)
+ *    are not clipped at the chart edges (category headers stay fine).
  */
 
 type SankeyLink = {
@@ -138,4 +136,65 @@ export function topPackAlluvialHolder(holder: HTMLElement): void {
 			horizontalLinkPath(link.source.x1, link.y0, link.target.x0, link.y1),
 		);
 	}
+}
+
+/** Default inset so hanging node labels clear the SVG clip edge. */
+export const ALLUVIAL_LABEL_PAD = {
+	top: 8,
+	right: 18,
+	bottom: 18,
+	left: 12,
+} as const;
+
+/**
+ * Build a viewBox that insets content (extra room for labels that hang
+ * outside node rects). Pure helper for tests.
+ */
+export function alluvialPaddedViewBox(
+	width: number,
+	height: number,
+	pad: { top: number; right: number; bottom: number; left: number } = ALLUVIAL_LABEL_PAD,
+): string | null {
+	if (!(width > 0) || !(height > 0)) return null;
+	const { top, right, bottom, left } = pad;
+	return `${-left} ${-top} ${width + left + right} ${height + top + bottom}`;
+}
+
+/**
+ * Expand the chart SVG viewBox so entry labels are not clipped at edges.
+ * Keeps width/height display size; content scales slightly to fit.
+ */
+export function padAlluvialSvg(
+	holder: HTMLElement,
+	pad: { top: number; right: number; bottom: number; left: number } = ALLUVIAL_LABEL_PAD,
+): void {
+	const svg = holder.querySelector('svg');
+	if (!svg) return;
+
+	const wAttr = svg.getAttribute('width');
+	const hAttr = svg.getAttribute('height');
+	const width =
+		(wAttr ? parseFloat(wAttr) : NaN) ||
+		svg.clientWidth ||
+		svg.getBoundingClientRect().width;
+	const height =
+		(hAttr ? parseFloat(hAttr) : NaN) ||
+		svg.clientHeight ||
+		svg.getBoundingClientRect().height;
+
+	const viewBox = alluvialPaddedViewBox(width, height, pad);
+	if (!viewBox) return;
+
+	svg.setAttribute('viewBox', viewBox);
+	svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+	// Avoid CSS/SVG default overflow clipping of hanging labels before scale
+	svg.style.overflow = 'visible';
+}
+
+/**
+ * Top-pack columns, then pad the SVG for label clearance.
+ */
+export function polishAlluvialHolder(holder: HTMLElement): void {
+	topPackAlluvialHolder(holder);
+	padAlluvialSvg(holder);
 }

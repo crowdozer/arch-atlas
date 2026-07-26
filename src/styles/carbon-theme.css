@@ -976,6 +976,11 @@ cds-inline-notification.atlas-inspect__banner {
   overflow: hidden;
 }
 
+/* Entry labels hang outside node rects; viewBox pad + visible SVG overflow */
+.atlas-stage__holder svg {
+  overflow: visible;
+}
+
 /* Hierarchical file tree */
 .atlas-tree {
   flex: 1;
