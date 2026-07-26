@@ -409,19 +409,45 @@ body.cds--g100 {
   font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
-cds-header {
+/* UI shell — zinc header with teal product name */
+cds-header,
+.atlas-header {
   --cds-background: #18181b;
+  --cds-background-hover: #27272a;
+  --cds-border-subtle: #27272a;
+  --cds-text-primary: #fafafa;
+  --cds-text-secondary: #a1a1aa;
+  --cds-link-primary: #fafafa;
+  --cds-link-primary-hover: #2dd4bf;
+  background: #18181b;
   border-block-end: 1px solid #27272a;
+  /* Light-DOM siblings (tagline / on-device note) sit beside HeaderName */
+  display: flex;
+  align-items: center;
+  min-block-size: 3rem;
+  padding-inline: 1rem;
+  width: 100%;
 }
 
-.ui-header-name {
-  color: #fafafa !important;
+.atlas-header__tagline {
+  margin-inline-start: 0.75rem;
+}
+
+.atlas-header__note {
+  margin-inline-start: auto;
+}
+
+/* Carbon header-name: prefix "Arch" (zinc) + product slot "Atlas" (teal) */
+.ui-header-name,
+cds-header-name.ui-header-name {
+  color: #2dd4bf !important;
   font-weight: 600;
   letter-spacing: 0.02em;
+  --cds-link-primary: #2dd4bf;
 }
 
-.ui-header-name span {
-  color: #2dd4bf;
+cds-header-name.ui-header-name::part(prefix) {
+  color: #fafafa;
 }
 
 /* Tiles */
@@ -505,31 +531,19 @@ cds-header {
   cursor: pointer;
 }
 
+/* Back is now cds-button ghost — keep layout + hide when at root */
 .atlas-alluvial-back {
   margin-top: 0.15rem;
-  border-radius: 0.25rem;
-  border: 1px solid rgb(63 63 70);
-  background: rgb(39 39 42);
-  padding: 0.25rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgb(204 251 241); /* teal-100 */
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-
-.atlas-alluvial-back:hover:not(:disabled) {
-  border-color: rgb(20 184 166);
-  background: rgb(24 24 27);
-  color: rgb(45 212 191);
-}
-
-.atlas-alluvial-back:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  flex-shrink: 0;
 }
 
 .atlas-alluvial-back.hidden {
-  display: none;
+  display: none !important;
+}
+
+/* Ghost clear-session in subbar */
+.atlas-reset {
+  flex-shrink: 0;
 }
 
 /* —— Workspace shell: left drawer + full-bleed stage —— */
@@ -593,23 +607,20 @@ cds-header {
   padding: 0 0.75rem 0.75rem;
 }
 
-.atlas-input {
+/* Tree filter: Carbon search fills drawer tools row */
+.atlas-tree-search,
+cds-search.atlas-tree-search {
+  display: block;
   width: 100%;
-  border-radius: 0.25rem;
-  border: 1px solid #3f3f46;
-  background: #09090b;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.8125rem;
-  color: #e4e4e7;
-}
-
-.atlas-input::placeholder {
-  color: #52525b;
-}
-
-.atlas-input:focus {
-  outline: none;
-  border-color: #14b8a6;
+  max-width: 100%;
+  --cds-field: #09090b;
+  --cds-field-hover: #18181b;
+  --cds-border-strong: #3f3f46;
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-text-placeholder: #52525b;
+  --cds-icon-primary: #a1a1aa;
+  --cds-focus: #2dd4bf;
 }
 
 .atlas-section-label {
@@ -794,15 +805,13 @@ cds-dropdown.atlas-stage__precision {
   font-size: 0.75rem;
 }
 
-.atlas-inspect__banner {
+/* Inspect banner is cds-inline-notification */
+.atlas-inspect__banner,
+cds-inline-notification.atlas-inspect__banner {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.25rem;
-  border: 1px solid #854d0e;
-  background: #422006;
-  color: #fde68a;
-  font-size: 0.75rem;
-  line-height: 1.4;
 }
 
 .atlas-inspect__list {
@@ -1083,19 +1092,26 @@ cds-dropdown.atlas-stage__precision {
   gap: 0.5rem;
 }
 
-.atlas-edge-badge {
+/* Edge badges are cds-tag teal — keep alignment in list rows */
+.atlas-edge-badge,
+cds-tag.atlas-edge-badge {
   flex-shrink: 0;
   margin-top: 0.1rem;
-  border-radius: 999px;
-  border: 1px solid #3f3f46;
-  background: rgb(24 24 27 / 0.9);
-  padding: 0.1rem 0.4rem;
-  font-size: 0.65rem;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #5eead4; /* teal-300 */
-  letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+.atlas-summary-tag,
+cds-tag.atlas-summary-tag {
+  flex-shrink: 0;
+}
+
+/* Upload / catalog warning stack */
+.atlas-warning-notification,
+cds-inline-notification.atlas-warning-notification {
+  display: block;
+  width: 100%;
+  max-width: 100%;
 }
 
 .atlas-catalog-hint {
@@ -1146,31 +1162,46 @@ cds-dropdown.atlas-stage__precision {
   }
 }
 
-/* Drop zone */
-.atlas-drop {
-  border: 1px dashed #3f3f46;
-  border-radius: 0.5rem;
-  padding: 2.5rem 1.5rem;
-  text-align: center;
-  background: rgb(24 24 27 / 0.6);
-  transition: border-color 150ms ease, background 150ms ease;
+/* Carbon file uploader drop area — zinc layer + teal focus */
+.atlas-drop-host,
+.atlas-file-uploader,
+cds-file-uploader.atlas-file-uploader {
+  display: block;
+  width: 100%;
+  --cds-text-primary: #f4f4f5;
+  --cds-text-secondary: #a1a1aa;
+  --cds-link-primary: #2dd4bf;
+  --cds-link-primary-hover: #5eead4;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-layer: #18181b;
 }
 
-.atlas-drop.is-active {
-  border-color: #2dd4bf;
-  background: rgb(13 148 136 / 0.08);
+.atlas-file-drop,
+cds-file-uploader-drop-container.atlas-file-drop {
+  display: block;
+  width: 100%;
+  min-block-size: 8rem;
+  --cds-link-primary: #e4e4e7;
+  --cds-link-primary-hover: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-layer: rgb(24 24 27 / 0.6);
+  --cds-layer-hover: rgb(13 148 136 / 0.08);
 }
 
-.atlas-drop input[type='file'] {
-  display: none;
-}
-
-.atlas-persist__input {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  accent-color: #14b8a6; /* teal-500 */
-  cursor: pointer;
+/* Persist checkbox spacing under upload form */
+.atlas-persist,
+cds-checkbox.atlas-persist {
+  display: block;
+  width: 100%;
+  max-width: 36rem;
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-interactive: #14b8a6;
 }
 
 /* Built-in demo cards on upload step */
@@ -1186,6 +1217,7 @@ cds-dropdown.atlas-stage__precision {
   }
 }
 
+/* Demo cards: Carbon layer tokens (button role kept for product demos) */
 .atlas-demo__card {
   display: flex;
   flex-direction: column;
@@ -1193,10 +1225,10 @@ cds-dropdown.atlas-stage__precision {
   gap: 0.35rem;
   text-align: left;
   padding: 0.85rem 0.9rem;
-  border-radius: 0.5rem;
-  border: 1px solid #27272a;
-  background: rgb(24 24 27 / 0.75);
-  color: #e4e4e7;
+  border-radius: 0.25rem;
+  border: 1px solid var(--cds-border-subtle, #27272a);
+  background: var(--cds-layer, rgb(24 24 27 / 0.75));
+  color: var(--cds-text-primary, #e4e4e7);
   cursor: pointer;
   font: inherit;
   transition: border-color 150ms ease, background 150ms ease;
@@ -1205,6 +1237,11 @@ cds-dropdown.atlas-stage__precision {
 .atlas-demo__card:hover {
   border-color: #2dd4bf;
   background: rgb(13 148 136 / 0.1);
+}
+
+.atlas-demo__card:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 2px;
 }
 
 .atlas-demo__tag {
@@ -1237,4 +1274,9 @@ cds-dropdown.atlas-stage__precision {
   letter-spacing: 0.08em;
   color: #2dd4bf;
   font-weight: 600;
+}
+
+/* List empty states — muted Carbon secondary text */
+.atlas-catalog .text-xs.text-zinc-600 {
+  color: var(--cds-text-secondary, #71717a);
 }

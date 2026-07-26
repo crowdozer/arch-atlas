@@ -115,12 +115,15 @@ function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
 	return true;
 }
 
-function persistCheckbox(): HTMLInputElement | null {
-	return $('atlas-persist') as HTMLInputElement | null;
+/** Carbon cds-checkbox host (checked is a property, not a native input). */
+function persistCheckbox(): (HTMLElement & { checked?: boolean }) | null {
+	return $('atlas-persist') as (HTMLElement & { checked?: boolean }) | null;
 }
 
 function isPersistEnabled(): boolean {
-	return persistCheckbox()?.checked ?? readPersistPreference();
+	const el = persistCheckbox();
+	if (!el) return readPersistPreference();
+	return Boolean(el.checked);
 }
 
 /** Write session when the remember checkbox is on; no-op otherwise. */
@@ -148,10 +151,14 @@ function showWarnings(warnings: string[]) {
 	if (!host) return;
 	host.innerHTML = '';
 	for (const w of warnings) {
-		const p = document.createElement('p');
-		p.className = 'text-xs text-amber-400';
-		p.textContent = w;
-		host.appendChild(p);
+		const n = document.createElement('cds-inline-notification');
+		n.setAttribute('kind', 'warning');
+		n.setAttribute('title', 'Warning');
+		n.setAttribute('subtitle', w);
+		n.setAttribute('low-contrast', '');
+		n.setAttribute('hide-close-button', '');
+		n.classList.add('atlas-warning-notification');
+		host.appendChild(n);
 	}
 }
 
@@ -233,11 +240,14 @@ function statusForView(view: AtlasView): string {
 }
 
 function updateBackButton(): void {
-	const btn = $('atlas-alluvial-back') as HTMLButtonElement | null;
+	const btn = $('atlas-alluvial-back') as (HTMLElement & { disabled?: boolean }) | null;
 	if (!btn) return;
 	const deep = viewStack.length > 1;
 	btn.classList.toggle('hidden', !deep);
+	// cds-button reflects disabled as property + attribute
 	btn.disabled = !deep;
+	if (deep) btn.removeAttribute('disabled');
+	else btn.setAttribute('disabled', '');
 }
 
 function updateCaption(view: AtlasView | null): void {
@@ -482,9 +492,13 @@ function openInspectModal(
 		ev.blockers.some((b) => b.code === 'exact-not-implemented'),
 	);
 	if (anyExactBlocker) {
-		const banner = document.createElement('p');
-		banner.className = 'atlas-inspect__banner';
-		banner.textContent = EXACT_NOT_IMPLEMENTED_MESSAGE;
+		const banner = document.createElement('cds-inline-notification');
+		banner.setAttribute('kind', 'warning');
+		banner.setAttribute('title', 'Exact mode');
+		banner.setAttribute('subtitle', EXACT_NOT_IMPLEMENTED_MESSAGE);
+		banner.setAttribute('low-contrast', '');
+		banner.setAttribute('hide-close-button', '');
+		banner.classList.add('atlas-inspect__banner');
 		body.appendChild(banner);
 	}
 
@@ -705,13 +719,19 @@ function parseNotesFromGraph(): Map<string, string> {
 	return m;
 }
 
+/** Read cds-search / input value from the tree filter host. */
+function treeFilterValue(): string {
+	const el = $('atlas-tree-filter') as (HTMLElement & { value?: string }) | null;
+	if (!el) return '';
+	return typeof el.value === 'string' ? el.value : '';
+}
+
 function renderTree() {
 	const host = $('atlas-tree');
 	if (!host || !session) return;
 	host.replaceChildren();
 
-	const filter =
-		($('atlas-tree-filter') as HTMLInputElement | null)?.value ?? '';
+	const filter = treeFilterValue();
 	const paths = [...session.graph.files.keys()];
 	const tree = buildFileTree(paths, {
 		importParseable: parseableSetFromGraph(),
@@ -834,7 +854,21 @@ function edgeBadgeLabel(outDegree: number, inDegree: number): string {
 function edgeBadge(outDegree: number, inDegree: number): string {
 	const label = edgeBadgeLabel(outDegree, inDegree);
 	const title = `out ${outDegree} · in ${inDegree}`;
-	return `<span class="atlas-edge-badge" title="${escapeHtml(title)}">${label}</span>`;
+	return `<cds-tag type="teal" size="sm" class="atlas-edge-badge ui-tag" title="${escapeHtml(title)}">${escapeHtml(label)}</cds-tag>`;
+}
+
+/** Catalog / subbar chip via Carbon tag (dynamic create). */
+function makeSummaryTag(text: string, type: 'teal' | 'gray' = 'gray'): HTMLElement {
+	const tag = document.createElement('cds-tag');
+	tag.setAttribute('type', type);
+	tag.setAttribute('size', 'sm');
+	tag.classList.add('ui-tag', 'atlas-summary-tag');
+	tag.textContent = text;
+	return tag;
+}
+
+function badgeTagHtml(label: string, title: string): string {
+	return `<cds-tag type="teal" size="sm" class="atlas-edge-badge ui-tag" title="${escapeHtml(title)}">${escapeHtml(label)}</cds-tag>`;
 }
 
 function setAccordionTitle(id: string, title: string): void {
@@ -877,24 +911,12 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 
 	const tags = $('atlas-summary-tags');
 	if (tags) {
-		tags.innerHTML = '';
+		tags.replaceChildren();
 		for (const lang of catalog.summary.languages) {
-			const span = document.createElement('span');
-			span.className =
-				'rounded bg-zinc-800 px-2 py-0.5 text-[0.7rem] text-teal-300 ring-1 ring-zinc-700';
-			span.textContent = lang;
-			tags.appendChild(span);
+			tags.appendChild(makeSummaryTag(lang, 'teal'));
 		}
-		const obs = document.createElement('span');
-		obs.className =
-			'rounded bg-zinc-800 px-2 py-0.5 text-[0.7rem] text-zinc-400 ring-1 ring-zinc-700';
-		obs.textContent = 'Observed imports';
-		tags.appendChild(obs);
-		const inf = document.createElement('span');
-		inf.className =
-			'rounded bg-zinc-800 px-2 py-0.5 text-[0.7rem] text-zinc-400 ring-1 ring-zinc-700';
-		inf.textContent = 'Inferred starts';
-		tags.appendChild(inf);
+		tags.appendChild(makeSummaryTag('Observed imports', 'gray'));
+		tags.appendChild(makeSummaryTag('Inferred starts', 'gray'));
 	}
 
 	const hotspotsHost = $('atlas-hotspots');
@@ -942,7 +964,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(c.path)}</span>
-					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${edgesLabel}</span>
+					${badgeTagHtml(edgesLabel, detail)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
 			// Complexity trees open multi-hop when depth allows (same projector)
@@ -968,7 +990,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(d.path)}</span>
-					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${hopsLabel}</span>
+					${badgeTagHtml(hopsLabel, detail)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
 			btn.addEventListener('click', () => selectTreeStart(d.id));
@@ -1258,17 +1280,17 @@ function resetSession() {
 	const uploadStatus = $('atlas-upload-status');
 	if (uploadStatus) uploadStatus.textContent = '';
 	showWarnings([]);
-	const file = $('atlas-file') as HTMLInputElement | null;
-	if (file) file.value = '';
 }
 
 function wirePersistCheckbox(): void {
 	const box = persistCheckbox();
 	if (!box) return;
 	box.checked = readPersistPreference();
-	box.addEventListener('change', () => {
-		writePersistPreference(box.checked);
-		if (box.checked) {
+	// Carbon checkbox fires cds-checkbox-changed (not native change alone)
+	box.addEventListener('cds-checkbox-changed', () => {
+		const on = Boolean(box.checked);
+		writePersistPreference(on);
+		if (on) {
 			if (session) persistSessionIfEnabled();
 		} else {
 			clearPersistedSession();
@@ -1280,26 +1302,12 @@ function wireUi() {
 	wirePersistCheckbox();
 
 	const drop = $('atlas-drop');
-	const input = $('atlas-file') as HTMLInputElement | null;
-
-	input?.addEventListener('change', () => {
-		const f = input.files?.[0];
+	// Carbon file-uploader drop container: click + drag both emit this event
+	drop?.addEventListener('cds-file-uploader-drop-container-changed', ((e: Event) => {
+		const files = (e as CustomEvent<{ addedFiles?: File[] }>).detail?.addedFiles;
+		const f = files?.[0];
 		if (f) void handleZip(f);
-	});
-
-	if (drop) {
-		drop.addEventListener('dragover', (e) => {
-			e.preventDefault();
-			drop.classList.add('is-active');
-		});
-		drop.addEventListener('dragleave', () => drop.classList.remove('is-active'));
-		drop.addEventListener('drop', (e) => {
-			e.preventDefault();
-			drop.classList.remove('is-active');
-			const f = e.dataTransfer?.files?.[0];
-			if (f) void handleZip(f);
-		});
-	}
+	}) as EventListener);
 
 	$('atlas-reset')?.addEventListener('click', resetSession);
 
@@ -1382,10 +1390,14 @@ function wireUi() {
 		handleDemo('next-complex');
 	});
 
-	$('atlas-tree-filter')?.addEventListener('input', () => {
+	const treeFilter = $('atlas-tree-filter');
+	// Carbon search: cds-search-input; also listen for input if it bubbles
+	const onTreeFilter = () => {
 		if (!session) return;
 		renderTree();
-	});
+	};
+	treeFilter?.addEventListener('cds-search-input', onTreeFilter);
+	treeFilter?.addEventListener('input', onTreeFilter);
 
 	// Remount chart on resize so height tracks stage (keep current drill view)
 	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
