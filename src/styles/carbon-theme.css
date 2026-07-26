@@ -796,6 +796,14 @@ cds-header {
   display: none;
 }
 
+.atlas-persist__input {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: #14b8a6; /* teal-500 */
+  cursor: pointer;
+}
+
 .atlas-eyebrow {
   font-size: 0.7rem;
   text-transform: uppercase;

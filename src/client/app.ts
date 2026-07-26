@@ -1,6 +1,6 @@
 /**
  * Client controller: ZIP upload → index → catalog / tree / alluvial.
- * Analysis is local-only (in-memory session).
+ * Analysis is local-only; optional localStorage remember (upload checkbox).
  */
 import { AlluvialChart } from '@carbon/charts';
 import '@carbon/charts/styles.css';
@@ -19,6 +19,13 @@ import {
 	nodeMatchesFilter,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
+import {
+	clearPersistedSession,
+	loadPersistedSession,
+	readPersistPreference,
+	savePersistedSession,
+	writePersistPreference,
+} from './sessionStore.ts';
 import { treeIconSvg } from './treeIcons.ts';
 
 type Session = {
@@ -32,6 +39,21 @@ type Session = {
 
 let session: Session | null = null;
 let chart: InstanceType<typeof AlluvialChart> | null = null;
+
+function persistCheckbox(): HTMLInputElement | null {
+	return $('atlas-persist') as HTMLInputElement | null;
+}
+
+function isPersistEnabled(): boolean {
+	return persistCheckbox()?.checked ?? readPersistPreference();
+}
+
+/** Write session when the remember checkbox is on; no-op otherwise. */
+function persistSessionIfEnabled(): void {
+	if (!session || !isPersistEnabled()) return;
+	const result = savePersistedSession(session);
+	if (!result.ok) setStatus(result.reason);
+}
 
 function $(id: string): HTMLElement | null {
 	return document.getElementById(id);
@@ -178,6 +200,7 @@ function renderTreeNode(
 			if (!session) return;
 			if (session.expanded.has(node.path)) session.expanded.delete(node.path);
 			else session.expanded.add(node.path);
+			persistSessionIfEnabled();
 			renderTree();
 		});
 		wrap.appendChild(row);
@@ -296,7 +319,33 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 	}
 }
 
-function selectStart(startId: string) {
+function showWorkspaceShell(): void {
+	$('atlas-upload')?.classList.add('hidden');
+	// CSS: .atlas-workspace is display:flex; .atlas-workspace.hidden is none
+	$('atlas-workspace')?.classList.remove('hidden');
+	$('atlas-subbar')?.classList.remove('hidden');
+	$('atlas-subbar')?.classList.add('flex');
+}
+
+function activateSession(
+	next: Session,
+	statusLine: string,
+	opts?: { skipPersist?: boolean },
+): void {
+	session = next;
+	showWarnings(session.warnings);
+	showWorkspaceShell();
+	renderCatalog(session.catalog, session.startId);
+	if (session.startId) selectStart(session.startId, { skipPersist: true });
+	else {
+		renderTree();
+		setStatus(statusLine);
+	}
+	setStatus(statusLine);
+	if (!opts?.skipPersist) persistSessionIfEnabled();
+}
+
+function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
 	session.startId = startId;
 	// ensure parents of selected file are expanded
@@ -311,6 +360,7 @@ function selectStart(startId: string) {
 	const payload = alluvialForStart(session.graph, startId);
 	mountAlluvial(payload);
 	setStatus(`Start: ${startId}`);
+	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
 async function handleZip(file: File) {
@@ -327,29 +377,17 @@ async function handleZip(file: File) {
 		setStatus(`Indexing ${files.length} files…`);
 		const { graph, catalog } = indexFiles(files);
 		const paths = [...graph.files.keys()];
-		session = {
-			graph,
-			catalog,
-			startId: catalog.starts[0]?.id ?? null,
-			warnings: [
-				...warnings,
-				skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
-			].filter(Boolean),
-			expanded: expandPathsForFilter(paths, ''),
-		};
-		showWarnings(session.warnings);
-		$('atlas-upload')?.classList.add('hidden');
-		// CSS: .atlas-workspace is display:flex; .atlas-workspace.hidden is none
-		$('atlas-workspace')?.classList.remove('hidden');
-		$('atlas-subbar')?.classList.remove('hidden');
-		$('atlas-subbar')?.classList.add('flex');
-		renderCatalog(catalog, session.startId);
-		if (session.startId) selectStart(session.startId);
-		else {
-			renderTree();
-			setStatus('Indexed — no source starts found.');
-		}
-		setStatus(
+		activateSession(
+			{
+				graph,
+				catalog,
+				startId: catalog.starts[0]?.id ?? null,
+				warnings: [
+					...warnings,
+					skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
+				].filter(Boolean),
+				expanded: expandPathsForFilter(paths, ''),
+			},
 			`Indexed ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges`,
 		);
 	} catch (err) {
@@ -358,8 +396,47 @@ async function handleZip(file: File) {
 	}
 }
 
+function tryRestoreSession(): boolean {
+	if (!isPersistEnabled()) return false;
+	const stored = loadPersistedSession();
+	if (!stored) return false;
+	try {
+		setStatus('Restoring remembered project…');
+		const { graph, catalog } = indexFiles(stored.files);
+		const startId =
+			stored.startId && graph.files.has(stored.startId)
+				? stored.startId
+				: (catalog.starts[0]?.id ?? null);
+		const expanded = new Set(stored.expanded);
+		// Ensure tree has something open if nothing was stored
+		if (!expanded.size) {
+			for (const p of expandPathsForFilter([...graph.files.keys()], '')) {
+				expanded.add(p);
+			}
+		}
+		activateSession(
+			{
+				graph,
+				catalog,
+				startId,
+				warnings: stored.warnings,
+				expanded,
+			},
+			`Restored ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges (localStorage)`,
+			{ skipPersist: true },
+		);
+		return true;
+	} catch (err) {
+		console.error('[atlas] restore failed', err);
+		clearPersistedSession();
+		setStatus('Could not restore remembered project — upload again.');
+		return false;
+	}
+}
+
 function resetSession() {
 	session = null;
+	clearPersistedSession();
 	destroyChart();
 	const alluvial = $('atlas-alluvial');
 	if (alluvial) alluvial.replaceChildren();
@@ -376,7 +453,23 @@ function resetSession() {
 	if (file) file.value = '';
 }
 
+function wirePersistCheckbox(): void {
+	const box = persistCheckbox();
+	if (!box) return;
+	box.checked = readPersistPreference();
+	box.addEventListener('change', () => {
+		writePersistPreference(box.checked);
+		if (box.checked) {
+			if (session) persistSessionIfEnabled();
+		} else {
+			clearPersistedSession();
+		}
+	});
+}
+
 function wireUi() {
+	wirePersistCheckbox();
+
 	const drop = $('atlas-drop');
 	const input = $('atlas-file') as HTMLInputElement | null;
 
@@ -416,6 +509,8 @@ function wireUi() {
 			mountAlluvial(alluvialForStart(session.graph, session.startId));
 		}, 150);
 	});
+
+	tryRestoreSession();
 }
 
 wireUi();
