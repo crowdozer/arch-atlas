@@ -1,0 +1,48 @@
+---
+/**
+ * Display wrapper: Arch Atlas Search → cds-search.
+ * Pages never import raw cds-*.
+ */
+type Size = 'sm' | 'md' | 'lg';
+
+type Props = {
+	id?: string;
+	/** Accessible label (maps to label-text). */
+	labelText?: string;
+	/** Alias for labelText. */
+	'label-text'?: string;
+	placeholder?: string;
+	size?: Size;
+	value?: string;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	labelText,
+	'label-text': labelTextAttr,
+	placeholder = '',
+	size = 'md',
+	value,
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+
+const label = labelText ?? labelTextAttr ?? 'Search';
+---
+
+<cds-search
+	id={id}
+	label-text={label}
+	placeholder={placeholder}
+	size={size}
+	value={value}
+	disabled={disabled || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-search>

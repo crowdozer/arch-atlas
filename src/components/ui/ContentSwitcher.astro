@@ -1,0 +1,27 @@
+---
+/**
+ * Display wrapper: Arch Atlas ContentSwitcher → cds-content-switcher.
+ * Pages never import raw cds-*. Items via default slot (ContentSwitcherItem).
+ */
+type Size = 'sm' | 'md' | 'lg';
+
+type Props = {
+	id?: string;
+	size?: Size;
+	value?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	size = 'md',
+	value,
+	class: className,
+	...rest
+} = Astro.props;
+---
+
+<cds-content-switcher id={id} size={size} value={value} class={className} {...rest}>
+	<slot />
+</cds-content-switcher>

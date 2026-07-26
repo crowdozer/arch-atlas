@@ -1,0 +1,42 @@
+---
+/**
+ * Display wrapper: product notification → cds-inline-notification.
+ * Pages never import raw cds-*.
+ */
+type Kind = 'error' | 'info' | 'success' | 'warning';
+
+type Props = {
+	kind?: Kind;
+	title?: string;
+	subtitle?: string;
+	lowContrast?: boolean;
+	hideCloseButton?: boolean;
+	class?: string;
+	id?: string;
+	[key: string]: unknown;
+};
+
+const {
+	kind = 'info',
+	title = '',
+	subtitle,
+	lowContrast = false,
+	hideCloseButton = false,
+	class: className,
+	id,
+	...rest
+} = Astro.props;
+---
+
+<cds-inline-notification
+	id={id}
+	kind={kind}
+	title={title}
+	subtitle={subtitle}
+	low-contrast={lowContrast || undefined}
+	hide-close-button={hideCloseButton || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-inline-notification>

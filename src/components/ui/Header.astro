@@ -1,0 +1,17 @@
+---
+/**
+ * Display wrapper: Arch Atlas Header → cds-header.
+ * Compose with HeaderName / SkipToContent. Pages never import raw cds-*.
+ */
+type Props = {
+	id?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { id, class: className, ...rest } = Astro.props;
+---
+
+<cds-header id={id} class={className} {...rest}>
+	<slot />
+</cds-header>

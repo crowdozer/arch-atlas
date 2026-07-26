@@ -1,0 +1,18 @@
+---
+/**
+ * Display wrapper: Arch Atlas HeaderName → cds-header-name.
+ * prefix + default slot for product name.
+ */
+type Props = {
+	href?: string;
+	prefix?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { href = '/', prefix = '', class: className, ...rest } = Astro.props;
+---
+
+<cds-header-name href={href} prefix={prefix} class={className} {...rest}>
+	<slot />
+</cds-header-name>

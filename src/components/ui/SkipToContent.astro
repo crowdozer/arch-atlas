@@ -1,0 +1,16 @@
+---
+/**
+ * Display wrapper: Arch Atlas SkipToContent → cds-skip-to-content.
+ */
+type Props = {
+	href?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { href = '#main-content', class: className, ...rest } = Astro.props;
+---
+
+<cds-skip-to-content href={href} class={className} {...rest}>
+	<slot />
+</cds-skip-to-content>

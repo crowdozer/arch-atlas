@@ -3,7 +3,7 @@
  * Display wrapper: Arch Atlas Button → cds-button.
  * Pages never import raw cds-*.
  */
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tertiary';
+type Variant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 type Props = {
@@ -27,14 +27,17 @@ const {
 	...rest
 } = Astro.props;
 
-const kind =
-	variant === 'danger'
-		? 'danger'
+/** Map product variant → Carbon button kind (1:1 for standard kinds). */
+const kind: Variant =
+	variant === 'secondary'
+		? 'secondary'
 		: variant === 'tertiary'
 			? 'tertiary'
-			: variant === 'ghost' || variant === 'secondary'
+			: variant === 'ghost'
 				? 'ghost'
-				: 'primary';
+				: variant === 'danger'
+					? 'danger'
+					: 'primary';
 ---
 
 {

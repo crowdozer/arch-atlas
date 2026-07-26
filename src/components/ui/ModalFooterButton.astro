@@ -1,0 +1,33 @@
+---
+/**
+ * Display wrapper: cds-modal-footer-button.
+ * Pass-through for data-modal-primary-focus and other event-compatible attrs.
+ */
+type Kind = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger';
+
+type Props = {
+	id?: string;
+	kind?: Kind;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	kind = 'primary',
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+---
+
+<cds-modal-footer-button
+	id={id}
+	kind={kind}
+	disabled={disabled || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-modal-footer-button>

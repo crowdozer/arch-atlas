@@ -1,0 +1,43 @@
+---
+/**
+ * Display wrapper: Arch Atlas Checkbox → cds-checkbox.
+ * Pages never import raw cds-*.
+ */
+type Props = {
+	id?: string;
+	checked?: boolean;
+	disabled?: boolean;
+	/** Label text attribute (when not using the default slot). */
+	labelText?: string;
+	/** Alias for labelText. */
+	'label-text'?: string;
+	name?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	checked = false,
+	disabled = false,
+	labelText,
+	'label-text': labelTextAttr,
+	name,
+	class: className,
+	...rest
+} = Astro.props;
+
+const label = labelText ?? labelTextAttr;
+---
+
+<cds-checkbox
+	id={id}
+	checked={checked || undefined}
+	disabled={disabled || undefined}
+	label-text={label}
+	name={name}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-checkbox>

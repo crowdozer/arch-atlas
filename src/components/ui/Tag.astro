@@ -1,6 +1,7 @@
 ---
 /**
  * Display wrapper: product tone → cds-tag.
+ * Tones include teal/cyan for edge badges and summary chips.
  */
 export type TagTone =
 	| 'default'
@@ -10,7 +11,17 @@ export type TagTone =
 	| 'info'
 	| 'neutral'
 	| 'accent'
-	| 'highlight';
+	| 'highlight'
+	| 'teal'
+	| 'cyan'
+	| 'magenta'
+	| 'purple'
+	| 'blue'
+	| 'green'
+	| 'gray'
+	| 'cool-gray'
+	| 'warm-gray'
+	| 'red';
 
 type Props = {
 	tone?: TagTone;
@@ -22,19 +33,27 @@ type Props = {
 const { tone = 'default', size = 'sm', class: className, title } = Astro.props;
 
 const type =
-	tone === 'success'
+	tone === 'success' || tone === 'green'
 		? 'green'
-		: tone === 'warning'
+		: tone === 'warning' || tone === 'warm-gray'
 			? 'warm-gray'
-			: tone === 'danger'
+			: tone === 'danger' || tone === 'red'
 				? 'red'
-				: tone === 'info' || tone === 'highlight'
+				: tone === 'info' || tone === 'highlight' || tone === 'blue'
 					? 'blue'
-					: tone === 'neutral'
+					: tone === 'neutral' || tone === 'gray' || tone === 'default'
 						? 'gray'
-						: tone === 'accent'
+						: tone === 'accent' || tone === 'purple'
 							? 'purple'
-							: 'gray';
+							: tone === 'teal'
+								? 'teal'
+								: tone === 'cyan'
+									? 'cyan'
+									: tone === 'magenta'
+										? 'magenta'
+										: tone === 'cool-gray'
+											? 'cool-gray'
+											: 'gray';
 ---
 
 <cds-tag type={type} size={size} class:list={['ui-tag', className]} title={title}>

@@ -1,0 +1,18 @@
+---
+/**
+ * Display wrapper: Arch Atlas DropdownItem → cds-dropdown-item.
+ * Pages never import raw cds-*.
+ */
+type Props = {
+	value: string;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { value, disabled = false, class: className, ...rest } = Astro.props;
+---
+
+<cds-dropdown-item value={value} disabled={disabled || undefined} class={className} {...rest}>
+	<slot />
+</cds-dropdown-item>

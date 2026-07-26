@@ -1,0 +1,34 @@
+---
+/**
+ * Display wrapper: Arch Atlas AccordionItem → cds-accordion-item.
+ * Pages never import raw cds-*.
+ */
+type Props = {
+	id?: string;
+	title?: string;
+	open?: boolean;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	title = '',
+	open = false,
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+---
+
+<cds-accordion-item
+	id={id}
+	title={title}
+	open={open || undefined}
+	disabled={disabled || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-accordion-item>

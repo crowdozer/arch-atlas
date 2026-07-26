@@ -1,0 +1,16 @@
+---
+/**
+ * Display wrapper: cds-modal-heading.
+ */
+type Props = {
+	id?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { id, class: className, ...rest } = Astro.props;
+---
+
+<cds-modal-heading id={id} class={className} {...rest}>
+	<slot />
+</cds-modal-heading>

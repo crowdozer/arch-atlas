@@ -1,0 +1,13 @@
+---
+/**
+ * Display wrapper: cds-modal-close-button.
+ */
+type Props = {
+	class?: string;
+	[key: string]: unknown;
+};
+
+const { class: className, ...rest } = Astro.props;
+---
+
+<cds-modal-close-button class={className} {...rest}></cds-modal-close-button>

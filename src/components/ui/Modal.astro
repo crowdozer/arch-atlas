@@ -1,0 +1,37 @@
+---
+/**
+ * Display wrapper: Arch Atlas Modal → cds-modal.
+ * Compose with ModalHeader / ModalBody / ModalFooter sub-wrappers.
+ * Pages never import raw cds-*.
+ */
+type Size = 'xs' | 'sm' | 'md' | 'lg';
+
+type Props = {
+	id?: string;
+	size?: Size;
+	open?: boolean;
+	alert?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	size = 'md',
+	open = false,
+	alert = false,
+	class: className,
+	...rest
+} = Astro.props;
+---
+
+<cds-modal
+	id={id}
+	size={size}
+	open={open || undefined}
+	alert={alert || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-modal>

@@ -1,0 +1,59 @@
+---
+/**
+ * Display wrapper: Arch Atlas Dropdown → cds-dropdown.
+ * Pages never import raw cds-*. Items via default slot (DropdownItem).
+ */
+type Size = 'sm' | 'md' | 'lg';
+
+type Props = {
+	id?: string;
+	size?: Size;
+	value?: string;
+	/** Field label (maps to title-text). */
+	titleText?: string;
+	'title-text'?: string;
+	/** Alias / legacy label-text (also maps to title-text when titleText unset). */
+	labelText?: string;
+	'label-text'?: string;
+	hideLabel?: boolean;
+	'hide-label'?: boolean;
+	helperText?: string;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	size = 'md',
+	value,
+	titleText,
+	'title-text': titleTextAttr,
+	labelText,
+	'label-text': labelTextAttr,
+	hideLabel,
+	'hide-label': hideLabelAttr,
+	helperText,
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+
+const title = titleText ?? titleTextAttr ?? labelText ?? labelTextAttr ?? '';
+const hide = hideLabel ?? hideLabelAttr ?? false;
+---
+
+<cds-dropdown
+	id={id}
+	size={size}
+	value={value}
+	title-text={title}
+	label-text={labelText ?? labelTextAttr ?? title}
+	hide-label={hide || undefined}
+	helper-text={helperText}
+	disabled={disabled || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-dropdown>
