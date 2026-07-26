@@ -859,8 +859,8 @@ function renderTreeNode(
 		row.type = 'button';
 		row.className = 'atlas-tree__row atlas-tree__row--dir';
 		if (node.unparseable) row.classList.add('is-unparseable');
-		// Purple only for expanded folders that lead to the selected file
-		if (open && onActivePath && !node.unparseable) {
+		// Purple for folders on the path to the selected file (expanded or collapsed)
+		if (onActivePath && !node.unparseable) {
 			row.classList.add('is-active-path');
 		}
 		row.style.paddingLeft = `${0.4 + depth * 0.85}rem`;

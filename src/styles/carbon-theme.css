@@ -1123,8 +1123,8 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 /*
- * Breadcrumb path only: expanded folders that lead to the active file.
- * Other expanded folders stay white like collapsed ones.
+ * Breadcrumb path: folders leading to the active file (expanded or collapsed).
+ * Other folders stay white.
  */
 .atlas-tree__row--dir.is-active-path {
   color: var(--atlas-select, #c4b5fd);
