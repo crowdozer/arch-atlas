@@ -28,7 +28,7 @@ export type WeightResolution =
 			message: string;
 	  };
 
-const DEFAULT_AXIS: WeightAxis = 'import-edges';
+const DEFAULT_AXIS: WeightAxis = 'importer-loc';
 const DEFAULT_PRECISION: LocPrecision = 'estimate';
 
 export const EXACT_NOT_IMPLEMENTED_MESSAGE =
