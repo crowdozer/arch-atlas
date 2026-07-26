@@ -19,6 +19,7 @@ import ModalFooter from '../components/ui/ModalFooter.astro';
 import ModalFooterButton from '../components/ui/ModalFooterButton.astro';
 import FileUploader from '../components/ui/FileUploader.astro';
 import FileUploaderDropContainer from '../components/ui/FileUploaderDropContainer.astro';
+import Tag from '../components/ui/Tag.astro';
 ---
 
 <Layout title="Arch Atlas">
@@ -35,10 +36,10 @@ import FileUploaderDropContainer from '../components/ui/FileUploaderDropContaine
 			<div class="atlas-lang-row mb-6" aria-label="Supported languages">
 				<span class="atlas-lang-row__label">Supported languages</span>
 				<div class="atlas-lang-row__chips">
-					<span class="atlas-lang-chip">TypeScript</span>
-					<span class="atlas-lang-chip">JavaScript</span>
-					<span class="atlas-lang-chip">TSX</span>
-					<span class="atlas-lang-chip">JSX</span>
+					<Tag tone="teal" size="sm">TypeScript</Tag>
+					<Tag tone="teal" size="sm">JavaScript</Tag>
+					<Tag tone="teal" size="sm">TSX</Tag>
+					<Tag tone="teal" size="sm">JSX</Tag>
 				</div>
 			</div>
 
@@ -73,7 +74,7 @@ import FileUploaderDropContainer from '../components/ui/FileUploaderDropContaine
 						data-demo="react-simple"
 					>
 						<span class="atlas-demo__inner">
-							<span class="atlas-demo__tag">Low complexity</span>
+							<Tag tone="teal" size="sm">Low complexity</Tag>
 							<span class="atlas-demo__title">React app</span>
 							<span class="atlas-demo__blurb">
 								Vite + React Router: pages, hooks, api, shared lib. Clean layers.
@@ -87,7 +88,7 @@ import FileUploaderDropContainer from '../components/ui/FileUploaderDropContaine
 						data-demo="next-complex"
 					>
 						<span class="atlas-demo__inner">
-							<span class="atlas-demo__tag atlas-demo__tag--high">High complexity</span>
+							<Tag tone="yellow" size="sm">High complexity</Tag>
 							<span class="atlas-demo__title">Next.js app</span>
 							<span class="atlas-demo__blurb">
 								App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
