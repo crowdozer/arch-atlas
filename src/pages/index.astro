@@ -311,28 +311,25 @@ import Tag from '../components/ui/Tag.astro';
 							role="group"
 							aria-label="Click mode"
 						>
-							<Button
+							<!-- Native buttons: aria-pressed must live on the focusable control (cds-button shadow does not forward it). -->
+							<button
 								id="atlas-mode-drill"
-								variant="ghost"
-								size="sm"
 								type="button"
 								class="atlas-stage__mode-btn is-active"
 								data-mode="drill"
 								aria-pressed="true"
 							>
 								Drill
-							</Button>
-							<Button
+							</button>
+							<button
 								id="atlas-mode-inspect"
-								variant="ghost"
-								size="sm"
 								type="button"
 								class="atlas-stage__mode-btn"
 								data-mode="inspect"
 								aria-pressed="false"
 							>
 								Inspect
-							</Button>
+							</button>
 						</div>
 					</div>
 				</div>
