@@ -1,0 +1,43 @@
+---
+/**
+ * Display wrapper: Arch Atlas FileUploader → cds-file-uploader.
+ * Compose with FileUploaderDropContainer. Pages never import raw cds-*.
+ */
+type Props = {
+	id?: string;
+	/** Title above the drop area (maps to label-title). */
+	labelTitle?: string;
+	'label-title'?: string;
+	/** Description under the title (maps to label-description). */
+	labelDescription?: string;
+	'label-description'?: string;
+	disabled?: boolean;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	labelTitle,
+	'label-title': labelTitleAttr,
+	labelDescription,
+	'label-description': labelDescriptionAttr,
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+
+const title = labelTitle ?? labelTitleAttr;
+const description = labelDescription ?? labelDescriptionAttr;
+---
+
+<cds-file-uploader
+	id={id}
+	label-title={title}
+	label-description={description}
+	disabled={disabled || undefined}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-file-uploader>

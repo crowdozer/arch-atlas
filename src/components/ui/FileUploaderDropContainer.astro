@@ -1,0 +1,38 @@
+---
+/**
+ * Display wrapper: Arch Atlas FileUploaderDropContainer →
+ * cds-file-uploader-drop-container. Slot = label text / light-DOM chrome.
+ */
+type Props = {
+	id?: string;
+	/** Accept string (e.g. ".zip,application/zip"). */
+	accept?: string;
+	multiple?: boolean;
+	disabled?: boolean;
+	name?: string;
+	class?: string;
+	[key: string]: unknown;
+};
+
+const {
+	id,
+	accept = '',
+	multiple = false,
+	disabled = false,
+	name,
+	class: className,
+	...rest
+} = Astro.props;
+---
+
+<cds-file-uploader-drop-container
+	id={id}
+	accept={accept}
+	multiple={multiple || undefined}
+	disabled={disabled || undefined}
+	name={name}
+	class={className}
+	{...rest}
+>
+	<slot />
+</cds-file-uploader-drop-container>
