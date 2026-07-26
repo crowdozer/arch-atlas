@@ -96,9 +96,11 @@ export function edgeWeight(
 
 /**
  * Carbon `units` string for the axis (honest names — see UI Weight dropdown).
+ * - import-edges: unit count of observed import edges
  * - importer-loc: whole-file LOC of the **importer** (`e.from`)
- * - target-loc: whole-file LOC of the **target** when file (`e.to`); packages = 1
- * Tree-shaken “imported surface LOC” is not an axis (UI-gated; needs LSP).
+ * - target-loc: whole-file LOC of the **imported module** when file (`e.to`);
+ *   packages = 1. UI label: “Imported LOC” (not tree-shaken).
+ * Tree-shaken “Imported LOC (Shaken)” is not an axis (UI-gated; needs LSP).
  */
 export function unitsForAxis(
 	axis: WeightAxis = DEFAULT_AXIS,
@@ -110,7 +112,7 @@ export function unitsForAxis(
 		case 'importer-loc':
 			return 'importer file LOC';
 		case 'target-loc':
-			return 'target file LOC (whole file; packages = 1)';
+			return 'imported LOC (whole file; packages = 1)';
 		default: {
 			const _exhaustive: never = axis;
 			return _exhaustive;
@@ -122,7 +124,7 @@ export function unitsForAxis(
 export const IMPORTED_SURFACE_LOC_UI = 'imported-loc' as const;
 
 export const IMPORTED_SURFACE_LOC_MESSAGE =
-	'Imported LOC (tree-shaken surface) requires a language server and is not implemented at Level-1. Use “Target file LOC” for whole-file size of the linked module, or “Importer file LOC” for the caller’s size.';
+	'Imported LOC (Shaken) — tree-shaken import surface — requires a language server and is not implemented at Level-1. Use “Imported LOC” for whole-file size of the linked module, or “Importer file LOC” for the caller’s size.';
 
 export function resolveWeightAxis(axis?: WeightAxis): WeightAxis {
 	return axis ?? DEFAULT_AXIS;

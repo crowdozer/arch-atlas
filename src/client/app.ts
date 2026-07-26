@@ -1510,7 +1510,7 @@ function wireUi() {
 				syncWeightDropdown(weightDropdown, weightAxis);
 				openUnavailableModal({
 					label: 'Weight',
-					heading: 'Imported LOC not available',
+					heading: 'Imported LOC (Shaken) not available',
 					body: IMPORTED_SURFACE_LOC_MESSAGE,
 				});
 				return;
