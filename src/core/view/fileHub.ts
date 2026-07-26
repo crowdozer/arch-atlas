@@ -5,8 +5,11 @@
  *
  *   Import hop N … → Imports → File → Exports → Export hop N
  *
- * - **Left (Imports, cyan):** who imports the focus (reverse BFS).
- * - **Right (Exports, yellow):** what the focus imports (forward / longest-path).
+ * - **Left (Imports, cyan):** who imports the focus (reverse BFS) **and**
+ *   packages/unresolved the focus itself imports (display: package → File).
+ * - **Right (Exports, yellow):** file-to-file outbound dependency tree
+ *   (forward / longest-path), plus package leaves of **intermediate** export
+ *   hop files (pin-far / per-hop). Focus packages are **not** export leaves.
  *
  * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
  *
@@ -18,11 +21,12 @@
  * Radius = depth (not multiHop’s depth−1). Asymmetric sides omit empty hop columns.
  * Indexing/scan stays unbounded.
  *
- * **Mass:** route focus-incident edge weights through consecutive rings.
- * File in-mass = reverse edge total; File out-mass = focus out-edge total
- * (including packages/unresolved from focus).
+ * **Mass (chart File node):**
+ * - File **in-mass** = reverse importer edges + focus package/unresolved out-edges
+ * - File **out-mass** = focus → **file** edges only
+ * Graph out-degree still counts packages; they sit on the import side of the chart.
  *
- * **Package leaves** ({@link PackageLeafMode}):
+ * **Package leaves** ({@link PackageLeafMode}) apply to export-tree intermediates:
  * - `pin-overdraw` (default): one node per package id, pinned at max hop among
  *   importers in the export tree; short parents pad through out-rails. May
  *   draw hop columns past Depth when a leaf sits further out.
@@ -257,13 +261,32 @@ export function projectFileHub(
 		}
 	}
 
-	// --- right: forward BFS (exports) + focus packages ---
-	if (outEdges.length) {
+	// --- left: focus package / unresolved imports (package → File) ---
+	const focusPkgEdges = outEdges.filter(
+		(e) => e.toKind === 'package' || e.toKind === 'unresolved',
+	);
+	if (focusPkgEdges.length) {
+		addFocusPackageImports({
+			graph,
+			fileLabel,
+			outEdges: focusPkgEdges,
+			maxPerHop: Math.min(48, maxDeps),
+			weightAxis,
+			addLink,
+			nodeRef,
+			nodeMeta,
+			usedNames,
+		});
+	}
+
+	// --- right: forward BFS (file deps only; intermediate packages pin-far) ---
+	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
+	if (fileOutEdges.length) {
 		addExportRings({
 			graph,
 			fileId,
 			fileLabel,
-			outEdges,
+			outEdges: fileOutEdges,
 			hubRadius,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
@@ -419,6 +442,95 @@ function edgeWeightIntoSet(
 		n += edgeWeight(e, graph, weightAxis);
 	}
 	return n;
+}
+
+/**
+ * Place focus-incident package/unresolved imports on the **Imports** side.
+ * Display links are package → File (so sankey sits left of File); graph edges
+ * remain file → package. Coexists with reverse-importer rings in the same
+ * Imports category family. Import-side teal/package colors (not export yellow).
+ */
+function addFocusPackageImports(
+	args: LinkBuilder & {
+		outEdges: ImportEdge[];
+		maxPerHop: number;
+	},
+): void {
+	const {
+		graph,
+		fileLabel,
+		outEdges,
+		maxPerHop,
+		weightAxis,
+		addLink,
+		nodeRef,
+		nodeMeta,
+		usedNames,
+	} = args;
+
+	type PkgEntry = {
+		preferredLabel: string;
+		weight: number;
+		ref: AlluvialNodeRef;
+		color: string;
+		key: string;
+	};
+	const byKey = new Map<string, PkgEntry>();
+	for (const e of outEdges) {
+		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
+		const w = edgeWeight(e, graph, weightAxis);
+		const pkgLabel =
+			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
+		const key = `${e.toKind}:${e.to}`;
+		const prev = byKey.get(key);
+		if (prev) prev.weight += w;
+		else {
+			byKey.set(key, {
+				key,
+				preferredLabel: pkgLabel,
+				weight: w,
+				ref: {
+					kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
+					id: e.to,
+				},
+				color:
+					e.toKind === 'unresolved' ? TEAL.unresolved : TEAL.package,
+			});
+		}
+	}
+
+	const ranked = [...byKey.values()].sort(
+		(a, b) =>
+			b.weight - a.weight || a.preferredLabel.localeCompare(b.preferredLabel),
+	);
+	const kept = ranked.slice(0, maxPerHop);
+	const overflow = ranked.slice(maxPerHop);
+
+	for (const entry of kept) {
+		const name = claimName(usedNames, entry.preferredLabel, entry.ref.kind);
+		// package → File (import-side orientation for sankey layer)
+		addLink(name, fileLabel, entry.weight);
+		nodeRef[name] = entry.ref;
+		nodeMeta.set(name, {
+			category: 'Imports',
+			color: entry.color,
+		});
+	}
+	if (overflow.length) {
+		const otherName = claimName(
+			usedNames,
+			moreCountLabel(overflow.length),
+			'import-pkgs',
+		);
+		for (const entry of overflow) {
+			addLink(otherName, fileLabel, entry.weight);
+		}
+		nodeRef[otherName] = { kind: 'bucket', id: 'other-import-pkgs' };
+		nodeMeta.set(otherName, {
+			category: 'Imports',
+			color: TEAL.other,
+		});
+	}
 }
 
 /**
@@ -719,32 +831,18 @@ function addExportRings(
 	};
 	/** Focus-incident file deps (seed mass), keyed by path. */
 	const fileSeed = new Map<string, number>();
-	/** Focus-incident packages (always on Exports / dist-1). */
+	/**
+	 * Focus packages are projected on Imports ({@link addFocusPackageImports}).
+	 * Export rings only place package leaves of intermediate export-tree files;
+	 * this map stays empty when callers pass file-only outEdges.
+	 */
 	const focusPackages = new Map<string, NonFileDep>();
 
 	for (const e of outEdges) {
+		// Focus packages belong on Imports; only file out-edges seed export rings.
+		if (e.toKind !== 'file') continue;
 		const w = edgeWeight(e, graph, weightAxis);
-		if (e.toKind === 'file') {
-			fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
-			continue;
-		}
-		const pkgLabel =
-			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const key = `${e.toKind}:${e.to}`;
-		const prev = focusPackages.get(key);
-		if (prev) prev.weight += w;
-		else {
-			focusPackages.set(key, {
-				key,
-				preferredLabel: pkgLabel,
-				weight: w,
-				ref: {
-					kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
-					id: e.to,
-				},
-				color: e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
-			});
-		}
+		fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
 	}
 
 	// Include every seed file even if longest dist exceeds radius (cap to radiusR)
@@ -962,8 +1060,9 @@ type PkgCand = {
 };
 
 /**
- * Legacy: focus packages on Exports; outer package leaves at each importer d+1
+ * Legacy per-hop: outer package leaves of export-tree files at each importer d+1
  * (one node per package id per hop). Never same-column as parent.
+ * Focus packages are not placed here (see {@link addFocusPackageImports}).
  */
 function routeExportMassPerHop(args: {
 	graph: CodeGraph;
@@ -1204,7 +1303,8 @@ function routeExportMassPerHop(args: {
 }
 
 /**
- * Pin-far: one display node per package id at max importer hop.
+ * Pin-far: one display node per package id at max importer hop among
+ * **export-tree** files. Focus packages use Imports (see {@link addFocusPackageImports}).
  * `overdraw` allows pin past hubRadius; otherwise clip and drop rim-colliding leaves.
  */
 function routeExportMassPinFar(args: {
