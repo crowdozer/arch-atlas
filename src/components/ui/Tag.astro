@@ -1,0 +1,42 @@
+---
+/**
+ * Display wrapper: product tone → cds-tag.
+ */
+export type TagTone =
+	| 'default'
+	| 'success'
+	| 'warning'
+	| 'danger'
+	| 'info'
+	| 'neutral'
+	| 'accent'
+	| 'highlight';
+
+type Props = {
+	tone?: TagTone;
+	size?: 'sm' | 'md' | 'lg';
+	class?: string;
+	title?: string;
+};
+
+const { tone = 'default', size = 'sm', class: className, title } = Astro.props;
+
+const type =
+	tone === 'success'
+		? 'green'
+		: tone === 'warning'
+			? 'warm-gray'
+			: tone === 'danger'
+				? 'red'
+				: tone === 'info' || tone === 'highlight'
+					? 'blue'
+					: tone === 'neutral'
+						? 'gray'
+						: tone === 'accent'
+							? 'purple'
+							: 'gray';
+---
+
+<cds-tag type={type} size={size} class:list={['ui-tag', className]} title={title}>
+	<slot />
+</cds-tag>

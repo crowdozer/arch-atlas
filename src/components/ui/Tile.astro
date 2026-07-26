@@ -1,0 +1,36 @@
+---
+/**
+ * Display wrapper: dense surface → cds-tile + light-DOM chrome.
+ */
+type TilePadding = 'sm' | 'md' | 'lg';
+
+type Props = {
+	muted?: boolean;
+	dashed?: boolean;
+	padding?: TilePadding;
+	class?: string;
+	id?: string;
+};
+
+const {
+	muted = false,
+	dashed = false,
+	padding = 'md',
+	class: className,
+	id,
+} = Astro.props;
+
+const hostClass = [
+	'ui-tile',
+	`ui-tile--padding-${padding}`,
+	dashed ? 'ui-tile--dashed' : null,
+	muted ? 'ui-tile--muted' : null,
+	className,
+]
+	.filter(Boolean)
+	.join(' ');
+---
+
+<cds-tile id={id} class={hostClass}>
+	<slot />
+</cds-tile>
