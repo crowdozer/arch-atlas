@@ -786,13 +786,16 @@ function padImportRailsInto(
 /**
  * Forward multi-hop: File → Exports → … → Export hop N.
  *
- * File columns use **longest simple path** so chains like focus→format→types
- * expand even when types is also a direct dep. Focus out-mass is conserved;
- * package leaves of intermediate files are structural (not File mass).
+ * Callers pass **file-only** outEdges (focus packages go through
+ * {@link addFocusPackageImports}). File columns use **longest simple path**
+ * so chains like focus→format→types expand even when types is also a direct
+ * dep. Focus file out-mass is conserved; package leaves of intermediate
+ * export-tree files are structural (not File mass).
  */
 function addExportRings(
 	args: LinkBuilder & {
 		fileId: string;
+		/** File→file out-edges only (packages handled on Imports). */
 		outEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
@@ -822,24 +825,9 @@ function addExportRings(
 	const { dist, maxHops } = fileLongestDistances(graph, fileId, fwdAdj);
 	const radiusR = Math.min(hubRadius, Math.max(maxHops, 1));
 
-	type NonFileDep = {
-		preferredLabel: string;
-		weight: number;
-		ref: AlluvialNodeRef;
-		color: string;
-		key: string;
-	};
 	/** Focus-incident file deps (seed mass), keyed by path. */
 	const fileSeed = new Map<string, number>();
-	/**
-	 * Focus packages are projected on Imports ({@link addFocusPackageImports}).
-	 * Export rings only place package leaves of intermediate export-tree files;
-	 * this map stays empty when callers pass file-only outEdges.
-	 */
-	const focusPackages = new Map<string, NonFileDep>();
-
 	for (const e of outEdges) {
-		// Focus packages belong on Imports; only file out-edges seed export rings.
 		if (e.toKind !== 'file') continue;
 		const w = edgeWeight(e, graph, weightAxis);
 		fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
@@ -997,16 +985,14 @@ function addExportRings(
 		mass.set(f, (mass.get(f) ?? 0) + w);
 	}
 
-	// --- Package leaves + mass routing ---
+	// --- Intermediate export-tree package leaves + mass routing ---
 	if (packageLeafMode === 'per-hop') {
 		routeExportMassPerHop({
 			graph,
-			fileLabel,
 			hubRadius,
 			radiusR,
 			maxPerHop,
 			weightAxis,
-			focusPackages,
 			keptByDist,
 			display,
 			dist,
@@ -1016,18 +1002,15 @@ function addExportRings(
 			addLink,
 			nodeRef,
 			nodeMeta,
-			padFromFile,
 		});
 	} else {
 		routeExportMassPinFar({
 			graph,
-			fileLabel,
 			hubRadius,
 			radiusR,
 			maxPerHop,
 			weightAxis,
 			overdraw: packageLeafMode === 'pin-overdraw',
-			focusPackages,
 			keptByDist,
 			display,
 			dist,
@@ -1037,20 +1020,11 @@ function addExportRings(
 			addLink,
 			nodeRef,
 			nodeMeta,
-			padFromFile,
 			padBetween,
 			ensureExportRailsUpTo,
 		});
 	}
 }
-
-type NonFileDep = {
-	preferredLabel: string;
-	weight: number;
-	ref: AlluvialNodeRef;
-	color: string;
-	key: string;
-};
 
 type PkgCand = {
 	preferredLabel: string;
@@ -1062,16 +1036,14 @@ type PkgCand = {
 /**
  * Legacy per-hop: outer package leaves of export-tree files at each importer d+1
  * (one node per package id per hop). Never same-column as parent.
- * Focus packages are not placed here (see {@link addFocusPackageImports}).
+ * Focus packages are placed on Imports ({@link addFocusPackageImports}).
  */
 function routeExportMassPerHop(args: {
 	graph: CodeGraph;
-	fileLabel: string;
 	hubRadius: number;
 	radiusR: number;
 	maxPerHop: number;
 	weightAxis: WeightAxis;
-	focusPackages: Map<string, NonFileDep>;
 	keptByDist: Map<number, string[]>;
 	display: Map<string, string>;
 	dist: Map<string, number>;
@@ -1081,16 +1053,13 @@ function routeExportMassPerHop(args: {
 	addLink: (source: string, target: string, value: number) => void;
 	nodeRef: Record<string, AlluvialNodeRef>;
 	nodeMeta: Map<string, { category: string; color: string }>;
-	padFromFile: (targetLab: string, d: number, w: number) => void;
 }): void {
 	const {
 		graph,
-		fileLabel,
 		hubRadius,
 		radiusR,
 		maxPerHop,
 		weightAxis,
-		focusPackages,
 		keptByDist,
 		display,
 		dist,
@@ -1101,39 +1070,6 @@ function routeExportMassPerHop(args: {
 		nodeRef,
 		nodeMeta,
 	} = args;
-
-	const focusPkgList = [...focusPackages.values()].sort(
-		(a, b) =>
-			b.weight - a.weight || a.preferredLabel.localeCompare(b.preferredLabel),
-	);
-	const dist1FileCount = keptByDist.get(1)?.length ?? 0;
-	const pkgBudget = Math.max(0, maxPerHop - dist1FileCount);
-	const keptPkgs = focusPkgList.slice(0, pkgBudget);
-	const overflowPkgs = focusPkgList.slice(pkgBudget);
-	for (const entry of keptPkgs) {
-		const name = claimName(usedNames, entry.preferredLabel, entry.ref.kind);
-		addLink(fileLabel, name, entry.weight);
-		nodeRef[name] = entry.ref;
-		nodeMeta.set(name, {
-			category: 'Exports',
-			color: entry.color,
-		});
-	}
-	if (overflowPkgs.length) {
-		const otherName = claimName(
-			usedNames,
-			moreCountLabel(overflowPkgs.length),
-			'export-pkgs',
-		);
-		for (const entry of overflowPkgs) {
-			addLink(fileLabel, otherName, entry.weight);
-		}
-		nodeRef[otherName] = { kind: 'bucket', id: 'other-export-pkgs' };
-		nodeMeta.set(otherName, {
-			category: 'Exports',
-			color: TEAL.exportOther,
-		});
-	}
 
 	const packageNodeAt = new Map<string, string>(); // `${pkgDist}\0${ref.id}`
 	const packageOverflowAt = new Map<number, string>();
@@ -1304,18 +1240,17 @@ function routeExportMassPerHop(args: {
 
 /**
  * Pin-far: one display node per package id at max importer hop among
- * **export-tree** files. Focus packages use Imports (see {@link addFocusPackageImports}).
+ * **export-tree** files only. Focus packages use Imports
+ * (see {@link addFocusPackageImports}).
  * `overdraw` allows pin past hubRadius; otherwise clip and drop rim-colliding leaves.
  */
 function routeExportMassPinFar(args: {
 	graph: CodeGraph;
-	fileLabel: string;
 	hubRadius: number;
 	radiusR: number;
 	maxPerHop: number;
 	weightAxis: WeightAxis;
 	overdraw: boolean;
-	focusPackages: Map<string, NonFileDep>;
 	keptByDist: Map<number, string[]>;
 	display: Map<string, string>;
 	dist: Map<string, number>;
@@ -1325,7 +1260,6 @@ function routeExportMassPinFar(args: {
 	addLink: (source: string, target: string, value: number) => void;
 	nodeRef: Record<string, AlluvialNodeRef>;
 	nodeMeta: Map<string, { category: string; color: string }>;
-	padFromFile: (targetLab: string, d: number, w: number) => void;
 	padBetween: (
 		fromLab: string,
 		fromDist: number,
@@ -1337,13 +1271,11 @@ function routeExportMassPinFar(args: {
 }): void {
 	const {
 		graph,
-		fileLabel,
 		hubRadius,
 		radiusR,
 		maxPerHop,
 		weightAxis,
 		overdraw,
-		focusPackages,
 		keptByDist,
 		display,
 		dist,
@@ -1353,7 +1285,6 @@ function routeExportMassPinFar(args: {
 		addLink,
 		nodeRef,
 		nodeMeta,
-		padFromFile,
 		padBetween,
 		ensureExportRailsUpTo,
 	} = args;
@@ -1365,8 +1296,7 @@ function routeExportMassPinFar(args: {
 		color: string;
 		/** Max natural hop (parentDist+1) before clip. */
 		pinNatural: number;
-		focusWeight: number;
-		/** Rank mass: focus + edges from kept files in radius. */
+		/** Rank mass: edges from kept export-tree files in radius. */
 		rank: number;
 	};
 
@@ -1379,7 +1309,6 @@ function routeExportMassPinFar(args: {
 		color: string,
 		naturalHop: number,
 		rankAdd: number,
-		focusAdd: number,
 	) => {
 		const prev = recs.get(key);
 		if (!prev) {
@@ -1389,27 +1318,13 @@ function routeExportMassPinFar(args: {
 				ref,
 				color,
 				pinNatural: naturalHop,
-				focusWeight: focusAdd,
 				rank: rankAdd,
 			});
 			return;
 		}
 		prev.pinNatural = Math.max(prev.pinNatural, naturalHop);
-		prev.focusWeight += focusAdd;
 		prev.rank += rankAdd;
 	};
-
-	for (const entry of focusPackages.values()) {
-		touch(
-			entry.key,
-			entry.preferredLabel,
-			entry.ref,
-			entry.color,
-			1,
-			entry.weight,
-			entry.weight,
-		);
-	}
 
 	const keptFiles = new Set<string>();
 	for (const list of keptByDist.values()) {
@@ -1436,7 +1351,6 @@ function routeExportMassPinFar(args: {
 				e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
 				d + 1,
 				w,
-				0,
 			);
 		}
 	}
@@ -1499,28 +1413,12 @@ function routeExportMassPinFar(args: {
 			category: exportHopCategory(overflowPin),
 			color: TEAL.exportOther,
 		});
-		// Stash for focus overflow mass
+		// Stash for parent-local overflow of export-tree packages
 		(displayByKey as Map<string, string>).set('__overflow__', otherName);
 		pinByKey.set('__overflow__', overflowPin);
 	}
 
 	if (maxPin > 1) ensureExportRailsUpTo(maxPin - 1);
-
-	// Focus package mass → pin nodes (pad short paths)
-	for (const entry of focusPackages.values()) {
-		if (keptKeys.has(entry.key)) {
-			const name = displayByKey.get(entry.key);
-			const pin = pinByKey.get(entry.key);
-			if (!name || pin == null) continue;
-			padFromFile(name, pin, entry.weight);
-			continue;
-		}
-		// Overflow
-		const name = displayByKey.get('__overflow__');
-		const pin = pinByKey.get('__overflow__');
-		if (!name || pin == null) continue;
-		padFromFile(name, pin, entry.weight);
-	}
 
 	// Route file mass: consecutive file children + pin-far packages
 	for (let d = 1; d <= radiusR; d++) {

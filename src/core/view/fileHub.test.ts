@@ -647,14 +647,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const importRrd = packageNodesOnCategory(payload, 'react-router-dom', 'Imports');
 		expect(importRrd).toHaveLength(1);
 		expect(importRrd[0]!.name).toBe('react-router-dom');
-		// Focus packages must not appear under Exports
-		const exportFocusRrd = packageNodesOnCategory(
-			payload,
-			'react-router-dom',
-			'Exports',
-		);
-		// Intermediate App may still contribute a pin-clipped leaf under Exports
-		// (disambiguated name if label collides). Focus mass is on Imports.
+		// Focus mass: package → File on Imports
 		expect(
 			payload.data.some(
 				(l) =>
@@ -662,13 +655,19 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 					l.target === payload.meta.focus.label,
 			),
 		).toBe(true);
+		// Export-tree pin-far: ≤1 node per package id if intermediate leaf appears
+		const exportRrd = packageNodesOnCategory(
+			payload,
+			'react-router-dom',
+			(c) => c === 'Exports' || c.startsWith('Export hop'),
+		);
+		expect(exportRrd.length).toBeLessThanOrEqual(1);
 		// No overdraw columns for pin-clip at depth 1
 		expect(
 			payload.options.alluvial.nodes.some((n) =>
 				n.category.startsWith('Export hop'),
 			),
 		).toBe(false);
-		void exportFocusRrd;
 	});
 
 	it('main.tsx pin-overdraw depth=1: focus on Imports; intermediate pin may overdraw', () => {
