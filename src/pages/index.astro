@@ -196,23 +196,27 @@ import Layout from '../layouts/Layout.astro';
 						</div>
 					</div>
 					<div class="atlas-stage__controls">
-						<cds-dropdown
-							id="atlas-weight-axis"
-							class="atlas-stage__weight"
-							size="sm"
-							type="inline"
-							label-text="Weight"
-							title-text="Weight"
-							value="import-edges"
-						>
-							<cds-dropdown-item value="import-edges">Import edges</cds-dropdown-item>
-							<cds-dropdown-item value="importer-loc"
-								>Importer lines of code</cds-dropdown-item
+						<div class="atlas-stage__control-group">
+							<span class="atlas-stage__control-label" id="atlas-weight-label">Weight</span>
+							<cds-dropdown
+								id="atlas-weight-axis"
+								class="atlas-stage__weight"
+								size="sm"
+								hide-label
+								label-text="Weight"
+								title-text="Weight"
+								value="import-edges"
+								aria-labelledby="atlas-weight-label"
 							>
-							<cds-dropdown-item value="target-loc"
-								>Imported file lines of code</cds-dropdown-item
-							>
-						</cds-dropdown>
+								<cds-dropdown-item value="import-edges">Import edges</cds-dropdown-item>
+								<cds-dropdown-item value="importer-loc"
+									>Importer lines of code</cds-dropdown-item
+								>
+								<cds-dropdown-item value="target-loc"
+									>Imported file lines of code</cds-dropdown-item
+								>
+							</cds-dropdown>
+						</div>
 						<cds-content-switcher
 							id="atlas-interaction-mode"
 							class="atlas-stage__mode"
@@ -240,13 +244,13 @@ import Layout from '../layouts/Layout.astro';
 		</section>
 	</div>
 
-	<cds-modal id="atlas-inspect-modal" size="lg" aria-label="Import evidence">
-		<cds-modal-header>
+	<cds-modal id="atlas-inspect-modal" class="atlas-inspect-modal" size="lg" aria-label="Import evidence">
+		<cds-modal-header class="atlas-inspect-modal__header">
 			<cds-modal-close-button></cds-modal-close-button>
 			<cds-modal-label>Observed imports</cds-modal-label>
 			<cds-modal-heading id="atlas-inspect-heading">Import evidence</cds-modal-heading>
 		</cds-modal-header>
-		<cds-modal-body>
+		<cds-modal-body class="atlas-inspect-modal__body">
 			<div id="atlas-inspect-body" class="atlas-inspect"></div>
 		</cds-modal-body>
 		<cds-modal-footer>

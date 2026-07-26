@@ -651,40 +651,115 @@ cds-header {
   border-block-end: 1px solid #27272a;
 }
 
-/* Weight + drill/inspect stay on one horizontal strip (right of caption) */
+/*
+ * Weight + Drill|Inspect: single horizontal strip, same height (sm = 2rem).
+ * External label + hide-label dropdown avoids Carbon form-item stacking
+ * the label above the field (which pushed the select under the switcher).
+ */
 .atlas-stage__controls {
   display: flex;
   flex: 0 0 auto;
+  flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
   min-width: 0;
+  height: 2rem;
+}
+
+.atlas-stage__control-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  height: 2rem;
+  min-width: 0;
+}
+
+.atlas-stage__control-label {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #a1a1aa; /* zinc-400 */
+  white-space: nowrap;
+  line-height: 2rem;
+  user-select: none;
 }
 
 /*
- * Carbon form-items default to flex: 1 1 auto (full width).
- * Keep host compact so Weight + Drill/Inspect sit on one line.
- * type="inline" lays label beside the field inside the host.
+ * Carbon form-items default to flex: 1 1 auto + column layout.
+ * Force a fixed field width and single-row host.
  */
 cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
-  flex: 0 0 auto !important;
-  flex-grow: 0 !important;
-  flex-shrink: 0 !important;
-  width: 14rem;
-  max-width: 14rem;
-  min-width: 0;
+  display: block !important;
+  flex: 0 0 12.5rem !important;
+  flex-direction: row !important;
+  width: 12.5rem !important;
+  max-width: 12.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
   align-self: center;
 }
 
 .atlas-stage__mode {
   flex: 0 0 auto;
   align-self: center;
+  height: 2rem;
+  /* Open menus should paint above neighboring controls */
+  position: relative;
+  z-index: 1;
 }
 
-/* Inspect modal body */
+cds-dropdown.atlas-stage__weight {
+  position: relative;
+  z-index: 2; /* open list above content-switcher */
+}
+
+/* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
+.atlas-inspect-modal cds-modal-header,
+.atlas-inspect-modal__header {
+  display: block;
+  box-sizing: border-box;
+  padding: 1rem 3rem 0.5rem 1rem;
+  margin: 0 0 0.25rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.atlas-inspect-modal cds-modal-label {
+  display: block;
+  margin: 0 0 0.25rem;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  line-height: 1.333;
+  letter-spacing: 0.02em;
+}
+
+.atlas-inspect-modal cds-modal-heading {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #f4f4f5;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.atlas-inspect-modal cds-modal-body,
+.atlas-inspect-modal__body {
+  display: block;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem 1rem;
+  margin: 0;
+}
+
+/* Inspect modal body content */
 .atlas-inspect {
   display: flex;
   flex-direction: column;
