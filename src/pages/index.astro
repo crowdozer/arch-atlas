@@ -19,7 +19,6 @@ import ModalFooter from '../components/ui/ModalFooter.astro';
 import ModalFooterButton from '../components/ui/ModalFooterButton.astro';
 import FileUploader from '../components/ui/FileUploader.astro';
 import FileUploaderDropContainer from '../components/ui/FileUploaderDropContainer.astro';
-import Tag from '../components/ui/Tag.astro';
 ---
 
 <Layout title="Arch Atlas">
@@ -30,16 +29,24 @@ import Tag from '../components/ui/Tag.astro';
 			<h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
 				Upload a repository
 			</h1>
-			<p class="mb-6 text-sm text-zinc-400">
-				Drop a ZIP of TypeScript or JavaScript. Parsing stays in your browser — no source
-				upload. You get a file tree, suggested alluvial starts/ends, and an import-surface map.
+			<p class="mb-4 text-sm text-zinc-400">
+				Drop a ZIP of your codebase. Analysis stays local — no remote uploads.
 			</p>
+			<div class="atlas-lang-row mb-6" aria-label="Supported languages">
+				<span class="atlas-lang-row__label">Supported languages</span>
+				<div class="atlas-lang-row__chips">
+					<span class="atlas-lang-chip">TypeScript</span>
+					<span class="atlas-lang-chip">JavaScript</span>
+					<span class="atlas-lang-chip">TSX</span>
+					<span class="atlas-lang-chip">JSX</span>
+				</div>
+			</div>
 
 			<div class="atlas-drop-host">
 				<FileUploader
 					class="atlas-file-uploader"
 					labelTitle="Repository ZIP"
-					labelDescription=".ts / .js projects — source stays on-device"
+					labelDescription="Source stays on-device"
 				>
 					<FileUploaderDropContainer
 						id="atlas-drop"
@@ -66,7 +73,7 @@ import Tag from '../components/ui/Tag.astro';
 						data-demo="react-simple"
 					>
 						<span class="atlas-demo__inner">
-							<Tag tone="teal" size="sm">Low complexity</Tag>
+							<span class="atlas-demo__tag">Low complexity</span>
 							<span class="atlas-demo__title">React app</span>
 							<span class="atlas-demo__blurb">
 								Vite + React Router: pages, hooks, api, shared lib. Clean layers.
@@ -80,7 +87,7 @@ import Tag from '../components/ui/Tag.astro';
 						data-demo="next-complex"
 					>
 						<span class="atlas-demo__inner">
-							<Tag tone="warning" size="sm">High complexity</Tag>
+							<span class="atlas-demo__tag atlas-demo__tag--high">High complexity</span>
 							<span class="atlas-demo__title">Next.js app</span>
 							<span class="atlas-demo__blurb">
 								App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
