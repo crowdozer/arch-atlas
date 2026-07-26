@@ -1,0 +1,51 @@
+---
+import '../styles/global.css';
+
+type Props = {
+	title?: string;
+	description?: string;
+};
+
+const {
+	title = 'Arch Atlas',
+	description = 'Local-first architecture compiler — upload a repository, explore an atlas',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="cds--g100">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="description" content={description} />
+		<title>{title}</title>
+	</head>
+	<body class="cds--g100 min-h-screen bg-zinc-950 text-zinc-50">
+		<a
+			href="#main-content"
+			class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-zinc-900 focus:px-3 focus:py-2 focus:text-teal-300"
+		>
+			Skip to content
+		</a>
+		<header
+			class="sticky top-0 z-40 flex h-12 items-center border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur"
+		>
+			<a href="/" class="ui-header-name text-sm tracking-wide text-zinc-50 no-underline">
+				Arch <span>Atlas</span>
+			</a>
+			<span class="ml-3 hidden text-xs text-zinc-500 sm:inline">
+				Local-first architecture compiler
+			</span>
+			<span class="ml-auto text-xs text-zinc-600">source stays on-device</span>
+		</header>
+		<main id="main-content" class="mx-auto w-full max-w-[100rem] px-4 py-6 sm:px-6">
+			<slot />
+		</main>
+		<script>
+			import '../components/ui/register.ts';
+		</script>
+	</body>
+</html>

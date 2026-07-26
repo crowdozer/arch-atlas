@@ -1,0 +1,64 @@
+---
+/**
+ * Display wrapper: Arch Atlas Button → cds-button.
+ * Pages never import raw cds-*.
+ */
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tertiary';
+type Size = 'sm' | 'md' | 'lg';
+
+type Props = {
+	variant?: Variant;
+	size?: Size;
+	type?: 'button' | 'submit' | 'reset';
+	href?: string;
+	disabled?: boolean;
+	class?: string;
+	id?: string;
+	[key: string]: unknown;
+};
+
+const {
+	variant = 'primary',
+	size = 'md',
+	type = 'button',
+	href,
+	disabled = false,
+	class: className,
+	...rest
+} = Astro.props;
+
+const kind =
+	variant === 'danger'
+		? 'danger'
+		: variant === 'tertiary'
+			? 'tertiary'
+			: variant === 'ghost' || variant === 'secondary'
+				? 'ghost'
+				: 'primary';
+---
+
+{
+	href ? (
+		<cds-button
+			kind={kind}
+			size={size}
+			href={href}
+			disabled={disabled || undefined}
+			class={className}
+			{...rest}
+		>
+			<slot />
+		</cds-button>
+	) : (
+		<cds-button
+			kind={kind}
+			size={size}
+			type={type}
+			disabled={disabled || undefined}
+			class={className}
+			{...rest}
+		>
+			<slot />
+		</cds-button>
+	)
+}
