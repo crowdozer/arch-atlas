@@ -111,8 +111,10 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
-	/** Hub pad free-source display names (see AlluvialPayload.meta.terminators). */
+	/** Reverse free-source pad targets (meta.terminators). */
 	terminators?: string[];
+	/** Forward true leaves on Imports / External (meta.exportTerminators). */
+	exportTerminators?: string[];
 }): AlluvialPayload | null {
 	const {
 		heightPx,
@@ -125,6 +127,7 @@ export function buildAlluvialPayload(args: {
 		units = 'package imports',
 		ariaLabel,
 		terminators,
+		exportTerminators,
 	} = args;
 	if (!links.length) return null;
 
@@ -180,6 +183,9 @@ export function buildAlluvialPayload(args: {
 			nodeRef,
 			nodeRank,
 			...(terminators?.length ? { terminators: [...terminators] } : {}),
+			...(exportTerminators?.length
+				? { exportTerminators: [...exportTerminators] }
+				: {}),
 		},
 	};
 }
@@ -229,19 +235,24 @@ export function isOutRailName(name: string): boolean {
 /**
  * Pad bands that should be undrawn (ghost columns).
  *
- * - Pure **in-rail↔in-rail** free-source scaffold
+ * - Pure rail↔rail (in or out)
  * - **External package hop pads**: parent → in-rail → External (topology only;
- *   polish redraws a straight parent→package band). Hub seeds are File→seed
- *   direct — in-rails on the import side are package pads only.
+ *   polish redraws a straight parent→package band)
+ * - **Reverse free-source pads**: any **out-rail** endpoint (hub only uses
+ *   out-rails for reverse free-source column alignment → undraw past/into
+ *   export-side terminators)
  *
- * Export File→out-rail→deep-target mass carriers stay painted.
+ * Real file↔file / File→seed bands stay painted.
  */
 export function isImportPadScaffoldLink(
 	source: string,
 	target: string,
 	meta?: { sourceCategory?: string; targetCategory?: string },
 ): boolean {
-	if (isInRailName(source) && isInRailName(target)) return true;
+	// Pure rail↔rail (either rail family)
+	if (isAlluvialRailName(source) && isAlluvialRailName(target)) return true;
+	// Reverse free-source scaffold (out-rail only role on tip)
+	if (isOutRailName(source) || isOutRailName(target)) return true;
 	// parent → in-rail (package External hop)
 	if (isInRailName(target)) return true;
 	// in-rail → External package/bucket

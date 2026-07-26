@@ -536,8 +536,9 @@ export function straightenExternalPackageBands(holder: HTMLElement): void {
 }
 
 /**
- * Mark reverse-hop free-source files that were pad targets (hub terminators).
- * CSS applies yellow stroke wrap; does not override File purple spine.
+ * Mark reverse free-source pad targets (Exports* free sources, left).
+ * CSS: **cyan** wrap — contrast on yellow export columns (not yellow-on-yellow).
+ * Does not override File purple spine.
  */
 export function markAlluvialTerminators(
 	holder: HTMLElement,
@@ -553,6 +554,29 @@ export function markAlluvialTerminators(
 		if (isAlluvialRailName(name)) continue;
 		const cat = (d as { category?: string }).category;
 		if (cat === 'File') continue;
+		// Cyan class (historical "export-terminator" name = cyan chrome)
+		el.classList.add('atlas-alluvial-export-terminator');
+	}
+}
+
+/**
+ * Mark forward true leaves (Imports* / External).
+ * CSS: **yellow** wrap — contrast on cyan import columns.
+ */
+export function markAlluvialExportTerminators(
+	holder: HTMLElement,
+	exportTerminators: readonly string[] | undefined,
+): void {
+	if (!exportTerminators?.length) return;
+	const set = new Set(exportTerminators);
+	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
+		const d = readData<{ name?: string }>(el);
+		const name = typeof d?.name === 'string' ? d.name : '';
+		if (!name || !set.has(name)) continue;
+		if (isAlluvialRailName(name)) continue;
+		const cat = (d as { category?: string }).category;
+		if (cat === 'File') continue;
+		// Yellow class (historical "terminator" name = yellow chrome)
 		el.classList.add('atlas-alluvial-terminator');
 	}
 }
@@ -744,8 +768,16 @@ export function polishAlluvialHolder(
 		centerHubFile?: boolean;
 		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
 		labelMaxChars?: number;
-		/** Hub meta.terminators — reverse-hop free-source pad targets. */
+		/**
+		 * Reverse free-source pad targets (Exports* left) → cyan wrap.
+		 * @see markAlluvialTerminators
+		 */
 		terminators?: readonly string[];
+		/**
+		 * Forward true leaves (Imports / External, right) → yellow wrap.
+		 * @see markAlluvialExportTerminators
+		 */
+		exportTerminators?: readonly string[];
 	},
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
@@ -753,7 +785,9 @@ export function polishAlluvialHolder(
 	hideAlluvialRails(holder);
 	// Undraw File→in-rail→External kinks, then paint straight parent→package
 	straightenExternalPackageBands(holder);
+	// Contrast: cyan on yellow Exports free sources; yellow on cyan Imports leaves
 	markAlluvialTerminators(holder, opts?.terminators);
+	markAlluvialExportTerminators(holder, opts?.exportTerminators);
 	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');

@@ -274,10 +274,16 @@ export type AlluvialPayload = {
 		nodeRef: Record<string, AlluvialNodeRef>;
 		nodeRank: Record<string, number>;
 		/**
-		 * Hub reverse-hop display names that were **padded** (no outer reverse
-		 * parent / free-source for pad rails). Polish marks these as terminators;
-		 * never includes rail ids.
+		 * Reverse free-source pad targets (Exports* free sources, left).
+		 * Polish: **cyan** wrap (contrast on yellow export columns).
+		 * Never includes rail ids.
 		 */
 		terminators?: string[];
+		/**
+		 * Forward true leaves (Imports* / External, right) with no non-rail
+		 * out-edge. Polish: **yellow** wrap (contrast on cyan import columns).
+		 * Never includes rail ids. Field name is historical (`exportTerminators`).
+		 */
+		exportTerminators?: string[];
 	};
 };

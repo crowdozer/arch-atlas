@@ -297,7 +297,7 @@ describe('projectFileHub demo-next-complex', () => {
 	 * No Carbon mount — gates payload contract only: rails exist for layout;
 	 * terminators list padded free-source files (not rail ids).
 	 */
-	it('redis depth 3: pad rails exist; terminators are non-rail files in nodeRef', () => {
+	it('redis depth 3: reverse terminators + forward leaves; rails not marked', () => {
 		const id = 'src/lib/redis.ts';
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
@@ -330,6 +330,31 @@ describe('projectFileHub demo-next-complex', () => {
 			expect(ref, `terminator ${t} in nodeRef`).toBeTruthy();
 			expect(ref!.kind, `terminator ${t} is a file`).toBe('file');
 		}
+
+		// Forward leaves (Imports/External) — yellow chrome list
+		const forward = payload.meta.exportTerminators ?? [];
+		expect(
+			forward.length,
+			'exportTerminators (forward leaves) non-empty',
+		).toBeGreaterThan(0);
+		for (const t of forward) {
+			expect(isAlluvialRailName(t)).toBe(false);
+			const cat = payload.options.alluvial.nodes.find((n) => n.name === t)
+				?.category;
+			expect(
+				cat === 'Imports' ||
+					cat === 'External' ||
+					(cat?.startsWith('Import hop') ?? false),
+				`forward leaf ${t} on import side, cat=${cat}`,
+			).toBe(true);
+		}
+		// ioredis package is a forward leaf
+		expect(
+			forward.some((n) => {
+				const ref = payload.meta.nodeRef[n];
+				return ref?.kind === 'package' && ref.id === 'ioredis';
+			}),
+		).toBe(true);
 	});
 
 	it('redis cascade hard law: logger+ioredis Imports; consumers Exports', () => {

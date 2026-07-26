@@ -125,8 +125,16 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 Paint law: pure rail↔rail undrawn; **External package hop** bands
 (`parent → in-rail → External`) are undrawn and **redrawn as a straight**
 `parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
-Imports column does not show a package kink. Rail **nodes** stay hidden.
-Packages remain sinks.
+Imports column does not show a package kink. **Out-rail free-source pads**
+(reverse column alignment into Exports free sources) are undrawn past/into
+terminators. Rail **nodes** stay hidden. Packages remain sinks.
+
+**Terminator chrome (contrast with column family):**
+
+| List | Nodes | Side | Wrap color |
+| ---- | ----- | ---- | ---------- |
+| `meta.terminators` | Reverse free-source pad targets | Exports* (yellow) | **Cyan** |
+| `meta.exportTerminators` | Forward true leaves (no non-rail out) | Imports* / External (cyan) | **Yellow** |
 
 **Never:** package free sources; packages on Export*; packages only reachable via
 undrawn pure rail↔rail scaffolds (floating External / wrong left headers).

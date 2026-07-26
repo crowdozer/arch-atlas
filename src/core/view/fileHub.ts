@@ -393,6 +393,9 @@ export function projectFileHub(
 			: []),
 	].filter((c) => present.has(c) || c === 'File');
 
+	// Forward true leaves (Imports*/External) for yellow contrast chrome
+	const exportTerminators = collectForwardTerminators(links, nodeRef, nodeMeta);
+
 	return buildAlluvialPayload({
 		heightPx,
 		links,
@@ -404,7 +407,46 @@ export function projectFileHub(
 		units,
 		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
 		terminators: terminators.length ? terminators : undefined,
+		exportTerminators: exportTerminators.length
+			? exportTerminators
+			: undefined,
 	});
+}
+
+/**
+ * Forward true leaves on Imports / Import hop / External: non-rail, non-bucket
+ * nodes with no out-edge to another non-rail node (packages + rim files).
+ * Polish applies **yellow** wrap (contrast on cyan import columns).
+ */
+function collectForwardTerminators(
+	links: { source: string; target: string; value: number }[],
+	nodeRef: Record<string, AlluvialNodeRef>,
+	nodeMeta: Map<string, { category: string; color: string }>,
+): string[] {
+	const isForwardCat = (cat: string | undefined): boolean =>
+		cat === 'Imports' ||
+		cat === EXTERNAL_IMPORT_CATEGORY ||
+		(cat?.startsWith('Import hop') ?? false);
+
+	const forwardNames: string[] = [];
+	for (const [name, meta] of nodeMeta) {
+		if (!isForwardCat(meta.category)) continue;
+		if (name.includes('·in-rail') || name.includes('·out-rail')) continue;
+		const ref = nodeRef[name];
+		if (!ref || ref.kind === 'bucket') continue;
+		forwardNames.push(name);
+	}
+	const forwardSet = new Set(forwardNames);
+
+	const continues = new Set<string>();
+	for (const l of links) {
+		if (!forwardSet.has(l.source)) continue;
+		if (l.target.includes('·in-rail') || l.target.includes('·out-rail')) continue;
+		// Any non-rail out-edge means the chain continues (file→file or file→pkg)
+		continues.add(l.source);
+	}
+
+	return forwardNames.filter((n) => !continues.has(n));
 }
 
 /**
