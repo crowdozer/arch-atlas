@@ -350,6 +350,11 @@ body.cds--g100,
   --atlas-select-soft: rgb(139 92 246 / 0.18); /* violet-500 @ 18% tile bg */
   --atlas-select-ring: rgb(167 139 250 / 0.45);
 
+  /* Drill-target affordance (hover preview of where a click navigates) */
+  --atlas-drill: #67e8f9; /* cyan-300 — label text */
+  --atlas-drill-strong: #22d3ee; /* cyan-400 — chip border */
+  --atlas-drill-deep: #155e75; /* cyan-800 — chip fill */
+
   --cds-background: #09090b; /* zinc-950 */
   --cds-background-hover: rgba(63, 63, 70, 0.35);
   --cds-background-active: rgba(63, 63, 70, 0.5);
@@ -594,6 +599,27 @@ cds-tag.ui-tag--yellow {
 
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine text.node-text {
   fill: var(--atlas-select, #c4b5fd) !important;
+  font-weight: 600;
+}
+
+/*
+ * Drill-target label (hover): cyan chip for the row a click would open.
+ * Exclude active File spine — purple selection wins there.
+ */
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-drill-target:not(.atlas-alluvial-file-spine)
+  rect.node-text-bg {
+  fill: rgb(21 94 117 / 0.92) !important; /* cyan-800 */
+  stroke: var(--atlas-drill-strong, #22d3ee);
+  stroke-width: 1px;
+}
+
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-drill-target:not(.atlas-alluvial-file-spine)
+  text.node-text {
+  fill: var(--atlas-drill, #67e8f9) !important;
   font-weight: 600;
 }
 

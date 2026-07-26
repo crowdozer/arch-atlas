@@ -511,10 +511,15 @@ function bindAlluvialLabelFocus(
 			if (title.style.display === 'none') continue;
 			title.style.opacity = '';
 			g.classList.remove('ui-alluvial-label-focus');
+			g.classList.remove('atlas-alluvial-drill-target');
 		}
 	};
 
-	const applyFocus = (active: Set<string>) => {
+	/**
+	 * Dim unfocused labels; cyan the row a click would drill into (if any).
+	 * Active File spine stays purple (CSS excludes it from drill paint).
+	 */
+	const applyFocus = (active: Set<string>, drillTarget: string | null) => {
 		holder.classList.add('ui-alluvial-label-dimming');
 		for (const g of holder.querySelectorAll('g.node-group')) {
 			const title = g.querySelector('g[id*="alluvial-node-title"]');
@@ -524,6 +529,10 @@ function bindAlluvialLabelFocus(
 			const on = name != null && active.has(name);
 			title.style.opacity = on ? '1' : ALLUVIAL_LABEL_UNFOCUS;
 			g.classList.toggle('ui-alluvial-label-focus', on);
+			g.classList.toggle(
+				'atlas-alluvial-drill-target',
+				drillTarget != null && name === drillTarget,
+			);
 		}
 	};
 
@@ -564,15 +573,26 @@ function bindAlluvialLabelFocus(
 	};
 
 	events.addEventListener('alluvial-line-mouseover', ((e: Event) => {
-		const names = namesFromLinkDatum(detailDatum(e));
-		if (names) applyFocus(names);
+		const datum = detailDatum(e);
+		const names = namesFromLinkDatum(datum);
+		if (!names) return;
+		const d = datum as {
+			source?: { name?: string } | string;
+			target?: { name?: string } | string;
+		} | null;
+		const sn = d ? linkEndpointName(d.source) : null;
+		const tn = d ? linkEndpointName(d.target) : null;
+		applyFocus(names, drillTargetFromLine(sn, tn));
 	}) as EventListener);
 	events.addEventListener('alluvial-line-mouseout', (() => {
 		clearFocus();
 	}) as EventListener);
 	events.addEventListener('alluvial-node-mouseover', ((e: Event) => {
-		const names = namesFromNodeDatum(detailDatum(e));
-		if (names) applyFocus(names);
+		const datum = detailDatum(e);
+		const names = namesFromNodeDatum(datum);
+		if (!names) return;
+		const name = datumName(datum);
+		applyFocus(names, name ? drillTargetFromNode(name) : null);
 	}) as EventListener);
 	events.addEventListener('alluvial-node-mouseout', (() => {
 		clearFocus();
@@ -581,6 +601,46 @@ function bindAlluvialLabelFocus(
 
 function refForName(name: string): AlluvialNodeRef | null {
 	return currentPayload?.meta.nodeRef[name] ?? null;
+}
+
+function isDrillableRef(ref: AlluvialNodeRef | null | undefined): boolean {
+	return !!ref && ref.kind !== 'bucket';
+}
+
+/**
+ * Node click drill target: the node itself when it has a non-bucket ref.
+ * Inspect mode never drills.
+ */
+function drillTargetFromNode(name: string): string | null {
+	if (interactionMode !== 'drill') return null;
+	return isDrillableRef(refForName(name)) ? name : null;
+}
+
+/**
+ * Line click drill target — same priority as handleLineClick:
+ * file target → package/unresolved/module source → package/unresolved/module
+ * target → file source.
+ */
+function drillTargetFromLine(
+	sourceName: string | null,
+	targetName: string | null,
+): string | null {
+	if (interactionMode !== 'drill') return null;
+
+	const sourceRef = sourceName ? refForName(sourceName) : null;
+	const targetRef = targetName ? refForName(targetName) : null;
+
+	if (targetRef?.kind === 'file') return targetName;
+	if (sourceRef?.kind === 'package' || sourceRef?.kind === 'unresolved') {
+		return sourceName;
+	}
+	if (sourceRef?.kind === 'module') return sourceName;
+	if (targetRef?.kind === 'package' || targetRef?.kind === 'unresolved') {
+		return targetName;
+	}
+	if (targetRef?.kind === 'module') return targetName;
+	if (sourceRef?.kind === 'file') return sourceName;
+	return null;
 }
 
 function sameView(a: AtlasView, b: AtlasView): boolean {
@@ -940,12 +1000,17 @@ function handleNodeClick(name: string): void {
 		inspectNode(name, ref);
 		return;
 	}
+	if (!isDrillableRef(ref)) {
+		setStatus(`Can't drill into aggregate “${name}”`);
+		return;
+	}
 	drillFromRef(ref, name);
 }
 
 /**
  * Line click: prefer file target, else package source, else module source, else package target.
  * Inspect mode opens import-line evidence instead of navigating.
+ * Priority is owned by {@link drillTargetFromLine} (shared with hover cyan).
  */
 function handleLineClick(sourceName: string | null, targetName: string | null): void {
 	if (interactionMode === 'inspect') {
@@ -953,33 +1018,15 @@ function handleLineClick(sourceName: string | null, targetName: string | null): 
 		return;
 	}
 
+	const drillName = drillTargetFromLine(sourceName, targetName);
+	if (drillName) {
+		const ref = refForName(drillName);
+		if (ref) drillFromRef(ref, drillName);
+		return;
+	}
+
 	const sourceRef = sourceName ? refForName(sourceName) : null;
 	const targetRef = targetName ? refForName(targetName) : null;
-
-	if (targetRef?.kind === 'file') {
-		drillFromRef(targetRef, targetName!);
-		return;
-	}
-	if (sourceRef?.kind === 'package' || sourceRef?.kind === 'unresolved') {
-		drillFromRef(sourceRef, sourceName!);
-		return;
-	}
-	if (sourceRef?.kind === 'module') {
-		drillFromRef(sourceRef, sourceName!);
-		return;
-	}
-	if (targetRef?.kind === 'package' || targetRef?.kind === 'unresolved') {
-		drillFromRef(targetRef, targetName!);
-		return;
-	}
-	if (targetRef?.kind === 'module') {
-		drillFromRef(targetRef, targetName!);
-		return;
-	}
-	if (sourceRef?.kind === 'file') {
-		drillFromRef(sourceRef, sourceName!);
-		return;
-	}
 	if (sourceRef?.kind === 'bucket' || targetRef?.kind === 'bucket') {
 		setStatus("Can't drill into aggregate band");
 		return;
