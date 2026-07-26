@@ -7,9 +7,13 @@
  *
  * - **Left (Imports, cyan):** who imports the focus (reverse BFS) **and**
  *   packages/unresolved the focus itself imports (display: package → File).
- * - **Right (Exports, yellow):** file-to-file outbound dependency tree
- *   (forward / longest-path), plus package leaves of **intermediate** export
- *   hop files (pin-far / per-hop). Focus packages are **not** export leaves.
+ * - **Right (Exports, yellow):** **file→file only** forward longest-path tree.
+ *   Packages of intermediate export-tree files are **not** export leaves —
+ *   re-hub that file to see its packages on Imports.
+ *
+ * **Cascade purity:** import hops must not absorb forward-only candidates;
+ * export hops must not absorb reverse importers or package/unresolved outs of
+ * any export-tree file (including terminals). Focus packages stay on Imports.
  *
  * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
  *
@@ -26,14 +30,9 @@
  * - File **out-mass** = focus → **file** edges only
  * Graph out-degree still counts packages; they sit on the import side of the chart.
  *
- * **Package leaves** ({@link PackageLeafMode}) apply to export-tree intermediates:
- * - `pin-overdraw` (default): one node per package id, pinned at max hop among
- *   importers in the export tree; short parents pad through out-rails. May
- *   draw hop columns past Depth when a leaf sits further out.
- * - `pin-clip`: same pin-far identity, but pin dist is clipped to Depth (no
- *   overdraw); appearances that would land past the rim are dropped.
- * - `per-hop` (legacy): package leaf at each importer’s d+1 (one node per
- *   package id per hop), never same-column as parent.
+ * **{@link PackageLeafMode}** no longer places export-side packages (file-pure
+ * cascade). Modes still control plain hop labels: `per-hop` keeps · in/out hN
+ * suffixes; pin modes use plain file labels.
  *
  * Integer multi-parent split (multiHop-style): a node with mass 1 and N outer
  * neighbors lights only one outer link (`floor(1/N)=0`, remainder to the first
@@ -92,13 +91,15 @@ export const HUB_DEFAULT_MAX_DEPTH = 3;
 export const NORMAL_DEFAULT_MAX_DEPTH = 7;
 
 /**
- * How export-side package leaves are placed relative to hop columns.
+ * Dupes / hop-label control. Under file-pure export cascade, pin modes do **not**
+ * place package leaves on Exports (that path was removed). Modes only affect
+ * whether multi-hop file labels get · in/out hN suffixes (`per-hop` = suffixed).
  *
- * | Mode | Behavior |
- * | ---- | -------- |
- * | `pin-overdraw` | One package node at max importer hop; may exceed Depth |
- * | `pin-clip` | One package node at max hop, clipped to Depth |
- * | `per-hop` | Legacy: package at each importer hop (d+1) |
+ * | Mode | Behavior (labels only) |
+ * | ---- | ---------------------- |
+ * | `pin-overdraw` | Plain hop file labels (default) |
+ * | `pin-clip` | Plain hop file labels |
+ * | `per-hop` | Legacy · in/out hN suffixes on multi-hop files |
  */
 export type PackageLeafMode = 'pin-overdraw' | 'pin-clip' | 'per-hop';
 
@@ -157,7 +158,8 @@ export function exportRailId(stage: number): string {
  *
  * @param opts.maxDepth Viz-only dual BFS radius (default {@link HUB_DEFAULT_MAX_DEPTH}).
  *   Scan is unbounded.
- * @param opts.packageLeafMode Package leaf placement (default {@link DEFAULT_PACKAGE_LEAF_MODE}).
+ * @param opts.packageLeafMode Hop label style only under file-pure cascade
+ *   (default {@link DEFAULT_PACKAGE_LEAF_MODE}).
  */
 export function projectFileHub(
 	graph: CodeGraph,
@@ -249,7 +251,7 @@ export function projectFileHub(
 				hubRadius,
 				maxPerHop: Math.min(48, maxImporters),
 				weightAxis,
-				// Match export pin-far: plain labels unless legacy per-hop
+				// Plain labels unless legacy per-hop suffix mode
 				plainHopLabels: packageLeafMode !== 'per-hop',
 				addLink,
 				nodeRef,
@@ -279,7 +281,7 @@ export function projectFileHub(
 		});
 	}
 
-	// --- right: forward BFS (file deps only; intermediate packages pin-far) ---
+	// --- right: forward longest-path file deps only (cascade purity) ---
 	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
 	if (fileOutEdges.length) {
 		addExportRings({
@@ -547,7 +549,7 @@ function addImportRings(
 		inEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
-		/** When true, skip · in hN suffixes (pin-far package modes). */
+		/** When true, skip · in hN suffixes (pin modes use plain labels). */
 		plainHopLabels?: boolean;
 		classicLabels?: Map<string, string>;
 	},
@@ -784,13 +786,13 @@ function padImportRailsInto(
 }
 
 /**
- * Forward multi-hop: File → Exports → … → Export hop N.
+ * Forward multi-hop: File → Exports → … → Export hop N (**file→file only**).
  *
  * Callers pass **file-only** outEdges (focus packages go through
  * {@link addFocusPackageImports}). File columns use **longest simple path**
  * so chains like focus→format→types expand even when types is also a direct
- * dep. Focus file out-mass is conserved; package leaves of intermediate
- * export-tree files are structural (not File mass).
+ * dep. Focus file out-mass is conserved along file children; package outs of
+ * export-tree files are never materialised on export hops (cascade purity).
  */
 function addExportRings(
 	args: LinkBuilder & {
@@ -985,442 +987,7 @@ function addExportRings(
 		mass.set(f, (mass.get(f) ?? 0) + w);
 	}
 
-	// --- Intermediate export-tree package leaves + mass routing ---
-	if (packageLeafMode === 'per-hop') {
-		routeExportMassPerHop({
-			graph,
-			hubRadius,
-			radiusR,
-			maxPerHop,
-			weightAxis,
-			keptByDist,
-			display,
-			dist,
-			fwdAdj,
-			mass,
-			usedNames,
-			addLink,
-			nodeRef,
-			nodeMeta,
-		});
-	} else {
-		routeExportMassPinFar({
-			graph,
-			hubRadius,
-			radiusR,
-			maxPerHop,
-			weightAxis,
-			overdraw: packageLeafMode === 'pin-overdraw',
-			keptByDist,
-			display,
-			dist,
-			fwdAdj,
-			mass,
-			usedNames,
-			addLink,
-			nodeRef,
-			nodeMeta,
-			padBetween,
-			ensureExportRailsUpTo,
-		});
-	}
-}
-
-type PkgCand = {
-	preferredLabel: string;
-	ref: AlluvialNodeRef;
-	color: string;
-	rank: number;
-};
-
-/**
- * Legacy per-hop: outer package leaves of export-tree files at each importer d+1
- * (one node per package id per hop). Never same-column as parent.
- * Focus packages are placed on Imports ({@link addFocusPackageImports}).
- */
-function routeExportMassPerHop(args: {
-	graph: CodeGraph;
-	hubRadius: number;
-	radiusR: number;
-	maxPerHop: number;
-	weightAxis: WeightAxis;
-	keptByDist: Map<number, string[]>;
-	display: Map<string, string>;
-	dist: Map<string, number>;
-	fwdAdj: Map<string, string[]>;
-	mass: Map<string, number>;
-	usedNames: Set<string>;
-	addLink: (source: string, target: string, value: number) => void;
-	nodeRef: Record<string, AlluvialNodeRef>;
-	nodeMeta: Map<string, { category: string; color: string }>;
-}): void {
-	const {
-		graph,
-		hubRadius,
-		radiusR,
-		maxPerHop,
-		weightAxis,
-		keptByDist,
-		display,
-		dist,
-		fwdAdj,
-		mass,
-		usedNames,
-		addLink,
-		nodeRef,
-		nodeMeta,
-	} = args;
-
-	const packageNodeAt = new Map<string, string>(); // `${pkgDist}\0${ref.id}`
-	const packageOverflowAt = new Map<number, string>();
-
-	const ensureOuterPackageNode = (
-		preferredLabel: string,
-		ref: AlluvialNodeRef,
-		color: string,
-		pkgDist: number,
-	): string => {
-		const key = `${pkgDist}\0${ref.id}`;
-		const existing = packageNodeAt.get(key);
-		if (existing) return existing;
-		const preferred = hopFileLabel(preferredLabel, 'out', pkgDist, hubRadius);
-		const name = claimName(usedNames, preferred, ref.kind);
-		packageNodeAt.set(key, name);
-		nodeRef[name] = ref;
-		nodeMeta.set(name, {
-			category: exportHopCategory(pkgDist),
-			color,
-		});
-		return name;
-	};
-
-	const ensureOuterPackageOverflow = (pkgDist: number, count: number): string => {
-		const existing = packageOverflowAt.get(pkgDist);
-		if (existing) return existing;
-		const name = claimName(
-			usedNames,
-			hopOverflowLabel(moreCountLabel(count), 'out', pkgDist),
-			`pkg-h${pkgDist}`,
-		);
-		packageOverflowAt.set(pkgDist, name);
-		nodeRef[name] = {
-			kind: 'bucket',
-			id: `other-export-pkg-h${pkgDist}`,
-		};
-		nodeMeta.set(name, {
-			category: exportHopCategory(pkgDist),
-			color: TEAL.exportOther,
-		});
-		return name;
-	};
-
-	for (let d = 1; d <= radiusR; d++) {
-		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
-			a.localeCompare(b),
-		);
-		const canPlacePackages = d + 1 <= hubRadius;
-		const pkgDist = d + 1;
-
-		for (const f of parents) {
-			const m = mass.get(f) ?? 0;
-			if (m <= 0) continue;
-			const fromLab = display.get(f);
-			if (!fromLab || nodeRef[fromLab]?.kind === 'bucket') continue;
-
-			type Child =
-				| { kind: 'file'; path: string; lab: string }
-				| {
-						kind: 'package';
-						preferredLabel: string;
-						ref: AlluvialNodeRef;
-						color: string;
-				  };
-
-			const children: Child[] = [];
-			if (d < radiusR) {
-				for (const c of fwdAdj.get(f) ?? []) {
-					if ((dist.get(c) ?? 0) !== d + 1 || !display.has(c)) continue;
-					children.push({ kind: 'file', path: c, lab: display.get(c)! });
-				}
-			}
-
-			const pkgCands: PkgCand[] = [];
-			let overflowPkg: PkgCand[] = [];
-			if (canPlacePackages) {
-				for (const e of graph.edges) {
-					if (e.from !== f || e.toKind === 'file') continue;
-					const pkgLabel =
-						e.toKind === 'unresolved'
-							? e.specifier
-							: e.to.replace(/^unresolved:/, '');
-					pkgCands.push({
-						preferredLabel: pkgLabel,
-						ref: {
-							kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
-							id: e.to,
-						},
-						color:
-							e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
-						rank: edgeWeight(e, graph, weightAxis),
-					});
-				}
-				pkgCands.sort(
-					(a, b) =>
-						b.rank - a.rank ||
-						a.preferredLabel.localeCompare(b.preferredLabel),
-				);
-				const fileChildCount = children.length;
-				const budget = Math.max(0, maxPerHop - fileChildCount);
-				for (const p of pkgCands.slice(0, budget)) {
-					children.push({
-						kind: 'package',
-						preferredLabel: p.preferredLabel,
-						ref: p.ref,
-						color: p.color,
-					});
-				}
-				overflowPkg = pkgCands.slice(budget);
-			}
-
-			if (!children.length && !overflowPkg.length) continue;
-
-			type Target =
-				| { kind: 'file'; lab: string; path: string }
-				| {
-						kind: 'package';
-						preferredLabel: string;
-						ref: AlluvialNodeRef;
-						color: string;
-				  }
-				| { kind: 'overflow'; count: number };
-
-			const targets: Target[] = [];
-			for (const ch of children) {
-				if (ch.kind === 'file') {
-					targets.push({ kind: 'file', lab: ch.lab, path: ch.path });
-				} else {
-					targets.push({
-						kind: 'package',
-						preferredLabel: ch.preferredLabel,
-						ref: ch.ref,
-						color: ch.color,
-					});
-				}
-			}
-			if (overflowPkg.length) {
-				targets.push({ kind: 'overflow', count: overflowPkg.length });
-			}
-
-			const base = Math.floor(m / targets.length);
-			let rem = m - base * targets.length;
-			for (const t of targets) {
-				const share = base + (rem > 0 ? 1 : 0);
-				if (rem > 0) rem -= 1;
-				if (share <= 0) continue;
-				if (t.kind === 'file') {
-					addLink(fromLab, t.lab, share);
-					mass.set(t.path, (mass.get(t.path) ?? 0) + share);
-				} else if (t.kind === 'package') {
-					const name = ensureOuterPackageNode(
-						t.preferredLabel,
-						t.ref,
-						t.color,
-						pkgDist,
-					);
-					addLink(fromLab, name, share);
-				} else {
-					const name = ensureOuterPackageOverflow(pkgDist, t.count);
-					addLink(fromLab, name, share);
-				}
-			}
-			mass.set(f, 0);
-		}
-	}
-}
-
-/**
- * Pin-far: one display node per package id at max importer hop among
- * **export-tree** files only. Focus packages use Imports
- * (see {@link addFocusPackageImports}).
- * `overdraw` allows pin past hubRadius; otherwise clip and drop rim-colliding leaves.
- */
-function routeExportMassPinFar(args: {
-	graph: CodeGraph;
-	hubRadius: number;
-	radiusR: number;
-	maxPerHop: number;
-	weightAxis: WeightAxis;
-	overdraw: boolean;
-	keptByDist: Map<number, string[]>;
-	display: Map<string, string>;
-	dist: Map<string, number>;
-	fwdAdj: Map<string, string[]>;
-	mass: Map<string, number>;
-	usedNames: Set<string>;
-	addLink: (source: string, target: string, value: number) => void;
-	nodeRef: Record<string, AlluvialNodeRef>;
-	nodeMeta: Map<string, { category: string; color: string }>;
-	padBetween: (
-		fromLab: string,
-		fromDist: number,
-		toLab: string,
-		toDist: number,
-		w: number,
-	) => void;
-	ensureExportRailsUpTo: (maxStage: number) => void;
-}): void {
-	const {
-		graph,
-		hubRadius,
-		radiusR,
-		maxPerHop,
-		weightAxis,
-		overdraw,
-		keptByDist,
-		display,
-		dist,
-		fwdAdj,
-		mass,
-		usedNames,
-		addLink,
-		nodeRef,
-		nodeMeta,
-		padBetween,
-		ensureExportRailsUpTo,
-	} = args;
-
-	type PinRec = {
-		key: string;
-		preferredLabel: string;
-		ref: AlluvialNodeRef;
-		color: string;
-		/** Max natural hop (parentDist+1) before clip. */
-		pinNatural: number;
-		/** Rank mass: edges from kept export-tree files in radius. */
-		rank: number;
-	};
-
-	const recs = new Map<string, PinRec>();
-
-	const touch = (
-		key: string,
-		preferredLabel: string,
-		ref: AlluvialNodeRef,
-		color: string,
-		naturalHop: number,
-		rankAdd: number,
-	) => {
-		const prev = recs.get(key);
-		if (!prev) {
-			recs.set(key, {
-				key,
-				preferredLabel,
-				ref,
-				color,
-				pinNatural: naturalHop,
-				rank: rankAdd,
-			});
-			return;
-		}
-		prev.pinNatural = Math.max(prev.pinNatural, naturalHop);
-		prev.rank += rankAdd;
-	};
-
-	const keptFiles = new Set<string>();
-	for (const list of keptByDist.values()) {
-		for (const f of list) keptFiles.add(f);
-	}
-
-	for (const f of keptFiles) {
-		const d = Math.min(dist.get(f) ?? 1, radiusR);
-		for (const e of graph.edges) {
-			if (e.from !== f || e.toKind === 'file') continue;
-			const pkgLabel =
-				e.toKind === 'unresolved'
-					? e.specifier
-					: e.to.replace(/^unresolved:/, '');
-			const key = `${e.toKind}:${e.to}`;
-			const w = edgeWeight(e, graph, weightAxis);
-			touch(
-				key,
-				pkgLabel,
-				{
-					kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
-					id: e.to,
-				},
-				e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
-				d + 1,
-				w,
-			);
-		}
-	}
-
-	const pinOf = (natural: number): number | null => {
-		if (overdraw) return Math.max(1, natural);
-		// Clip: never past Depth; drop if natural is only past rim and no
-		// in-radius pin remains (handled per parent when linking).
-		const clipped = Math.min(Math.max(1, natural), hubRadius);
-		return clipped;
-	};
-
-	// Global budget by rank
-	const ranked = [...recs.values()].sort(
-		(a, b) =>
-			b.rank - a.rank || a.preferredLabel.localeCompare(b.preferredLabel),
-	);
-	const keptKeys = new Set(ranked.slice(0, maxPerHop).map((r) => r.key));
-	const overflowCount = ranked.length - keptKeys.size;
-
-	// Materialize kept package nodes at pin dist
-	const displayByKey = new Map<string, string>(); // package key → node name
-	const pinByKey = new Map<string, number>();
-	let maxPin = 1;
-
-	for (const rec of ranked) {
-		if (!keptKeys.has(rec.key)) continue;
-		const pin = pinOf(rec.pinNatural);
-		if (pin == null) continue;
-		pinByKey.set(rec.key, pin);
-		maxPin = Math.max(maxPin, pin);
-
-		// Pin-far: one node per package id — plain name (no · out hN). Hop lives
-		// in the column category only. claimName still disambiguates rare clashes.
-		const name = claimName(usedNames, rec.preferredLabel, rec.ref.kind);
-		displayByKey.set(rec.key, name);
-		nodeRef[name] = rec.ref;
-		nodeMeta.set(name, {
-			category: exportHopCategory(pin),
-			color: rec.color,
-		});
-	}
-
-	if (overflowCount > 0) {
-		// Overflow bucket at max pin among overflow candidates (clipped/overdrawn)
-		let overflowPin = 1;
-		for (const rec of ranked) {
-			if (keptKeys.has(rec.key)) continue;
-			const p = pinOf(rec.pinNatural);
-			if (p != null) overflowPin = Math.max(overflowPin, p);
-		}
-		maxPin = Math.max(maxPin, overflowPin);
-		const otherName = claimName(
-			usedNames,
-			moreCountLabel(overflowCount),
-			'export-pkgs-pin',
-		);
-		nodeRef[otherName] = { kind: 'bucket', id: 'other-export-pkgs-pin' };
-		nodeMeta.set(otherName, {
-			category: exportHopCategory(overflowPin),
-			color: TEAL.exportOther,
-		});
-		// Stash for parent-local overflow of export-tree packages
-		(displayByKey as Map<string, string>).set('__overflow__', otherName);
-		pinByKey.set('__overflow__', overflowPin);
-	}
-
-	if (maxPin > 1) ensureExportRailsUpTo(maxPin - 1);
-
-	// Route file mass: consecutive file children + pin-far packages
+	// --- Route outward mass file→file only (no package leaves) ---
 	for (let d = 1; d <= radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -1431,77 +998,14 @@ function routeExportMassPinFar(args: {
 			const fromLab = display.get(f);
 			if (!fromLab || nodeRef[fromLab]?.kind === 'bucket') continue;
 
-			type Target =
-				| { kind: 'file'; lab: string; path: string }
-				| { kind: 'package'; key: string; lab: string; pin: number }
-				| { kind: 'overflow'; lab: string; pin: number };
-
-			const targets: Target[] = [];
+			const targets: { lab: string; path: string }[] = [];
 			if (d < radiusR) {
 				for (const c of fwdAdj.get(f) ?? []) {
 					if ((dist.get(c) ?? 0) !== d + 1 || !display.has(c)) continue;
-					targets.push({ kind: 'file', lab: display.get(c)!, path: c });
+					targets.push({ lab: display.get(c)!, path: c });
 				}
 			}
-
-			const pkgCands: { key: string; rank: number }[] = [];
-			for (const e of graph.edges) {
-				if (e.from !== f || e.toKind === 'file') continue;
-				const key = `${e.toKind}:${e.to}`;
-				if (!keptKeys.has(key)) {
-					if (displayByKey.has('__overflow__')) {
-						// count toward overflow once
-						const pin = pinByKey.get(key) ?? pinByKey.get('__overflow__');
-						// use overflow only if this package was overflowed
-						if (!keptKeys.has(key) && pinByKey.has('__overflow__')) {
-							// collect overflow rank separately below
-						}
-					}
-					continue;
-				}
-				const pin = pinByKey.get(key);
-				const lab = displayByKey.get(key);
-				if (pin == null || !lab) continue;
-				// Parent must sit strictly left of pin (layer-safe)
-				if (d >= pin) continue;
-				pkgCands.push({
-					key,
-					rank: edgeWeight(e, graph, weightAxis),
-				});
-			}
-			pkgCands.sort(
-				(a, b) =>
-					b.rank - a.rank || a.key.localeCompare(b.key),
-			);
-			const fileChildCount = targets.length;
-			const budget = Math.max(0, maxPerHop - fileChildCount);
-			const keptLocal = pkgCands.slice(0, budget);
-			const overflowLocal = pkgCands.slice(budget);
-
-			for (const p of keptLocal) {
-				const lab = displayByKey.get(p.key)!;
-				const pin = pinByKey.get(p.key)!;
-				targets.push({ kind: 'package', key: p.key, lab, pin });
-			}
-
-			// Parent-local overflow of kept-key packages + packages not in global kept
-			let overflowPkgEdges = 0;
-			for (const e of graph.edges) {
-				if (e.from !== f || e.toKind === 'file') continue;
-				const key = `${e.toKind}:${e.to}`;
-				if (keptKeys.has(key)) continue;
-				overflowPkgEdges += 1;
-			}
-			overflowPkgEdges += overflowLocal.length;
-
-			if (overflowPkgEdges > 0 && displayByKey.has('__overflow__')) {
-				const lab = displayByKey.get('__overflow__')!;
-				const pin = pinByKey.get('__overflow__')!;
-				if (d < pin) {
-					targets.push({ kind: 'overflow', lab, pin });
-				}
-			}
-
+			// Leaf files (no kept file children, or only package outs) keep mass
 			if (!targets.length) continue;
 
 			const base = Math.floor(m / targets.length);
@@ -1510,12 +1014,8 @@ function routeExportMassPinFar(args: {
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
-				if (t.kind === 'file') {
-					addLink(fromLab, t.lab, share);
-					mass.set(t.path, (mass.get(t.path) ?? 0) + share);
-				} else {
-					padBetween(fromLab, d, t.lab, t.pin, share);
-				}
+				addLink(fromLab, t.lab, share);
+				mass.set(t.path, (mass.get(t.path) ?? 0) + share);
 			}
 			mass.set(f, 0);
 		}
