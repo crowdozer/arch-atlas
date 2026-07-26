@@ -11,6 +11,7 @@ Agents: start here, then load playbooks from the preamble.
 2. [.grok/reference/scope.md](.grok/reference/scope.md) — product intent, draft contracts
 3. [.grok/reference/conversation.md](.grok/reference/conversation.md) — design conversation (source vision)
 4. Project overlay: [.grok/skills/_shared/preamble.md](.grok/skills/_shared/preamble.md)
+5. **Hub alluvial work:** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) — column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
 
 ## Role skills
 

@@ -1,6 +1,11 @@
 /**
  * Dual-side file hub alluvial — high-edge / barrel projection.
  *
+ * **Behavioral matrix (authoritative):**
+ * `.grok/reference/hub-alluvial-behavior.md`
+ * Adjustments must stay **surgical** — do not retcon that matrix (or goldens)
+ * to match cascade side effects on other columns.
+ *
  * Columns (L→R), category names fixed:
  *
  *   Export hop N … → Exports → File → Imports → Import hop N → External

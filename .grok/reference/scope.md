@@ -96,6 +96,12 @@ Progressive expansion: start routes-left / categories-right; click to insert
 stages; band click shows exact import/call path; reweight by static imports,
 reachable modules, runtime (later), latency, churn, cost, etc.
 
+**File-hub dual-side projection (current):** column membership, seed clamp,
+External package sinks, rails/paint, and Carbon free-source caveats are locked
+in [hub-alluvial-behavior.md](./hub-alluvial-behavior.md). Engineers adjusting
+the hub must keep changes **surgical** — do not rewrite that matrix (or its
+goldens) to match unintended cascade side effects on other columns.
+
 ## Capability ladder
 
 | Level | Capability |

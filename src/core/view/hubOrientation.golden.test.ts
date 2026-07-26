@@ -1,19 +1,25 @@
 /**
  * Golden hub orientation / cascade purity — product hard law.
  *
+ * Full behavioral matrix (columns, seeds, External sinks, rails, Carbon geometry):
+ * `.grok/reference/hub-alluvial-behavior.md`
+ * Do **not** weaken these goldens to absorb cascade side effects from unrelated
+ * alluvial tweaks — surgical product changes only; update matrix + goldens together.
+ *
  * Catalog of reported failure modes (ship 527e0b9a + 85382541 + errors.ts):
  *
  * | Case | Fixture focus | Bug observed | Law |
  * | ---- | ------------- | ------------ | --- |
- * | A | `app/api/users/route.ts` / stripe route | `next` treated as export | Focus packages are **Imports** |
- * | B | stripe route | `zod` on Export hops (import of intermediate file) | Intermediate packages are **Imports**, never Export* |
+ * | A | `app/api/users/route.ts` / stripe route | `next` treated as export | Focus packages are **External** (sinks) |
+ * | B | stripe route | `zod` on Export hops (import of intermediate file) | Intermediate packages are **External**, never Export* |
  * | C | `src/lib/redis.ts` | Consumers left / logger right felt “inverted” | Consumers = **Exports**; deps = **Imports** |
  * | D | `src/lib/http/errors.ts` | Services that **import** errors shown as Imports | Inbound importers = **Exports** only |
  * | E | any multi-hop | Import cascade absorbing export candidates (or reverse) | Cascades are pure each way |
  *
  * Hard rules (apply at every hop / any hub focus):
- * 1. **Imports / Import hop k** — only what the focus **imports** (outbound).
+ * 1. **Imports / Import hop k** — only what the focus **imports** (outbound files).
  * 2. **Exports / Export hop k** — only what **imports from** the focus (inbound).
+ * 3. **External** — package/unresolved sinks only (never free sources; never files).
  *
  * Goldens assert **category membership + graph honesty** (A→B means A imports B),
  * matching Carbon column categories used by the payload builder.

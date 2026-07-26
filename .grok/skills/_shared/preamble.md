@@ -23,6 +23,7 @@ stay pure; ship only stitches them.
 - Agent hub: [AGENTS.md](../../../AGENTS.md)
 - Scope: [reference/scope.md](../../reference/scope.md)
 - Vision notes: [reference/conversation.md](../../reference/conversation.md)
+- Hub alluvial matrix: [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
 
 ## Product contracts (draft — from design conversation)
 
@@ -75,6 +76,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [AGENTS.md](../../../AGENTS.md) | Agent entry, roles, scripts |
 | [scope.md](../../reference/scope.md) | Product intent, draft contracts, views ladder |
 | [conversation.md](../../reference/conversation.md) | Full design conversation notes |
+| [hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) | File-hub columns, mass, pads; **before any alluvial/hub change** |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |
 
