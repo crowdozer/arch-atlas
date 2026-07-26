@@ -66,13 +66,19 @@ describe('buildGraph fixture', () => {
 		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
-	it('projects alluvial from start', () => {
+	it('projects alluvial from start (modules → code)', () => {
 		const payload = projectAlluvial(graph, 'src/index.ts');
 		expect(payload).not.toBeNull();
 		expect(payload!.data.length).toBeGreaterThan(0);
-		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'Start')).toBe(
+		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'Code')).toBe(
 			true,
 		);
+		// links flow toward code (start basename), not outward from it
+		const startBase = 'index.ts';
+		const intoCode = payload!.data.some((l) => l.target === startBase);
+		const outFromCode = payload!.data.some((l) => l.source === startBase);
+		expect(intoCode).toBe(true);
+		expect(outFromCode).toBe(false);
 	});
 
 	it('reachable files include app and routes', () => {

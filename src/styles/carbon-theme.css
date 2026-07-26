@@ -497,12 +497,18 @@ cds-header {
 }
 
 /* —— Workspace shell: left drawer + full-bleed stage —— */
+/* Base is flex when visible; .hidden (two-class) beats Tailwind .hidden alone
+   and the old always-none rule that blocked upload reveal. */
 .atlas-workspace {
-  display: none;
+  display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: row;
   overflow: hidden;
+}
+
+.atlas-workspace.hidden {
+  display: none;
 }
 
 .atlas-drawer {
@@ -683,29 +689,33 @@ cds-header {
 
 .atlas-tree__icon {
   flex-shrink: 0;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0.1rem;
-  opacity: 0.9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: #a1a1aa; /* zinc-400 */
+  opacity: 0.95;
 }
 
-.atlas-tree__icon--folder {
-  background: rgb(45 212 191 / 0.15);
-  border: 1px solid rgb(45 212 191 / 0.35);
-  border-radius: 0.15rem;
+.atlas-tree__icon svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
 }
 
-.atlas-tree__icon--file {
-  background: #3f3f46;
-  border-radius: 1px;
-  width: 0.55rem;
-  height: 0.7rem;
-  margin-inline: 0.15rem;
+.atlas-tree__row--dir .atlas-tree__icon {
+  color: #2dd4bf; /* teal-400 */
 }
 
+.atlas-tree__row--file.is-source .atlas-tree__icon,
 .atlas-tree__icon--source {
-  background: #52525b;
-  box-shadow: inset 0 0 0 1px #71717a;
+  color: #5eead4; /* teal-300 */
+}
+
+.atlas-tree__row--file.is-selected .atlas-tree__icon {
+  color: #5eead4;
 }
 
 .atlas-tree__name {

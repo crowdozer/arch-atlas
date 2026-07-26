@@ -1,6 +1,7 @@
 /**
  * Project CodeGraph + start → Carbon Charts alluvial payload.
- * Columns: Start → Module groups → Packages/ends
+ * Columns (L→R): Packages/ends → Module groups → Code (start)
+ * Temporary orientation for “modules → code” reading order.
  */
 
 import { reachableFiles } from '@core/graph/build.ts';
@@ -91,31 +92,31 @@ export function projectAlluvial(
 
 	const links: { source: string; target: string; value: number }[] = [];
 
-	// Start → modules
+	// Ends → modules → code (reversed from import direction for modules→code reading)
 	if (moduleEntries.length === 0) {
-		// still show start → packages if any
+		// packages → code directly, or trivial placeholder
 		if (endEntries.length === 0) {
-			// trivial self
-			links.push({ source: startLabel, target: '(no imports)', value: 1 });
+			links.push({ source: '(no imports)', target: startLabel, value: 1 });
 		} else {
 			for (const [, info] of endEntries) {
 				links.push({
-					source: startLabel,
-					target: info.label,
+					source: info.label,
+					target: startLabel,
 					value: Math.max(1, info.value),
 				});
 			}
 		}
 	} else {
 		const moduleTotal = moduleEntries.reduce((s, [, n]) => s + n, 0) || 1;
+		// modules → code
 		for (const [folder, count] of moduleEntries) {
 			links.push({
-				source: startLabel,
-				target: folder,
+				source: folder,
+				target: startLabel,
 				value: Math.max(1, count),
 			});
 		}
-		// modules → ends proportional
+		// ends → modules proportional
 		if (endEntries.length) {
 			const endTotal = endEntries.reduce((s, [, v]) => s + v.value, 0) || 1;
 			for (const [folder, count] of moduleEntries) {
@@ -125,19 +126,18 @@ export function projectAlluvial(
 						1,
 						Math.round((info.value / endTotal) * folderShare * endTotal),
 					);
-					// keep smaller graph: only connect top modules to ends via proportional
 					links.push({
-						source: folder,
-						target: info.label,
+						source: info.label,
+						target: folder,
 						value: v,
 					});
 				}
 			}
-			// Cap link explosion: if too many, reduce to module→aggregate ends only from top 3 modules
+			// Cap link explosion: keep top 3 modules + all links into code
 			if (links.length > 80) {
 				const keepModules = new Set(moduleEntries.slice(0, 3).map(([k]) => k));
 				const filtered = links.filter(
-					(l) => l.source === startLabel || keepModules.has(l.source),
+					(l) => l.target === startLabel || keepModules.has(l.target),
 				);
 				links.length = 0;
 				links.push(...filtered);
@@ -145,9 +145,9 @@ export function projectAlluvial(
 		}
 	}
 
-	// unique nodes with categories
+	// unique nodes with categories (column order: Ends | Modules | Code)
 	const nodeMeta = new Map<string, { category: string; color: string }>();
-	nodeMeta.set(startLabel, { category: 'Start', color: TEAL.start });
+	nodeMeta.set(startLabel, { category: 'Code', color: TEAL.start });
 
 	for (const [folder] of moduleEntries) {
 		nodeMeta.set(folder, {
@@ -164,26 +164,26 @@ export function projectAlluvial(
 					: TEAL.package;
 		nodeMeta.set(info.label, { category: 'Ends', color });
 	}
-	if (links.some((l) => l.target === '(no imports)')) {
+	if (links.some((l) => l.source === '(no imports)')) {
 		nodeMeta.set('(no imports)', { category: 'Ends', color: TEAL.other });
 	}
 
-	// ranks: start col, modules, ends
-	const starts = [startLabel];
-	const mods = [...nodeMeta.entries()]
-		.filter(([, m]) => m.category === 'Modules')
-		.map(([n]) => n)
-		.sort();
+	// ranks within columns; emit Ends → Modules → Code so charts lay out L→R that way
 	const ends = [...nodeMeta.entries()]
 		.filter(([, m]) => m.category === 'Ends')
 		.map(([n]) => n)
 		.sort();
+	const mods = [...nodeMeta.entries()]
+		.filter(([, m]) => m.category === 'Modules')
+		.map(([n]) => n)
+		.sort();
+	const codes = [startLabel];
 
 	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
 	const nodeRank: Record<string, number> = {};
 	let rank = 0;
-	for (const n of starts) {
-		nodes.push({ name: n, category: 'Start', rank });
+	for (const n of ends) {
+		nodes.push({ name: n, category: 'Ends', rank });
 		nodeRank[n] = rank++;
 	}
 	rank = 0;
@@ -192,8 +192,8 @@ export function projectAlluvial(
 		nodeRank[n] = rank++;
 	}
 	rank = 0;
-	for (const n of ends) {
-		nodes.push({ name: n, category: 'Ends', rank });
+	for (const n of codes) {
+		nodes.push({ name: n, category: 'Code', rank });
 		nodeRank[n] = rank++;
 	}
 
@@ -223,7 +223,7 @@ export function projectAlluvial(
 			toolbar: { enabled: false },
 			legend: { enabled: false, clickable: false },
 			accessibility: {
-				svgAriaLabel: `Import alluvial from ${startLabel}`,
+				svgAriaLabel: `Modules to code alluvial for ${startLabel}`,
 			},
 			alluvial: {
 				units: 'imports',

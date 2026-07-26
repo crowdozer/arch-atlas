@@ -19,6 +19,7 @@ import {
 	nodeMatchesFilter,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
+import { treeIconSvg } from './treeIcons.ts';
 
 type Session = {
 	graph: CodeGraph;
@@ -167,7 +168,7 @@ function renderTreeNode(
 		row.dataset.path = node.path;
 		row.innerHTML = `
 			<span class="atlas-tree__chevron" aria-hidden="true">${open ? '▾' : '▸'}</span>
-			<span class="atlas-tree__icon atlas-tree__icon--folder" aria-hidden="true"></span>
+			<span class="atlas-tree__icon" aria-hidden="true">${treeIconSvg('dir', node.path, { open })}</span>
 			<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
 			<span class="atlas-tree__badge">${node.children.length}</span>
 		`;
@@ -206,7 +207,7 @@ function renderTreeNode(
 
 	btn.innerHTML = `
 		<span class="atlas-tree__chevron atlas-tree__chevron--spacer" aria-hidden="true"></span>
-		<span class="atlas-tree__icon atlas-tree__icon--file${isSrc ? ' atlas-tree__icon--source' : ''}" aria-hidden="true"></span>
+		<span class="atlas-tree__icon${isSrc ? ' atlas-tree__icon--source' : ''}" aria-hidden="true">${treeIconSvg('file', node.path)}</span>
 		<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
 	`;
 	btn.addEventListener('click', () => {
@@ -306,7 +307,7 @@ function selectStart(startId: string) {
 	renderTree();
 	renderCatalog(session.catalog, startId);
 	const caption = $('atlas-alluvial-caption');
-	if (caption) caption.textContent = `Import surface from ${startId}`;
+	if (caption) caption.textContent = `Modules → code for ${startId}`;
 	const payload = alluvialForStart(session.graph, startId);
 	mountAlluvial(payload);
 	setStatus(`Start: ${startId}`);
@@ -338,8 +339,8 @@ async function handleZip(file: File) {
 		};
 		showWarnings(session.warnings);
 		$('atlas-upload')?.classList.add('hidden');
+		// CSS: .atlas-workspace is display:flex; .atlas-workspace.hidden is none
 		$('atlas-workspace')?.classList.remove('hidden');
-		$('atlas-workspace')?.classList.add('flex');
 		$('atlas-subbar')?.classList.remove('hidden');
 		$('atlas-subbar')?.classList.add('flex');
 		renderCatalog(catalog, session.startId);
@@ -364,7 +365,6 @@ function resetSession() {
 	if (alluvial) alluvial.replaceChildren();
 
 	$('atlas-workspace')?.classList.add('hidden');
-	$('atlas-workspace')?.classList.remove('flex');
 	$('atlas-subbar')?.classList.add('hidden');
 	$('atlas-subbar')?.classList.remove('flex');
 	$('atlas-upload')?.classList.remove('hidden');
