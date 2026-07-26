@@ -33,6 +33,7 @@ import {
 	nodeMatchesFilter,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
+import { topPackAlluvialHolder } from './alluvialTopPack.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
 import {
 	clearPersistedSession,
@@ -312,6 +313,9 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 			data: payload.data,
 			options,
 		});
+		// Carbon/d3-sankey floats sparse columns (File / Modules); pack all
+		// columns to the shared top so left/mid align with dense Importers.
+		topPackAlluvialHolder(holder);
 		bindAlluvialClicks(chart);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);

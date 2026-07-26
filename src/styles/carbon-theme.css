@@ -948,6 +948,8 @@ cds-inline-notification.atlas-inspect__banner {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Chart sits under the stage bar, not vertically centered in leftover space */
+  justify-content: flex-start;
   overflow: hidden;
   padding: 0.5rem 0.75rem 0.75rem;
 }
@@ -959,6 +961,7 @@ cds-inline-notification.atlas-inspect__banner {
  */
 .atlas-stage__holder {
   flex: 1 1 auto;
+  align-self: stretch;
   min-height: 0;
   max-height: 100%;
   width: 100%;
