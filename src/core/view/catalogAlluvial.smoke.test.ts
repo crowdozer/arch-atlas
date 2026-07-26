@@ -216,11 +216,12 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			);
 			// Optional hop columns when both sides and depth allows (default radius 3)
 			const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
-			// Imports: reverse importers and/or focus packages
+			// Imports: outbound file deps and/or focus packages
 			const hasImportSide =
-				fileInDegree(graph, d.id) > 0 || fileOutPackageDegree(graph, d.id) > 0;
-			// Exports: file→file outs only (packages live on Imports)
-			const hasExportSide = fileOutFileDegree(graph, d.id) > 0;
+				fileOutFileDegree(graph, d.id) > 0 ||
+				fileOutPackageDegree(graph, d.id) > 0;
+			// Exports: reverse importers only
+			const hasExportSide = fileInDegree(graph, d.id) > 0;
 			if (hasImportSide) expect(cats.has('Imports')).toBe(true);
 			if (hasExportSide) expect(cats.has('Exports')).toBe(true);
 		}
@@ -258,10 +259,11 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			const cats = new Set(
 				payload!.options.alluvial.nodes.map((n) => n.category),
 			);
-			if (h.inDegree > 0 || fileOutPackageDegree(graph, h.id) > 0) {
+			// Imports = outbound deps/packages; Exports = reverse importers
+			if (fileOutFileDegree(graph, h.id) > 0 || fileOutPackageDegree(graph, h.id) > 0) {
 				expect(cats.has('Imports')).toBe(true);
 			}
-			if (fileOutFileDegree(graph, h.id) > 0) {
+			if (h.inDegree > 0) {
 				expect(cats.has('Exports')).toBe(true);
 			}
 			expect(cats.has('Import folders')).toBe(false);
@@ -282,7 +284,7 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(cats.has('Exports')).toBe(true);
 	});
 
-	it('logger.ts pure sink opens hub Imports-only with full importer count', () => {
+	it('logger.ts pure sink opens hub Exports-only with full importer count', () => {
 		const id = 'src/lib/logger.ts';
 		// preferFileHubView is false (no out) but UI still opens hub
 		expect(preferFileHubView(graph, id)).toBe(false);
@@ -291,8 +293,9 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const payload = payloadForFileClick(graph, id)!;
 		expect(focusIncidentMass(payload)).toBe(inn);
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Imports')).toBe(true);
-		expect(cats.has('Exports')).toBe(false);
+		// Hard law: reverse importers live on Exports
+		expect(cats.has('Exports')).toBe(true);
+		expect(cats.has('Imports')).toBe(false);
 		expect(cats.has('Import folders')).toBe(false);
 	});
 

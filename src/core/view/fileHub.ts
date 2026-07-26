@@ -1,54 +1,36 @@
 /**
  * Dual-side file hub alluvial — high-edge / barrel projection.
  *
- * Columns (L→R), **import-edge direction** (A → B means A imports B):
+ * Columns (L→R), category names fixed:
  *
  *   Import hop N … → Imports → File → Exports → Export hop N
  *
- * - **Left (Imports, cyan):** who imports the focus (reverse BFS); packages/
- *   unresolved the focus itself imports (package → File); **and** packages
- *   imported by kept export-tree files (package → that file). Import-side
- *   teal package colors.
- * - **Right (Exports, yellow):** **file→file only** forward longest-path tree.
- *   No package/unresolved leaves on Export hops.
+ * **Hard product law** (membership of each side; cascades pure):
  *
- * **Cascade purity:** export hops must not absorb reverse importers or any
- * package/unresolved (focus or intermediate). Those packages live on Imports.
+ * - **Imports / Import hop k:** only what the focus **imports** (outbound).
+ *   Forward longest-path **file** deps + packages/unresolved along that tree
+ *   (focus packages: package → File; intermediate packages: package → parent
+ *   file). Never reverse consumers.
+ * - **Exports / Export hop k:** only what **imports from** the focus (inbound
+ *   reverse BFS consumers). Never outbound deps of the focus.
+ * - Rules apply at every hop: import cascade does not absorb export candidates
+ *   and vice versa.
  *
- * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
+ * **Edge orientation** remains A → B means A imports B. Carbon columns are
+ * driven by **category** (not pure path-from-source), so Import-side file deps
+ * may sit left of File with File → dep links, and Export-side consumers sit
+ * right of File with consumer → File links.
  *
- * | Depth | Layout |
- * | ----- | ------ |
- * | 1     | Imports → File → Exports |
- * | N     | Up to N hops each way |
- *
- * Radius = depth (not multiHop’s depth−1). Asymmetric sides omit empty hop columns.
- * Indexing/scan stays unbounded.
+ * **Depth (viz-only)** dual hop radius. Asymmetric sides omit empty columns.
  *
  * **Mass (chart File node):**
- * - File **in-mass** = reverse importer edges + focus package/unresolved out-edges
- * - File **out-mass** = focus → **file** edges only
- * Graph out-degree still counts packages; they sit on the import side of the chart.
- * Export-tree package → intermediate-file links are structural (not File mass).
+ * - Into File: reverse importer edges + focus package/unresolved (package→File)
+ * - Out of File: focus → **file** deps only
  *
- * **{@link PackageLeafMode}** no longer places export-side packages (file-pure
- * cascade). Modes still control plain hop labels: `per-hop` keeps · in/out hN
- * suffixes; pin modes use plain file labels.
+ * **{@link PackageLeafMode}** placement no-op for export packages; still
+ * controls plain hop labels (`per-hop` vs plain).
  *
- * Integer multi-parent split (multiHop-style): a node with mass 1 and N outer
- * neighbors lights only one outer link (`floor(1/N)=0`, remainder to the first
- * path). Outer fan-out may therefore under-draw structure under unit edge
- * weights; accepted product default for conserving File incident mass.
- *
- * **Dependency distances use longest simple path** so focus→format→types
- * expands even when types is also a direct import of focus. Import side
- * still uses shortest reverse BFS.
- *
- * **Layer-consistent topology:** d3-sankey columns = path length from sources.
- * Shared zero-width rails pad short paths so each hop sits on one column.
- *
- * Imports (left) cyan; Exports (right) yellow. Carbon paints bands by source —
- * export-side strokes are recolored in the client polish step.
+ * Integer multi-parent split conserves File incident mass (accepted default).
  */
 
 import {
@@ -224,7 +206,7 @@ export function projectFileHub(
 	/** Reverse-hop display names that received free-source pad rails. */
 	const terminators: string[] = [];
 
-	// --- left: reverse BFS (importers) ---
+	// --- Exports side: reverse BFS (who imports the focus) ---
 	if (inEdges.length) {
 		// Folder leaf collapse only at depth=1 when fan-in is large
 		if (hubRadius === 1 && importerPaths.length > FILE_PROMOTE_THRESHOLD) {
@@ -244,7 +226,7 @@ export function projectFileHub(
 				usedNames,
 			});
 		} else {
-			const importTerminators = addImportRings({
+			const exportTerminators = addImportRings({
 				graph,
 				fileId,
 				fileLabel,
@@ -260,11 +242,12 @@ export function projectFileHub(
 				usedNames,
 				classicLabels,
 			});
-			terminators.push(...importTerminators);
+			// Reverse free-sources land on Exports categories (hard law)
+			terminators.push(...exportTerminators);
 		}
 	}
 
-	// --- left: focus package / unresolved imports (package → File) ---
+	// --- Imports side: focus package / unresolved (package → File) ---
 	const focusPkgEdges = outEdges.filter(
 		(e) => e.toKind === 'package' || e.toKind === 'unresolved',
 	);
@@ -282,11 +265,11 @@ export function projectFileHub(
 		});
 	}
 
-	// --- right: forward longest-path file deps only (cascade purity) ---
+	// --- Imports side: forward longest-path file deps (what focus imports) ---
 	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
-	let exportFileDisplay = new Map<string, string>();
+	let importFileDisplay = new Map<string, string>();
 	if (fileOutEdges.length) {
-		exportFileDisplay = addExportRings({
+		importFileDisplay = addExportRings({
 			graph,
 			fileId,
 			fileLabel,
@@ -303,12 +286,12 @@ export function projectFileHub(
 		});
 	}
 
-	// --- left: packages of kept export-tree files (package → that file) ---
-	if (exportFileDisplay.size) {
+	// --- Imports side: packages of kept import-tree files (package → that file) ---
+	if (importFileDisplay.size) {
 		addExportTreePackageImports({
 			graph,
 			fileLabel,
-			exportFileDisplay,
+			exportFileDisplay: importFileDisplay,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
 			addLink,
@@ -790,7 +773,7 @@ function addImportRings(
 			}
 			nodeRef[otherName] = { kind: 'bucket', id: `other-import-h${d}` };
 			nodeMeta.set(otherName, {
-				category: importHopCategory(d),
+				category: exportHopCategory(d),
 				color: TEAL.other,
 			});
 		}
@@ -807,8 +790,8 @@ function addImportRings(
 			display.set(f, name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
-				category: importHopCategory(d),
-				color: importHopColor(d, radiusL),
+				category: exportHopCategory(d),
+				color: exportHopColor(d, radiusL),
 			});
 		}
 	}
@@ -912,18 +895,18 @@ function ensureImportRails(
 	radiusL: number,
 ): void {
 	for (let s = 2; s <= radiusL; s++) {
-		const id = importRailId(s);
+		const id = exportRailId(s);
 		if (nodeMeta.has(id)) continue;
 		nodeMeta.set(id, {
-			category: importHopCategory(s),
-			color: importHopColor(s, radiusL),
+			category: exportHopCategory(s),
+			color: exportHopColor(s, radiusL),
 		});
 		nodeRef[id] = { kind: 'bucket', id };
 	}
 }
 
 /**
- * Path rails radiusL → … → (dist+1) → target so longest-path layer matches BFS dist.
+ * Path rails (export side) radiusL → … → (dist+1) → target so longest-path layer matches BFS dist.
  * Only used when target has no outer reverse parent (would otherwise be a sankey source).
  */
 function padImportRailsInto(
@@ -936,7 +919,7 @@ function padImportRailsInto(
 	if (mass <= 0 || dist >= radiusL) return;
 	let prev: string | null = null;
 	for (let stage = radiusL; stage > dist; stage--) {
-		const rail = importRailId(stage);
+		const rail = exportRailId(stage);
 		if (prev) addLink(prev, rail, mass);
 		prev = rail;
 	}
@@ -1024,11 +1007,11 @@ function addExportRings(
 	const ensureExportRailsUpTo = (maxStage: number) => {
 		const cap = Math.max(maxStage, radiusR);
 		for (let s = 1; s <= maxStage; s++) {
-			const id = exportRailId(s);
+			const id = importRailId(s);
 			if (nodeMeta.has(id)) continue;
 			nodeMeta.set(id, {
-				category: exportHopCategory(s),
-				color: exportHopColor(s, cap),
+				category: importHopCategory(s),
+				color: importHopColor(s, cap),
 			});
 			nodeRef[id] = { kind: 'bucket', id };
 		}
@@ -1053,7 +1036,7 @@ function addExportRings(
 		ensureExportRailsUpTo(toDist - 1);
 		let prev = fromLab;
 		for (let stage = fromDist + 1; stage < toDist; stage++) {
-			const rail = exportRailId(stage);
+			const rail = importRailId(stage);
 			addLink(prev, rail, w);
 			prev = rail;
 		}
@@ -1105,7 +1088,7 @@ function addExportRings(
 			}
 			nodeRef[otherName] = { kind: 'bucket', id: `other-export-h${d}` };
 			nodeMeta.set(otherName, {
-				category: exportHopCategory(d),
+				category: importHopCategory(d),
 				color: TEAL.exportOther,
 			});
 		}
@@ -1123,8 +1106,8 @@ function addExportRings(
 			display.set(f, name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
-				category: exportHopCategory(d),
-				color: exportHopColor(d, radiusR),
+				category: importHopCategory(d),
+				color: importHopColor(d, radiusR),
 			});
 		}
 	}
@@ -1299,13 +1282,13 @@ function addImportModules(
 			const source = claimName(usedNames, mod, 'module');
 			addLink(source, fileLabel, n);
 			nodeRef[source] = { kind: 'module', id: mod };
-			nodeMeta.set(source, { category: 'Imports', color: '#06b6d4' });
+			nodeMeta.set(source, { category: 'Exports', color: '#06b6d4' });
 		} else if (otherLabel) {
 			addLink(otherLabel, fileLabel, n);
 		}
 	}
 	if (otherLabel) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-import-modules' };
-		nodeMeta.set(otherLabel, { category: 'Imports', color: '#0e7490' });
+		nodeMeta.set(otherLabel, { category: 'Exports', color: '#0e7490' });
 	}
 }
