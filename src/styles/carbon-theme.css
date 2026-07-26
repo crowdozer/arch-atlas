@@ -804,6 +804,64 @@ cds-header {
   cursor: pointer;
 }
 
+/* Built-in demo cards on upload step */
+.atlas-demo__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 560px) {
+  .atlas-demo__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.atlas-demo__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid #27272a;
+  background: rgb(24 24 27 / 0.75);
+  color: #e4e4e7;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.atlas-demo__card:hover {
+  border-color: #2dd4bf;
+  background: rgb(13 148 136 / 0.1);
+}
+
+.atlas-demo__tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #2dd4bf;
+}
+
+.atlas-demo__tag--high {
+  color: #fbbf24; /* amber-400 */
+}
+
+.atlas-demo__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.atlas-demo__blurb {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #a1a1aa;
+}
+
 .atlas-eyebrow {
   font-size: 0.7rem;
   text-transform: uppercase;

@@ -23,6 +23,18 @@ const COMMON_ENTRIES = [
 	'src/server.ts',
 	'cli.ts',
 	'src/cli.ts',
+	// Next.js App Router / middleware
+	'middleware.ts',
+	'middleware.js',
+	'app/page.tsx',
+	'app/page.ts',
+	'app/page.jsx',
+	'app/layout.tsx',
+	'app/layout.ts',
+	'pages/_app.tsx',
+	'pages/_app.js',
+	'pages/index.tsx',
+	'pages/index.js',
 ];
 
 function packageEntryPaths(graph: CodeGraph): string[] {

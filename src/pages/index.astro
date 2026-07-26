@@ -26,6 +26,41 @@ import Layout from '../layouts/Layout.astro';
 					<input id="atlas-file" type="file" accept=".zip,application/zip" />
 				</label>
 			</div>
+
+			<div class="atlas-demo mt-6">
+				<p class="atlas-section-label mb-2">Or load a built-in demo</p>
+				<p class="mb-3 text-xs text-zinc-500">
+					Reproducible fixtures for feedback — written into the session like a ZIP, no
+					upload needed.
+				</p>
+				<div class="atlas-demo__grid">
+					<button
+						type="button"
+						id="atlas-demo-react-simple"
+						class="atlas-demo__card"
+						data-demo="react-simple"
+					>
+						<span class="atlas-demo__tag">Low complexity</span>
+						<span class="atlas-demo__title">React app</span>
+						<span class="atlas-demo__blurb">
+							Vite + React Router: pages, hooks, api, shared lib. Clean layers.
+						</span>
+					</button>
+					<button
+						type="button"
+						id="atlas-demo-next-complex"
+						class="atlas-demo__card"
+						data-demo="next-complex"
+					>
+						<span class="atlas-demo__tag atlas-demo__tag--high">High complexity</span>
+						<span class="atlas-demo__title">Next.js app</span>
+						<span class="atlas-demo__blurb">
+							App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
+						</span>
+					</button>
+				</div>
+			</div>
+
 			<label class="atlas-persist mt-4 flex cursor-pointer items-start gap-2.5">
 				<input
 					id="atlas-persist"

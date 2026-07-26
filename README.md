@@ -24,8 +24,11 @@ npm install
 npm run dev
 ```
 
-Open the app, drop a ZIP of a TS/JS project (sample sources live under
-`fixtures/sample-ts-project/`). Session is in-memory; **Clear session** resets.
+Open the app and either drop a ZIP of a TS/JS project, or click a **built-in
+demo** (React low-complexity / Next.js high-complexity). Fixtures live under
+`fixtures/demo-react-simple/` and `fixtures/demo-next-complex/` (plus the older
+`fixtures/sample-ts-project/`). Optional localStorage remember keeps the session
+across refresh; **Clear session** resets.
 
 ```bash
 npm test    # pure core unit tests
@@ -60,7 +63,7 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 | Client workspace controller | `src/client/app.ts` |
 | Carbon wrappers | `src/components/ui/` |
 | Shell + theme (zinc/teal) | `src/layouts/`, `src/styles/` |
-| Sample fixture | `fixtures/sample-ts-project/` |
+| Sample fixtures | `fixtures/demo-*`, `fixtures/sample-ts-project/` |
 
 ## Agents
 

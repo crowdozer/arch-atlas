@@ -12,6 +12,7 @@ import {
 	type AlluvialPayload,
 	type CodeGraph,
 	type MapCatalog,
+	type VirtualFile,
 } from '@core/index.ts';
 import {
 	buildFileTree,
@@ -19,6 +20,7 @@ import {
 	nodeMatchesFilter,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
+import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
 import {
 	clearPersistedSession,
 	loadPersistedSession,
@@ -363,6 +365,30 @@ function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
+function openFromFiles(
+	files: VirtualFile[],
+	opts?: { warnings?: string[]; statusPrefix?: string },
+): void {
+	if (!files.length) {
+		setStatus('No readable text files.');
+		return;
+	}
+	setStatus(`Indexing ${files.length} files…`);
+	const { graph, catalog } = indexFiles(files);
+	const paths = [...graph.files.keys()];
+	const prefix = opts?.statusPrefix ?? 'Indexed';
+	activateSession(
+		{
+			graph,
+			catalog,
+			startId: catalog.starts[0]?.id ?? null,
+			warnings: opts?.warnings ?? [],
+			expanded: expandPathsForFilter(paths, ''),
+		},
+		`${prefix} ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges`,
+	);
+}
+
 async function handleZip(file: File) {
 	setStatus(`Reading ${file.name}…`);
 	showWarnings([]);
@@ -370,26 +396,27 @@ async function handleZip(file: File) {
 		const buf = await file.arrayBuffer();
 		setStatus('Unpacking ZIP…');
 		const { files, skipped, warnings } = ingestZip(buf);
-		if (!files.length) {
-			setStatus('No readable text files in ZIP.');
-			return;
-		}
-		setStatus(`Indexing ${files.length} files…`);
-		const { graph, catalog } = indexFiles(files);
-		const paths = [...graph.files.keys()];
-		activateSession(
-			{
-				graph,
-				catalog,
-				startId: catalog.starts[0]?.id ?? null,
-				warnings: [
-					...warnings,
-					skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
-				].filter(Boolean),
-				expanded: expandPathsForFilter(paths, ''),
-			},
-			`Indexed ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges`,
-		);
+		openFromFiles(files, {
+			warnings: [
+				...warnings,
+				skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
+			].filter(Boolean),
+		});
+	} catch (err) {
+		console.error(err);
+		setStatus(err instanceof Error ? err.message : String(err));
+	}
+}
+
+function handleDemo(id: DemoId) {
+	showWarnings([]);
+	try {
+		setStatus(`Loading demo “${id}”…`);
+		const files = loadDemoFiles(id);
+		openFromFiles(files, {
+			statusPrefix: `Demo ${id} ·`,
+			warnings: [`Loaded built-in demo: ${id}`],
+		});
 	} catch (err) {
 		console.error(err);
 		setStatus(err instanceof Error ? err.message : String(err));
@@ -493,6 +520,13 @@ function wireUi() {
 	}
 
 	$('atlas-reset')?.addEventListener('click', resetSession);
+
+	$('atlas-demo-react-simple')?.addEventListener('click', () => {
+		handleDemo('react-simple');
+	});
+	$('atlas-demo-next-complex')?.addEventListener('click', () => {
+		handleDemo('next-complex');
+	});
 
 	$('atlas-tree-filter')?.addEventListener('input', () => {
 		if (!session) return;
