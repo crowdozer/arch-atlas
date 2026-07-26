@@ -5,6 +5,7 @@ import {
 	edgeWeight,
 	fileLineCount,
 	lineCount,
+	resolveWeightAxis,
 	resolveWeightRequest,
 	unitsForAxis,
 	type WeightAxis,
@@ -133,6 +134,13 @@ describe('unitsForAxis', () => {
 		expect(unitsForAxis('target-loc')).toMatch(/imported LOC/i);
 		expect(unitsForAxis('target-loc')).toMatch(/whole file/i);
 		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
+	});
+});
+
+describe('resolveWeightAxis', () => {
+	it('defaults to target-loc (UI “Imported LOC”)', () => {
+		expect(resolveWeightAxis()).toBe('target-loc');
+		expect(resolveWeightAxis(undefined)).toBe('target-loc');
 	});
 });
 

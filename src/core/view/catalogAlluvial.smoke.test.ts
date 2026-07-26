@@ -195,7 +195,7 @@ function assertNodeRefCoversNamedNodes(payload: AlluvialPayload, label: string) 
 
 /** Payload the UI mounts for any file catalog click (always file-hub). */
 function payloadForFileClick(graph: CodeGraph, fileId: string): AlluvialPayload | null {
-	// Edge-count conservation assertions use import-edges (UI default is importer-loc).
+	// Edge-count conservation assertions use import-edges (UI default is target-loc).
 	return projectFileHub(graph, fileId, { weightAxis: 'import-edges' });
 }
 

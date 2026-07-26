@@ -9,7 +9,7 @@
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
 
-/** Selectable band-width axes. Default is unit-1 import edges. */
+/** Selectable band-width axes. Default is whole-file imported (target) LOC. */
 export type WeightAxis = 'import-edges' | 'importer-loc' | 'target-loc';
 
 /**
@@ -28,7 +28,8 @@ export type WeightResolution =
 			message: string;
 	  };
 
-const DEFAULT_AXIS: WeightAxis = 'importer-loc';
+/** UI default Weight dropdown: “Imported LOC” (`target-loc`). */
+const DEFAULT_AXIS: WeightAxis = 'target-loc';
 const DEFAULT_PRECISION: LocPrecision = 'estimate';
 
 export const EXACT_NOT_IMPLEMENTED_MESSAGE =

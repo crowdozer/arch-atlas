@@ -385,8 +385,8 @@ describe('hub tree-package residual mass (oauth island fix)', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 	const focusId = 'src/lib/auth/oauth.ts';
 
-	it('types/user→zod uses residual hub mass (importer-loc UI default); no free-source island', () => {
-		// UI default weight axis is importer-loc (not import-edges unit split).
+	it('types/user→zod uses residual hub mass (importer-loc); no free-source island', () => {
+		// Residual package law under importer-loc (not import-edges unit split).
 		const payload = projectFileHub(graph, focusId, {
 			maxDepth: 3,
 			maxImporters: 48,

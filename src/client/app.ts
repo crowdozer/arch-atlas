@@ -85,7 +85,7 @@ let viewStack: AtlasView[] = [];
 /** Last mounted payload (for click resolution). */
 let currentPayload: AlluvialPayload | null = null;
 /** Band-width axis for all projectors (session-local; not persisted). */
-let weightAxis: WeightAxis = 'importer-loc';
+let weightAxis: WeightAxis = 'target-loc';
 /** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
 let locPrecision: LocPrecision = 'estimate';
 /**
@@ -109,7 +109,7 @@ const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
 const VIZ_DEPTH_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12] as const;
 
 function parseWeightAxis(raw: string): WeightAxis {
-	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'importer-loc';
+	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'target-loc';
 }
 
 function parseLocPrecision(raw: string): LocPrecision {

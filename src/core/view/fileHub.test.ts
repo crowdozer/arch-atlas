@@ -449,7 +449,7 @@ describe('projectFileHub demo-next-complex', () => {
 
 	it('stripe route: next + tree packages on External; no packages on Export*', () => {
 		const id = 'app/api/webhooks/stripe/route.ts';
-		// importer-loc (UI default): residual package mass reaches types/* leaves
+		// importer-loc: residual package mass reaches types/* leaves
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
 			weightAxis: 'importer-loc',
