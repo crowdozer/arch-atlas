@@ -124,21 +124,21 @@ import Layout from '../layouts/Layout.astro';
 								open
 							>
 								<p class="atlas-catalog-hint">
-									Files with the most observed import edges — good drill starts.
+									Most connected files (in + out import edges).
 								</p>
 								<div id="atlas-hotspots"></div>
 							</cds-accordion-item>
 							<cds-accordion-item
-								id="atlas-acc-deepest"
+								id="atlas-acc-complex"
 								class="atlas-catalog-acc-item"
-								title="Most hops"
+								title="Tree complexity"
 								open
 							>
 								<p class="atlas-catalog-hint">
-									Deepest outbound import trees — opens a multi-stage hop map
-									(packages → hop N … hop 1 → start).
+									Broadest downwind package surface — how many external ends this
+									tree reaches. Opens multi-stage hop map when deep enough.
 								</p>
-								<div id="atlas-deepest"></div>
+								<div id="atlas-complex"></div>
 							</cds-accordion-item>
 							<cds-accordion-item
 								id="atlas-acc-views"
@@ -163,6 +163,17 @@ import Layout from '../layouts/Layout.astro';
 							>
 								<p class="atlas-catalog-hint">Packages & sinks · click to reverse fan-in</p>
 								<div id="atlas-ends"></div>
+							</cds-accordion-item>
+							<cds-accordion-item
+								id="atlas-acc-deepest"
+								class="atlas-catalog-acc-item"
+								title="Tree depth"
+							>
+								<p class="atlas-catalog-hint">
+									Deepest outbound chains (most hops) — multi-stage map of the
+									longest file→file path into packages.
+								</p>
+								<div id="atlas-deepest"></div>
 							</cds-accordion-item>
 						</cds-accordion>
 					</div>

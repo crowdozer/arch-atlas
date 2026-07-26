@@ -1,9 +1,10 @@
 /**
- * "Most hops" catalog bin: source files whose outbound import graph is deepest.
- * Hop = BFS distance over file→file import edges from the candidate start.
+ * Tree-depth and tree-complexity catalog bins over outbound import graphs.
+ * - Depth: max BFS hops file→file
+ * - Complexity: distinct downwind package/unresolved ends
  */
 
-import type { CatalogDeep, CodeGraph } from '@core/graph/types.ts';
+import type { CatalogComplex, CatalogDeep, CodeGraph } from '@core/graph/types.ts';
 
 /** Adjacency: file → imported files. */
 export function fileImportAdj(graph: CodeGraph): Map<string, string[]> {
@@ -82,12 +83,10 @@ export function importDepthStats(
 	};
 }
 
-/**
- * Rank source files by deepest outbound import hop chain.
- * Skips leaves (maxHops === 0) — they belong in fan-in / high-edges, not depth.
- */
-export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
-	const adj = fileImportAdj(graph);
+function degreeMaps(graph: CodeGraph): {
+	outDeg: Map<string, number>;
+	inDeg: Map<string, number>;
+} {
 	const outDeg = new Map<string, number>();
 	const inDeg = new Map<string, number>();
 	for (const e of graph.edges) {
@@ -96,6 +95,16 @@ export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
 			inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
 		}
 	}
+	return { outDeg, inDeg };
+}
+
+/**
+ * Tree depth: deepest outbound import hop chain (max BFS hops).
+ * Skips pure leaves (maxHops === 0).
+ */
+export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
+	const adj = fileImportAdj(graph);
+	const { outDeg, inDeg } = degreeMaps(graph);
 
 	const deep: CatalogDeep[] = [];
 	for (const [path, node] of graph.files) {
@@ -125,4 +134,43 @@ export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
 			a.path.localeCompare(b.path),
 	);
 	return deep.slice(0, limit);
+}
+
+/**
+ * Tree complexity: broadest downwind package surface.
+ * Ranked by distinct package/unresolved ends in the outbound reachable set.
+ * Skips starts with no package ends.
+ */
+export function catalogComplex(graph: CodeGraph, limit = 15): CatalogComplex[] {
+	const adj = fileImportAdj(graph);
+	const { outDeg, inDeg } = degreeMaps(graph);
+
+	const complex: CatalogComplex[] = [];
+	for (const [path, node] of graph.files) {
+		if (!node.isSource) continue;
+		const stats = importDepthStats(graph, path, adj);
+		if (stats.packageEnds < 1) continue;
+		const out = outDeg.get(path) ?? 0;
+		const inn = inDeg.get(path) ?? 0;
+		complex.push({
+			id: path,
+			path,
+			packageEnds: stats.packageEnds,
+			reachableFiles: stats.reachableFiles,
+			maxHops: stats.maxHops,
+			edgeCount: out + inn,
+			outDegree: out,
+			inDegree: inn,
+			epistemic: 'observed',
+		});
+	}
+
+	complex.sort(
+		(a, b) =>
+			b.packageEnds - a.packageEnds ||
+			b.reachableFiles - a.reachableFiles ||
+			b.maxHops - a.maxHops ||
+			a.path.localeCompare(b.path),
+	);
+	return complex.slice(0, limit);
 }

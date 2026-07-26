@@ -43,6 +43,7 @@ describe('sessionStore encode/parse', () => {
 				starts: [],
 				ends: [],
 				hotspots: [],
+				complex: [],
 				deepest: [],
 				views: [],
 				summary: {

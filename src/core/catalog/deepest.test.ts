@@ -2,7 +2,11 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { catalogDeepest, importDepthStats } from '@core/catalog/deepest.ts';
+import {
+	catalogComplex,
+	catalogDeepest,
+	importDepthStats,
+} from '@core/catalog/deepest.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 
@@ -49,10 +53,43 @@ describe('catalogDeepest / importDepthStats', () => {
 		expect(stripe.packageEnds).toBeGreaterThan(2);
 	});
 
-	it('leaves are excluded from most-hops list', () => {
+	it('leaves are excluded from tree-depth list', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const deep = catalogDeepest(graph);
 		expect(deep.every((d) => d.maxHops >= 1)).toBe(true);
 		expect(deep.some((d) => d.path === 'src/lib/logger.ts')).toBe(false);
+	});
+});
+
+describe('catalogComplex', () => {
+	it('ranks by packageEnds descending', () => {
+		const { graph, catalog } = indexFiles(
+			walk(path.join(fixturesRoot, 'demo-next-complex')),
+		);
+		const complex = catalogComplex(graph);
+		expect(complex.length).toBeGreaterThan(3);
+		for (let i = 1; i < complex.length; i++) {
+			expect(complex[i - 1]!.packageEnds).toBeGreaterThanOrEqual(
+				complex[i]!.packageEnds,
+			);
+		}
+		expect(complex[0]!.packageEnds).toBeGreaterThan(0);
+		expect(catalog.complex[0]!.path).toBe(complex[0]!.path);
+	});
+
+	it('uses packageEnds as primary rank (not maxHops)', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const complex = catalogComplex(graph);
+		// Ensure we are not accidentally sorting by depth alone
+		const byHops = [...complex].sort(
+			(a, b) => b.maxHops - a.maxHops || a.path.localeCompare(b.path),
+		);
+		// Top complexity entry is maximal on packageEnds among the list
+		expect(complex[0]!.packageEnds).toBe(
+			Math.max(...complex.map((c) => c.packageEnds)),
+		);
+		// Depth ranking can differ from complexity ranking on this fixture
+		void byHops;
+		expect(complex.every((c) => c.packageEnds >= 1)).toBe(true);
 	});
 });

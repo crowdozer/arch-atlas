@@ -2,7 +2,7 @@
  * Suggested map-catalog views from graph + starts.
  */
 
-import { catalogDeepest } from '@core/catalog/deepest.ts';
+import { catalogComplex, catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
 import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
@@ -24,6 +24,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 	const starts = catalogStarts(graph);
 	const ends = catalogEnds(graph);
 	const hotspots = catalogHotspots(graph);
+	const complex = catalogComplex(graph);
 	const deepest = catalogDeepest(graph);
 	const views: SuggestedView[] = [];
 
@@ -52,9 +53,21 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		});
 	}
 
-	// High-edge + deep-hop starts as suggested entry points (skip duplicates)
+	// Suggested shortcuts: complexity first, then high-edges, then depth
 	const listed = new Set(views.map((v) => v.startId));
-	for (const h of hotspots.slice(0, 4)) {
+	for (const c of complex.slice(0, 3)) {
+		if (listed.has(c.id)) continue;
+		views.push({
+			id: `tree-complex:${c.id}`,
+			title: `Tree complexity · ${basename(c.path)}`,
+			description: `${c.packageEnds} pkgs · ${c.reachableFiles} files · ${c.maxHops} hops`,
+			startId: c.id,
+			edgeCount: c.edgeCount,
+			epistemic: 'observed',
+		});
+		listed.add(c.id);
+	}
+	for (const h of hotspots.slice(0, 3)) {
 		if (listed.has(h.id)) continue;
 		views.push({
 			id: `high-edges:${h.id}`,
@@ -65,26 +78,25 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 			epistemic: 'observed',
 		});
 		listed.add(h.id);
-		if (views.length >= 8) break;
 	}
-	for (const d of deepest.slice(0, 4)) {
+	for (const d of deepest.slice(0, 3)) {
 		if (listed.has(d.id)) continue;
 		views.push({
-			id: `most-hops:${d.id}`,
-			title: `Most hops · ${basename(d.path)}`,
+			id: `tree-depth:${d.id}`,
+			title: `Tree depth · ${basename(d.path)}`,
 			description: `${d.maxHops} hops · ${d.reachableFiles} files · ${d.packageEnds} pkgs`,
 			startId: d.id,
 			edgeCount: d.edgeCount,
 			epistemic: 'observed',
 		});
 		listed.add(d.id);
-		if (views.length >= 10) break;
 	}
 
 	return {
 		starts,
 		ends,
 		hotspots,
+		complex,
 		deepest,
 		views,
 		summary: {

@@ -9,6 +9,7 @@ export type {
 	AlluvialNodeRef,
 	AlluvialNodeRefKind,
 	AlluvialPayload,
+	CatalogComplex,
 	CatalogDeep,
 	CatalogEnd,
 	CatalogHotspot,
@@ -23,6 +24,7 @@ export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
 export {
+	catalogComplex,
 	catalogDeepest,
 	fileDistances,
 	importDepthStats,

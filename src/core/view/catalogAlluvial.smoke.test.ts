@@ -98,19 +98,20 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 	it('indexes a dense graph with catalog sections', () => {
 		expect(graph.stats.edgeCount).toBeGreaterThan(30);
 		expect(catalog.hotspots.length).toBeGreaterThan(5);
+		expect(catalog.complex.length).toBeGreaterThan(3);
 		expect(catalog.deepest.length).toBeGreaterThan(3);
 		expect(catalog.starts.length).toBeGreaterThan(0);
 		expect(catalog.ends.length).toBeGreaterThan(0);
 		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
-	it('every most-hops entry: multi-hop open conserves and matches package mass', () => {
+	it('every tree-depth entry: multi-hop open conserves', () => {
 		for (const d of catalog.deepest) {
 			expect(d.maxHops).toBeGreaterThanOrEqual(1);
 			const payload = projectMultiHopAlluvial(graph, d.id);
-			expect(payload, `deepest ${d.path}`).not.toBeNull();
-			assertColumnConservation(payload!, `deepest ${d.path}`);
-			assertNodeRefCoversNamedNodes(payload!, `deepest ${d.path}`);
+			expect(payload, `depth ${d.path}`).not.toBeNull();
+			assertColumnConservation(payload!, `depth ${d.path}`);
+			assertNodeRefCoversNamedNodes(payload!, `depth ${d.path}`);
 			expect(totalValue(payload!)).toBeGreaterThan(0);
 
 			if (d.maxHops >= 2) {
@@ -121,6 +122,17 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 					0,
 				);
 			}
+		}
+	});
+
+	it('every tree-complexity entry: multi-hop open conserves; packageEnds ≥ 1', () => {
+		for (const c of catalog.complex) {
+			expect(c.packageEnds).toBeGreaterThanOrEqual(1);
+			const payload = projectMultiHopAlluvial(graph, c.id);
+			expect(payload, `complex ${c.path}`).not.toBeNull();
+			assertColumnConservation(payload!, `complex ${c.path}`);
+			assertNodeRefCoversNamedNodes(payload!, `complex ${c.path}`);
+			expect(totalValue(payload!)).toBeGreaterThan(0);
 		}
 	});
 

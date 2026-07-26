@@ -48,7 +48,7 @@ type Session = {
 /** Nested alluvial focus (top of stack = current view). */
 type AtlasView =
 	| { type: 'file'; fileId: string }
-	/** Multi-stage deepest-tree map (Most hops catalog). */
+	/** Multi-stage tree map (Tree depth / Tree complexity catalog). */
 	| { type: 'file-multihop'; fileId: string }
 	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
 	| { type: 'file-importers'; fileId: string }
@@ -145,7 +145,7 @@ function captionForView(view: AtlasView): string {
 		case 'file':
 			return `Modules → code for ${view.fileId}`;
 		case 'file-multihop':
-			return `Most hops · dependency tree · ${view.fileId}`;
+			return `Dependency tree · ${view.fileId}`;
 		case 'file-importers':
 			return `File · ${view.fileId} → importers`;
 		case 'package':
@@ -168,7 +168,7 @@ function statusForView(view: AtlasView): string {
 		case 'file':
 			return `Start: ${view.fileId}`;
 		case 'file-multihop':
-			return `Most hops: ${view.fileId}`;
+			return `Tree map: ${view.fileId}`;
 		case 'file-importers':
 			return `Importers of ${view.fileId}`;
 		case 'package':
@@ -554,6 +554,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 
 	// Accordion section titles with counts (Carbon cds-accordion-item title prop)
 	const hotspotN = catalog.hotspots?.length ?? 0;
+	const complexN = catalog.complex?.length ?? 0;
 	const deepN = catalog.deepest?.length ?? 0;
 	const viewsN = catalog.views.length;
 	const startsN = Math.min(catalog.starts.length, 25);
@@ -563,12 +564,16 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		`High edges${hotspotN ? ` (${hotspotN})` : ''}`,
 	);
 	setAccordionTitle(
-		'atlas-acc-deepest',
-		`Most hops${deepN ? ` (${deepN})` : ''}`,
+		'atlas-acc-complex',
+		`Tree complexity${complexN ? ` (${complexN})` : ''}`,
 	);
 	setAccordionTitle('atlas-acc-views', `Suggested views${viewsN ? ` (${viewsN})` : ''}`);
 	setAccordionTitle('atlas-acc-starts', `Starts${startsN ? ` (${startsN})` : ''}`);
 	setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
+	setAccordionTitle(
+		'atlas-acc-deepest',
+		`Tree depth${deepN ? ` (${deepN})` : ''}`,
+	);
 
 	const tags = $('atlas-summary-tags');
 	if (tags) {
@@ -622,6 +627,32 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		}
 	}
 
+	const complexHost = $('atlas-complex');
+	if (complexHost) {
+		complexHost.innerHTML = '';
+		const list = catalog.complex ?? [];
+		for (const c of list.slice(0, 15)) {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'atlas-list-btn';
+			if (selectedStart === c.id) btn.classList.add('is-selected');
+			const pkgsLabel = c.packageEnds === 1 ? '1 pkg' : `${c.packageEnds} pkgs`;
+			const detail = `${c.reachableFiles} files · ${c.maxHops} hops · out ${c.outDegree}`;
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(c.path)}</span>
+					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${pkgsLabel}</span>
+				</span>
+				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
+			// Complexity trees open multi-hop when depth allows (same projector)
+			btn.addEventListener('click', () => selectTreeStart(c.id));
+			complexHost.appendChild(btn);
+		}
+		if (!list.length) {
+			complexHost.innerHTML = `<p class="text-xs text-zinc-600">No package surfaces yet.</p>`;
+		}
+	}
+
 	const deepestHost = $('atlas-deepest');
 	if (deepestHost) {
 		deepestHost.innerHTML = '';
@@ -639,7 +670,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${hopsLabel}</span>
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			btn.addEventListener('click', () => selectDeepStart(d.id));
+			btn.addEventListener('click', () => selectTreeStart(d.id));
 			deepestHost.appendChild(btn);
 		}
 		if (!list.length) {
@@ -655,20 +686,29 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === v.startId) btn.classList.add('is-selected');
-			// Views only store total edgeCount; resolve out/in from starts/hotspots if present
 			const startMeta = catalog.starts.find((s) => s.id === v.startId);
 			const hotMeta = catalog.hotspots?.find((h) => h.id === v.startId);
 			const deepMeta = catalog.deepest?.find((d) => d.id === v.startId);
+			const complexMeta = catalog.complex?.find((c) => c.id === v.startId);
 			const outD =
 				startMeta?.outDegree ??
 				hotMeta?.outDegree ??
+				complexMeta?.outDegree ??
 				deepMeta?.outDegree ??
 				v.edgeCount ??
 				0;
 			const inD =
-				startMeta?.inDegree ?? hotMeta?.inDegree ?? deepMeta?.inDegree ?? 0;
+				startMeta?.inDegree ??
+				hotMeta?.inDegree ??
+				complexMeta?.inDegree ??
+				deepMeta?.inDegree ??
+				0;
 			const badge =
-				typeof v.edgeCount === 'number' || startMeta || hotMeta || deepMeta
+				typeof v.edgeCount === 'number' ||
+				startMeta ||
+				hotMeta ||
+				complexMeta ||
+				deepMeta
 					? edgeBadge(outD, inD)
 					: '';
 			btn.innerHTML = `
@@ -677,10 +717,15 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badge}
 				</span>
 				<span class="meta">${escapeHtml(v.description)}</span>`;
-			// most-hops suggested views open multi-stage tree
+			// Tree bins open multi-stage map; others use default open path
 			btn.addEventListener('click', () => {
-				if (v.id.startsWith('most-hops:')) selectDeepStart(v.startId);
-				else selectStart(v.startId);
+				if (
+					v.id.startsWith('tree-depth:') ||
+					v.id.startsWith('tree-complex:') ||
+					v.id.startsWith('most-hops:')
+				) {
+					selectTreeStart(v.startId);
+				} else selectStart(v.startId);
 			});
 			viewsHost.appendChild(btn);
 		}
@@ -790,8 +835,8 @@ function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	openFileView(viewForFileOpen(startId), startId, opts);
 }
 
-/** Most hops catalog: multi-stage deepest-tree alluvial. */
-function selectDeepStart(startId: string, opts?: { skipPersist?: boolean }) {
+/** Tree depth / complexity catalog: multi-stage hop alluvial. */
+function selectTreeStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
 	openFileView({ type: 'file-multihop', fileId: startId }, startId, opts);
 }
