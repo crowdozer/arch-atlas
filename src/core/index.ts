@@ -58,6 +58,10 @@ export {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
+export {
+	preferFileHubView,
+	projectFileHub,
+} from '@core/view/fileHub.ts';
 export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
 export {
 	callSitesForEdge,

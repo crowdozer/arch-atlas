@@ -12,7 +12,9 @@ import {
 	evidenceForEdges,
 	indexFiles,
 	ingestZip,
+	preferFileHubView,
 	preferFileImportersView,
+	projectFileHub,
 	projectFileImporters,
 	projectModuleFocus,
 	projectMultiHopAlluvial,
@@ -60,6 +62,8 @@ type AtlasView =
 	| { type: 'file-multihop'; fileId: string }
 	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
 	| { type: 'file-importers'; fileId: string }
+	/** Dual hub: importers → file → dependencies (high-edges / barrels). */
+	| { type: 'file-hub'; fileId: string }
 	| { type: 'package'; packageId: string; label: string }
 	| { type: 'module'; moduleId: string };
 
@@ -195,6 +199,8 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 			return projectMultiHopAlluvial(session.graph, view.fileId, opts);
 		case 'file-importers':
 			return projectFileImporters(session.graph, view.fileId, opts);
+		case 'file-hub':
+			return projectFileHub(session.graph, view.fileId, opts);
 		case 'package':
 			return projectPackageImporters(session.graph, view.packageId, opts);
 		case 'module':
@@ -210,6 +216,8 @@ function captionForView(view: AtlasView): string {
 			return `Dependency tree · ${view.fileId}`;
 		case 'file-importers':
 			return `File · ${view.fileId} → importers`;
+		case 'file-hub':
+			return `Hub · importers → ${view.fileId} → deps`;
 		case 'package':
 			return `Package · ${view.label} → importers`;
 		case 'module':
@@ -217,8 +225,14 @@ function captionForView(view: AtlasView): string {
 	}
 }
 
-/** Choose outbound deps map vs reverse importers for a file open. */
+/**
+ * Choose projection for a file open:
+ * dual hub (both in+out) → reverse importers (fan-in) → forward package map.
+ */
 function viewForFileOpen(fileId: string): AtlasView {
+	if (session && preferFileHubView(session.graph, fileId)) {
+		return { type: 'file-hub', fileId };
+	}
 	if (session && preferFileImportersView(session.graph, fileId)) {
 		return { type: 'file-importers', fileId };
 	}
@@ -233,6 +247,8 @@ function statusForView(view: AtlasView): string {
 			return `Tree map: ${view.fileId}`;
 		case 'file-importers':
 			return `Importers of ${view.fileId}`;
+		case 'file-hub':
+			return `Hub: ${view.fileId}`;
 		case 'package':
 			return `Package: ${view.label}`;
 		case 'module':
@@ -383,6 +399,9 @@ function sameView(a: AtlasView, b: AtlasView): boolean {
 	if (a.type === 'file-importers' && b.type === 'file-importers') {
 		return a.fileId === b.fileId;
 	}
+	if (a.type === 'file-hub' && b.type === 'file-hub') {
+		return a.fileId === b.fileId;
+	}
 	if (a.type === 'package' && b.type === 'package') {
 		return a.packageId === b.packageId;
 	}
@@ -406,9 +425,11 @@ function pushView(view: AtlasView): void {
 					? `No package edges in ${view.moduleId}`
 					: view.type === 'file-importers'
 						? `No importers for ${view.fileId}`
-						: view.type === 'file-multihop'
-							? `No multi-hop surface for ${view.fileId}`
-							: `No import flow for ${view.fileId}`,
+						: view.type === 'file-hub'
+							? `No hub edges for ${view.fileId}`
+							: view.type === 'file-multihop'
+								? `No multi-hop surface for ${view.fileId}`
+								: `No import flow for ${view.fileId}`,
 		);
 		return;
 	}
@@ -958,7 +979,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${edgeBadge(h.outDegree, h.inDegree)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			btn.addEventListener('click', () => selectStart(h.id));
+			btn.addEventListener('click', () => selectHotspot(h.id));
 			hotspotsHost.appendChild(btn);
 		}
 		if (!list.length) {
@@ -1057,7 +1078,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badge}
 				</span>
 				<span class="meta">${escapeHtml(v.description)}</span>`;
-			// Tree bins open multi-stage map; others use default open path
+			// Tree bins open multi-stage map; high-edges use dual hub; else default
 			btn.addEventListener('click', () => {
 				if (
 					v.id.startsWith('tree-depth:') ||
@@ -1065,6 +1086,8 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					v.id.startsWith('most-hops:')
 				) {
 					selectTreeStart(v.startId);
+				} else if (v.id.startsWith('high-edges:')) {
+					selectHotspot(v.startId);
 				} else selectStart(v.startId);
 			});
 			viewsHost.appendChild(btn);
@@ -1172,7 +1195,16 @@ function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: b
 
 function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
-	// Tree / high-edges / starts: 3-col or reverse fan-in
+	// Tree / starts: dual hub, reverse fan-in, or forward package map
+	openFileView(viewForFileOpen(startId), startId, opts);
+}
+
+/**
+ * High-edges catalog: prefer dual hub so in+out edge count is visible.
+ * Falls back to reverse / forward when only one side has edges.
+ */
+function selectHotspot(startId: string, opts?: { skipPersist?: boolean }) {
+	if (!session) return;
 	openFileView(viewForFileOpen(startId), startId, opts);
 }
 

@@ -15,6 +15,10 @@ import {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
+import {
+	preferFileHubView,
+	projectFileHub,
+} from '@core/view/fileHub.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
 import { projectMultiHopAlluvial } from '@core/view/multiHop.ts';
 import { projectPackageImporters } from '@core/view/packageImporters.ts';
@@ -76,14 +80,31 @@ function focusOutflow(payload: AlluvialPayload): number {
 	return sum;
 }
 
-/** Intermediate columns: sum(in) === sum(out) for every non-source non-sink? */
+/**
+ * Intermediate columns: sum(in) === sum(out) for nodes that both receive and emit.
+ * Dual-hub focus is exempt — left in-mass and right out-mass are independent.
+ */
 function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	const { out, inn } = flowTotals(payload.data);
 	const categories = new Map(
 		payload.options.alluvial.nodes.map((n) => [n.name, n.category]),
 	);
-	// Nodes that both receive and emit should balance
+	const focusNames = new Set<string>([payload.meta.focus.label]);
+	if (payload.meta.startId) {
+		focusNames.add(payload.meta.startId);
+		const base = payload.meta.startId.includes('/')
+			? payload.meta.startId.slice(payload.meta.startId.lastIndexOf('/') + 1)
+			: payload.meta.startId;
+		focusNames.add(base);
+	}
+	// Dual-hub focus node (any disambiguated label) is the only File with both in+out
+	for (const n of payload.options.alluvial.nodes) {
+		if (n.category === 'File' && payload.meta.nodeRef[n.name]?.id === payload.meta.startId) {
+			focusNames.add(n.name);
+		}
+	}
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
+		if (focusNames.has(name)) continue;
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {
@@ -108,10 +129,23 @@ function assertNodeRefCoversNamedNodes(payload: AlluvialPayload, label: string) 
 
 /** Payload the UI would mount for a file catalog click. */
 function payloadForFileClick(graph: CodeGraph, fileId: string): AlluvialPayload | null {
+	if (preferFileHubView(graph, fileId)) {
+		return projectFileHub(graph, fileId);
+	}
 	if (preferFileImportersView(graph, fileId)) {
 		return projectFileImporters(graph, fileId);
 	}
 	return projectAlluvial(graph, fileId);
+}
+
+/** Incident mass on hub focus (in + out); reverse uses outflow only. */
+function focusIncidentMass(payload: AlluvialPayload): number {
+	const focusName = payload.meta.focus.label;
+	const { out, inn } = flowTotals(payload.data);
+	const inMass = inn.get(focusName) ?? 0;
+	const outMass = out.get(focusName) ?? 0;
+	if (inMass > 0 || outMass > 0) return inMass + outMass;
+	return focusOutflow(payload);
 }
 
 describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
@@ -172,7 +206,18 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			assertColumnConservation(payload!, `hotspot ${h.path}`);
 			assertNodeRefCoversNamedNodes(payload!, `hotspot ${h.path}`);
 
-			if (preferFileImportersView(graph, h.id)) {
+			if (preferFileHubView(graph, h.id)) {
+				// Dual hub: incident mass === in + out (catalog edgeCount)
+				expect(focusIncidentMass(payload!), `${h.path} hub mass`).toBe(
+					h.edgeCount,
+				);
+				expect(payload!.meta.focus.kind).toBe('file');
+				const cats = new Set(
+					payload!.options.alluvial.nodes.map((n) => n.category),
+				);
+				expect(cats.has('Importers')).toBe(true);
+				expect(cats.has('Dependencies')).toBe(true);
+			} else if (preferFileImportersView(graph, h.id)) {
 				// Reverse: focus outflow === inbound file edges (multi-hop conserves)
 				expect(focusOutflow(payload!), `${h.path} reverse mass`).toBe(h.inDegree);
 				expect(payload!.meta.focus.kind).toBe('file');
@@ -197,17 +242,18 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		}
 	});
 
-	it('redis.ts (fan-in dominant) opens reverse with inDegree total', () => {
+	it('redis.ts (both sides) opens dual hub with in+out total', () => {
 		const id = 'src/lib/redis.ts';
-		expect(preferFileImportersView(graph, id)).toBe(true);
+		expect(preferFileHubView(graph, id)).toBe(true);
 		const inn = fileInDegree(graph, id);
 		const out = fileOutDegree(graph, id);
-		expect(inn).toBeGreaterThan(out);
-		const payload = projectFileImporters(graph, id)!;
-		expect(focusOutflow(payload)).toBe(inn);
+		expect(inn).toBeGreaterThan(0);
+		expect(out).toBeGreaterThan(0);
+		const payload = projectFileHub(graph, id)!;
+		expect(focusIncidentMass(payload)).toBe(inn + out);
 		// Forward under-represents catalog edge count
 		const forward = projectAlluvial(graph, id)!;
-		expect(totalValue(forward)).toBeLessThan(inn);
+		expect(totalValue(forward)).toBeLessThan(inn + out);
 	});
 
 	it('logger.ts pure sink opens reverse with full importer count', () => {
@@ -250,7 +296,9 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			}
 			assertColumnConservation(payload, `start ${s.path}`);
 			assertNodeRefCoversNamedNodes(payload, `start ${s.path}`);
-			if (preferFileImportersView(graph, s.id)) {
+			if (preferFileHubView(graph, s.id)) {
+				expect(focusIncidentMass(payload)).toBe(s.outDegree + s.inDegree);
+			} else if (preferFileImportersView(graph, s.id)) {
 				expect(focusOutflow(payload)).toBe(s.inDegree);
 			} else {
 				expect(totalValue(payload)).toBeGreaterThan(0);

@@ -338,16 +338,37 @@ export function edgesForBand(
 			(e) => topFolder(e.from) === tgt.id && edgeMatchesPackage(e, src.id),
 		);
 	}
-	// Module → file (conserved hop: package imports from module files)
-	if (src.kind === 'module' && tgt.kind === 'file') {
-		return graph.edges.filter(
-			(e) => e.toKind !== 'file' && topFolder(e.from) === src.id,
-		);
-	}
-	// File → importers (reverse): subject file left, importer right
+	// File ↔ file: reverse (hub left, importer right) or hub forward
+	// (importer left → hub, hub → dep file).
 	if (src.kind === 'file' && tgt.kind === 'file') {
 		return graph.edges.filter(
-			(e) => e.toKind === 'file' && e.to === src.id && e.from === tgt.id,
+			(e) =>
+				e.toKind === 'file' &&
+				((e.from === src.id && e.to === tgt.id) ||
+					(e.from === tgt.id && e.to === src.id)),
+		);
+	}
+	// File → package/unresolved (hub right side)
+	if (
+		src.kind === 'file' &&
+		(tgt.kind === 'package' || tgt.kind === 'unresolved')
+	) {
+		return graph.edges.filter(
+			(e) => e.from === src.id && edgeMatchesPackage(e, tgt.id),
+		);
+	}
+	// Module → file: hub left (importer module → focus) or forward package hop
+	if (src.kind === 'module' && tgt.kind === 'file') {
+		const intoFocus = graph.edges.filter(
+			(e) =>
+				e.toKind === 'file' &&
+				e.to === tgt.id &&
+				(topFolder(e.from) === src.id || e.from.startsWith(`${src.id}/`)),
+		);
+		if (intoFocus.length) return intoFocus;
+		// Conserved hop: package imports from module files (forward alluvial)
+		return graph.edges.filter(
+			(e) => e.toKind !== 'file' && topFolder(e.from) === src.id,
 		);
 	}
 	if (src.kind === 'file' && tgt.kind === 'module') {
