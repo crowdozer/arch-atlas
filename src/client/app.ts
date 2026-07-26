@@ -123,11 +123,35 @@ function defaultDepthForView(view: AtlasView): number {
 	return view.type === 'file-hub' ? HUB_DEFAULT_MAX_DEPTH : NORMAL_DEFAULT_MAX_DEPTH;
 }
 
+/** Depth control is meaningful only for multi-hop / hub / reverse projections. */
+function viewUsesDepth(view: AtlasView | null): boolean {
+	if (!view) return false;
+	return (
+		view.type === 'file-multihop' ||
+		view.type === 'file-hub' ||
+		view.type === 'file-importers'
+	);
+}
+
 function syncDepthDropdown(): void {
-	const el = $('atlas-max-depth') as (HTMLElement & { value?: string }) | null;
+	const el = $('atlas-max-depth') as (HTMLElement & {
+		value?: string;
+		disabled?: boolean;
+	}) | null;
 	if (!el) return;
 	el.value = String(vizMaxDepth);
 	el.setAttribute('value', String(vizMaxDepth));
+	const uses = viewUsesDepth(currentView());
+	el.disabled = !uses;
+	if (uses) {
+		el.removeAttribute('disabled');
+		el.removeAttribute('aria-disabled');
+	} else {
+		el.setAttribute('disabled', '');
+		el.setAttribute('aria-disabled', 'true');
+	}
+	const group = el.closest('.atlas-stage__control-group');
+	if (group) group.classList.toggle('is-depth-disabled', !uses);
 }
 
 /**
@@ -241,7 +265,7 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 		case 'file-multihop':
 			return projectMultiHopAlluvial(session.graph, view.fileId, {
 				...opts,
-				maxHopStages: depth.maxHopStages,
+				...depth,
 			});
 		case 'file-importers':
 			return projectFileImporters(session.graph, view.fileId, {
@@ -506,6 +530,7 @@ function pushView(view: AtlasView): void {
 	viewStack.push(view);
 	updateCaption(view);
 	updateBackButton();
+	syncDepthDropdown();
 	if (mountAlluvialGated(payload)) {
 		setStatus(statusForView(view));
 	}
@@ -519,6 +544,7 @@ function popView(): void {
 	applyDepthDefaultForView(view);
 	updateCaption(view);
 	updateBackButton();
+	syncDepthDropdown();
 	if (mountAlluvialGated(payloadForView(view))) {
 		setStatus(statusForView(view));
 	}
@@ -1261,6 +1287,7 @@ function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: b
 	renderCatalog(session.catalog, startId);
 	updateCaption(view);
 	updateBackButton();
+	syncDepthDropdown();
 	if (mountAlluvialGated(payloadForView(view))) {
 		setStatus(statusForView(view));
 	}
@@ -1388,12 +1415,16 @@ function resetSession() {
 	session = null;
 	viewStack = [];
 	currentPayload = null;
+	// Fresh session gets mode defaults again (hub 3 / normal 7)
+	depthUserSet = false;
+	vizMaxDepth = NORMAL_DEFAULT_MAX_DEPTH;
 	clearPersistedSession();
 	destroyChart();
 	const alluvial = $('atlas-alluvial');
 	if (alluvial) alluvial.replaceChildren();
 	updateCaption(null);
 	updateBackButton();
+	syncDepthDropdown();
 
 	$('atlas-workspace')?.classList.add('hidden');
 	$('atlas-subbar')?.classList.add('hidden');

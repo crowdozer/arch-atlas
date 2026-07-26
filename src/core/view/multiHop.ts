@@ -196,6 +196,15 @@ export function projectMultiHopAlluvial(
 		filesAtStage.set(d, list);
 	}
 
+	// Package mass per file (rank hop leaves by mass, not alpha — matches projectAlluvial)
+	const filePkgMass = new Map<string, number>();
+	for (const imps of endToImporters.values()) {
+		for (const { file, w } of imps) {
+			if (file === startId) continue;
+			filePkgMass.set(file, (filePkgMass.get(file) ?? 0) + w);
+		}
+	}
+
 	const fileDisplay = new Map<string, string>();
 	const displayMeta = new Map<
 		string,
@@ -205,7 +214,11 @@ export function projectMultiHopAlluvial(
 	// File leaves only (no folder stages)
 	for (const [stage, files] of filesAtStage) {
 		const category = hopCategory(stage);
-		const ranked = [...files].sort((a, b) => a.localeCompare(b));
+		const ranked = [...files].sort(
+			(a, b) =>
+				(filePkgMass.get(b) ?? 0) - (filePkgMass.get(a) ?? 0) ||
+				a.localeCompare(b),
+		);
 		const kept = ranked.slice(0, maxNodesPerHop);
 		const keptSet = new Set(kept);
 		const otherCount = ranked.length - kept.length;
@@ -317,14 +330,6 @@ export function projectMultiHopAlluvial(
 
 	// File → parent (consecutive BFS only): dist d → dist d-1 or File
 	// Weight = package mass on that file (direct), routed toward start.
-	const filePkgMass = new Map<string, number>();
-	for (const imps of endToImporters.values()) {
-		for (const { file, w } of imps) {
-			if (file === startId) continue;
-			filePkgMass.set(file, (filePkgMass.get(file) ?? 0) + w);
-		}
-	}
-
 	const fileMass = new Map<string, number>(filePkgMass);
 	for (let stage = stagesUsed; stage >= 1; stage--) {
 		const filesHere = filesAtStage.get(stage) ?? [];

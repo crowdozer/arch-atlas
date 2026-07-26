@@ -114,3 +114,57 @@ describe('inspect evidence', () => {
 		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(true);
 	});
 });
+
+describe('inspect module keys match importerGroupKey deepen', () => {
+	// Ten files under client/ import hub.ts → projector uses client/(files)
+	const fanIn = [
+		{
+			path: 'client/hub.ts',
+			content: `export const hub = 1;\n`,
+			byteLength: 0,
+		},
+		...Array.from({ length: 10 }, (_, i) => ({
+			path: `client/file${i}.ts`,
+			content: `import { hub } from './hub';\nexport const n${i} = hub;\n`,
+			byteLength: 0,
+		})),
+	];
+
+	it('module → file band recovers file→file edges for client/(files)', () => {
+		const g = buildGraph(fanIn);
+		const edges = edgesForBand(
+			g,
+			{ kind: 'module', id: 'client/(files)' },
+			{ kind: 'file', id: 'client/hub.ts' },
+		);
+		expect(edges.length).toBe(10);
+		expect(edges.every((e) => e.to === 'client/hub.ts')).toBe(true);
+		expect(edges.every((e) => e.from.startsWith('client/file'))).toBe(true);
+	});
+
+	it('edgesForNode module uses (files) heuristic without peers', () => {
+		const withPkg = [
+			{
+				path: 'client/hub.ts',
+				content: `export const hub = 1;\n`,
+				byteLength: 0,
+			},
+			...Array.from({ length: 10 }, (_, i) => ({
+				path: `client/file${i}.ts`,
+				content:
+					i === 0
+						? `import { hub } from './hub';\nimport z from 'zod';\nexport const n0 = hub;\n`
+						: `import { hub } from './hub';\nexport const n${i} = hub;\n`,
+				byteLength: 0,
+			})),
+			{
+				path: 'package.json',
+				content: `{"dependencies":{"zod":"3"}}`,
+				byteLength: 0,
+			},
+		];
+		const g2 = buildGraph(withPkg);
+		const pkgEdges = edgesForNode(g2, { kind: 'module', id: 'client/(files)' });
+		expect(pkgEdges.some((e) => e.specifier === 'zod')).toBe(true);
+	});
+});

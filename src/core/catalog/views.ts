@@ -34,7 +34,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 			id: `import-surface:${primary.id}`,
 			title: `Import surface · ${basename(primary.path)}`,
 			description:
-				'Start file → intermediate modules (folder clusters) → packages and sinks',
+				'Imports (packages) → Hop · file leaves → File (import surface)',
 			startId: primary.id,
 			edgeCount: primary.outDegree + primary.inDegree,
 			epistemic: 'inferred',

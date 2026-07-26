@@ -74,6 +74,41 @@ export function importerGroupKey(
 }
 
 /**
+ * Best-effort membership for a module leaf key without the peer set used to
+ * build the grouper (prefix / topFolder / `dir/(files)` heuristics).
+ */
+export function pathMatchesModuleKey(path: string, moduleKey: string): boolean {
+	if (!moduleKey) return false;
+	if (moduleKey === '(root)') {
+		return topFolder(path) === '(root)';
+	}
+	if (moduleKey.endsWith('/(files)')) {
+		const root = moduleKey.slice(0, -'/(files)'.length);
+		const parts = path.split('/').filter(Boolean);
+		return parts.length === 2 && parts[0] === root;
+	}
+	if (topFolder(path) === moduleKey) return true;
+	if (path === moduleKey || path.startsWith(`${moduleKey}/`)) return true;
+	return false;
+}
+
+/**
+ * Whether `path` belongs to a module leaf produced by {@link importerGroupKey}.
+ * When `peerPaths` is the same importer set the projector used, membership
+ * matches the chart exactly; otherwise falls back to {@link pathMatchesModuleKey}.
+ */
+export function pathInImporterGroup(
+	path: string,
+	moduleKey: string,
+	peerPaths?: readonly string[],
+): boolean {
+	if (peerPaths && peerPaths.length > 0) {
+		return importerGroupKey(peerPaths)(path) === moduleKey;
+	}
+	return pathMatchesModuleKey(path, moduleKey);
+}
+
+/**
  * Project importers of a source file as an alluvial.
  * Returns null when nothing imports the file.
  *
@@ -87,7 +122,6 @@ export function projectFileImporters(
 		heightPx?: number;
 		maxImporters?: number;
 		maxModules?: number;
-		maxFilesPerModule?: number;
 		maxDepth?: number;
 		weightAxis?: WeightAxis;
 	},
@@ -267,11 +301,12 @@ export function fileInDegree(graph: CodeGraph, fileId: string): number {
 }
 
 /**
- * Prefer reverse importers when fan-in dominates the file's edge activity.
+ * Prefer pure reverse-importers when the file is a sink (or fan-in dominant).
  *
- * - Pure sinks (out=0, in>0): always reverse (logger.ts).
- * - Fan-in hubs (in > out): reverse so catalog "N edges" matches the chart.
- * - Outbound-heavy files: keep deps map (modules → code).
+ * File-open precedence (client): dual hub first whenever both in and out > 0,
+ * then this helper, then forward import-surface. So in practice this selects
+ * pure sinks (out=0, in>0). The inn>out branch remains for callers that do
+ * not apply hub preference first.
  */
 export function preferFileImportersView(graph: CodeGraph, fileId: string): boolean {
 	const out = fileOutDegree(graph, fileId);

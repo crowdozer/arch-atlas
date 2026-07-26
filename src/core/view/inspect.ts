@@ -13,12 +13,46 @@ import type {
 } from '@core/graph/types.ts';
 import { localNamesFromBindings } from '@core/parse/imports.ts';
 import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
-import { topFolder } from '@core/view/alluvial.ts';
+import { pathInImporterGroup } from '@core/view/fileImporters.ts';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	type LocPrecision,
 	resolveLocPrecision,
 } from '@core/view/weight.ts';
+
+/** Unique file paths that import into `fileId` (file→file edges). */
+function importersOfFile(graph: CodeGraph, fileId: string): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const e of graph.edges) {
+		if (e.toKind !== 'file' || e.to !== fileId) continue;
+		if (seen.has(e.from)) continue;
+		seen.add(e.from);
+		out.push(e.from);
+	}
+	return out;
+}
+
+/** Unique importers of a package/unresolved id (for module membership peers). */
+function importersOfPackage(graph: CodeGraph, packageId: string): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const e of graph.edges) {
+		if (!edgeMatchesPackage(e, packageId)) continue;
+		if (seen.has(e.from)) continue;
+		seen.add(e.from);
+		out.push(e.from);
+	}
+	return out;
+}
+
+function inModule(
+	path: string,
+	moduleKey: string,
+	peerPaths?: readonly string[],
+): boolean {
+	return pathInImporterGroup(path, moduleKey, peerPaths);
+}
 
 const MAX_SNIPPETS = 40;
 const MAX_IMPORTED_LINES = 48;
@@ -297,8 +331,9 @@ export function edgesForNode(graph: CodeGraph, ref: AlluvialNodeRef): ImportEdge
 		return graph.edges.filter((e) => edgeMatchesPackage(e, ref.id));
 	}
 	if (ref.kind === 'module') {
+		// No peer set without a focus file — use key heuristics (incl. deepen keys).
 		return graph.edges.filter(
-			(e) => e.toKind !== 'file' && topFolder(e.from) === ref.id,
+			(e) => e.toKind !== 'file' && inModule(e.from, ref.id),
 		);
 	}
 	return [];
@@ -334,8 +369,10 @@ export function edgesForBand(
 		(src.kind === 'package' || src.kind === 'unresolved') &&
 		tgt.kind === 'module'
 	) {
+		const peers = importersOfPackage(graph, src.id);
 		return graph.edges.filter(
-			(e) => topFolder(e.from) === tgt.id && edgeMatchesPackage(e, src.id),
+			(e) =>
+				edgeMatchesPackage(e, src.id) && inModule(e.from, tgt.id, peers),
 		);
 	}
 	// File ↔ file: reverse (hub left, importer right) or hub forward
@@ -359,24 +396,26 @@ export function edgesForBand(
 	}
 	// Module → file: hub left (importer module → focus) or forward package hop
 	if (src.kind === 'module' && tgt.kind === 'file') {
+		const peers = importersOfFile(graph, tgt.id);
 		const intoFocus = graph.edges.filter(
 			(e) =>
 				e.toKind === 'file' &&
 				e.to === tgt.id &&
-				(topFolder(e.from) === src.id || e.from.startsWith(`${src.id}/`)),
+				inModule(e.from, src.id, peers),
 		);
 		if (intoFocus.length) return intoFocus;
 		// Conserved hop: package imports from module files (forward alluvial)
 		return graph.edges.filter(
-			(e) => e.toKind !== 'file' && topFolder(e.from) === src.id,
+			(e) => e.toKind !== 'file' && inModule(e.from, src.id),
 		);
 	}
 	if (src.kind === 'file' && tgt.kind === 'module') {
+		const peers = importersOfFile(graph, src.id);
 		return graph.edges.filter(
 			(e) =>
 				e.toKind === 'file' &&
 				e.to === src.id &&
-				topFolder(e.from) === tgt.id,
+				inModule(e.from, tgt.id, peers),
 		);
 	}
 	// Package left → importer file/module (package reverse)
@@ -385,10 +424,12 @@ export function edgesForBand(
 		(tgt.kind === 'file' || tgt.kind === 'module')
 	) {
 		// already handled above for file/module; keep for completeness
+		const peers =
+			tgt.kind === 'module' ? importersOfPackage(graph, src.id) : undefined;
 		return graph.edges.filter((e) => {
 			if (!edgeMatchesPackage(e, src.id)) return false;
 			if (tgt.kind === 'file') return e.from === tgt.id;
-			return topFolder(e.from) === tgt.id;
+			return inModule(e.from, tgt.id, peers);
 		});
 	}
 

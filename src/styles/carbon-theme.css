@@ -749,6 +749,12 @@ cds-search.atlas-tree-search {
   min-width: 0;
 }
 
+/* Depth is a no-op on import-surface / package / module views */
+.atlas-stage__control-group.is-depth-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .atlas-stage__control-label {
   flex: 0 0 auto;
   font-size: 0.75rem;

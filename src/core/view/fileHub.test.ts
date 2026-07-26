@@ -115,15 +115,25 @@ describe('projectFileHub demo-next-complex', () => {
 		}
 	});
 
-	it('maxDepth ≥ 2 hops past import folders to call-site files', () => {
+	it('maxDepth scales import leaf budget (not hop columns)', () => {
 		const id = 'src/lib/redis.ts';
-		const shallow = projectFileHub(graph, id, { maxDepth: 1 })!;
-		const deep = projectFileHub(graph, id, { maxDepth: 3 })!;
+		const shallow = projectFileHub(graph, id, { maxDepth: 1, maxImporters: 4 })!;
+		const deep = projectFileHub(graph, id, { maxDepth: 5, maxImporters: 4 })!;
 		const shallowCats = new Set(shallow.options.alluvial.nodes.map((n) => n.category));
 		const deepCats = new Set(deep.options.alluvial.nodes.map((n) => n.category));
+		// Hub stays dual-side; depth does not invent hop stages
 		expect(shallowCats.has('Exports')).toBe(true);
-		// With few importers redis may still be file-only; public.ts covered below
 		expect(deepCats.has('Exports')).toBe(true);
+		expect(shallowCats.has('Hop 1')).toBe(false);
+		expect(deepCats.has('Hop 1')).toBe(false);
+		// Deeper budget can only add Imports leaves / keep the same shape
+		const shallowImportLeaves = shallow.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports',
+		).length;
+		const deepImportLeaves = deep.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports',
+		).length;
+		expect(deepImportLeaves).toBeGreaterThanOrEqual(shallowImportLeaves);
 	});
 
 	it('returns null for missing file', () => {

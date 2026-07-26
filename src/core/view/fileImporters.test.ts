@@ -8,6 +8,8 @@ import { ingestZip } from '@core/ingest/zip.ts';
 import { topFolder } from '@core/view/alluvial.ts';
 import {
 	importerGroupKey,
+	pathInImporterGroup,
+	pathMatchesModuleKey,
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
@@ -75,6 +77,16 @@ describe('importerGroupKey', () => {
 		const keyDeep = importerGroupKey(deep);
 		expect(keyDeep('client/sim/a.ts')).toBe('client/sim');
 		expect(keyDeep('server/routes/h.ts')).toBe('server/routes');
+	});
+});
+
+describe('pathInImporterGroup', () => {
+	it('matches deepen keys with peers and (files) without peers', () => {
+		const flat = Array.from({ length: 10 }, (_, i) => `client/file${i}.ts`);
+		expect(pathInImporterGroup('client/file3.ts', 'client/(files)', flat)).toBe(true);
+		expect(pathMatchesModuleKey('client/file3.ts', 'client/(files)')).toBe(true);
+		expect(pathMatchesModuleKey('client/sim/a.ts', 'client/(files)')).toBe(false);
+		expect(pathMatchesModuleKey('client/sim/a.ts', 'client/sim')).toBe(true);
 	});
 });
 
