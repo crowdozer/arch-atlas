@@ -5,6 +5,10 @@ import { describe, expect, it } from 'vitest';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
+import {
+	preferFileImportersView,
+	projectFileImporters,
+} from '@core/view/fileImporters.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
 import { projectPackageImporters } from '@core/view/packageImporters.ts';
 
@@ -151,6 +155,41 @@ describe('projectPackageImporters', () => {
 	it('returns null for unknown package', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		expect(projectPackageImporters(graph, 'definitely-not-a-pkg-xyz')).toBeNull();
+	});
+});
+
+describe('projectFileImporters', () => {
+	it('logger.ts is a fan-in hub: reverse view lists importers', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const fileId = 'src/lib/logger.ts';
+		expect(preferFileImportersView(graph, fileId)).toBe(true);
+
+		const forward = projectAlluvial(graph, fileId);
+		// leaf util: no package edges reachable from itself
+		const hasRealPkg =
+			forward?.data.some(
+				(l) => l.source !== '(no package imports)' && l.target !== '(no package imports)',
+			) ?? false;
+		expect(hasRealPkg).toBe(false);
+
+		const rev = projectFileImporters(graph, fileId);
+		expect(rev).not.toBeNull();
+		expect(rev!.meta.focus).toEqual({
+			kind: 'file',
+			id: fileId,
+			label: 'logger.ts',
+		});
+		// File on the left, importers on the right
+		expect(
+			rev!.data.every((l) => l.source === 'logger.ts' || l.source === fileId),
+		).toBe(true);
+		const { out, inn } = flowTotals(rev!.data);
+		const fileOut = out.get('logger.ts') ?? out.get(fileId) ?? 0;
+		const importerIn = [...inn.entries()]
+			.filter(([k]) => k !== 'logger.ts' && k !== fileId)
+			.reduce((s, [, v]) => s + v, 0);
+		expect(fileOut).toBe(importerIn);
+		expect(fileOut).toBeGreaterThan(5); // many demo modules import logger
 	});
 });
 

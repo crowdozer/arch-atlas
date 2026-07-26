@@ -23,6 +23,12 @@ export { catalogHotspots } from '@core/catalog/hotspots.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
+export {
+	fileInDegree,
+	fileOutDegree,
+	preferFileImportersView,
+	projectFileImporters,
+} from '@core/view/fileImporters.ts';
 export { extractImports } from '@core/parse/imports.ts';
 export { ingestZip } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';

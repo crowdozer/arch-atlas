@@ -9,6 +9,8 @@ import {
 	indexFiles,
 	ingestZip,
 	isSourceFile,
+	preferFileImportersView,
+	projectFileImporters,
 	projectModuleFocus,
 	projectPackageImporters,
 	type AlluvialNodeRef,
@@ -45,6 +47,8 @@ type Session = {
 /** Nested alluvial focus (top of stack = current view). */
 type AtlasView =
 	| { type: 'file'; fileId: string }
+	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
+	| { type: 'file-importers'; fileId: string }
 	| { type: 'package'; packageId: string; label: string }
 	| { type: 'module'; moduleId: string };
 
@@ -122,6 +126,8 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 	switch (view.type) {
 		case 'file':
 			return alluvialForStart(session.graph, view.fileId);
+		case 'file-importers':
+			return projectFileImporters(session.graph, view.fileId);
 		case 'package':
 			return projectPackageImporters(session.graph, view.packageId);
 		case 'module':
@@ -133,10 +139,33 @@ function captionForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file':
 			return `Modules → code for ${view.fileId}`;
+		case 'file-importers':
+			return `File · ${view.fileId} → importers`;
 		case 'package':
 			return `Package · ${view.label} → importers`;
 		case 'module':
 			return `Module ends · ${view.moduleId}`;
+	}
+}
+
+/** Choose outbound deps map vs reverse importers for a file open. */
+function viewForFileOpen(fileId: string): AtlasView {
+	if (session && preferFileImportersView(session.graph, fileId)) {
+		return { type: 'file-importers', fileId };
+	}
+	return { type: 'file', fileId };
+}
+
+function statusForView(view: AtlasView): string {
+	switch (view.type) {
+		case 'file':
+			return `Start: ${view.fileId}`;
+		case 'file-importers':
+			return `Importers of ${view.fileId}`;
+		case 'package':
+			return `Package: ${view.label}`;
+		case 'module':
+			return `Module: ${view.moduleId}`;
 	}
 }
 
@@ -253,23 +282,26 @@ function refForName(name: string): AlluvialNodeRef | null {
 	return currentPayload?.meta.nodeRef[name] ?? null;
 }
 
+function sameView(a: AtlasView, b: AtlasView): boolean {
+	if (a.type !== b.type) return false;
+	if (a.type === 'file' && b.type === 'file') return a.fileId === b.fileId;
+	if (a.type === 'file-importers' && b.type === 'file-importers') {
+		return a.fileId === b.fileId;
+	}
+	if (a.type === 'package' && b.type === 'package') {
+		return a.packageId === b.packageId;
+	}
+	if (a.type === 'module' && b.type === 'module') {
+		return a.moduleId === b.moduleId;
+	}
+	return false;
+}
+
 function pushView(view: AtlasView): void {
 	if (!session) return;
-	// Avoid pushing identical focus
 	const top = currentView();
-	if (
-		top &&
-		top.type === view.type &&
-		((view.type === 'file' && top.type === 'file' && top.fileId === view.fileId) ||
-			(view.type === 'package' &&
-				top.type === 'package' &&
-				top.packageId === view.packageId) ||
-			(view.type === 'module' &&
-				top.type === 'module' &&
-				top.moduleId === view.moduleId))
-	) {
-		return;
-	}
+	if (top && sameView(top, view)) return;
+
 	const payload = payloadForView(view);
 	if (!payload) {
 		setStatus(
@@ -277,7 +309,9 @@ function pushView(view: AtlasView): void {
 				? `No importers for ${view.label}`
 				: view.type === 'module'
 					? `No package edges in ${view.moduleId}`
-					: `No import flow for ${view.fileId}`,
+					: view.type === 'file-importers'
+						? `No importers for ${view.fileId}`
+						: `No import flow for ${view.fileId}`,
 		);
 		return;
 	}
@@ -285,13 +319,7 @@ function pushView(view: AtlasView): void {
 	updateCaption(view);
 	updateBackButton();
 	mountAlluvial(payload);
-	setStatus(
-		view.type === 'file'
-			? `Start: ${view.fileId}`
-			: view.type === 'package'
-				? `Package: ${view.label}`
-				: `Module: ${view.moduleId}`,
-	);
+	setStatus(statusForView(view));
 }
 
 function popView(): void {
@@ -302,13 +330,7 @@ function popView(): void {
 	updateCaption(view);
 	updateBackButton();
 	mountAlluvial(payloadForView(view));
-	setStatus(
-		view.type === 'file'
-			? `Start: ${view.fileId}`
-			: view.type === 'package'
-				? `Package: ${view.label}`
-				: `Module: ${view.moduleId}`,
-	);
+	setStatus(statusForView(view));
 }
 
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
@@ -317,7 +339,8 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'file') {
-		pushView({ type: 'file', fileId: ref.id });
+		// Fan-in hubs open reverse; others open outbound deps map
+		pushView(viewForFileOpen(ref.id));
 		return;
 	}
 	if (ref.kind === 'package' || ref.kind === 'unresolved') {
@@ -482,10 +505,22 @@ function renderTreeNode(
 	return btn;
 }
 
-function edgeBadge(count: number, title?: string): string {
-	const label = count === 1 ? '1 edge' : `${count} edges`;
-	const t = title ? ` title="${escapeHtml(title)}"` : '';
-	return `<span class="atlas-edge-badge"${t}>${label}</span>`;
+/** Badge text that distinguishes out-bound deps vs inbound importers. */
+function edgeBadgeLabel(outDegree: number, inDegree: number): string {
+	if (outDegree === 0 && inDegree > 0) {
+		return inDegree === 1 ? '1 in' : `${inDegree} in`;
+	}
+	if (inDegree === 0 && outDegree > 0) {
+		return outDegree === 1 ? '1 out' : `${outDegree} out`;
+	}
+	const total = outDegree + inDegree;
+	return total === 1 ? '1 edge' : `${total} edges`;
+}
+
+function edgeBadge(outDegree: number, inDegree: number): string {
+	const label = edgeBadgeLabel(outDegree, inDegree);
+	const title = `out ${outDegree} · in ${inDegree}`;
+	return `<span class="atlas-edge-badge" title="${escapeHtml(title)}">${label}</span>`;
 }
 
 function setAccordionTitle(id: string, title: string): void {
@@ -547,12 +582,17 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === h.id) btn.classList.add('is-selected');
-			const detail = `out ${h.outDegree} · in ${h.inDegree}` +
-				(h.packageOut ? ` · ${h.packageOut} pkg` : '');
+			const hub =
+				h.outDegree === 0 && h.inDegree > 0
+					? ' · fan-in hub'
+					: h.packageOut
+						? ` · ${h.packageOut} pkg`
+						: '';
+			const detail = `out ${h.outDegree} · in ${h.inDegree}${hub}`;
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(h.path)}</span>
-					${edgeBadge(h.edgeCount, detail)}
+					${edgeBadge(h.outDegree, h.inDegree)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
 			btn.addEventListener('click', () => selectStart(h.id));
@@ -571,9 +611,14 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === v.startId) btn.classList.add('is-selected');
+			// Views only store total edgeCount; resolve out/in from starts/hotspots if present
+			const startMeta = catalog.starts.find((s) => s.id === v.startId);
+			const hotMeta = catalog.hotspots?.find((h) => h.id === v.startId);
+			const outD = startMeta?.outDegree ?? hotMeta?.outDegree ?? v.edgeCount ?? 0;
+			const inD = startMeta?.inDegree ?? hotMeta?.inDegree ?? 0;
 			const badge =
-				typeof v.edgeCount === 'number'
-					? edgeBadge(v.edgeCount)
+				typeof v.edgeCount === 'number' || startMeta || hotMeta
+					? edgeBadge(outD, inD)
 					: '';
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
@@ -597,11 +642,10 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === s.id) btn.classList.add('is-selected');
-			const total = s.outDegree + s.inDegree;
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(s.path)}</span>
-					${edgeBadge(total, `out ${s.outDegree} · in ${s.inDegree}`)}
+					${edgeBadge(s.outDegree, s.inDegree)}
 				</span>
 				<span class="meta">inferred · ${escapeHtml(s.reason)} · out ${s.outDegree} · in ${s.inDegree}</span>`;
 			btn.addEventListener('click', () => selectStart(s.id));
@@ -622,10 +666,11 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					: e.kind === 'builtin'
 						? 'text-teal-300'
 						: 'text-zinc-200';
+			// Ends only have inbound degree (importers of the package)
 			row.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="${kindColor} truncate text-sm font-medium" title="${escapeHtml(e.id)}">${escapeHtml(e.label)}</span>
-					${edgeBadge(e.inDegree, `${e.kind} · ${e.inDegree} importers`)}
+					${edgeBadge(0, e.inDegree)}
 				</span>
 				<span class="meta">${escapeHtml(e.kind)} · ${e.inDegree} importer${e.inDegree === 1 ? '' : 's'}</span>`;
 			row.addEventListener('click', () => {
@@ -670,15 +715,15 @@ function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	for (let i = 1; i < parts.length; i++) {
 		session.expanded.add(parts.slice(0, i).join('/'));
 	}
-	// Tree/catalog selection resets drill stack to file focus
-	const view: AtlasView = { type: 'file', fileId: startId };
+	// Tree/catalog selection resets drill stack; fan-in hubs open reverse view
+	const view = viewForFileOpen(startId);
 	viewStack = [view];
 	renderTree();
 	renderCatalog(session.catalog, startId);
 	updateCaption(view);
 	updateBackButton();
 	mountAlluvial(payloadForView(view));
-	setStatus(`Start: ${startId}`);
+	setStatus(statusForView(view));
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
