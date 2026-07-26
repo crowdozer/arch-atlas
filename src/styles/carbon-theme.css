@@ -743,6 +743,55 @@ cds-tag.ui-tag--yellow {
   transition: opacity 120ms ease;
 }
 
+/*
+ * Hub focus class contract (SoR: .grok/reference/hub-focus-behavior.md §5).
+ * Holder gets .ui-alluvial-label-dimming while a FocusPlan is active.
+ * Classes applied by src/client/focus/focusApply.ts — not Carbon sourceLinks.
+ *
+ * | Target        | Focus                              | Dim                                      |
+ * |---------------|------------------------------------|------------------------------------------|
+ * | label group   | .ui-alluvial-label-focus           | non-focus titles opacity 0.3 !important  |
+ * | carbon path   | .atlas-alluvial-carbon-link-focus  | .atlas-alluvial-carbon-link-dim          |
+ * | straighten    | .atlas-alluvial-external-straight--focus | non-focus straighten 0.3           |
+ * | pad-band      | never focus                        | undrawn (pointer-events none)            |
+ *
+ * No .ui-alluvial-external-pkg-focus blanket tree-dim — package reverse-path
+ * plan lights the correct file bands (LogicalFocusGraph).
+ */
+.ui-carbon-chart path.link.atlas-alluvial-external-straight,
+.ui-carbon-chart__holder path.link.atlas-alluvial-external-straight {
+  pointer-events: stroke;
+  transition: stroke-opacity 120ms ease;
+}
+.ui-alluvial-label-dimming
+  path.link.atlas-alluvial-external-straight:not(
+    .atlas-alluvial-external-straight--focus
+  ) {
+  stroke-opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming
+  path.link.atlas-alluvial-external-straight.atlas-alluvial-external-straight--focus {
+  stroke-opacity: 0.95 !important;
+}
+
+/* Label chips: class-driven so Carbon cannot re-brighten unfocused titles */
+.ui-alluvial-label-dimming
+  g.node-group:not(.ui-alluvial-label-focus)
+  g[id*='alluvial-node-title'] {
+  opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming g.node-group.ui-alluvial-label-focus g[id*='alluvial-node-title'] {
+  opacity: 1 !important;
+}
+
+/* Carbon file→file ribbons — FocusPlan both-ends / reverse-path subset */
+.ui-alluvial-label-dimming path.link.atlas-alluvial-carbon-link-dim {
+  stroke-opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming path.link.atlas-alluvial-carbon-link-focus {
+  stroke-opacity: 0.95 !important;
+}
+
 /* Back is now cds-button ghost — keep layout + hide when at root */
 .atlas-alluvial-back {
   margin-top: 0.15rem;
