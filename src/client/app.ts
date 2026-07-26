@@ -293,7 +293,9 @@ function captionForView(view: AtlasView): string {
 		case 'file-importers':
 			return `File · ${view.fileId} → imports`;
 		case 'file-hub':
-			return `Imports → ${view.fileId} → Exports`;
+			return vizMaxDepth > 1
+				? `Imports×${vizMaxDepth} → ${view.fileId} → Exports×${vizMaxDepth}`
+				: `Imports → ${view.fileId} → Exports`;
 		case 'package':
 			return `Package · ${view.label} → imports`;
 		case 'module':

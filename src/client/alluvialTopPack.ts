@@ -199,9 +199,18 @@ export function topPackAlluvialHolder(
 
 /**
  * Carbon alluvial paints band strokes from the **source** node color.
- * Hub File→Exports links therefore stay teal. Recolor any link whose
- * target category is Exports (or legacy Exporters) from the color scale.
+ * Hub File→Exports (and export hop) links therefore stay teal. Recolor any
+ * link whose target category is export-side (`Exports`, `Export hop N`, or
+ * legacy `Exporters`) from the color scale.
  */
+export function isExportSideCategory(category: string): boolean {
+	return (
+		category === 'Exports' ||
+		category === 'Exporters' ||
+		category.startsWith('Export hop')
+	);
+}
+
 export function recolorExportBands(
 	holder: HTMLElement,
 	colorScale: Record<string, string>,
@@ -214,7 +223,7 @@ export function recolorExportBands(
 		const target = link?.target;
 		if (!target?.name) continue;
 		const cat = target.category ?? '';
-		if (cat !== 'Exports' && cat !== 'Exporters') continue;
+		if (!isExportSideCategory(cat)) continue;
 		const color = colorScale[target.name];
 		if (!color) continue;
 		path.style.stroke = color;

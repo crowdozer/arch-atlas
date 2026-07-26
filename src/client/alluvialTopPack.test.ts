@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	centerHubFileSpine,
+	isExportSideCategory,
 	isHubFileSpine,
 	recomputeLinkBreadths,
 	topPackColumns,
@@ -139,6 +140,19 @@ describe('centerHubFileSpine', () => {
 		imp.targetLinks.push(l);
 		expect(centerHubFileSpine([file, imp])).toBe(0);
 		expect(file.y0).toBe(30);
+	});
+});
+
+describe('isExportSideCategory', () => {
+	it('matches Exports, legacy Exporters, and Export hop rings', () => {
+		expect(isExportSideCategory('Exports')).toBe(true);
+		expect(isExportSideCategory('Exporters')).toBe(true);
+		expect(isExportSideCategory('Export hop 2')).toBe(true);
+		expect(isExportSideCategory('Export hop 3')).toBe(true);
+		expect(isExportSideCategory('Imports')).toBe(false);
+		expect(isExportSideCategory('Import hop 2')).toBe(false);
+		expect(isExportSideCategory('File')).toBe(false);
+		expect(isExportSideCategory('Hop 1')).toBe(false);
 	});
 });
 
