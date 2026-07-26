@@ -381,7 +381,7 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		const pkgNode = new MiniEl('g', ['node-group']);
 		pkgNode.__data__ = {
 			name: 'ioredis',
-			category: 'External',
+			category: 'External', // package terminator → purple
 			x0: 300,
 			x1: 304,
 			y0: 40,
@@ -639,14 +639,16 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 			term?.classList.contains('atlas-alluvial-export-terminator'),
 		).toBe(true);
 
-		// Forward leaves → yellow class
+		// Package leaves → purple class
 		markAlluvialExportTerminators(holder as unknown as HTMLElement, [
 			'ioredis',
 		]);
-		const fwd = holder.querySelectorAll('g.node-group').find(
+		const pkg = holder.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'ioredis',
 		);
-		expect(fwd?.classList.contains('atlas-alluvial-terminator')).toBe(true);
+		expect(
+			pkg?.classList.contains('atlas-alluvial-package-terminator'),
+		).toBe(true);
 
 		const holder2 = fixtureHolder();
 		polishAlluvialHolder(holder2 as unknown as HTMLElement, {
@@ -659,7 +661,7 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		const term2 = holder2.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
 		);
-		const fwd2 = holder2.querySelectorAll('g.node-group').find(
+		const pkg2 = holder2.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'ioredis',
 		);
 		const outToDeep = holder2.querySelectorAll('path.link').find((p) => {
@@ -676,7 +678,9 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		expect(
 			term2?.classList.contains('atlas-alluvial-export-terminator'),
 		).toBe(true);
-		expect(fwd2?.classList.contains('atlas-alluvial-terminator')).toBe(true);
+		expect(
+			pkg2?.classList.contains('atlas-alluvial-package-terminator'),
+		).toBe(true);
 		// Out-rail free-source pads undrawn (terminator band cutoff)
 		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 	});

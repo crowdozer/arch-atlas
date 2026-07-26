@@ -672,7 +672,8 @@ cds-tag.ui-tag--yellow {
 
 /*
  * Hub terminators — contrast with column family (not same-family fill):
- * - .atlas-alluvial-terminator = **yellow** wrap → Imports*/External (cyan side)
+ * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
+ * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
  * - .atlas-alluvial-export-terminator = **cyan** wrap → Exports* free sources (yellow side)
  */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node {
@@ -704,6 +705,23 @@ cds-tag.ui-tag--yellow {
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node-text-bg {
   stroke: #06b6d4 !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Purple wrap for package / node_modules terminators (External leaves) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: var(--atlas-select, #c4b5fd) !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node-text-bg {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }

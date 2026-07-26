@@ -561,7 +561,9 @@ export function markAlluvialTerminators(
 
 /**
  * Mark forward true leaves (Imports* / External).
- * CSS: **yellow** wrap — contrast on cyan import columns.
+ * - File leaves on Imports*: **yellow** wrap (contrast on cyan columns)
+ * - Packages / unresolved / External buckets: **purple** wrap (unique package
+ *   chrome; future icon affordance can target the same class)
  */
 export function markAlluvialExportTerminators(
 	holder: HTMLElement,
@@ -570,14 +572,18 @@ export function markAlluvialExportTerminators(
 	if (!exportTerminators?.length) return;
 	const set = new Set(exportTerminators);
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
-		const d = readData<{ name?: string }>(el);
+		const d = readData<{ name?: string; category?: string }>(el);
 		const name = typeof d?.name === 'string' ? d.name : '';
 		if (!name || !set.has(name)) continue;
 		if (isAlluvialRailName(name)) continue;
-		const cat = (d as { category?: string }).category;
+		const cat = d?.category;
 		if (cat === 'File') continue;
-		// Yellow class (historical "terminator" name = yellow chrome)
-		el.classList.add('atlas-alluvial-terminator');
+		// External column = package / unresolved / package buckets
+		if (cat === 'External') {
+			el.classList.add('atlas-alluvial-package-terminator');
+		} else {
+			el.classList.add('atlas-alluvial-terminator');
+		}
 	}
 }
 

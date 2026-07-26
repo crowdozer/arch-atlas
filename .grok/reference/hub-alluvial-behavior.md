@@ -134,7 +134,8 @@ terminators. Rail **nodes** stay hidden. Packages remain sinks.
 | List | Nodes | Side | Wrap color |
 | ---- | ----- | ---- | ---------- |
 | `meta.terminators` | Reverse free-source pad targets | Exports* (yellow) | **Cyan** |
-| `meta.exportTerminators` | Forward true leaves (no non-rail out) | Imports* / External (cyan) | **Yellow** |
+| `meta.exportTerminators` | Forward file leaves (no non-rail out) | Imports* (cyan) | **Yellow** |
+| `meta.exportTerminators` | Packages / unresolved / External buckets | External | **Purple** (unique package chrome; future icons can target same class) |
 
 **Never:** package free sources; packages on Export*; packages only reachable via
 undrawn pure rail↔rail scaffolds (floating External / wrong left headers).
