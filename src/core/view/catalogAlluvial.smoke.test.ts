@@ -216,7 +216,7 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 					payload!.options.alluvial.nodes.map((n) => n.category),
 				);
 				expect(cats.has('Importers')).toBe(true);
-				expect(cats.has('Dependencies')).toBe(true);
+				expect(cats.has('Exporters')).toBe(true);
 			} else if (preferFileImportersView(graph, h.id)) {
 				// Reverse: focus outflow === inbound file edges (multi-hop conserves)
 				expect(focusOutflow(payload!), `${h.path} reverse mass`).toBe(h.inDegree);

@@ -62,7 +62,7 @@ type AtlasView =
 	| { type: 'file-multihop'; fileId: string }
 	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
 	| { type: 'file-importers'; fileId: string }
-	/** Dual hub: importers → file → dependencies (high-edges / barrels). */
+	/** Dual hub: importers → file → exporters (high-edges / barrels). */
 	| { type: 'file-hub'; fileId: string }
 	| { type: 'package'; packageId: string; label: string }
 	| { type: 'module'; moduleId: string };
@@ -217,7 +217,7 @@ function captionForView(view: AtlasView): string {
 		case 'file-importers':
 			return `File · ${view.fileId} → importers`;
 		case 'file-hub':
-			return `Hub · importers → ${view.fileId} → deps`;
+			return `Importers → ${view.fileId} → Exporters`;
 		case 'package':
 			return `Package · ${view.label} → importers`;
 		case 'module':
@@ -248,7 +248,7 @@ function statusForView(view: AtlasView): string {
 		case 'file-importers':
 			return `Importers of ${view.fileId}`;
 		case 'file-hub':
-			return `Hub: ${view.fileId}`;
+			return `Importers · Exporters · ${view.fileId}`;
 		case 'package':
 			return `Package: ${view.label}`;
 		case 'module':

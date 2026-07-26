@@ -99,8 +99,19 @@ describe('projectFileHub demo-next-complex', () => {
 		const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('Importers')).toBe(true);
 		expect(cats.has('File')).toBe(true);
-		expect(cats.has('Dependencies')).toBe(true);
+		expect(cats.has('Exporters')).toBe(true);
 		expect(payload!.options.alluvial.units).toBe('import edges');
+
+		// Export column uses yellow family (not teal import colors)
+		const exportNodes = payload!.options.alluvial.nodes.filter(
+			(n) => n.category === 'Exporters',
+		);
+		expect(exportNodes.length).toBeGreaterThan(0);
+		const scale = payload!.options.color.scale;
+		for (const n of exportNodes) {
+			const c = scale[n.name] ?? '';
+			expect(c, n.name).toMatch(/^#(?:eab308|ca8a04|a16207)$/i);
+		}
 	});
 
 	it('returns null for missing file', () => {

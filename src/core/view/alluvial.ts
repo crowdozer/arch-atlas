@@ -30,6 +30,10 @@ export const TEAL = {
 	builtin: '#5eead4', // teal-300
 	unresolved: '#f59e0b', // amber
 	other: '#71717a', // zinc-500
+	/** Export / outbound hub bands — yellow complements teal importers. */
+	export: '#eab308', // yellow-500
+	exportPkg: '#ca8a04', // yellow-600
+	exportOther: '#a16207', // yellow-700 (overflow)
 };
 
 export function basename(path: string): string {

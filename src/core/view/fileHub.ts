@@ -1,12 +1,15 @@
 /**
  * Dual-side file hub alluvial — high-edge / barrel projection.
  *
- * Columns (L→R): Importers → File → Dependencies
+ * Columns (L→R): Importers → File → Exporters
  *
  * Flow unit: one observed import edge touching the focus file
  * (inbound file edges + outbound file/package/unresolved edges).
  * Left mass = in-degree; right mass = out-degree. The focus is not
  * mass-conserving across sides (in and out are independent).
+ *
+ * Importers (left) use teal; Exporters (right) use yellow so the two
+ * sides read as distinct flows into/out of the hub.
  *
  * Used when a file has both fan-in and fan-out so catalog "N edges"
  * (in + out) is legible in one chart — e.g. barrel public.ts.
@@ -53,7 +56,7 @@ export function preferFileHubView(graph: CodeGraph, fileId: string): boolean {
 }
 
 /**
- * Project a file as a dual-side hub: importers left, dependencies right.
+ * Project a file as a dual-side hub: importers left, exporters right.
  * Returns null when the file is missing or has no incident edges.
  */
 export function projectFileHub(
@@ -139,9 +142,9 @@ export function projectFileHub(
 		}
 	}
 
-	// --- right: hub → dependencies ---
+	// --- right: hub → exporters (outbound deps) ---
 	if (outEdges.length) {
-		addDependencies({
+		addExporters({
 			graph,
 			outEdges,
 			depFilePaths,
@@ -176,12 +179,12 @@ export function projectFileHub(
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['Importers', 'File', 'Dependencies'],
+		categoryOrder: ['Importers', 'File', 'Exporters'],
 		focus,
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Hub importers and dependencies for ${fileId}`,
+		ariaLabel: `Hub importers and exporters for ${fileId}`,
 	});
 }
 
@@ -292,7 +295,7 @@ function addImporterModules(
 	}
 }
 
-function addDependencies(
+function addExporters(
 	args: LinkBuilder & {
 		outEdges: ImportEdge[];
 		depFilePaths: string[];
@@ -331,7 +334,7 @@ function addDependencies(
 					label,
 					weight: w,
 					ref: { kind: 'file', id: e.to },
-					color: TEAL.module,
+					color: TEAL.export,
 				});
 			}
 			continue;
@@ -349,15 +352,15 @@ function addDependencies(
 					kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
 					id: e.to,
 				},
+				// Packages / unresolved still yellow family so the whole
+				// Exporters column reads as outbound (not teal import).
 				color:
-					e.toKind === 'unresolved'
-						? TEAL.unresolved
-						: TEAL.package,
+					e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
 			});
 		}
 	}
 
-	// Disambiguate display labels that collide across deps
+	// Disambiguate display labels that collide across exporters
 	const labelOwners = new Map<string, string[]>();
 	for (const [key, entry] of byKey) {
 		const list = labelOwners.get(entry.label) ?? [];
@@ -378,17 +381,17 @@ function addDependencies(
 	);
 	const keptKeys = new Set(ranked.slice(0, maxDeps).map(([k]) => k));
 	const otherCount = ranked.filter(([k]) => !keptKeys.has(k)).length;
-	const otherLabel = otherCount > 0 ? `+ ${otherCount} more deps` : '';
+	const otherLabel = otherCount > 0 ? `+ ${otherCount} more` : '';
 
 	for (const [key, entry] of byKey) {
 		const target = keptKeys.has(key) ? entry.label : otherLabel;
 		addLink(fileLabel, target, entry.weight);
 		if (target === otherLabel) continue;
 		nodeRef[target] = entry.ref;
-		nodeMeta.set(target, { category: 'Dependencies', color: entry.color });
+		nodeMeta.set(target, { category: 'Exporters', color: entry.color });
 	}
 	if (otherCount > 0) {
-		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-deps' };
-		nodeMeta.set(otherLabel, { category: 'Dependencies', color: TEAL.other });
+		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-exporters' };
+		nodeMeta.set(otherLabel, { category: 'Exporters', color: TEAL.exportOther });
 	}
 }
