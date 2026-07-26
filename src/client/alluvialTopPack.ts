@@ -154,6 +154,11 @@ export function rightTruncateLabel(text: string, maxChars: number): string {
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
  * Full original string goes on title + aria-label for hover/a11y.
  */
+/** Hub import padding rails — hold sankey layers; labels should stay invisible. */
+export function isImportRailLabel(name: string): boolean {
+	return name.startsWith('\u200b·in-rail') || name.includes('·in-rail·');
+}
+
 export function rightTruncateAlluvialLabels(
 	holder: HTMLElement,
 	maxChars: number = ALLUVIAL_LABEL_MAX_CHARS,
@@ -165,6 +170,20 @@ export function rightTruncateAlluvialLabels(
 		const m = full.match(/^(.*) \(([^()]*)\)$/);
 		const name = m ? m[1]! : full;
 		const value = m ? m[2]! : null;
+		const g = text.parentElement;
+		const bg = g?.querySelector<SVGRectElement>('rect.node-text-bg');
+
+		// Hide multi-hop import padding rails (zero-width layer holders)
+		if (isImportRailLabel(name)) {
+			text.textContent = '';
+			text.setAttribute('aria-hidden', 'true');
+			if (bg) {
+				bg.setAttribute('width', '0');
+				bg.setAttribute('height', '0');
+			}
+			continue;
+		}
+
 		const truncName = rightTruncateLabel(name, maxChars);
 		if (truncName === name) {
 			// Still expose full name for hover when already short
@@ -176,8 +195,6 @@ export function rightTruncateAlluvialLabels(
 		text.setAttribute('title', name);
 		text.setAttribute('aria-label', full);
 		// Carbon sizes label bg from full text width — shrink to truncated length
-		const g = text.parentElement;
-		const bg = g?.querySelector<SVGRectElement>('rect.node-text-bg');
 		if (bg && typeof text.getComputedTextLength === 'function') {
 			try {
 				const w = text.getComputedTextLength();

@@ -273,6 +273,105 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 	});
 });
 
+/**
+ * Longest-path layers (Carbon/d3-sankey column proxy).
+ * Each layer must carry a single import/export category family so headers
+ * never show "Imports Imports File …".
+ */
+function longestPathLayers(payload: AlluvialPayload): Map<number, Set<string>> {
+	const names = new Set(payload.options.alluvial.nodes.map((n) => n.name));
+	const catOf = new Map(
+		payload.options.alluvial.nodes.map((n) => [n.name, n.category] as const),
+	);
+	const ins = new Map<string, string[]>();
+	for (const l of payload.data) {
+		const list = ins.get(l.target) ?? [];
+		list.push(l.source);
+		ins.set(l.target, list);
+	}
+	const memo = new Map<string, number>();
+	const depth = (n: string, stack: Set<string> = new Set()): number => {
+		if (memo.has(n)) return memo.get(n)!;
+		if (stack.has(n)) return 0;
+		stack.add(n);
+		const preds = ins.get(n) ?? [];
+		const d = !preds.length
+			? 0
+			: 1 + Math.max(...preds.map((p) => depth(p, stack)));
+		stack.delete(n);
+		memo.set(n, d);
+		return d;
+	};
+	for (const n of names) depth(n);
+	const byLayer = new Map<number, Set<string>>();
+	for (const [n, d] of memo) {
+		const cat = catOf.get(n);
+		if (!cat) continue;
+		const set = byLayer.get(d) ?? new Set();
+		set.add(cat);
+		byLayer.set(d, set);
+	}
+	return byLayer;
+}
+
+describe('projectFileHub layer-consistent import headers (demo-next-complex)', () => {
+	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+
+	it('userService: one category per sankey layer (no dual Imports)', () => {
+		const id = 'src/services/userService.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		const layers = longestPathLayers(payload);
+		for (const [d, cats] of layers) {
+			// Allow File + nothing else mixed; import/export rings pure
+			if (cats.has('File')) {
+				expect([...cats], `layer ${d}`).toEqual(['File']);
+				continue;
+			}
+			expect(cats.size, `layer ${d}: ${[...cats].join(',')}`).toBe(1);
+		}
+		// Headers should include Import hop 2 once, not two Imports columns
+		const importLayers = [...layers.values()].filter((c) =>
+			[...c].some((x) => x === 'Imports' || x.startsWith('Import hop')),
+		);
+		const importCats = importLayers.map((c) => [...c][0]!);
+		expect(importCats.filter((c) => c === 'Imports').length).toBeLessThanOrEqual(1);
+		expect(importCats.some((c) => c === 'Import hop 2')).toBe(true);
+	});
+
+	it('legacyHelpers: hop 3 / hop 2 / Imports each own a layer', () => {
+		const id = 'src/utils/legacyHelpers.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		const layers = longestPathLayers(payload);
+		for (const [d, cats] of layers) {
+			if (cats.has('File')) {
+				expect([...cats], `layer ${d}`).toEqual(['File']);
+				continue;
+			}
+			expect(cats.size, `layer ${d}: ${[...cats].join(',')}`).toBe(1);
+		}
+		const allCats = new Set(
+			[...layers.values()].flatMap((s) => [...s]),
+		);
+		expect(allCats.has('Import hop 3')).toBe(true);
+		expect(allCats.has('Import hop 2')).toBe(true);
+		expect(allCats.has('Imports')).toBe(true);
+		// File node appears once as focus
+		const fileNodes = payload.options.alluvial.nodes.filter(
+			(n) => n.category === 'File',
+		);
+		expect(fileNodes).toHaveLength(1);
+		expect(fileNodes[0]!.name).toBe(id);
+	});
+});
+
 describe('projectFileHub hop overflow and folder collapse', () => {
 	/**
 	 * Wide export hop-2 fan-out:

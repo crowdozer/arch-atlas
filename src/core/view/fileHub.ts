@@ -27,6 +27,11 @@
  * `Export hop k` (k≥2). Packages/unresolved appear only on export dist-1 from
  * focus out-edges. Folder collapse (importerGroupKey) only at depth=1.
  *
+ * **Layer-consistent import topology:** d3-sankey columns = longest path from
+ * sources. Dist-1 files with no outer importers would share a column with hop-2
+ * sources (duplicate “Imports” headers). Shared zero-width import rails pad
+ * short reverse paths so every BFS dist sits on one column (multiHop-style).
+ *
  * Imports (left) teal; Exports (right) yellow. Carbon colors bands by source,
  * so File→Export strokes are recolored in the client polish step.
  */
@@ -90,6 +95,11 @@ export function importHopCategory(dist: number): string {
 
 export function exportHopCategory(dist: number): string {
 	return dist <= 1 ? 'Exports' : `Export hop ${dist}`;
+}
+
+/** Shared invisible rail for reverse-path padding at import hop stage s (s≥2). */
+export function importRailId(stage: number): string {
+	return `\u200b·in-rail·h${stage}`;
 }
 
 /**
@@ -473,6 +483,77 @@ function addImportRings(
 			}
 		}
 	}
+
+	// Pad short reverse paths so every BFS dist shares one sankey column.
+	// Without this, dist-1 sources sit beside hop-2 sources → dual "Imports" headers.
+	if (radiusL >= 2) {
+		ensureImportRails(nodeMeta, nodeRef, radiusL);
+		// Display names that already receive a real outer→inner reverse edge
+		const receivesOuter = new Set<string>();
+		for (let d = 1; d < radiusL; d++) {
+			for (const f of filesAt.get(d) ?? []) {
+				if ((mass.get(f) ?? 0) <= 0) continue;
+				const innerLab = display.get(f);
+				if (!innerLab) continue;
+				const outer = (revAdj.get(f) ?? []).filter(
+					(p) =>
+						dist.get(p) === d + 1 &&
+						display.has(p) &&
+						(mass.get(p) ?? 0) > 0,
+				);
+				if (outer.length) receivesOuter.add(innerLab);
+			}
+		}
+
+		for (let d = 1; d <= radiusL; d++) {
+			for (const f of filesAt.get(d) ?? []) {
+				const m = mass.get(f) ?? 0;
+				if (m <= 0) continue;
+				const lab = display.get(f);
+				if (!lab) continue;
+				if (receivesOuter.has(lab)) continue;
+				padImportRailsInto(addLink, lab, d, radiusL, m);
+			}
+		}
+	}
+}
+
+/** Register shared import rails (hidden labels) for stages 2..radius. */
+function ensureImportRails(
+	nodeMeta: Map<string, { category: string; color: string }>,
+	nodeRef: Record<string, AlluvialNodeRef>,
+	radiusL: number,
+): void {
+	for (let s = 2; s <= radiusL; s++) {
+		const id = importRailId(s);
+		if (nodeMeta.has(id)) continue;
+		nodeMeta.set(id, {
+			category: importHopCategory(s),
+			color: importHopColor(s, radiusL),
+		});
+		nodeRef[id] = { kind: 'bucket', id };
+	}
+}
+
+/**
+ * Path rails radiusL → … → (dist+1) → target so longest-path layer matches BFS dist.
+ * Only used when target has no outer reverse parent (would otherwise be a sankey source).
+ */
+function padImportRailsInto(
+	addLink: (source: string, target: string, value: number) => void,
+	targetLab: string,
+	dist: number,
+	radiusL: number,
+	mass: number,
+): void {
+	if (mass <= 0 || dist >= radiusL) return;
+	let prev: string | null = null;
+	for (let stage = radiusL; stage > dist; stage--) {
+		const rail = importRailId(stage);
+		if (prev) addLink(prev, rail, mass);
+		prev = rail;
+	}
+	if (prev) addLink(prev, targetLab, mass);
 }
 
 /**
