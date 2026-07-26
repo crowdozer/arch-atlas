@@ -180,82 +180,20 @@ export function rightTruncateLabel(text: string, maxChars: number): string {
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
  * Full original string goes on title + aria-label for hover/a11y.
  */
-/**
- * Hub padding rails — hold sankey layers; must not show as labeled bars.
- * Matches ZWSP names and stripped forms Carbon may put in tooltips
- * (e.g. `·in-rail·h2`, `·in-rail·h2 (302)`).
- */
+/** Hub padding rails — hold sankey layers; labels should stay invisible. */
 export function isImportRailLabel(name: string): boolean {
-	const n = name
-		.replace(/^\u200b+/u, '')
-		.replace(/\s+\([\d,.]+\)$/u, '')
-		.trim()
-		.toLowerCase();
-	if (!n) return false;
-	// Exact pad ids only — not path segments like `in-rail-utils.ts`
-	// ·in-rail·h2 | in-rail·h2 | ·out-rail·h1
-	return /^(?:·)?(?:in|out)-rail(?:·h\d+)?$/u.test(n);
-}
-
-/**
- * Hide pad-rail node groups: no bar, no chip, no title/tooltip, no hit target.
- * Prefer bound `__data__.name` (stable after Carbon rewrites text).
- */
-export function hideAlluvialRails(holder: HTMLElement): void {
-	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
-		const d = readData<{ name?: string }>(el);
-		const fromData = typeof d?.name === 'string' ? d.name : '';
-		const textEl = el.querySelector<SVGTextElement>('text.node-text');
-		const fromText = (textEl?.textContent ?? '').trim();
-		const fromTitle = el.getAttribute('title') ?? textEl?.getAttribute('title') ?? '';
-		if (
-			!isImportRailLabel(fromData) &&
-			!isImportRailLabel(fromText) &&
-			!isImportRailLabel(fromTitle)
-		) {
-			continue;
-		}
-		el.classList.add('atlas-alluvial-rail');
-		el.setAttribute('aria-hidden', 'true');
-		el.setAttribute('pointer-events', 'none');
-		// Drop native SVG / HTML tooltips Carbon leaves behind
-		el.removeAttribute('title');
-		for (const t of el.querySelectorAll('title')) t.remove();
-		if (textEl) {
-			textEl.textContent = '';
-			textEl.removeAttribute('title');
-			textEl.removeAttribute('aria-label');
-			textEl.setAttribute('aria-hidden', 'true');
-		}
-		const bg = el.querySelector<SVGRectElement>('rect.node-text-bg');
-		if (bg) {
-			bg.setAttribute('width', '0');
-			bg.setAttribute('height', '0');
-			bg.setAttribute('opacity', '0');
-		}
-		const bar = el.querySelector<SVGRectElement>('rect.node');
-		if (bar) {
-			bar.setAttribute('width', '0');
-			bar.setAttribute('height', '0');
-			bar.setAttribute('opacity', '0');
-		}
-		// Title group (label chip host) — hide entirely
-		const titleG = el.querySelector<SVGGElement>('g[id*="alluvial-node-title"]');
-		if (titleG) {
-			titleG.style.display = 'none';
-			titleG.style.opacity = '0';
-			titleG.setAttribute('pointer-events', 'none');
-		}
-	}
+	return (
+		name.startsWith('\u200b·in-rail') ||
+		name.includes('·in-rail·') ||
+		name.startsWith('\u200b·out-rail') ||
+		name.includes('·out-rail·')
+	);
 }
 
 export function rightTruncateAlluvialLabels(
 	holder: HTMLElement,
 	maxChars: number = ALLUVIAL_LABEL_MAX_CHARS,
 ): void {
-	// Rails first — independent of whether Carbon painted text yet
-	hideAlluvialRails(holder);
-
 	for (const text of holder.querySelectorAll<SVGTextElement>('text.node-text')) {
 		const full = text.textContent ?? '';
 		if (!full) continue;
@@ -266,13 +204,21 @@ export function rightTruncateAlluvialLabels(
 		const g = text.parentElement;
 		const bg = g?.querySelector<SVGRectElement>('rect.node-text-bg');
 
+		// Hide padding rails (layer holders) — bar + label
 		if (isImportRailLabel(name)) {
-			// hideAlluvialRails should have handled; belt-and-suspenders
-			const group = text.closest('g.node-group');
-			if (group instanceof SVGGElement) {
-				group.classList.add('atlas-alluvial-rail');
-			}
 			text.textContent = '';
+			text.setAttribute('aria-hidden', 'true');
+			if (bg) {
+				bg.setAttribute('width', '0');
+				bg.setAttribute('height', '0');
+			}
+			const group = text.closest('g.node-group');
+			group?.classList.add('atlas-alluvial-rail');
+			const bar = group?.querySelector<SVGRectElement>('rect.node');
+			if (bar) {
+				bar.setAttribute('width', '0');
+				bar.setAttribute('opacity', '0');
+			}
 			continue;
 		}
 
@@ -449,8 +395,6 @@ export function polishAlluvialHolder(
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
-	// Rails again after truncate/spine — Carbon repaints can resurrect chips
-	hideAlluvialRails(holder);
 	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');
