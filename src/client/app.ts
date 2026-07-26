@@ -6,6 +6,7 @@ import { AlluvialChart, ChartEvent } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	DEFAULT_PACKAGE_LEAF_MODE,
 	HUB_DEFAULT_MAX_DEPTH,
 	IMPORTED_SURFACE_LOC_MESSAGE,
 	IMPORTED_SURFACE_LOC_UI,
@@ -17,6 +18,7 @@ import {
 	projectFileHub,
 	projectModuleFocus,
 	projectPackageImporters,
+	resolvePackageLeafMode,
 	resolveWeightRequest,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
@@ -24,6 +26,7 @@ import {
 	type ImportEvidence,
 	type LocPrecision,
 	type MapCatalog,
+	type PackageLeafMode,
 	type VirtualFile,
 	type WeightAxis,
 } from '@core/index.ts';
@@ -87,6 +90,11 @@ let locPrecision: LocPrecision = 'estimate';
 let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 /** True after the user picks Depth manually (stops auto mode defaults). */
 let depthUserSet = false;
+/**
+ * Export package-leaf placement (file-hub only).
+ * Default pin-overdraw: one node per package at max hop (may exceed Depth).
+ */
+let packageLeafMode: PackageLeafMode = DEFAULT_PACKAGE_LEAF_MODE;
 /** Click behavior: drill navigates; inspect opens import evidence. */
 type InteractionMode = 'drill' | 'inspect';
 let interactionMode: InteractionMode = 'drill';
@@ -111,6 +119,31 @@ function parseInteractionMode(raw: string): InteractionMode {
 
 function weightOpts(): { weightAxis: WeightAxis } {
 	return { weightAxis };
+}
+
+function packageLeafOpts(): { packageLeafMode: PackageLeafMode } {
+	return { packageLeafMode };
+}
+
+function syncPackageLeafDropdown(): void {
+	const el = $('atlas-package-leaf-mode') as (HTMLElement & {
+		value?: string;
+		disabled?: boolean;
+	}) | null;
+	if (!el) return;
+	el.value = packageLeafMode;
+	el.setAttribute('value', packageLeafMode);
+	const uses = viewUsesDepth(currentView()); // same enablement as Depth (file-hub)
+	el.disabled = !uses;
+	if (uses) {
+		el.removeAttribute('disabled');
+		el.removeAttribute('aria-disabled');
+	} else {
+		el.setAttribute('disabled', '');
+		el.setAttribute('aria-disabled', 'true');
+	}
+	const group = el.closest('.atlas-stage__control-group');
+	if (group) group.classList.toggle('is-depth-disabled', !uses);
 }
 
 function parseVizMaxDepth(raw: string): number {
@@ -148,6 +181,8 @@ function syncDepthDropdown(): void {
 	}
 	const group = el.closest('.atlas-stage__control-group');
 	if (group) group.classList.toggle('is-depth-disabled', !uses);
+	// Package mode shares file-hub enablement with Depth
+	syncPackageLeafDropdown();
 }
 
 /**
@@ -259,6 +294,7 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 		case 'file-hub':
 			return projectFileHub(session.graph, view.fileId, {
 				...opts,
+				...packageLeafOpts(),
 				maxDepth: depth.maxDepth,
 			});
 		case 'package':
@@ -1695,6 +1731,24 @@ function wireUi() {
 				(typeof depthDropdown.value === 'string' ? depthDropdown.value : '');
 			vizMaxDepth = parseVizMaxDepth(next);
 			depthUserSet = true;
+			remountCurrentView();
+		}) as EventListener);
+	}
+
+	const pkgModeDropdown = $('atlas-package-leaf-mode') as (HTMLElement & {
+		value?: string;
+	}) | null;
+	if (pkgModeDropdown) {
+		syncPackageLeafDropdown();
+		pkgModeDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof pkgModeDropdown.value === 'string' ? pkgModeDropdown.value : '');
+			packageLeafMode = resolvePackageLeafMode(next);
+			syncPackageLeafDropdown();
 			remountCurrentView();
 		}) as EventListener);
 	}

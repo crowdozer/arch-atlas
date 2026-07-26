@@ -859,6 +859,20 @@ cds-search.atlas-tree-search {
  * Carbon form-items default to flex: 1 1 auto + column layout.
  * Force a fixed field width and single-row host.
  */
+/* Package-leaf mode — room for "Pin far · overdraw" */
+cds-dropdown.atlas-stage__pkg-mode,
+.atlas-stage__pkg-mode {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 11.5rem !important;
+  flex-direction: row !important;
+  width: 11.5rem !important;
+  max-width: 11.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
 cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;

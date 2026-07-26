@@ -250,6 +250,25 @@ import Tag from '../components/ui/Tag.astro';
 								<DropdownItem value="12">12</DropdownItem>
 							</Dropdown>
 						</div>
+						<div class="atlas-stage__control-group atlas-stage__control-group--packages">
+							<span class="atlas-stage__control-label" id="atlas-pkg-mode-label"
+								>Packages</span
+							>
+							<Dropdown
+								id="atlas-package-leaf-mode"
+								class="atlas-stage__pkg-mode"
+								size="sm"
+								hideLabel
+								labelText="Package leaves"
+								titleText="How package leaves sit on export hops. Pin far = one node at max hop (overdraw past Depth, or clip to Depth). Per hop = legacy copy per importer hop."
+								value="pin-overdraw"
+								aria-labelledby="atlas-pkg-mode-label"
+							>
+								<DropdownItem value="pin-overdraw">Pin far · overdraw</DropdownItem>
+								<DropdownItem value="pin-clip">Pin far · clip</DropdownItem>
+								<DropdownItem value="per-hop">Per hop</DropdownItem>
+							</Dropdown>
+						</div>
 						<div class="atlas-stage__control-group">
 							<span class="atlas-stage__control-label" id="atlas-weight-label">Weight</span>
 							<Dropdown

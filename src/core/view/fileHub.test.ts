@@ -16,6 +16,7 @@ import {
 	importHopCategory,
 	preferFileHubView,
 	projectFileHub,
+	type PackageLeafMode,
 } from '@core/view/fileHub.ts';
 
 const fixturesRoot = path.join(
@@ -364,60 +365,129 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		expect(outMass).toBe(fileOutDegree(simpleGraph, id));
 	});
 
-	it('main.tsx depth=3: one shared react package at hop 3; no same-category edges', () => {
-		const id = 'src/main.tsx';
-		// importer-loc matches UI default — enough mass to fan out package leaves
-		const payload = projectFileHub(simpleGraph, id, {
-			maxDepth: 3,
-			maxDeps: 48,
-			maxImporters: 48,
-			weightAxis: 'importer-loc',
-		})!;
+	function packageNodes(
+		payload: AlluvialPayload,
+		pkgId: string,
+	): { name: string; category: string }[] {
+		return payload.options.alluvial.nodes
+			.filter((n) => {
+				const ref = payload.meta.nodeRef[n.name];
+				return ref?.kind === 'package' && ref.id === pkgId;
+			})
+			.map((n) => ({ name: n.name, category: n.category }));
+	}
+
+	function assertNoSameCategoryEdges(payload: AlluvialPayload): void {
 		const catOf = new Map(
 			payload.options.alluvial.nodes.map((n) => [n.name, n.category] as const),
 		);
-
-		// Outer package leaves must not sit in the parent file's category
-		// (that splits Carbon into duplicate "Export hop N" headers).
 		for (const l of payload.data) {
 			expect(
 				catOf.get(l.source),
 				`${l.source} → ${l.target}`,
 			).not.toBe(catOf.get(l.target));
 		}
+	}
 
-		// Layout / Home / … all import react — one chart node at Export hop 3,
-		// not react · out h3 / · package / · package 2.
-		const hop3React = payload.options.alluvial.nodes.filter((n) => {
-			if (n.category !== 'Export hop 3') return false;
-			const ref = payload.meta.nodeRef[n.name];
-			return ref?.kind === 'package' && ref.id === 'react';
-		});
-		expect(hop3React).toHaveLength(1);
-		expect(hop3React[0]!.name).toMatch(/react/);
-		expect(hop3React[0]!.name).not.toMatch(/package/);
+	it('main.tsx pin-clip: one react-router-dom and one react; no same-category edges', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 3,
+			maxDeps: 48,
+			maxImporters: 48,
+			weightAxis: 'importer-loc',
+			packageLeafMode: 'pin-clip',
+		})!;
+		assertNoSameCategoryEdges(payload);
 
-		// Focus still has its own direct react export on dist-1
-		const focusReact = payload.options.alluvial.nodes.filter((n) => {
-			if (n.category !== 'Exports') return false;
-			const ref = payload.meta.nodeRef[n.name];
-			return ref?.kind === 'package' && ref.id === 'react';
-		});
-		expect(focusReact).toHaveLength(1);
+		const rrd = packageNodes(payload, 'react-router-dom');
+		const react = packageNodes(payload, 'react');
+		expect(rrd).toHaveLength(1);
+		expect(react).toHaveLength(1);
+		// Clipped to Depth 3 — both pin at hop 3 (not multi-hop clones)
+		expect(rrd[0]!.category).toBe('Export hop 3');
+		expect(react[0]!.category).toBe('Export hop 3');
+		expect(rrd[0]!.name).not.toMatch(/package/);
+		expect(react[0]!.name).not.toMatch(/package/);
 	});
 
-	it('main.tsx depth=1: no same-column package suffix on Exports', () => {
+	it('main.tsx pin-overdraw: may exceed Depth; still one node per package', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 3,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+			packageLeafMode: 'pin-overdraw',
+		})!;
+		assertNoSameCategoryEdges(payload);
+
+		const rrd = packageNodes(payload, 'react-router-dom');
+		const react = packageNodes(payload, 'react');
+		expect(rrd).toHaveLength(1);
+		expect(react).toHaveLength(1);
+		// useUser at hop 3 → react natural pin 4 (overdraw past Depth)
+		expect(react[0]!.category).toMatch(/^Export hop \d+$/);
+		const hop = Number(react[0]!.category.replace('Export hop ', ''));
+		expect(hop).toBeGreaterThanOrEqual(3);
+	});
+
+	it('main.tsx per-hop: legacy multi-column package copies', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 3,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+			packageLeafMode: 'per-hop',
+		})!;
+		assertNoSameCategoryEdges(payload);
+
+		const rrd = packageNodes(payload, 'react-router-dom');
+		// focus Exports + structural hops
+		expect(rrd.length).toBeGreaterThan(1);
+		const cats = new Set(rrd.map((n) => n.category));
+		expect(cats.has('Exports')).toBe(true);
+	});
+
+	it('main.tsx pin-clip depth=1: packages stay on Exports (no · package suffix)', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 1,
 			maxDeps: 48,
 			weightAxis: 'importer-loc',
+			packageLeafMode: 'pin-clip',
 		})!;
 		const exportNames = payload.options.alluvial.nodes
 			.filter((n) => n.category === 'Exports')
 			.map((n) => n.name);
-		// Depth-1 must not attach deps-of-deps as sibling "react-router-dom · package"
 		expect(exportNames.some((n) => n.includes(' · package'))).toBe(false);
 		expect(exportNames.filter((n) => n === 'react-router-dom')).toHaveLength(1);
+		// No overdraw columns
+		expect(
+			payload.options.alluvial.nodes.some((n) =>
+				n.category.startsWith('Export hop'),
+			),
+		).toBe(false);
+	});
+
+	it('main.tsx pin-overdraw depth=1: may add hop past Depth for pin', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 1,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+			packageLeafMode: 'pin-overdraw',
+		})!;
+		const rrd = packageNodes(payload, 'react-router-dom');
+		expect(rrd).toHaveLength(1);
+		// App also imports rrd → pin at hop 2 even when Depth=1
+		expect(rrd[0]!.category).toBe('Export hop 2');
+	});
+
+	it('resolvePackageLeafMode accepts the three modes', () => {
+		const modes: PackageLeafMode[] = ['pin-overdraw', 'pin-clip', 'per-hop'];
+		for (const m of modes) {
+			expect(
+				projectFileHub(simpleGraph, 'src/main.tsx', {
+					maxDepth: 2,
+					packageLeafMode: m,
+				}),
+			).not.toBeNull();
+		}
 	});
 });
 
