@@ -15,8 +15,11 @@ import Document16 from '@carbon/icons/es/document/16.js';
 /** Max visible characters for node name (value suffix kept). Right end wins. */
 export const ALLUVIAL_LABEL_MAX_CHARS = 36;
 
-/** Teal accent for File spine (matches --cds-interactive / TEAL.start). */
-const FILE_SPINE_TEAL = '#14b8a6';
+/**
+ * Purple selection accent for File spine (active focus).
+ * Keep in sync with --atlas-select-strong in carbon-theme.css.
+ */
+const FILE_SPINE_SELECT = '#a78bfa';
 
 type IconDescriptor = {
 	elem?: string;
@@ -337,8 +340,8 @@ export function injectFileHeaderIcon(textEl: SVGTextElement): void {
 		if (icon && icon.tagName.toLowerCase() === 'svg') {
 			icon.setAttribute('width', '16');
 			icon.setAttribute('height', '16');
-			icon.setAttribute('fill', FILE_SPINE_TEAL);
-			icon.style.fill = FILE_SPINE_TEAL;
+			icon.setAttribute('fill', FILE_SPINE_SELECT);
+			icon.style.fill = FILE_SPINE_SELECT;
 			// Import into current document
 			const adopted = document.importNode(icon, true);
 			wrap.appendChild(adopted);
@@ -356,7 +359,7 @@ export function injectFileHeaderIcon(textEl: SVGTextElement): void {
 		'M4 2h6l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm6 1.5V7h3.5',
 	);
 	path.setAttribute('fill', 'none');
-	path.setAttribute('stroke', FILE_SPINE_TEAL);
+	path.setAttribute('stroke', FILE_SPINE_SELECT);
 	path.setAttribute('stroke-width', '1.25');
 	wrap.appendChild(path);
 	parent.appendChild(wrap);

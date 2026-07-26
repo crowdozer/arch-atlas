@@ -52,5 +52,5 @@ invariants win over provisional file layout. See global personality in
 `~/git-personal/dotfiles/grok/skills/_shared/personality.md`.
 
 **UI design language:** track **Sentinel** (Carbon wrappers, zinc/**teal** shell,
-alluvial/Sankey as signature visual) — do not fork Sentinel product domain or
-copy wholesale; re-home the visual/UX grammar here as needed.
+alluvial/Sankey as signature visual; **purple** = active selection) — do not fork
+Sentinel product domain or copy wholesale; re-home the visual/UX grammar here as needed.
