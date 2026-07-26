@@ -482,6 +482,40 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		expect(rrd[0]!.name).toBe('react-router-dom');
 	});
 
+	it('pin-far modes: no · in/out hN on file or package labels', () => {
+		for (const mode of ['pin-clip', 'pin-overdraw'] as const) {
+			const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+				maxDepth: 3,
+				maxDeps: 48,
+				weightAxis: 'importer-loc',
+				packageLeafMode: mode,
+			})!;
+			for (const n of payload.options.alluvial.nodes) {
+				// Rails / zero-width pads may exist; skip pure buckets without labels
+				if (n.name.includes('\u200b')) continue;
+				expect(n.name, `${mode} ${n.category} ${n.name}`).not.toMatch(
+					/ · (?:in|out)(?: h\d+)?$/,
+				);
+				expect(n.name, `${mode} ${n.name}`).not.toMatch(/ · (?:in|out) h\d+/);
+			}
+		}
+	});
+
+	it('per-hop still suffixes multi-hop package leaves', () => {
+		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
+			maxDepth: 3,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+			packageLeafMode: 'per-hop',
+		})!;
+		const hopPkgs = payload.options.alluvial.nodes.filter(
+			(n) =>
+				n.category.startsWith('Export hop') &&
+				payload.meta.nodeRef[n.name]?.kind === 'package',
+		);
+		expect(hopPkgs.some((n) => / · out h\d+/.test(n.name))).toBe(true);
+	});
+
 	it('resolvePackageLeafMode accepts the three modes', () => {
 		const modes: PackageLeafMode[] = ['pin-overdraw', 'pin-clip', 'per-hop'];
 		for (const m of modes) {

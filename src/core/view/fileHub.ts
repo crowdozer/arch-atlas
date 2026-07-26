@@ -245,6 +245,8 @@ export function projectFileHub(
 				hubRadius,
 				maxPerHop: Math.min(48, maxImporters),
 				weightAxis,
+				// Match export pin-far: plain labels unless legacy per-hop
+				plainHopLabels: packageLeafMode !== 'per-hop',
 				addLink,
 				nodeRef,
 				nodeMeta,
@@ -406,6 +408,8 @@ function addImportRings(
 		inEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
+		/** When true, skip · in hN suffixes (pin-far package modes). */
+		plainHopLabels?: boolean;
 		classicLabels?: Map<string, string>;
 	},
 ): void {
@@ -417,6 +421,7 @@ function addImportRings(
 		hubRadius,
 		maxPerHop,
 		weightAxis,
+		plainHopLabels = false,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -469,11 +474,18 @@ function addImportRings(
 		const otherCount = ranked.length - kept.length;
 
 		if (otherCount > 0) {
-			const preferred =
-				radiusL <= 1
-					? moreCountLabel(otherCount)
-					: hopOverflowLabel(moreCountLabel(otherCount), 'in', d);
-			const otherName = claimName(usedNames, preferred, `in h${d}`);
+			const preferred = hopOverflowDisplay(
+				moreCountLabel(otherCount),
+				'in',
+				d,
+				radiusL,
+				plainHopLabels,
+			);
+			const otherName = claimName(
+				usedNames,
+				preferred,
+				plainHopLabels ? 'more' : `in h${d}`,
+			);
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(f, otherName);
 			}
@@ -487,8 +499,12 @@ function addImportRings(
 		const pathLabels = classicLabels ?? uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
-			const preferred = hopFileLabel(base, 'in', d, radiusL);
-			const name = claimName(usedNames, preferred, `in h${d}`);
+			const preferred = hopNodeDisplay(base, 'in', d, radiusL, plainHopLabels);
+			const name = claimName(
+				usedNames,
+				preferred,
+				plainHopLabels ? 'file' : `in h${d}`,
+			);
 			display.set(f, name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
@@ -645,6 +661,7 @@ function addExportRings(
 		usedNames,
 		classicLabels,
 	} = args;
+	const plainHopLabels = packageLeafMode !== 'per-hop';
 
 	const fwdAdj = fileImportAdj(graph);
 	// Longest path: format→types stays at hop 2 when types is also a direct dep
@@ -780,11 +797,18 @@ function addExportRings(
 		const otherCount = ranked.length - kept.length;
 
 		if (otherCount > 0) {
-			const preferred =
-				radiusR <= 1
-					? moreCountLabel(otherCount)
-					: hopOverflowLabel(moreCountLabel(otherCount), 'out', d);
-			const otherName = claimName(usedNames, preferred, `out h${d}`);
+			const preferred = hopOverflowDisplay(
+				moreCountLabel(otherCount),
+				'out',
+				d,
+				radiusR,
+				plainHopLabels,
+			);
+			const otherName = claimName(
+				usedNames,
+				preferred,
+				plainHopLabels ? 'more' : `out h${d}`,
+			);
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(f, otherName);
 			}
@@ -799,8 +823,12 @@ function addExportRings(
 			d === 1 && classicLabels ? classicLabels : uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
-			const preferred = hopFileLabel(base, 'out', d, radiusR);
-			const name = claimName(usedNames, preferred, `out h${d}`);
+			const preferred = hopNodeDisplay(base, 'out', d, radiusR, plainHopLabels);
+			const name = claimName(
+				usedNames,
+				preferred,
+				plainHopLabels ? 'file' : `out h${d}`,
+			);
 			display.set(f, name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
@@ -1489,6 +1517,31 @@ function hopOverflowLabel(
 	dist: number,
 ): string {
 	return `${base} · ${side} h${dist}`;
+}
+
+/**
+ * Pin-far modes: plain path labels (hop is column category only).
+ * Per-hop: keep · in/out hN for cross-column identity.
+ */
+function hopNodeDisplay(
+	base: string,
+	side: 'in' | 'out',
+	dist: number,
+	radius: number,
+	plain: boolean,
+): string {
+	return plain ? base : hopFileLabel(base, side, dist, radius);
+}
+
+function hopOverflowDisplay(
+	base: string,
+	side: 'in' | 'out',
+	dist: number,
+	radius: number,
+	plain: boolean,
+): string {
+	if (plain || radius <= 1) return base;
+	return hopOverflowLabel(base, side, dist);
 }
 
 function addImportModules(
