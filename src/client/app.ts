@@ -540,12 +540,17 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 
 	// Accordion section titles with counts (Carbon cds-accordion-item title prop)
 	const hotspotN = catalog.hotspots?.length ?? 0;
+	const deepN = catalog.deepest?.length ?? 0;
 	const viewsN = catalog.views.length;
 	const startsN = Math.min(catalog.starts.length, 25);
 	const endsN = Math.min(catalog.ends.length, 30);
 	setAccordionTitle(
 		'atlas-acc-hotspots',
 		`High edges${hotspotN ? ` (${hotspotN})` : ''}`,
+	);
+	setAccordionTitle(
+		'atlas-acc-deepest',
+		`Most hops${deepN ? ` (${deepN})` : ''}`,
 	);
 	setAccordionTitle('atlas-acc-views', `Suggested views${viewsN ? ` (${viewsN})` : ''}`);
 	setAccordionTitle('atlas-acc-starts', `Starts${startsN ? ` (${startsN})` : ''}`);
@@ -600,6 +605,31 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		}
 		if (!list.length) {
 			hotspotsHost.innerHTML = `<p class="text-xs text-zinc-600">No edges yet.</p>`;
+		}
+	}
+
+	const deepestHost = $('atlas-deepest');
+	if (deepestHost) {
+		deepestHost.innerHTML = '';
+		const list = catalog.deepest ?? [];
+		for (const d of list.slice(0, 15)) {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'atlas-list-btn';
+			if (selectedStart === d.id) btn.classList.add('is-selected');
+			const hopsLabel = d.maxHops === 1 ? '1 hop' : `${d.maxHops} hops`;
+			const detail = `${d.reachableFiles} files · ${d.packageEnds} pkgs · out ${d.outDegree}`;
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(d.path)}</span>
+					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${hopsLabel}</span>
+				</span>
+				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
+			btn.addEventListener('click', () => selectStart(d.id));
+			deepestHost.appendChild(btn);
+		}
+		if (!list.length) {
+			deepestHost.innerHTML = `<p class="text-xs text-zinc-600">No multi-hop import chains.</p>`;
 		}
 	}
 

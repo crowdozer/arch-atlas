@@ -2,6 +2,7 @@
  * Suggested map-catalog views from graph + starts.
  */
 
+import { catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
 import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
@@ -23,6 +24,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 	const starts = catalogStarts(graph);
 	const ends = catalogEnds(graph);
 	const hotspots = catalogHotspots(graph);
+	const deepest = catalogDeepest(graph);
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
@@ -50,9 +52,9 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		});
 	}
 
-	// High-edge hotspots as suggested entry points (skip already listed starts)
+	// High-edge + deep-hop starts as suggested entry points (skip duplicates)
 	const listed = new Set(views.map((v) => v.startId));
-	for (const h of hotspots.slice(0, 5)) {
+	for (const h of hotspots.slice(0, 4)) {
 		if (listed.has(h.id)) continue;
 		views.push({
 			id: `high-edges:${h.id}`,
@@ -65,11 +67,25 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		listed.add(h.id);
 		if (views.length >= 8) break;
 	}
+	for (const d of deepest.slice(0, 4)) {
+		if (listed.has(d.id)) continue;
+		views.push({
+			id: `most-hops:${d.id}`,
+			title: `Most hops · ${basename(d.path)}`,
+			description: `${d.maxHops} hops · ${d.reachableFiles} files · ${d.packageEnds} pkgs`,
+			startId: d.id,
+			edgeCount: d.edgeCount,
+			epistemic: 'observed',
+		});
+		listed.add(d.id);
+		if (views.length >= 10) break;
+	}
 
 	return {
 		starts,
 		ends,
 		hotspots,
+		deepest,
 		views,
 		summary: {
 			sourceCount: graph.stats.sourceCount,

@@ -97,9 +97,21 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 	it('indexes a dense graph with catalog sections', () => {
 		expect(graph.stats.edgeCount).toBeGreaterThan(30);
 		expect(catalog.hotspots.length).toBeGreaterThan(5);
+		expect(catalog.deepest.length).toBeGreaterThan(3);
 		expect(catalog.starts.length).toBeGreaterThan(0);
 		expect(catalog.ends.length).toBeGreaterThan(0);
 		expect(catalog.views.length).toBeGreaterThan(0);
+	});
+
+	it('every most-hops entry: open yields conserved alluvial', () => {
+		for (const d of catalog.deepest) {
+			expect(d.maxHops).toBeGreaterThanOrEqual(1);
+			const payload = payloadForFileClick(graph, d.id);
+			expect(payload, `deepest ${d.path}`).not.toBeNull();
+			assertColumnConservation(payload!, `deepest ${d.path}`);
+			assertNodeRefCoversNamedNodes(payload!, `deepest ${d.path}`);
+			expect(totalValue(payload!)).toBeGreaterThan(0);
+		}
 	});
 
 	it('every high-edge hotspot: view total matches dominant edge side', () => {

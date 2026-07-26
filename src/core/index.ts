@@ -9,7 +9,9 @@ export type {
 	AlluvialNodeRef,
 	AlluvialNodeRefKind,
 	AlluvialPayload,
+	CatalogDeep,
 	CatalogEnd,
+	CatalogHotspot,
 	CatalogStart,
 	CodeGraph,
 	MapCatalog,
@@ -20,6 +22,7 @@ export { buildMapCatalog } from '@core/catalog/views.ts';
 export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
+export { catalogDeepest, importDepthStats } from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';

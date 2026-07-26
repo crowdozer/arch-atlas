@@ -100,6 +100,22 @@ export type CatalogHotspot = {
 	epistemic: 'observed';
 };
 
+/** Source file ranked by deepest outbound file→file import hops. */
+export type CatalogDeep = {
+	id: string;
+	path: string;
+	/** Max BFS distance from this file along file import edges. */
+	maxHops: number;
+	/** Reachable files including self. */
+	reachableFiles: number;
+	/** Distinct packages/unresolved touched in the reachable set. */
+	packageEnds: number;
+	edgeCount: number;
+	outDegree: number;
+	inDegree: number;
+	epistemic: 'observed';
+};
+
 export type SuggestedView = {
 	id: string;
 	title: string;
@@ -115,6 +131,8 @@ export type MapCatalog = {
 	ends: CatalogEnd[];
 	/** High-edge files for one-click exploration. */
 	hotspots: CatalogHotspot[];
+	/** Deepest outbound import graphs (most hops). */
+	deepest: CatalogDeep[];
 	views: SuggestedView[];
 	summary: {
 		sourceCount: number;
