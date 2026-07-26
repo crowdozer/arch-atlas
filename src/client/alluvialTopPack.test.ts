@@ -1,4 +1,11 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { VirtualFile } from '@core/graph/types.ts';
+import { indexFiles } from '@core/index.ts';
+import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import { projectFileHub } from '@core/view/fileHub.ts';
 import {
 	centerHubFileSpine,
 	hideAlluvialRails,
@@ -14,6 +21,25 @@ import {
 	planExternalStraightBands,
 	straightenExternalPackageBands,
 } from './alluvialTopPack.ts';
+
+const fixturesRoot = path.join(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'../../fixtures',
+);
+
+function walkFixtures(dir: string, base = dir): VirtualFile[] {
+	const out: VirtualFile[] = [];
+	for (const name of readdirSync(dir)) {
+		const full = path.join(dir, name);
+		if (statSync(full).isDirectory()) out.push(...walkFixtures(full, base));
+		else {
+			const rel = path.relative(base, full).split(path.sep).join('/');
+			const content = readFileSync(full, 'utf8');
+			out.push({ path: rel, content, byteLength: Buffer.byteLength(content) });
+		}
+	}
+	return out;
+}
 
 type N = {
 	name: string;
@@ -616,6 +642,157 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 			],
 		);
 		expect(plans).toHaveLength(0);
+	});
+
+	it('userService hub meta pairs: planner draws true External attachments only', () => {
+		const { graph } = indexFiles(
+			walkFixtures(path.join(fixturesRoot, 'demo-next-complex')),
+		);
+		const payload = projectFileHub(graph, 'src/services/userService.ts', {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		expect(pairs.length).toBeGreaterThan(0);
+
+		// Synthetic layout geometry from payload nodes + data (pad topology intact)
+		const nodes = payload.options.alluvial.nodes.map((n, i) => ({
+			name: n.name,
+			category: n.category,
+			x0: n.category === 'External' ? 300 : isAlluvialRailName(n.name) ? 200 : 100,
+			x1: n.category === 'External' ? 304 : isAlluvialRailName(n.name) ? 204 : 104,
+			y0: i * 20,
+			y1: i * 20 + 12,
+		}));
+		const links = payload.data.map((l) => ({
+			source: l.source,
+			target: l.target,
+			width: l.value,
+		}));
+
+		const bfs = planExternalStraightBands(nodes, links);
+		const planned = planExternalStraightBands(nodes, links, pairs);
+		// Shared-rail BFS overdraws; construction pairs stay parent-true
+		expect(bfs.length).toBeGreaterThan(planned.length);
+		expect(planned.length).toBeGreaterThan(0);
+
+		const key = (parent: string, pkg: string) => `${parent}\0${pkg}`;
+		const plannedKeys = new Set(
+			planned.map((p) => key(p.parent, p.packageName)),
+		);
+		const labelFor = (fileId: string) =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'file' && r.id === fileId,
+			)?.[0];
+		const pkgLabel = (pkgId: string) =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'package' && r.id === pkgId,
+			)?.[0];
+
+		const redis = labelFor('src/lib/redis.ts')!;
+		const email = labelFor('src/lib/email.ts')!;
+		const typesUser = labelFor('src/types/user.ts')!;
+		const ioredis = pkgLabel('ioredis')!;
+		const nodemailer = pkgLabel('nodemailer')!;
+		const zod = pkgLabel('zod')!;
+
+		expect(plannedKeys.has(key(redis, ioredis))).toBe(true);
+		expect(plannedKeys.has(key(email, nodemailer))).toBe(true);
+		expect(plannedKeys.has(key(typesUser, zod))).toBe(true);
+		expect(plannedKeys.has(key(email, ioredis))).toBe(false);
+		expect(plannedKeys.has(key(redis, nodemailer))).toBe(false);
+		expect(plannedKeys.has(key(typesUser, ioredis))).toBe(false);
+	});
+
+	it('shared in-rail multi-parent: pairs avoid cross-product; BFS alone overdraws', () => {
+		// Topology: redis/email/types → same ·in-rail·h2 → ioredis/nodemailer/zod
+		const rail = '\u200b·in-rail·h2';
+		const nodes = [
+			{
+				name: 'src/lib/redis.ts',
+				category: 'Imports',
+				x0: 100,
+				x1: 104,
+				y0: 10,
+				y1: 30,
+			},
+			{
+				name: 'src/lib/email.ts',
+				category: 'Imports',
+				x0: 100,
+				x1: 104,
+				y0: 40,
+				y1: 60,
+			},
+			{
+				name: 'src/types/user.ts',
+				category: 'Imports',
+				x0: 100,
+				x1: 104,
+				y0: 70,
+				y1: 90,
+			},
+			{
+				name: rail,
+				category: 'Import hop 2',
+				x0: 200,
+				x1: 204,
+				y0: 20,
+				y1: 80,
+			},
+			{
+				name: 'ioredis',
+				category: 'External',
+				x0: 300,
+				x1: 304,
+				y0: 10,
+				y1: 30,
+			},
+			{
+				name: 'nodemailer',
+				category: 'External',
+				x0: 300,
+				x1: 304,
+				y0: 40,
+				y1: 60,
+			},
+			{
+				name: 'zod',
+				category: 'External',
+				x0: 300,
+				x1: 304,
+				y0: 70,
+				y1: 90,
+			},
+		];
+		const links = [
+			{ source: 'src/lib/redis.ts', target: rail, width: 1 },
+			{ source: 'src/lib/email.ts', target: rail, width: 1 },
+			{ source: 'src/types/user.ts', target: rail, width: 1 },
+			{ source: rail, target: 'ioredis', width: 1 },
+			{ source: rail, target: 'nodemailer', width: 1 },
+			{ source: rail, target: 'zod', width: 1 },
+		];
+		const bfs = planExternalStraightBands(nodes, links);
+		// 3 parents × 3 packages on shared rail
+		expect(bfs).toHaveLength(9);
+
+		const pairs = [
+			{ parent: 'src/lib/redis.ts', packageName: 'ioredis', width: 1 },
+			{ parent: 'src/lib/email.ts', packageName: 'nodemailer', width: 1 },
+			{ parent: 'src/types/user.ts', packageName: 'zod', width: 1 },
+		];
+		const planned = planExternalStraightBands(nodes, links, pairs);
+		expect(planned).toHaveLength(3);
+		const keys = new Set(planned.map((p) => `${p.parent}\0${p.packageName}`));
+		expect(keys.has('src/lib/redis.ts\0ioredis')).toBe(true);
+		expect(keys.has('src/lib/email.ts\0nodemailer')).toBe(true);
+		expect(keys.has('src/types/user.ts\0zod')).toBe(true);
+		expect(keys.has('src/lib/email.ts\0ioredis')).toBe(false);
+		expect(keys.has('src/lib/redis.ts\0nodemailer')).toBe(false);
+		expect(keys.has('src/lib/redis.ts\0zod')).toBe(false);
 	});
 
 	it('hide + straighten is safe on MiniEl fixture (no throw)', () => {

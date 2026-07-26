@@ -285,5 +285,16 @@ export type AlluvialPayload = {
 		 * Never includes rail ids. Field name is historical (`exportTerminators`).
 		 */
 		exportTerminators?: string[];
+		/**
+		 * Construction-time External package attachments (display labels +
+		 * residual/package widths). Polish straighten uses these instead of
+		 * recovering pairs via shared in-rail BFS (which cross-products parents
+		 * × packages on a merged rail).
+		 */
+		externalStraightPairs?: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	};
 };

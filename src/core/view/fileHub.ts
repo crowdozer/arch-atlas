@@ -231,6 +231,16 @@ export function projectFileHub(
 	const usedNames = new Set<string>([fileLabel]);
 	/** Reverse-hop display names that received free-source pad rails. */
 	const terminators: string[] = [];
+	/**
+	 * Construction-time parent → External package widths (display labels).
+	 * Polish straighten uses this list so shared in-rails do not invent a
+	 * parent×package cross-product.
+	 */
+	const externalStraightPairs: {
+		parent: string;
+		packageName: string;
+		width: number;
+	}[] = [];
 
 	// --- Exports side: reverse BFS (who imports the focus) ---
 	if (inEdges.length) {
@@ -311,6 +321,7 @@ export function projectFileHub(
 			weightAxis,
 			externalDist,
 			padFromFile: importTreeResult.padFromFile,
+			externalStraightPairs,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -329,6 +340,7 @@ export function projectFileHub(
 			weightAxis,
 			externalDist,
 			padBetween: importTreeResult.padBetween,
+			externalStraightPairs,
 			addLink,
 			nodeRef,
 			nodeMeta,
@@ -413,6 +425,9 @@ export function projectFileHub(
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: exportTerminators.length
 			? exportTerminators
+			: undefined,
+		externalStraightPairs: externalStraightPairs.length
+			? externalStraightPairs
 			: undefined,
 	});
 }
@@ -548,15 +563,23 @@ function addFocusPackageImports(
 		/** Hub dist for package nodes (File = 0). */
 		externalDist: number;
 		padFromFile: (targetLab: string, toDist: number, w: number) => void;
+		/** Display parent/package widths for polish straighten (shared rails). */
+		externalStraightPairs: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	},
 ): void {
 	const {
 		graph,
+		fileLabel,
 		outEdges,
 		maxPerHop,
 		weightAxis,
 		externalDist,
 		padFromFile,
+		externalStraightPairs,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -609,6 +632,12 @@ function addFocusPackageImports(
 		});
 		// Topology hop for Carbon: pad when file Imports also leave File
 		padFromFile(name, externalDist, entry.weight);
+		recordExternalStraightPair(
+			externalStraightPairs,
+			fileLabel,
+			name,
+			entry.weight,
+		);
 	}
 	if (overflow.length) {
 		const otherName = claimName(
@@ -623,6 +652,12 @@ function addFocusPackageImports(
 		});
 		for (const entry of overflow) {
 			padFromFile(otherName, externalDist, entry.weight);
+			recordExternalStraightPair(
+				externalStraightPairs,
+				fileLabel,
+				otherName,
+				entry.weight,
+			);
 		}
 	}
 }
@@ -652,6 +687,12 @@ function addExportTreePackageImports(
 			toDist: number,
 			w: number,
 		) => void;
+		/** Display parent/package widths for polish straighten (shared rails). */
+		externalStraightPairs: {
+			parent: string;
+			packageName: string;
+			width: number;
+		}[];
 	},
 ): void {
 	const {
@@ -662,6 +703,7 @@ function addExportTreePackageImports(
 		weightAxis,
 		externalDist,
 		padBetween,
+		externalStraightPairs,
 		nodeRef,
 		nodeMeta,
 		usedNames,
@@ -791,6 +833,12 @@ function addExportTreePackageImports(
 			const fromDist = parent.dist;
 			const toDist = Math.max(externalDist, fromDist + 1);
 			padBetween(parent.lab, fromDist, pkgName, toDist, w);
+			recordExternalStraightPair(
+				externalStraightPairs,
+				parent.lab,
+				pkgName,
+				w,
+			);
 		}
 	};
 
@@ -812,6 +860,21 @@ function addExportTreePackageImports(
 			linkParentAlloc(otherName, rec);
 		}
 	}
+}
+
+/** Merge construction-time External straighten pairs by (parent, package). */
+function recordExternalStraightPair(
+	pairs: { parent: string; packageName: string; width: number }[],
+	parent: string,
+	packageName: string,
+	width: number,
+): void {
+	if (width <= 0 || !parent || !packageName || parent === packageName) return;
+	const existing = pairs.find(
+		(p) => p.parent === parent && p.packageName === packageName,
+	);
+	if (existing) existing.width += width;
+	else pairs.push({ parent, packageName, width });
 }
 
 /**

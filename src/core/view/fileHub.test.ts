@@ -980,6 +980,45 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		expect(importNodes.length).toBeGreaterThan(0);
 	});
 
+	it('userService: externalStraightPairs are true importers only (no mesh)', () => {
+		const id = 'src/services/userService.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		expect(pairs.length, 'construction pairs present').toBeGreaterThan(0);
+
+		const labelFor = (fileId: string): string | undefined =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'file' && r.id === fileId,
+			)?.[0];
+		const pkgLabel = (pkgId: string): string | undefined =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'package' && r.id === pkgId,
+			)?.[0];
+
+		const redis = labelFor('src/lib/redis.ts');
+		const email = labelFor('src/lib/email.ts');
+		const typesUser = labelFor('src/types/user.ts');
+		const ioredis = pkgLabel('ioredis');
+		const nodemailer = pkgLabel('nodemailer');
+		const zod = pkgLabel('zod');
+		expect(redis && email && typesUser && ioredis && nodemailer && zod).toBeTruthy();
+
+		const keys = new Set(pairs.map((p) => `${p.parent}\0${p.packageName}`));
+		expect(keys.has(`${redis}\0${ioredis}`)).toBe(true);
+		expect(keys.has(`${email}\0${nodemailer}`)).toBe(true);
+		expect(keys.has(`${typesUser}\0${zod}`)).toBe(true);
+		// Cross-product must not be construction truth
+		expect(keys.has(`${email}\0${ioredis}`)).toBe(false);
+		expect(keys.has(`${redis}\0${nodemailer}`)).toBe(false);
+		expect(keys.has(`${email}\0${zod}`)).toBe(false);
+		expect(keys.has(`${typesUser}\0${ioredis}`)).toBe(false);
+	});
+
 	it('legacyHelpers: all direct file deps on Imports; packages External far right', () => {
 		const id = 'src/utils/legacyHelpers.ts';
 		const payload = projectFileHub(graph, id, {

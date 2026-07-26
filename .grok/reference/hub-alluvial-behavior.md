@@ -126,9 +126,13 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 Paint law: pure rail↔rail undrawn; **External package hop** bands
 (`parent → in-rail → External`) are undrawn and **redrawn as a straight**
 `parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
-Imports column does not show a package kink. **Out-rail free-source pads**
-(reverse column alignment into Exports free sources) are undrawn past/into
-terminators. Rail **nodes** stay hidden. Packages remain sinks.
+Imports column does not show a package kink. Straighten identity comes from
+construction-time `meta.externalStraightPairs` (true residual parent→package
+widths), **not** from BFS ancestry on shared `·in-rail·hN` (shared rails merge
+multi-commodity pads; rail recovery invents parent×package cross-products).
+BFS remains a fallback only when meta pairs are absent. **Out-rail free-source
+pads** (reverse column alignment into Exports free sources) are undrawn
+past/into terminators. Rail **nodes** stay hidden. Packages remain sinks.
 
 **Terminator chrome (contrast with column family):**
 

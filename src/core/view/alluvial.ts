@@ -115,6 +115,15 @@ export function buildAlluvialPayload(args: {
 	terminators?: string[];
 	/** Forward true leaves on Imports / External (meta.exportTerminators). */
 	exportTerminators?: string[];
+	/**
+	 * Hub External straighten identity: parent → package widths from residual
+	 * allocation (meta.externalStraightPairs).
+	 */
+	externalStraightPairs?: {
+		parent: string;
+		packageName: string;
+		width: number;
+	}[];
 }): AlluvialPayload | null {
 	const {
 		heightPx,
@@ -128,6 +137,7 @@ export function buildAlluvialPayload(args: {
 		ariaLabel,
 		terminators,
 		exportTerminators,
+		externalStraightPairs,
 	} = args;
 	if (!links.length) return null;
 
@@ -185,6 +195,15 @@ export function buildAlluvialPayload(args: {
 			...(terminators?.length ? { terminators: [...terminators] } : {}),
 			...(exportTerminators?.length
 				? { exportTerminators: [...exportTerminators] }
+				: {}),
+			...(externalStraightPairs?.length
+				? {
+						externalStraightPairs: externalStraightPairs.map((p) => ({
+							parent: p.parent,
+							packageName: p.packageName,
+							width: p.width,
+						})),
+					}
 				: {}),
 		},
 	};
