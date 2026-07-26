@@ -76,10 +76,10 @@ describe('buildGraph fixture', () => {
 		expect(payload!.options.alluvial.nodes.some((n) => n.category === 'Modules')).toBe(
 			false,
 		);
-		// links flow toward file (start basename), not outward from it
-		const startBase = 'index.ts';
-		const intoCode = payload!.data.some((l) => l.target === startBase);
-		const outFromCode = payload!.data.some((l) => l.source === startBase);
+		// links flow toward file (full path label), not outward from it
+		const startPath = 'src/index.ts';
+		const intoCode = payload!.data.some((l) => l.target === startPath);
+		const outFromCode = payload!.data.some((l) => l.source === startPath);
 		expect(intoCode).toBe(true);
 		expect(outFromCode).toBe(false);
 	});

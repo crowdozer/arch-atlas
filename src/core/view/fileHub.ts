@@ -44,7 +44,6 @@ import type {
 	ImportEdge,
 } from '@core/graph/types.ts';
 import {
-	basename,
 	buildAlluvialPayload,
 	moreCountLabel,
 	TEAL,
@@ -132,13 +131,9 @@ export function projectFileHub(
 		...new Set(outEdges.filter((e) => e.toKind === 'file').map((e) => e.to)),
 	];
 
-	// Depth=1: classic uniqueFileLabels over focus∪importers∪deps for path disambiguation
-	let classicLabels: Map<string, string> | undefined;
-	let fileLabel = basename(fileId);
-	if (hubRadius === 1) {
-		classicLabels = uniqueFileLabels([fileId, ...importerPaths, ...depFilePaths]);
-		fileLabel = classicLabels.get(fileId) ?? fileLabel;
-	}
+	// Full path labels (chart polish right-truncates for display)
+	const classicLabels = uniqueFileLabels([fileId, ...importerPaths, ...depFilePaths]);
+	const fileLabel = classicLabels.get(fileId) ?? fileId
 
 	const focus: AlluvialFocus = {
 		kind: 'file',
@@ -422,12 +417,9 @@ function addImportRings(
 			});
 		}
 
-		const pathLabels =
-			d === 1 && classicLabels
-				? classicLabels
-				: uniqueFileLabels(kept);
+		const pathLabels = classicLabels ?? uniqueFileLabels(kept);
 		for (const f of kept) {
-			const base = pathLabels.get(f) ?? basename(f);
+			const base = pathLabels.get(f) ?? f;
 			const preferred = hopFileLabel(base, 'in', d, radiusL);
 			const name = claimName(usedNames, preferred, `in h${d}`);
 			display.set(f, name);
@@ -584,7 +576,7 @@ function addExportRings(
 			key: f,
 			weight: fileSeed.get(f) ?? 0,
 			preferredLabel: hopFileLabel(
-				dist1Labels.get(f) ?? basename(f),
+				dist1Labels.get(f) ?? f,
 				'out',
 				1,
 				radiusR,
@@ -707,7 +699,7 @@ function addExportRings(
 
 		const pathLabels = uniqueFileLabels(kept);
 		for (const f of kept) {
-			const base = pathLabels.get(f) ?? basename(f);
+			const base = pathLabels.get(f) ?? f;
 			const preferred = hopFileLabel(base, 'out', d, radiusR);
 			const name = claimName(usedNames, preferred, `out h${d}`);
 			display.set(f, name);

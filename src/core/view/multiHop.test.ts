@@ -103,7 +103,7 @@ describe('projectMultiHopAlluvial depth semantics (layout.tsx)', () => {
 			if (e.toKind === 'package' || e.toKind === 'unresolved') directPkg += 1;
 		}
 		const { inn, out } = flowTotals(payload.data);
-		const fileIn = inn.get('layout.tsx') ?? 0;
+		const fileIn = inn.get(start) ?? 0;
 		const endOut = payload.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.reduce((s, n) => s + (out.get(n.name) ?? 0), 0);
@@ -149,7 +149,7 @@ describe('projectMultiHopAlluvial depth semantics (layout.tsx)', () => {
 		for (const maxDepth of [1, 2, 3, 4, 7]) {
 			const payload = projectMultiHopAlluvial(graph, start, { maxDepth })!;
 			const { out, inn } = flowTotals(payload.data);
-			const codeIn = inn.get('layout.tsx') ?? 0;
+			const codeIn = inn.get(start) ?? 0;
 			const endOut = payload.options.alluvial.nodes
 				.filter((n) => n.category === 'Imports' || n.category === 'Ends')
 				.reduce((s, n) => s + (out.get(n.name) ?? 0), 0);
@@ -204,7 +204,7 @@ describe('projectMultiHopAlluvial (page.tsx / misc)', () => {
 				maxDepth: 7,
 			})!;
 			const { out, inn } = flowTotals(payload.data);
-			const codeIn = inn.get('page.tsx') ?? 0;
+			const codeIn = inn.get(start) ?? 0;
 			const endOut = payload.options.alluvial.nodes
 				.filter((n) => n.category === 'Imports')
 				.reduce((s, n) => s + (out.get(n.name) ?? 0), 0);

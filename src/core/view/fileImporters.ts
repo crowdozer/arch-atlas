@@ -143,10 +143,10 @@ export function projectFileImporters(
 	const focus: AlluvialFocus = {
 		kind: 'file',
 		id: fileId,
-		label: basename(fileId),
+		label: fileId,
 	};
 	const labelsForFocus = uniqueFileLabels([fileId, ...edges.map((e) => e.from)]);
-	const fileLabel = labelsForFocus.get(fileId) ?? basename(fileId);
+	const fileLabel = labelsForFocus.get(fileId) ?? fileId;
 	const importerPaths = [...new Set(edges.map((e) => e.from))];
 
 	// Few importers → list files. Many → folder *leaves* (still one Imports column).

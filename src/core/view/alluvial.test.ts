@@ -146,8 +146,8 @@ describe('projectPackageImporters', () => {
 			(n) => n.category === 'Importers',
 		);
 		expect(importers.length).toBe(1);
-		// Single importer → file promote; label is basename email.ts
-		expect(importers[0]!.name).toMatch(/email\.ts$/);
+		// Single importer → file promote; full path label
+		expect(importers[0]!.name).toBe('src/lib/email.ts');
 
 		const total = payload!.data.reduce((s, l) => s + l.value, 0);
 		expect(total).toBe(1);
@@ -206,7 +206,7 @@ describe('projectFileImporters', () => {
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
 		const rev = projectFileImporters(graph, fileId)!;
 		const forward = projectAlluvial(graph, fileId)!;
-		const revTotal = flowTotals(rev.data).out.get('redis.ts') ?? 0;
+		const revTotal = flowTotals(rev.data).out.get(fileId) ?? 0;
 		const fwdTotal = forward.data.reduce((s, l) => s + l.value, 0);
 		expect(revTotal).toBeGreaterThan(fwdTotal);
 		expect(revTotal).toBe(12);
@@ -230,7 +230,7 @@ describe('projectFileImporters', () => {
 		expect(rev!.meta.focus).toEqual({
 			kind: 'file',
 			id: fileId,
-			label: 'logger.ts',
+			label: fileId,
 		});
 		// File → Imports only (folders are not a hop stage)
 		const cats = new Set(rev!.options.alluvial.nodes.map((n) => n.category));
@@ -238,7 +238,7 @@ describe('projectFileImporters', () => {
 		expect(cats.has('Imports')).toBe(true);
 		expect(cats.has('Import folders')).toBe(false);
 		const { out, inn } = flowTotals(rev!.data);
-		const fileOut = out.get('logger.ts') ?? out.get(fileId) ?? 0;
+		const fileOut = out.get(fileId) ?? 0;
 		const importerIn = rev!.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.reduce((s, n) => s + (inn.get(n.name) ?? 0), 0);
@@ -258,7 +258,7 @@ describe('projectFileImporters', () => {
 
 		const rev = projectFileImporters(graph, fileId, { weightAxis: 'target-loc' })!;
 		const { out } = flowTotals(rev.data);
-		const focusOut = out.get('redis.ts') ?? 0;
+		const focusOut = out.get(fileId) ?? 0;
 		expect(focusOut).toBe(inDegree * loc);
 	});
 });

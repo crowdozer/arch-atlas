@@ -107,7 +107,7 @@ describe('projectFileImporters', () => {
 		const inn = graph.edges.filter(
 			(e) => e.toKind === 'file' && e.to === fileId,
 		).length;
-		expect(focusMass(rev, 'logger.ts')).toBe(inn);
+		expect(focusMass(rev, fileId)).toBe(inn);
 	});
 
 	it('redis: flat file leaves when few importers', () => {
@@ -115,7 +115,7 @@ describe('projectFileImporters', () => {
 		expect(rev.options.alluvial.nodes.some((n) => n.category === 'Import folders')).toBe(
 			false,
 		);
-		expect(focusMass(rev, 'redis.ts')).toBe(12);
+		expect(focusMass(rev, 'src/lib/redis.ts')).toBe(12);
 		// Leaves should be files (nodeRef kind file)
 		for (const n of rev.options.alluvial.nodes) {
 			if (n.category !== 'Imports' || n.name.startsWith('+')) continue;

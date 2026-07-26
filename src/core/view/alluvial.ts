@@ -60,34 +60,13 @@ export function topFolder(path: string): string {
 	return parts[0]!;
 }
 
-/** Collision-safe display labels for file paths (basename, or trailing segments). */
+/**
+ * Display labels for file paths — full path (unique by definition).
+ * Chart polish right-truncates long paths for fit; hover keeps the full string.
+ */
 export function uniqueFileLabels(paths: string[]): Map<string, string> {
-	const byBase = new Map<string, string[]>();
-	for (const p of paths) {
-		const b = basename(p);
-		const list = byBase.get(b) ?? [];
-		list.push(p);
-		byBase.set(b, list);
-	}
 	const out = new Map<string, string>();
-	for (const [base, group] of byBase) {
-		if (group.length === 1) {
-			out.set(group[0]!, base);
-			continue;
-		}
-		for (const p of group) {
-			const parts = p.split('/');
-			out.set(p, parts.length >= 2 ? parts.slice(-2).join('/') : p);
-		}
-	}
-	// Second pass if trailing-two still collides
-	const labelCounts = new Map<string, number>();
-	for (const label of out.values()) {
-		labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
-	}
-	for (const [p, label] of out) {
-		if ((labelCounts.get(label) ?? 0) > 1) out.set(p, p);
-	}
+	for (const p of paths) out.set(p, p);
 	return out;
 }
 
@@ -221,7 +200,7 @@ export function projectAlluvial(
 	const units = unitsForAxis(weightAxis, 'package-mass');
 
 	const reachable = reachableFiles(graph, startId);
-	const startLabel = basename(startId);
+	const startLabel = startId;
 	const focus: AlluvialFocus = {
 		kind: 'file',
 		id: startId,

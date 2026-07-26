@@ -39,7 +39,6 @@ import type {
 	CodeGraph,
 } from '@core/graph/types.ts';
 import {
-	basename,
 	buildAlluvialPayload,
 	moreCountLabel,
 	projectAlluvial,
@@ -150,7 +149,7 @@ export function projectMultiHopAlluvial(
 	}
 
 	const rev = fileImportedByAdj(graph);
-	const startLabel = basename(startId);
+	const startLabel = startId;
 	const focus: AlluvialFocus = {
 		kind: 'file',
 		id: startId,
@@ -227,7 +226,7 @@ export function projectMultiHopAlluvial(
 		const labels = uniqueFileLabels(kept);
 		for (const f of files) {
 			if (keptSet.has(f)) {
-				const base = labels.get(f) ?? basename(f);
+				const base = labels.get(f) ?? f;
 				const name = hopNodeLabel(base, stage);
 				fileDisplay.set(f, name);
 				displayMeta.set(name, {
@@ -340,7 +339,7 @@ export function projectMultiHopAlluvial(
 			const m = fileMass.get(f) ?? 0;
 			if (m <= 0) continue;
 			const d = dist.get(f) ?? stage;
-			const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(basename(f), stage);
+			const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(f, stage);
 
 			const importers = rev.get(f) ?? [];
 			let parents = importers.filter((p) => {
@@ -378,8 +377,7 @@ export function projectMultiHopAlluvial(
 					addLink(fromLabel, startLabel, share);
 					continue;
 				}
-				const toLabel =
-					fileDisplay.get(p) ?? hopNodeLabel(basename(p), pDepth);
+				const toLabel = fileDisplay.get(p) ?? hopNodeLabel(p, pDepth);
 				addLink(fromLabel, toLabel, share);
 				fileMass.set(p, (fileMass.get(p) ?? 0) + share);
 			}
@@ -390,7 +388,7 @@ export function projectMultiHopAlluvial(
 	for (const [f, m] of fileMass) {
 		if (m <= 0 || f === startId) continue;
 		const d = dist.get(f) ?? 1;
-		const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(basename(f), d);
+		const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(f, d);
 		addLink(fromLabel, startLabel, m);
 	}
 
@@ -503,7 +501,7 @@ function projectDirectImportsOnly(
 		units: string;
 	},
 ): AlluvialPayload | null {
-	const startLabel = basename(startId);
+	const startLabel = startId;
 	const focus: AlluvialFocus = {
 		kind: 'file',
 		id: startId,

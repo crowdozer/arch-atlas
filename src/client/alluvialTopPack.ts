@@ -1,11 +1,15 @@
 /**
  * Post-process Carbon alluvial SVG after mount:
- * 1. Top-pack columns (d3-sankey floats sparse columns mid/low).
- * 2. Center hub File spine when both sides have edges (asymmetric hops).
+ * 1. Center hub File spine when both sides have edges (asymmetric hops).
+ * 2. Right-truncate long node labels (full paths stay in title / aria).
  * 3. Recolor File→Exports bands (Carbon paints stroke from source).
  *
+ * Column vertical packing is left to Carbon/d3-sankey.
  * Label edge clearance is CSS padding on the chart holder (see carbon-theme).
  */
+
+/** Max visible characters for node name (value suffix kept). Right end wins. */
+export const ALLUVIAL_LABEL_MAX_CHARS = 36;
 
 type SankeyLink = {
 	y0: number;
@@ -36,10 +40,6 @@ function readData<T>(el: Element): T | null {
 	return raw ?? null;
 }
 
-function colKey(x0: number): number {
-	return Math.round(x0 * 1000) / 1000;
-}
-
 function horizontalLinkPath(
 	x0: number,
 	y0: number,
@@ -66,44 +66,6 @@ export function recomputeLinkBreadths(nodes: SankeyNode[]): void {
 			y += link.width;
 		}
 	}
-}
-
-/**
- * Shift each column so its minimum y0 equals the global minimum y0
- * (typically the densest column already near the top).
- * Mutates node y0/y1 in place. Returns total |dy| applied (0 if no-op).
- */
-export function topPackColumns(nodes: SankeyNode[]): number {
-	if (nodes.length < 2) return 0;
-
-	const byCol = new Map<number, SankeyNode[]>();
-	for (const n of nodes) {
-		const k = colKey(n.x0);
-		const list = byCol.get(k) ?? [];
-		list.push(n);
-		byCol.set(k, list);
-	}
-	if (byCol.size < 2) return 0;
-
-	const colMins = [...byCol.values()].map((col) =>
-		Math.min(...col.map((n) => n.y0)),
-	);
-	const yTarget = Math.min(...colMins);
-	let moved = 0;
-
-	for (const col of byCol.values()) {
-		const colMin = Math.min(...col.map((n) => n.y0));
-		const dy = yTarget - colMin;
-		if (Math.abs(dy) < 0.5) continue;
-		moved += Math.abs(dy);
-		for (const n of col) {
-			n.y0 += dy;
-			n.y1 += dy;
-		}
-	}
-
-	if (moved > 0) recomputeLinkBreadths(nodes);
-	return moved;
 }
 
 /**
@@ -179,7 +141,57 @@ function writeNodeTransformsAndLinks(holder: HTMLElement, bound: NodeEl[]): void
 }
 
 /**
- * Apply top-pack (+ optional hub File centering) to a mounted Carbon alluvial.
+ * Keep the right end of a label (paths show basename side); prefix ellipsis.
+ * Pure string helper — used for SVG text polish after Carbon paints full names.
+ */
+export function rightTruncateLabel(text: string, maxChars: number): string {
+	const max = Math.max(2, Math.floor(maxChars));
+	if (text.length <= max) return text;
+	return `…${text.slice(-(max - 1))}`;
+}
+
+/**
+ * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
+ * Full original string goes on title + aria-label for hover/a11y.
+ */
+export function rightTruncateAlluvialLabels(
+	holder: HTMLElement,
+	maxChars: number = ALLUVIAL_LABEL_MAX_CHARS,
+): void {
+	for (const text of holder.querySelectorAll<SVGTextElement>('text.node-text')) {
+		const full = text.textContent ?? '';
+		if (!full) continue;
+		// Match "label (value)" — value may be "1.2k" etc.
+		const m = full.match(/^(.*) \(([^()]*)\)$/);
+		const name = m ? m[1]! : full;
+		const value = m ? m[2]! : null;
+		const truncName = rightTruncateLabel(name, maxChars);
+		if (truncName === name) {
+			// Still expose full name for hover when already short
+			if (!text.getAttribute('title')) text.setAttribute('title', name);
+			continue;
+		}
+		const next = value !== null ? `${truncName} (${value})` : truncName;
+		text.textContent = next;
+		text.setAttribute('title', name);
+		text.setAttribute('aria-label', full);
+		// Carbon sizes label bg from full text width — shrink to truncated length
+		const g = text.parentElement;
+		const bg = g?.querySelector<SVGRectElement>('rect.node-text-bg');
+		if (bg && typeof text.getComputedTextLength === 'function') {
+			try {
+				const w = text.getComputedTextLength();
+				if (w > 0) bg.setAttribute('width', String(Math.ceil(w + 8)));
+			} catch {
+				// jsdom / detached SVG — skip bg resize
+			}
+		}
+	}
+}
+
+/**
+ * Optional hub File vertical centering on a mounted Carbon alluvial.
+ * Does not top-pack columns — Carbon keeps its own column anchors.
  */
 export function topPackAlluvialHolder(
 	holder: HTMLElement,
@@ -189,11 +201,10 @@ export function topPackAlluvialHolder(
 	if (bound.length < 2) return;
 
 	const nodes = bound.map((b) => b.d);
-	const movedTop = topPackColumns(nodes);
 	const movedCenter =
 		opts?.centerHubFile === false ? 0 : centerHubFileSpine(nodes);
 
-	if (movedTop <= 0 && movedCenter <= 0) return;
+	if (movedCenter <= 0) return;
 	writeNodeTransformsAndLinks(holder, bound);
 }
 
@@ -231,7 +242,7 @@ export function recolorExportBands(
 }
 
 /**
- * Top-pack columns, center hub File spine, recolor export bands.
+ * Center hub File spine, right-truncate labels, recolor export bands.
  */
 export function polishAlluvialHolder(
 	holder: HTMLElement,
@@ -239,9 +250,12 @@ export function polishAlluvialHolder(
 		colorScale?: Record<string, string>;
 		/** Default true — center File when it has both import and export edges. */
 		centerHubFile?: boolean;
+		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
+		labelMaxChars?: number;
 	},
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
+	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');
 	if (svg) svg.style.overflow = 'visible';
