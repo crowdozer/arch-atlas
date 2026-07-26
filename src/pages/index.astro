@@ -139,6 +139,17 @@ import Layout from '../layouts/Layout.astro';
 								<div id="atlas-complex"></div>
 							</cds-accordion-item>
 							<cds-accordion-item
+								id="atlas-acc-deepest"
+								class="atlas-catalog-acc-item"
+								title="Tree depth"
+							>
+								<p class="atlas-catalog-hint">
+									Deepest outbound chains (most hops) — multi-stage map of the
+									longest file→file path into packages.
+								</p>
+								<div id="atlas-deepest"></div>
+							</cds-accordion-item>
+							<cds-accordion-item
 								id="atlas-acc-views"
 								class="atlas-catalog-acc-item"
 								title="Suggested views"
@@ -160,17 +171,6 @@ import Layout from '../layouts/Layout.astro';
 							>
 								<p class="atlas-catalog-hint">Packages & sinks · click to reverse fan-in</p>
 								<div id="atlas-ends"></div>
-							</cds-accordion-item>
-							<cds-accordion-item
-								id="atlas-acc-deepest"
-								class="atlas-catalog-acc-item"
-								title="Tree depth"
-							>
-								<p class="atlas-catalog-hint">
-									Deepest outbound chains (most hops) — multi-stage map of the
-									longest file→file path into packages.
-								</p>
-								<div id="atlas-deepest"></div>
 							</cds-accordion-item>
 						</cds-accordion>
 					</div>
