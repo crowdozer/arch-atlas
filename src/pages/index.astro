@@ -216,7 +216,10 @@ import Tag from '../components/ui/Tag.astro';
 							← Back
 						</Button>
 						<div class="min-w-0">
-							<div class="ui-tile__label mb-0">Alluvial projection</div>
+							<div class="ui-tile__label mb-0 atlas-stage__title">
+								Alluvial projection
+								<span id="atlas-view-type" class="atlas-stage__view-type" hidden></span>
+							</div>
 							<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
 								Select a start to project modules → code.
 							</p>

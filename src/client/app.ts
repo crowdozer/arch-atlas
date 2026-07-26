@@ -321,10 +321,22 @@ function updateBackButton(): void {
 
 function updateCaption(view: AtlasView | null): void {
 	const caption = $('atlas-alluvial-caption');
-	if (!caption) return;
-	caption.textContent = view
-		? captionForView(view)
-		: 'Select a start to project modules → code.';
+	if (caption) {
+		caption.textContent = view
+			? captionForView(view)
+			: 'Select a start to project modules → code.';
+	}
+	// Soft type label next to “Alluvial projection” (exact AtlasView.type)
+	const typeEl = $('atlas-view-type');
+	if (typeEl) {
+		if (view) {
+			typeEl.hidden = false;
+			typeEl.textContent = `${view.type} view`;
+		} else {
+			typeEl.hidden = true;
+			typeEl.textContent = '';
+		}
+	}
 }
 
 /**

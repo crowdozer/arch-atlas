@@ -704,6 +704,23 @@ cds-search.atlas-tree-search {
   border-block-end: 1px solid #27272a;
 }
 
+.atlas-stage__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+/* Exact AtlasView.type — softer than the uppercase title */
+.atlas-stage__view-type {
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: #71717a; /* zinc-500 */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 /*
  * Weight + Precision + Drill|Inspect: single horizontal strip, same height (sm = 2rem).
  * External label + hide-label dropdown avoids Carbon form-item stacking
