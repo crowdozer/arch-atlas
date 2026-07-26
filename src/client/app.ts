@@ -837,6 +837,12 @@ function renderTree() {
 	}
 }
 
+/** True when `dirPath` is a path prefix of the active start file (breadcrumb folders). */
+function isAncestorOfActiveFile(dirPath: string, startId: string | null | undefined): boolean {
+	if (!startId || !dirPath) return false;
+	return startId === dirPath || startId.startsWith(`${dirPath}/`);
+}
+
 function renderTreeNode(
 	node: FileTreeNode,
 	depth: number,
@@ -848,10 +854,15 @@ function renderTreeNode(
 		wrap.setAttribute('role', 'group');
 
 		const open = session!.expanded.has(node.path);
+		const onActivePath = isAncestorOfActiveFile(node.path, session?.startId);
 		const row = document.createElement('button');
 		row.type = 'button';
 		row.className = 'atlas-tree__row atlas-tree__row--dir';
 		if (node.unparseable) row.classList.add('is-unparseable');
+		// Purple only for expanded folders that lead to the selected file
+		if (open && onActivePath && !node.unparseable) {
+			row.classList.add('is-active-path');
+		}
 		row.style.paddingLeft = `${0.4 + depth * 0.85}rem`;
 		row.setAttribute('aria-expanded', open ? 'true' : 'false');
 		row.dataset.path = node.path;

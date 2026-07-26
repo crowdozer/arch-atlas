@@ -1100,29 +1100,45 @@ cds-inline-notification.atlas-inspect__banner {
   color: #fafafa;
 }
 
+/* Folders (collapsed or expanded off-path): white labels */
 .atlas-tree__row--dir {
-  color: #a1a1aa;
+  color: #fafafa; /* zinc-50 */
   font-weight: 500;
 }
 
 .atlas-tree__row--dir:hover {
-  color: #e4e4e7;
+  color: #ffffff;
 }
 
-/* Expanded folders: purple selection accent on label + icon */
-.atlas-tree__row--dir[aria-expanded='true']:not(.is-unparseable) {
+.atlas-tree__row--dir .atlas-tree__name {
+  color: inherit;
+}
+
+.atlas-tree__row--dir .atlas-tree__icon {
+  color: #e4e4e7; /* zinc-200 — match light folder labels */
+}
+
+.atlas-tree__row--dir .atlas-tree__chevron {
+  color: #a1a1aa;
+}
+
+/*
+ * Breadcrumb path only: expanded folders that lead to the active file.
+ * Other expanded folders stay white like collapsed ones.
+ */
+.atlas-tree__row--dir.is-active-path {
   color: var(--atlas-select, #c4b5fd);
 }
 
-.atlas-tree__row--dir[aria-expanded='true']:not(.is-unparseable) .atlas-tree__name {
+.atlas-tree__row--dir.is-active-path .atlas-tree__name {
   color: var(--atlas-select, #c4b5fd);
 }
 
-.atlas-tree__row--dir[aria-expanded='true']:not(.is-unparseable) .atlas-tree__icon {
+.atlas-tree__row--dir.is-active-path .atlas-tree__icon {
   color: var(--atlas-select-strong, #a78bfa);
 }
 
-.atlas-tree__row--dir[aria-expanded='true']:not(.is-unparseable) .atlas-tree__chevron {
+.atlas-tree__row--dir.is-active-path .atlas-tree__chevron {
   color: var(--atlas-select-strong, #a78bfa);
 }
 
@@ -1130,27 +1146,38 @@ cds-inline-notification.atlas-inspect__banner {
   color: #e4e4e7;
 }
 
-/* Kept in graph but not import-parseable (config, text, unsupported langs). */
+/* Disabled / unparseable: use the former collapsed-folder grey */
 .atlas-tree__row--file.is-unparseable {
-  color: #52525b; /* zinc-600 */
-  opacity: 0.72;
+  color: #a1a1aa; /* zinc-400 */
+  opacity: 0.85;
   cursor: default;
 }
 
 .atlas-tree__row--file.is-unparseable:hover {
   background: rgb(39 39 42 / 0.45);
-  color: #71717a;
-  opacity: 0.85;
+  color: #a1a1aa;
+  opacity: 0.95;
+}
+
+.atlas-tree__row--file.is-unparseable .atlas-tree__icon,
+.atlas-tree__icon--muted {
+  color: #71717a; /* zinc-500 */
+  opacity: 0.95;
 }
 
 /* Folder with no import-parseable descendants */
 .atlas-tree__row--dir.is-unparseable {
-  color: #3f3f46;
-  opacity: 0.7;
+  color: #a1a1aa;
+  opacity: 0.8;
 }
 
 .atlas-tree__row--dir.is-unparseable:hover {
-  color: #52525b;
+  color: #a1a1aa;
+}
+
+.atlas-tree__row--dir.is-unparseable .atlas-tree__icon,
+.atlas-tree__row--dir.is-unparseable .atlas-tree__chevron {
+  color: #71717a;
 }
 
 /* Selected file (active start): purple label + tile */
@@ -1191,24 +1218,9 @@ cds-inline-notification.atlas-inspect__banner {
   fill: currentColor;
 }
 
-/* Collapsed folders stay neutral zinc (not brand teal) */
-.atlas-tree__row--dir .atlas-tree__icon {
-  color: #a1a1aa;
-}
-
 .atlas-tree__row--file.is-source .atlas-tree__icon,
 .atlas-tree__icon--source {
-  color: #a1a1aa;
-}
-
-.atlas-tree__row--file.is-unparseable .atlas-tree__icon,
-.atlas-tree__icon--muted {
-  color: #3f3f46; /* zinc-700 */
-  opacity: 0.9;
-}
-
-.atlas-tree__row--dir.is-unparseable .atlas-tree__icon {
-  color: #3f3f46;
+  color: #e4e4e7;
 }
 
 .atlas-tree__row--file.is-selected .atlas-tree__icon {
