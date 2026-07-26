@@ -24,6 +24,7 @@ import type {
 import {
 	basename,
 	buildAlluvialPayload,
+	moreCountLabel,
 	TEAL,
 	topFolder,
 	uniqueFileLabels,
@@ -194,7 +195,9 @@ function projectFileImportersFlat(
 		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
 	);
 	const kept = new Set(ranked.slice(0, maxImporters).map(([k]) => k));
-	const hasOther = ranked.some(([k]) => !kept.has(k));
+	const otherCount = ranked.filter(([k]) => !kept.has(k)).length;
+	const hasOther = otherCount > 0;
+	const otherLabel = moreCountLabel(otherCount);
 
 	const linkMap = new Map<string, number>();
 	const addLink = (source: string, target: string, value: number) => {
@@ -209,7 +212,6 @@ function projectFileImportersFlat(
 	const nodeMeta = new Map<string, { category: string; color: string }>();
 	nodeMeta.set(fileLabel, { category: 'File', color: TEAL.start });
 
-	const otherLabel = '(other importers)';
 	for (const [key, n] of weights) {
 		const target = kept.has(key) ? key : otherLabel;
 		addLink(fileLabel, target, n);
@@ -219,7 +221,8 @@ function projectFileImportersFlat(
 		nodeMeta.set(target, { category: 'Importers', color: TEAL.module });
 	}
 	if (hasOther) {
-		nodeRef[otherLabel] = { kind: 'bucket', id: otherLabel };
+		// Stable bucket id for inspect/drill; display name is "+ N more"
+		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-importers' };
 		nodeMeta.set(otherLabel, { category: 'Importers', color: TEAL.other });
 	}
 
@@ -304,10 +307,11 @@ function projectFileImportersMultiHop(
 				: Math.min(maxFilesPerModule, local.length);
 		for (const p of local.slice(0, cap)) keptFilePaths.add(p);
 	}
-	const hasOtherFiles = [...fileWeights.keys()].some((p) => !keptFilePaths.has(p));
+	const otherFilePaths = [...fileWeights.keys()].filter((p) => !keptFilePaths.has(p));
+	const hasOtherFiles = otherFilePaths.length > 0;
 	const fileLabels = uniqueFileLabels([...keptFilePaths]);
 
-	const otherFiles = '(other importers)';
+	const otherFiles = moreCountLabel(otherFilePaths.length);
 	const otherMods = '(other modules)';
 
 	const linkMap = new Map<string, number>();
@@ -349,7 +353,7 @@ function projectFileImportersMultiHop(
 		nodeMeta.set(otherMods, { category: 'Modules', color: TEAL.other });
 	}
 	if (hasOtherFiles) {
-		nodeRef[otherFiles] = { kind: 'bucket', id: otherFiles };
+		nodeRef[otherFiles] = { kind: 'bucket', id: 'other-importers' };
 		nodeMeta.set(otherFiles, { category: 'Importers', color: TEAL.other });
 	}
 

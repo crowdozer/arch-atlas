@@ -91,6 +91,29 @@ type EndInfo = { label: string; kind: string };
 type NodeMetaEntry = { category: string; color: string };
 
 /**
+ * Overflow / aggregate label for truncated lists.
+ * Example: 74 skipped call sites → `+ 74 more`
+ */
+export function moreCountLabel(count: number): string {
+	const n = Math.max(0, Math.floor(count));
+	return `+ ${n} more`;
+}
+
+/** True for aggregate buckets that should sort to the bottom of a column. */
+export function isOverflowNodeName(name: string): boolean {
+	if (name.startsWith('(')) return true;
+	return /^\+\s*\d+\s+more$/.test(name);
+}
+
+/** Named nodes first (alpha); overflow buckets last (still alpha among themselves). */
+export function compareAlluvialNodeNames(a: string, b: string): number {
+	const ao = isOverflowNodeName(a) ? 1 : 0;
+	const bo = isOverflowNodeName(b) ? 1 : 0;
+	if (ao !== bo) return ao - bo;
+	return a.localeCompare(b);
+}
+
+/**
  * Shared Carbon alluvial payload builder.
  * `categoryOrder` lists columns L→R (e.g. Ends → Modules → Code).
  */
@@ -125,7 +148,7 @@ export function buildAlluvialPayload(args: {
 		const names = [...nodeMeta.entries()]
 			.filter(([, m]) => m.category === category)
 			.map(([n]) => n)
-			.sort();
+			.sort(compareAlluvialNodeNames);
 		let rank = 0;
 		for (const n of names) {
 			nodes.push({ name: n, category, rank });

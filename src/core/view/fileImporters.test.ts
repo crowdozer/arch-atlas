@@ -110,7 +110,7 @@ describe('projectFileImporters artillery config.ts', () => {
 		);
 		expect(importerNodes.length).toBeGreaterThan(0);
 		for (const n of importerNodes) {
-			if (n.name.startsWith('(')) continue;
+			if (n.name.startsWith('(') || /^\+\s*\d+\s+more$/.test(n.name)) continue;
 			const ref = rev.meta.nodeRef[n.name];
 			expect(ref?.kind, n.name).toBe('file');
 		}
@@ -119,11 +119,25 @@ describe('projectFileImporters artillery config.ts', () => {
 
 		// Fat band client/sim must land on at least one named call-site file
 		const simOut = rev.data.filter((l) => l.source === 'client/sim');
-		const simNamed = simOut.filter((l) => l.target !== '(other importers)');
+		const moreLabel = rev.options.alluvial.nodes.find(
+			(n) => n.category === 'Importers' && /^\+\s*\d+\s+more$/.test(n.name),
+		);
+		expect(moreLabel, 'overflow label "+ N more"').toBeTruthy();
+		const simNamed = simOut.filter((l) => l.target !== moreLabel!.name);
 		expect(simNamed.length, 'client/sim should hop to named files').toBeGreaterThan(0);
 		for (const l of simNamed) {
 			expect(rev.meta.nodeRef[l.target]?.kind).toBe('file');
 		}
+		// Overflow sorts to bottom of Importers column
+		const importerRanks = rev.options.alluvial.nodes
+			.filter((n) => n.category === 'Importers')
+			.map((n) => n.rank);
+		const maxRank = Math.max(...importerRanks);
+		expect(moreLabel!.rank).toBe(maxRank);
+		expect(rev.meta.nodeRef[moreLabel!.name]).toEqual({
+			kind: 'bucket',
+			id: 'other-importers',
+		});
 
 		// Conserved mass = inbound edges
 		expect(focusMass(rev, 'config.ts')).toBe(186);

@@ -16,6 +16,7 @@ import type {
 import {
 	basename,
 	buildAlluvialPayload,
+	moreCountLabel,
 	TEAL,
 	topFolder,
 	uniqueFileLabels,
@@ -112,7 +113,9 @@ export function projectPackageImporters(
 		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
 	);
 	const kept = new Set(ranked.slice(0, maxImporters).map(([k]) => k));
-	const hasOther = ranked.some(([k]) => !kept.has(k));
+	const otherCount = ranked.filter(([k]) => !kept.has(k)).length;
+	const hasOther = otherCount > 0;
+	const otherLabel = moreCountLabel(otherCount);
 
 	const linkMap = new Map<string, number>();
 	const nodeRef: Record<string, AlluvialNodeRef> = {
@@ -129,7 +132,6 @@ export function projectPackageImporters(
 					: TEAL.package,
 	});
 
-	const otherLabel = '(other importers)';
 	for (const [key, n] of weights) {
 		const target = kept.has(key) ? key : otherLabel;
 		// Package (left) → Importer (right)
@@ -145,7 +147,7 @@ export function projectPackageImporters(
 		});
 	}
 	if (hasOther) {
-		nodeRef[otherLabel] = { kind: 'bucket', id: otherLabel };
+		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-importers' };
 		nodeMeta.set(otherLabel, { category: 'Importers', color: TEAL.other });
 	}
 
