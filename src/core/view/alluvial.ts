@@ -1,7 +1,10 @@
 /**
  * Project CodeGraph + start → Carbon Charts alluvial payload.
  * Columns (L→R): Packages/ends → Module groups → Code (start)
- * Temporary orientation for “modules → code” reading order.
+ *
+ * Flow unit: one observed package/unresolved import edge in the reachable set.
+ * Links are conserved: for each module, sum(in) === sum(out).
+ * Direct package imports by the start go Ends → Code (skip modules).
  */
 
 import { reachableFiles } from '@core/graph/build.ts';
@@ -28,6 +31,8 @@ function topFolder(path: string): string {
 	return parts[0] ?? '(root)';
 }
 
+type EndInfo = { label: string; kind: string };
+
 /**
  * Build alluvial from a start file. Returns null if start missing or no flow.
  */
@@ -45,130 +50,177 @@ export function projectAlluvial(
 	const reachable = reachableFiles(graph, startId);
 	const startLabel = basename(startId);
 
-	// module cluster counts: files (except start) reached
-	const moduleCounts = new Map<string, number>();
-	for (const path of reachable) {
-		if (path === startId) continue;
-		const folder = topFolder(path);
-		moduleCounts.set(folder, (moduleCounts.get(folder) ?? 0) + 1);
-	}
+	// end → module (or '__code__' for direct start imports), counts
+	const endToModule = new Map<string, Map<string, number>>();
+	const endMeta = new Map<string, EndInfo>();
 
-	// package/end edges from reachable files
-	const endCounts = new Map<string, { label: string; kind: string; value: number }>();
+	const bump = (endKey: string, moduleKey: string, info: EndInfo) => {
+		endMeta.set(endKey, info);
+		let row = endToModule.get(endKey);
+		if (!row) {
+			row = new Map();
+			endToModule.set(endKey, row);
+		}
+		row.set(moduleKey, (row.get(moduleKey) ?? 0) + 1);
+	};
+
 	for (const e of graph.edges) {
 		if (!reachable.has(e.from)) continue;
 		if (e.toKind === 'file') continue;
+
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const key = e.to;
-		const cur = endCounts.get(key) ?? { label, kind: e.toKind, value: 0 };
-		cur.value += 1;
-		endCounts.set(key, cur);
+		const endKey = e.to;
+		const info: EndInfo = { label, kind: e.toKind };
+		const moduleKey = e.from === startId ? '__code__' : topFolder(e.from);
+		bump(endKey, moduleKey, info);
 	}
 
-	// if no intermediate modules, synthesize a single "modules" hop from start self-weight
-	const moduleEntries = [...moduleCounts.entries()]
+	if (!endToModule.size) {
+		// reachable files but no package edges — show a single placeholder hop
+		return buildPayload({
+			startId,
+			startLabel,
+			heightPx,
+			links: [{ source: '(no package imports)', target: startLabel, value: 1 }],
+			nodeMeta: new Map([
+				[startLabel, { category: 'Code', color: TEAL.start }],
+				['(no package imports)', { category: 'Ends', color: TEAL.other }],
+			]),
+		});
+	}
+
+	// Totals for ranking / overflow buckets
+	const endTotals = new Map<string, number>();
+	const moduleTotals = new Map<string, number>();
+
+	for (const [endKey, row] of endToModule) {
+		let endSum = 0;
+		for (const [mod, n] of row) {
+			endSum += n;
+			if (mod !== '__code__') {
+				moduleTotals.set(mod, (moduleTotals.get(mod) ?? 0) + n);
+			}
+		}
+		endTotals.set(endKey, endSum);
+	}
+
+	const topModules = [...moduleTotals.entries()]
 		.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-		.slice(0, maxModules);
-
-	const endEntries = [...endCounts.entries()]
-		.sort((a, b) => b[1].value - a[1].value || a[1].label.localeCompare(b[1].label))
-		.slice(0, maxEnds);
-
-	// overflow buckets
-	const moduleRest = [...moduleCounts.entries()]
-		.sort((a, b) => b[1] - a[1])
-		.slice(maxModules)
-		.reduce((s, [, n]) => s + n, 0);
-	if (moduleRest > 0) moduleEntries.push(['(other modules)', moduleRest]);
-
-	const endRest = [...endCounts.entries()]
-		.sort((a, b) => b[1].value - a[1].value)
-		.slice(maxEnds)
-		.reduce((s, [, v]) => s + v.value, 0);
-	if (endRest > 0) {
-		endEntries.push(['(other ends)', { label: '(other ends)', kind: 'package', value: endRest }]);
+		.slice(0, maxModules)
+		.map(([k]) => k);
+	const keptModules = new Set(topModules);
+	if ([...moduleTotals.keys()].some((k) => !keptModules.has(k))) {
+		keptModules.add('(other modules)');
 	}
 
-	const links: { source: string; target: string; value: number }[] = [];
+	const topEnds = [...endTotals.entries()]
+		.sort(
+			(a, b) =>
+				b[1] - a[1] ||
+				(endMeta.get(a[0])?.label ?? '').localeCompare(endMeta.get(b[0])?.label ?? ''),
+		)
+		.slice(0, maxEnds)
+		.map(([k]) => k);
+	const keptEnds = new Set(topEnds);
 
-	// Ends → modules → code (reversed from import direction for modules→code reading)
-	if (moduleEntries.length === 0) {
-		// packages → code directly, or trivial placeholder
-		if (endEntries.length === 0) {
-			links.push({ source: '(no imports)', target: startLabel, value: 1 });
-		} else {
-			for (const [, info] of endEntries) {
-				links.push({
-					source: info.label,
-					target: startLabel,
-					value: Math.max(1, info.value),
-				});
-			}
-		}
-	} else {
-		const moduleTotal = moduleEntries.reduce((s, [, n]) => s + n, 0) || 1;
-		// modules → code
-		for (const [folder, count] of moduleEntries) {
-			links.push({
-				source: folder,
-				target: startLabel,
-				value: Math.max(1, count),
-			});
-		}
-		// ends → modules proportional
-		if (endEntries.length) {
-			const endTotal = endEntries.reduce((s, [, v]) => s + v.value, 0) || 1;
-			for (const [folder, count] of moduleEntries) {
-				const folderShare = count / moduleTotal;
-				for (const [, info] of endEntries) {
-					const v = Math.max(
-						1,
-						Math.round((info.value / endTotal) * folderShare * endTotal),
-					);
-					links.push({
-						source: info.label,
-						target: folder,
-						value: v,
-					});
-				}
-			}
-			// Cap link explosion: keep top 3 modules + all links into code
-			if (links.length > 80) {
-				const keepModules = new Set(moduleEntries.slice(0, 3).map(([k]) => k));
-				const filtered = links.filter(
-					(l) => l.target === startLabel || keepModules.has(l.target),
-				);
-				links.length = 0;
-				links.push(...filtered);
-			}
+	const remapModule = (mod: string): string => {
+		if (mod === '__code__') return '__code__';
+		return keptModules.has(mod) ? mod : '(other modules)';
+	};
+
+	// Conserved link multiset after bucketing
+	const linkMap = new Map<string, number>();
+	const addLink = (source: string, target: string, value: number) => {
+		if (value <= 0) return;
+		const k = `${source}\0${target}`;
+		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
+	};
+
+	for (const [endKey, row] of endToModule) {
+		const sourceLabel = keptEnds.has(endKey)
+			? (endMeta.get(endKey)?.label ?? endKey)
+			: '(other ends)';
+
+		for (const [mod, n] of row) {
+			const m = remapModule(mod);
+			if (m === '__code__') addLink(sourceLabel, startLabel, n);
+			else addLink(sourceLabel, m, n);
 		}
 	}
 
-	// unique nodes with categories (column order: Ends | Modules | Code)
+	// Module → code: exactly the inflow to each module (conservation)
+	const moduleIn = new Map<string, number>();
+	for (const [k, value] of linkMap) {
+		const target = k.split('\0')[1]!;
+		if (target === startLabel) continue;
+		moduleIn.set(target, (moduleIn.get(target) ?? 0) + value);
+	}
+	for (const [mod, n] of moduleIn) {
+		addLink(mod, startLabel, n);
+	}
+
 	const nodeMeta = new Map<string, { category: string; color: string }>();
 	nodeMeta.set(startLabel, { category: 'Code', color: TEAL.start });
 
-	for (const [folder] of moduleEntries) {
-		nodeMeta.set(folder, {
+	for (const [mod] of moduleIn) {
+		nodeMeta.set(mod, {
 			category: 'Modules',
-			color: folder.startsWith('(') ? TEAL.other : TEAL.module,
+			color: mod.startsWith('(') ? TEAL.other : TEAL.module,
 		});
 	}
-	for (const [, info] of endEntries) {
-		const color =
-			info.kind === 'unresolved'
-				? TEAL.unresolved
-				: info.kind === 'package' && graph.packages.get(info.label)?.source === 'builtin'
-					? TEAL.builtin
-					: TEAL.package;
-		nodeMeta.set(info.label, { category: 'Ends', color });
+
+	const endLabelsSeen = new Set<string>();
+	for (const [k] of linkMap) {
+		const source = k.split('\0')[0]!;
+		if (source === startLabel || moduleIn.has(source)) continue;
+		endLabelsSeen.add(source);
 	}
-	if (links.some((l) => l.source === '(no imports)')) {
-		nodeMeta.set('(no imports)', { category: 'Ends', color: TEAL.other });
+	for (const label of endLabelsSeen) {
+		let kind = 'package';
+		if (!label.startsWith('(')) {
+			for (const info of endMeta.values()) {
+				if (info.label === label) {
+					kind = info.kind;
+					break;
+				}
+			}
+		}
+		const color =
+			kind === 'unresolved'
+				? TEAL.unresolved
+				: kind === 'package' && graph.packages.get(label)?.source === 'builtin'
+					? TEAL.builtin
+					: label.startsWith('(')
+						? TEAL.other
+						: TEAL.package;
+		nodeMeta.set(label, { category: 'Ends', color });
 	}
 
-	// ranks within columns; emit Ends → Modules → Code so charts lay out L→R that way
+	const links = [...linkMap.entries()].map(([k, value]) => {
+		const [source, target] = k.split('\0') as [string, string];
+		return { source, target, value };
+	});
+
+	return buildPayload({
+		startId,
+		startLabel,
+		heightPx,
+		links,
+		nodeMeta,
+	});
+}
+
+function buildPayload(args: {
+	startId: string;
+	startLabel: string;
+	heightPx: number;
+	links: { source: string; target: string; value: number }[];
+	nodeMeta: Map<string, { category: string; color: string }>;
+}): AlluvialPayload | null {
+	const { startId, startLabel, heightPx, links, nodeMeta } = args;
+	if (!links.length) return null;
+
 	const ends = [...nodeMeta.entries()]
 		.filter(([, m]) => m.category === 'Ends')
 		.map(([n]) => n)
@@ -177,7 +229,9 @@ export function projectAlluvial(
 		.filter(([, m]) => m.category === 'Modules')
 		.map(([n]) => n)
 		.sort();
-	const codes = [startLabel];
+	const codes = [...nodeMeta.entries()]
+		.filter(([, m]) => m.category === 'Code')
+		.map(([n]) => n);
 
 	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
 	const nodeRank: Record<string, number> = {};
@@ -200,21 +254,8 @@ export function projectAlluvial(
 	const colorScale: Record<string, string> = {};
 	for (const [name, meta] of nodeMeta) colorScale[name] = meta.color;
 
-	// collapse duplicate links
-	const linkMap = new Map<string, number>();
-	for (const l of links) {
-		const k = `${l.source}\0${l.target}`;
-		linkMap.set(k, (linkMap.get(k) ?? 0) + l.value);
-	}
-	const data = [...linkMap.entries()].map(([k, value]) => {
-		const [source, target] = k.split('\0') as [string, string];
-		return { source, target, value };
-	});
-
-	if (!data.length) return null;
-
 	return {
-		data,
+		data: links,
 		options: {
 			title: '',
 			theme: 'g100',
@@ -226,7 +267,7 @@ export function projectAlluvial(
 				svgAriaLabel: `Modules to code alluvial for ${startLabel}`,
 			},
 			alluvial: {
-				units: 'imports',
+				units: 'package imports',
 				nodes,
 				nodeAlignment: 'center',
 			},
