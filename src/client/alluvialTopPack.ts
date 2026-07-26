@@ -187,8 +187,9 @@ export function isImportRailLabel(name: string): boolean {
 }
 
 /**
- * Hide pad-rail **nodes** (unlabeled bars on outer hops) and mute rail→rail
- * bands. Link tooltips for rail→file are cleaned via {@link alluvialTooltipCustomHTML}.
+ * Hide pad-rail **nodes** (unlabeled bars on outer hops) and make any band with
+ * a rail endpoint invisible + non-interactive (layout mass kept; no ghost paint).
+ * Link tooltips for residual rail→file are cleaned via {@link alluvialTooltipCustomHTML}.
  */
 export function hideAlluvialRails(holder: HTMLElement): void {
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
@@ -228,7 +229,7 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		}
 	}
 
-	// Rail→rail ribbons are pure scaffolding — no hover/tooltip
+	// Any band with a rail endpoint is scaffolding — invisible + no hover
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<{
 			source?: { name?: string } | string;
@@ -242,10 +243,37 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 			typeof link?.target === 'string'
 				? link.target
 				: (link?.target?.name ?? '');
-		if (isAlluvialRailName(sn) && isAlluvialRailName(tn)) {
+		const sRail = isAlluvialRailName(sn);
+		const tRail = isAlluvialRailName(tn);
+		if (!sRail && !tRail) continue;
+		path.classList.add('atlas-alluvial-pad-band');
+		path.setAttribute('pointer-events', 'none');
+		// Rail→rail also keep the older class for selectors that already use it
+		if (sRail && tRail) {
 			path.classList.add('atlas-alluvial-rail-link');
-			path.setAttribute('pointer-events', 'none');
 		}
+	}
+}
+
+/**
+ * Mark reverse-hop free-source files that were pad targets (hub terminators).
+ * CSS applies yellow stroke wrap; does not override File purple spine.
+ */
+export function markAlluvialTerminators(
+	holder: HTMLElement,
+	terminators: readonly string[] | undefined,
+): void {
+	if (!terminators?.length) return;
+	const set = new Set(terminators);
+	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
+		const d = readData<{ name?: string }>(el);
+		const name = typeof d?.name === 'string' ? d.name : '';
+		if (!name || !set.has(name)) continue;
+		// Never treat rails as terminators; never fight File spine
+		if (isAlluvialRailName(name)) continue;
+		const cat = (d as { category?: string }).category;
+		if (cat === 'File') continue;
+		el.classList.add('atlas-alluvial-terminator');
 	}
 }
 
@@ -426,6 +454,7 @@ export function injectFileHeaderIcon(textEl: SVGTextElement): void {
 
 /**
  * Center hub File spine, highlight File column, right-truncate labels, recolor exports.
+ * Hides pad rails / pad bands; marks hub terminators from meta.
  */
 export function polishAlluvialHolder(
 	holder: HTMLElement,
@@ -435,11 +464,14 @@ export function polishAlluvialHolder(
 		centerHubFile?: boolean;
 		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
 		labelMaxChars?: number;
+		/** Hub meta.terminators — reverse-hop free-source pad targets. */
+		terminators?: readonly string[];
 	},
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	hideAlluvialRails(holder);
+	markAlluvialTerminators(holder, opts?.terminators);
 	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');

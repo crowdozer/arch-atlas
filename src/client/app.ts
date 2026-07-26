@@ -423,10 +423,11 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 			options,
 		});
 		const colorScale = payload.options.color.scale;
+		const terminators = payload.meta.terminators;
 		const applyPolish = () => {
 			// Chart may have been destroyed between schedule and fire.
 			if (!chart) return;
-			polishAlluvialHolder(holder, { colorScale });
+			polishAlluvialHolder(holder, { colorScale, terminators });
 		};
 		// Immediate pass for the constructor paint; re-apply on every later paint.
 		applyPolish();

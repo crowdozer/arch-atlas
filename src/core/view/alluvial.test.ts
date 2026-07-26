@@ -376,4 +376,16 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 		);
 		expect(html).toBe('');
 	});
+
+	it('scrubs rail from defaultHTML when datum parse fails', () => {
+		// Carbon sometimes omits parseable datum; belt-and-suspenders on default HTML
+		const html = alluvialTooltipCustomHTML(
+			null,
+			'<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">·in-rail·h2 → app/dashboard/page.tsx (57)</p></div></li></ul>',
+			null,
+		);
+		expect(html).toContain('app/dashboard/page.tsx');
+		expect(html).toContain('57');
+		expect(html).not.toMatch(/in-rail/i);
+	});
 });

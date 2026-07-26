@@ -111,6 +111,8 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
+	/** Hub pad free-source display names (see AlluvialPayload.meta.terminators). */
+	terminators?: string[];
 }): AlluvialPayload | null {
 	const {
 		heightPx,
@@ -122,6 +124,7 @@ export function buildAlluvialPayload(args: {
 		startId,
 		units = 'package imports',
 		ariaLabel,
+		terminators,
 	} = args;
 	if (!links.length) return null;
 
@@ -173,6 +176,7 @@ export function buildAlluvialPayload(args: {
 			focus,
 			nodeRef,
 			nodeRank,
+			...(terminators?.length ? { terminators: [...terminators] } : {}),
 		},
 	};
 }
@@ -224,8 +228,53 @@ function linkEndsFromUnknown(
 }
 
 /**
+ * Scrub pad-rail tokens from Carbon's default tooltip HTML when datum parse
+ * fails but the string still mentions in-rail / out-rail.
+ */
+function scrubRailTokensFromDefaultHTML(defaultHTML: string): string {
+	if (!defaultHTML || !/(?:in|out)-rail/i.test(defaultHTML)) return defaultHTML;
+	// Prefer the Carbon value cell text; else strip tags and scan.
+	const valueCell = defaultHTML.match(
+		/class=["']value["'][^>]*>([^<]+)</i,
+	);
+	const plain = (valueCell?.[1] ?? defaultHTML.replace(/<[^>]+>/g, ' '))
+		.replace(/\s+/g, ' ')
+		.trim();
+	// "·in-rail·h2 → file (57)" / "file → ·out-rail·h2 (3)"
+	const arrow = plain.match(
+		/^(.+?)\s*→\s*(.+?)(?:\s*\(([^)]*)\))?\s*$/,
+	);
+	if (arrow) {
+		const left = arrow[1]!.trim();
+		const right = arrow[2]!.trim();
+		const val = (arrow[3] ?? '').trim();
+		const leftRail = isAlluvialRailName(left);
+		const rightRail = isAlluvialRailName(right);
+		if (leftRail && rightRail) return '';
+		if (leftRail) {
+			const label = `→ ${escapeTooltipText(right)}${val ? ` (${escapeTooltipText(val)})` : ''}`;
+			return `<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">${label}</p></div></li></ul>`;
+		}
+		if (rightRail) {
+			const label = `${escapeTooltipText(left)} →${val ? ` (${escapeTooltipText(val)})` : ''}`;
+			return `<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">${label}</p></div></li></ul>`;
+		}
+	}
+	// Last resort: strip rail token substrings from the HTML text
+	const cleaned = defaultHTML
+		.replace(/\u200b?·?(?:in|out)-rail(?:·h\d+)?/giu, '')
+		.replace(/\s{2,}/g, ' ')
+		.replace(/\s*→\s*→/g, ' →')
+		.replace(/>\s*→/g, '>')
+		.replace(/→\s*</g, '<');
+	if (!cleaned.trim() || /^(?:<[^>]+>\s*)*$/.test(cleaned)) return '';
+	return cleaned;
+}
+
+/**
  * Carbon alluvial tooltip: strip pad-rail endpoints so bands never show
  * `·in-rail·h2 → app/…`. Rail→rail: empty (no tooltip).
+ * When datum parse fails, scrub rail tokens from defaultHTML as a fallback.
  */
 export function alluvialTooltipCustomHTML(
 	data: unknown,
@@ -235,7 +284,7 @@ export function alluvialTooltipCustomHTML(
 	const ends =
 		linkEndsFromUnknown(datum) ??
 		linkEndsFromUnknown(data);
-	if (!ends) return defaultHTML;
+	if (!ends) return scrubRailTokensFromDefaultHTML(defaultHTML);
 
 	const sRail = isAlluvialRailName(ends.source);
 	const tRail = isAlluvialRailName(ends.target);

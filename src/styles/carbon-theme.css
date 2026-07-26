@@ -642,7 +642,8 @@ cds-tag.ui-tag--yellow {
 
 /*
  * Pad rails: layer holders only. Bars/chips hidden; no hit target.
- * Rail→file band tooltips are cleaned in alluvialTooltipCustomHTML.
+ * Pad bands (any rail endpoint) are undrawn — mass stays in sankey layout.
+ * Residual rail→file tooltips cleaned in alluvialTooltipCustomHTML.
  */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail {
   pointer-events: none !important;
@@ -660,9 +661,33 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail g[id*='alluvial-node-title'] {
   display: none !important;
 }
-/* Scaffold ribbons between rails — no hover */
+/* Scaffold ribbons: invisible + non-interactive (layout mass preserved) */
+.ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-pad-band,
 .ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-rail-link {
   pointer-events: none !important;
+  stroke-opacity: 0 !important;
+  opacity: 0 !important;
+}
+
+/*
+ * Hub terminators: reverse-hop free-source pad targets (not File spine).
+ * Yellow wrap (export family) so chain ends read at a glance.
+ */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node {
+  stroke: #eab308 !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: #fde68a !important;
+}
+/* Outline chip behind label for stronger wrap */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node-text-bg {
+  stroke: #ca8a04 !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
 }
 
 /* Drill-down affordance: clickable nodes and bands */
