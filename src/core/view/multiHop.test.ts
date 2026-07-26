@@ -7,6 +7,7 @@ import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import {
 	hopCategory,
+	layerForDist,
 	maxFileDistForDepth,
 	projectMultiHopAlluvial,
 	stageForDepth,
@@ -69,6 +70,14 @@ describe('maxFileDistForDepth / stageForDepth / hopCategory', () => {
 		expect(hopCategory(1)).toBe('Hop 1');
 		expect(hopCategory(3)).toBe('Hop 3');
 	});
+
+	it('layerForDist puts deeper BFS closer to Imports', () => {
+		// maxFileDist=4: dist 4 → layer 1, dist 1 → layer 4
+		expect(layerForDist(4, 4)).toBe(1);
+		expect(layerForDist(3, 4)).toBe(2);
+		expect(layerForDist(1, 4)).toBe(4);
+		expect(layerForDist(2, 3)).toBe(2);
+	});
 });
 
 describe('projectMultiHopAlluvial depth semantics (layout.tsx)', () => {
@@ -124,11 +133,16 @@ describe('projectMultiHopAlluvial depth semantics (layout.tsx)', () => {
 	it('depth ≥5 still unique headers up to graph maxHops (4)', () => {
 		const payload = projectMultiHopAlluvial(graph, start, { maxDepth: 7 })!;
 		expect(hopOrder(payload)).toEqual(['Hop 4', 'Hop 3', 'Hop 2', 'Hop 1']);
-		// No duplicate category strings across nodes
-		const hopCats = payload.options.alluvial.nodes
-			.map((n) => n.category)
-			.filter((c) => c.startsWith('Hop'));
-		expect(new Set(hopCats).size).toBe(4);
+		// No same-category hop edges (those split Carbon into duplicate headers)
+		const catOf = (name: string) =>
+			payload.options.alluvial.nodes.find((n) => n.name === name)?.category;
+		for (const l of payload.data) {
+			const sc = catOf(l.source);
+			const tc = catOf(l.target);
+			if (sc?.startsWith('Hop') && tc?.startsWith('Hop')) {
+				expect(sc, `${l.source}→${l.target}`).not.toBe(tc);
+			}
+		}
 	});
 
 	it('conserves mass for each depth', () => {

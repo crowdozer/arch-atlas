@@ -6,15 +6,25 @@
  * **Depth (viz-only)** = how many hops to walk from the start file.
  * Indexing/scan stays unbounded; depth only filters this projection.
  *
- * | Depth | Meaning                                      | Columns              |
- * | ----- | -------------------------------------------- | -------------------- |
- * | 1     | Start only — packages the file imports       | Imports → File       |
- * | 2     | + distance-1 files                           | Imports → Hop 1 → File |
- * | 3     | + distance-2 files                           | Imports → Hop 2 → Hop 1 → File |
+ * | Depth | Columns                                      |
+ * | ----- | -------------------------------------------- |
+ * | 1     | Imports → File                               |
+ * | 2     | Imports → Hop 1 → File                       |
+ * | 3     | Imports → Hop 2 → Hop 1 → File               |
  *
- * maxFileDist = depth - 1 (intermediate file hops).
- * Package mass from files within that radius routes hop-by-hop to File.
- * Links never stay inside one hop stage (avoids duplicate Carbon headers).
+ * ## Topology (why headers stay consecutive)
+ *
+ * Carbon/d3-sankey places columns by *longest path from sources*, not by our
+ * labels. If packages link straight into every hop distance, two files at the
+ * same BFS distance can land in different columns (both titled "Hop 2").
+ *
+ * Fix — layer-consistent topology (no SVG post-process):
+ * - Hop column for BFS distance d is sankey layer (maxFileDist − d + 1).
+ * - File→file edges only between consecutive distances (d → d−1 → … → File).
+ * - Package→file edges are *padded* through shared hop rails so the path
+ *   length into a dist-d file is always (maxFileDist − d + 1).
+ *
+ * Folders are never stages — hop nodes are files (+ overflow).
  */
 
 import {
@@ -56,12 +66,11 @@ export function maxFileDistForDepth(depth: number): number {
 
 /**
  * Map raw BFS depth to hop stage 1..maxFileDist (identity when within cap).
- * Kept for tests / callers; with the hard BFS cap, stage === depth.
  */
 export function stageForDepth(depth: number, maxFileDist: number): number {
 	if (depth < 1 || maxFileDist < 1) return 0;
 	if (depth <= maxFileDist) return depth;
-	return 0; // outside viz radius — excluded
+	return 0;
 }
 
 /** Column header for hop distance d (closest to File is Hop 1). */
@@ -69,24 +78,35 @@ export function hopCategory(stage: number): string {
 	return `Hop ${stage}`;
 }
 
+/**
+ * Sankey layer (1-based after Imports) for BFS distance d.
+ * dist maxFileDist → layer 1 (just right of Imports); dist 1 → layer maxFileDist.
+ */
+export function layerForDist(dist: number, maxFileDist: number): number {
+	if (dist < 1 || maxFileDist < 1) return 0;
+	return maxFileDist - dist + 1;
+}
+
 function hopNodeLabel(folderOrFile: string, stage: number): string {
 	return `${folderOrFile} · h${stage}`;
+}
+
+/** Shared rail id for package-path padding at hop stage s. */
+function railId(stage: number): string {
+	return `\u200b·rail·h${stage}`;
 }
 
 /**
  * Multi-hop dependency tree alluvial for a start file.
  *
- * @param opts.maxHopStages Viz depth (same as UI Depth). Alias: maxDepth.
- *   Depth 1 = Imports → File only. Does not affect indexing.
+ * @param opts.maxDepth / maxHopStages Viz depth (UI Depth). Depth 1 = Imports→File.
  */
 export function projectMultiHopAlluvial(
 	graph: CodeGraph,
 	startId: string,
 	opts?: {
 		heightPx?: number;
-		/** Viz depth: 1 = start packages only; 2+ adds Hop columns. */
 		maxHopStages?: number;
-		/** Same as maxHopStages (preferred name). */
 		maxDepth?: number;
 		maxEnds?: number;
 		maxNodesPerHop?: number;
@@ -110,7 +130,6 @@ export function projectMultiHopAlluvial(
 	const fwd = fileImportAdj(graph);
 	const { dist, maxHops } = fileDistances(graph, startId, fwd);
 
-	// No intermediate file hops requested, or tree has no outbound depth
 	if (maxFileDist < 1 || maxHops < 1) {
 		return projectDirectImportsOnly(graph, startId, {
 			heightPx,
@@ -120,55 +139,6 @@ export function projectMultiHopAlluvial(
 		});
 	}
 
-	// Fall back to classic 3-col when there is nothing multi-hop to show
-	if (maxHops < 2 && maxFileDist >= 1) {
-		// Still show hop 1 if depth ≥ 2 and maxHops === 1
-	}
-
-	const rev = fileImportedByAdj(graph);
-	const startLabel = basename(startId);
-	const focus: AlluvialFocus = {
-		kind: 'file',
-		id: startId,
-		label: startLabel,
-	};
-
-	// Files inside the viz radius (dist 1..maxFileDist)
-	const inRadius = (path: string): boolean => {
-		const d = dist.get(path);
-		return d !== undefined && d >= 1 && d <= maxFileDist;
-	};
-
-	// Package mass only from start + files within radius
-	const filePkgMass = new Map<string, number>();
-	const endMeta = new Map<string, { label: string; kind: string }>();
-	const endToFile = new Map<string, Map<string, number>>();
-
-	for (const e of graph.edges) {
-		if (e.toKind === 'file') continue;
-		const from = e.from;
-		const d = dist.get(from);
-		if (d === undefined) continue;
-		if (from !== startId && (d < 1 || d > maxFileDist)) continue;
-
-		const label =
-			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const w = edgeWeight(e, graph, weightAxis);
-		endMeta.set(e.to, { label, kind: e.toKind });
-		filePkgMass.set(from, (filePkgMass.get(from) ?? 0) + w);
-		let row = endToFile.get(e.to);
-		if (!row) {
-			row = new Map();
-			endToFile.set(e.to, row);
-		}
-		row.set(from, (row.get(from) ?? 0) + w);
-	}
-
-	if (!endToFile.size) {
-		return projectAlluvial(graph, startId, passOpts);
-	}
-
-	// Stages that actually have files (≤ maxFileDist and ≤ graph maxHops)
 	const stagesUsed = Math.min(maxFileDist, maxHops);
 	if (stagesUsed < 1) {
 		return projectDirectImportsOnly(graph, startId, {
@@ -179,6 +149,45 @@ export function projectMultiHopAlluvial(
 		});
 	}
 
+	const rev = fileImportedByAdj(graph);
+	const startLabel = basename(startId);
+	const focus: AlluvialFocus = {
+		kind: 'file',
+		id: startId,
+		label: startLabel,
+	};
+
+	const inRadius = (path: string): boolean => {
+		const d = dist.get(path);
+		return d !== undefined && d >= 1 && d <= stagesUsed;
+	};
+
+	// --- package edges within radius (+ start) ---
+	const endMeta = new Map<string, { label: string; kind: string }>();
+	/** packageKey → list of { file, w } importers in radius or start */
+	const endToImporters = new Map<string, { file: string; w: number }[]>();
+
+	for (const e of graph.edges) {
+		if (e.toKind === 'file') continue;
+		const from = e.from;
+		const d = dist.get(from);
+		if (d === undefined) continue;
+		if (from !== startId && !inRadius(from)) continue;
+
+		const label =
+			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
+		const w = edgeWeight(e, graph, weightAxis);
+		endMeta.set(e.to, { label, kind: e.toKind });
+		const list = endToImporters.get(e.to) ?? [];
+		list.push({ file: from, w });
+		endToImporters.set(e.to, list);
+	}
+
+	if (!endToImporters.size) {
+		return projectAlluvial(graph, startId, passOpts);
+	}
+
+	// --- files at each BFS distance ---
 	const filesAtStage = new Map<number, string[]>();
 	for (const [path, d] of dist) {
 		if (!inRadius(path)) continue;
@@ -193,8 +202,7 @@ export function projectMultiHopAlluvial(
 		{ stage: number; ref: AlluvialNodeRef; category: string }
 	>();
 
-	// Always file leaves inside hop stages — folders are not hop depth.
-	// Overflow to "+ N more" when a stage has too many files.
+	// File leaves only (no folder stages)
 	for (const [stage, files] of filesAtStage) {
 		const category = hopCategory(stage);
 		const ranked = [...files].sort((a, b) => a.localeCompare(b));
@@ -225,10 +233,21 @@ export function projectMultiHopAlluvial(
 		}
 	}
 
+	// Shared rails for package-path padding (same category as hop stage)
+	for (let s = 1; s <= stagesUsed; s++) {
+		const id = railId(s);
+		displayMeta.set(id, {
+			stage: s,
+			ref: { kind: 'bucket', id },
+			category: hopCategory(s),
+		});
+	}
+
+	// Rank packages
 	const endTotals = new Map<string, number>();
-	for (const [endKey, row] of endToFile) {
+	for (const [endKey, imps] of endToImporters) {
 		let n = 0;
-		for (const c of row.values()) n += c;
+		for (const { w } of imps) n += w;
 		endTotals.set(endKey, n);
 	}
 	const topEnds = [...endTotals.entries()]
@@ -248,38 +267,76 @@ export function projectMultiHopAlluvial(
 		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
 	};
 
-	// Package → hop node at the file's distance, or File if package is on start
-	for (const [endKey, row] of endToFile) {
+	/**
+	 * Package → file path of length layerForDist(d) so every dist-d file sits
+	 * on the same sankey layer. Uses shared hop rails as pads.
+	 *
+	 * Example maxFileDist=4, d=2 → layer 3:
+	 *   pkg → rail_h4 → rail_h3 → file_h2
+	 */
+	const addPackageToFile = (
+		pkgLabel: string,
+		fileLabel: string,
+		fileDist: number,
+		mass: number,
+	) => {
+		const L = layerForDist(fileDist, stagesUsed);
+		if (L <= 1) {
+			addLink(pkgLabel, fileLabel, mass);
+			return;
+		}
+		// Walk rails from hop stagesUsed down to fileDist+1, then into file
+		let prev = pkgLabel;
+		for (let stage = stagesUsed; stage > fileDist; stage--) {
+			const rail = railId(stage);
+			addLink(prev, rail, mass);
+			prev = rail;
+		}
+		addLink(prev, fileLabel, mass);
+	};
+
+	// Package edges
+	for (const [endKey, imps] of endToImporters) {
 		const endLabel = keptEnds.has(endKey)
 			? (endMeta.get(endKey)?.label ?? endKey)
 			: '(other ends)';
-		for (const [file, n] of row) {
+		for (const { file, w } of imps) {
 			if (file === startId || (dist.get(file) ?? 0) === 0) {
-				addLink(endLabel, startLabel, n);
-			} else {
-				const target = fileDisplay.get(file);
-				if (target) addLink(endLabel, target, n);
-				else addLink(endLabel, startLabel, n);
+				addLink(endLabel, startLabel, w);
+				continue;
 			}
+			const d = dist.get(file) ?? 0;
+			const fileLab = fileDisplay.get(file);
+			if (!fileLab || d < 1 || d > stagesUsed) {
+				addLink(endLabel, startLabel, w);
+				continue;
+			}
+			addPackageToFile(endLabel, fileLab, d, w);
 		}
 	}
 
-	// Route mass toward start; only emit edges that cross to a lower distance
-	const fileMass = new Map<string, number>(filePkgMass);
-	// Don't route start's own package mass through hops
-	fileMass.delete(startId);
+	// File → parent (consecutive BFS only): dist d → dist d-1 or File
+	// Weight = package mass on that file (direct), routed toward start.
+	const filePkgMass = new Map<string, number>();
+	for (const imps of endToImporters.values()) {
+		for (const { file, w } of imps) {
+			if (file === startId) continue;
+			filePkgMass.set(file, (filePkgMass.get(file) ?? 0) + w);
+		}
+	}
 
+	const fileMass = new Map<string, number>(filePkgMass);
 	for (let stage = stagesUsed; stage >= 1; stage--) {
 		const filesHere = filesAtStage.get(stage) ?? [];
 		const ordered = [...filesHere].sort(
 			(a, b) => (dist.get(b) ?? 0) - (dist.get(a) ?? 0) || a.localeCompare(b),
 		);
-
 		for (const f of ordered) {
 			const m = fileMass.get(f) ?? 0;
 			if (m <= 0) continue;
-
 			const d = dist.get(f) ?? stage;
+			const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(basename(f), stage);
+
 			const importers = rev.get(f) ?? [];
 			let parents = importers.filter((p) => {
 				const pd = dist.get(p);
@@ -287,8 +344,6 @@ export function projectMultiHopAlluvial(
 			});
 			const exact = parents.filter((p) => dist.get(p) === d - 1);
 			if (exact.length) parents = exact;
-
-			const fromLabel = fileDisplay.get(f) ?? hopNodeLabel(basename(f), stage);
 
 			if (!parents.length) {
 				addLink(fromLabel, startLabel, m);
@@ -307,23 +362,21 @@ export function projectMultiHopAlluvial(
 					addLink(fromLabel, startLabel, share);
 					continue;
 				}
-
 				const pDepth = dist.get(p)!;
-				// Parent outside viz radius → jump to File
-				if (pDepth > maxFileDist || pDepth < 1) {
+				if (pDepth < 1 || pDepth > stagesUsed) {
 					addLink(fromLabel, startLabel, share);
 					continue;
 				}
-
+				// Only consecutive distance (should be d-1 after exact filter)
+				if (pDepth !== d - 1) {
+					// Non-consecutive parent: jump to File to avoid cross-layer chaos
+					addLink(fromLabel, startLabel, share);
+					continue;
+				}
 				const toLabel =
 					fileDisplay.get(p) ?? hopNodeLabel(basename(p), pDepth);
-
-				if (pDepth < d) {
-					addLink(fromLabel, toLabel, share);
-					fileMass.set(p, (fileMass.get(p) ?? 0) + share);
-				} else {
-					fileMass.set(p, (fileMass.get(p) ?? 0) + share);
-				}
+				addLink(fromLabel, toLabel, share);
+				fileMass.set(p, (fileMass.get(p) ?? 0) + share);
 			}
 			fileMass.set(f, 0);
 		}
@@ -351,52 +404,59 @@ export function projectMultiHopAlluvial(
 		return '#2dd4bf';
 	};
 
+	// Only materialize rails that appear in links
+	const usedNames = new Set<string>();
+	for (const k of linkMap.keys()) {
+		const [s, t] = k.split('\0') as [string, string];
+		usedNames.add(s);
+		usedNames.add(t);
+	}
+
 	for (const [name, meta] of displayMeta) {
-		nodeMeta.set(name, { category: meta.category, color: hopColor(meta.stage) });
+		if (!usedNames.has(name)) continue;
+		// Hide rail labels — zero-width name, still holds column/layer
+		const isRail = name.startsWith('\u200b·rail');
+		nodeMeta.set(name, {
+			category: meta.category,
+			color: isRail ? hopColor(meta.stage) : hopColor(meta.stage),
+		});
 		nodeRef[name] = meta.ref;
 	}
 
-	const endLabelsInLinks = new Set<string>();
-	for (const k of linkMap.keys()) {
-		const src = k.split('\0')[0]!;
-		if (src === startLabel) continue;
-		if (displayMeta.has(src)) continue;
-		endLabelsInLinks.add(src);
-	}
-	for (const label of endLabelsInLinks) {
-		let kind = 'package';
-		if (label === '(other ends)') {
-			nodeRef[label] = { kind: 'bucket', id: label };
-			nodeMeta.set(label, { category: 'Imports', color: TEAL.other });
+	// Imports (packages)
+	for (const name of usedNames) {
+		if (nodeMeta.has(name) || name === startLabel) continue;
+		// package / other ends
+		if (name === '(other ends)') {
+			nodeMeta.set(name, { category: 'Imports', color: TEAL.other });
+			nodeRef[name] = { kind: 'bucket', id: name };
 			continue;
 		}
-		for (const [endKey, info] of endMeta) {
-			if (info.label === label) {
+		let kind = 'package';
+		let endKey = name;
+		for (const [ek, info] of endMeta) {
+			if (info.label === name) {
 				kind = info.kind;
-				nodeRef[label] = {
-					kind: kind === 'unresolved' ? 'unresolved' : 'package',
-					id: endKey,
-				};
+				endKey = ek;
 				break;
 			}
 		}
 		const color =
 			kind === 'unresolved'
 				? TEAL.unresolved
-				: graph.packages.get(label)?.source === 'builtin'
+				: graph.packages.get(endKey)?.source === 'builtin'
 					? TEAL.builtin
 					: TEAL.package;
-		nodeMeta.set(label, { category: 'Imports', color });
+		nodeMeta.set(name, { category: 'Imports', color });
+		nodeRef[name] = {
+			kind: kind === 'unresolved' ? 'unresolved' : 'package',
+			id: endKey,
+		};
 	}
 
-	const used = new Set<string>();
-	for (const k of linkMap.keys()) {
-		const [s, t] = k.split('\0') as [string, string];
-		used.add(s);
-		used.add(t);
-	}
+	// Drop unused
 	for (const name of [...nodeMeta.keys()]) {
-		if (!used.has(name)) nodeMeta.delete(name);
+		if (!usedNames.has(name) && name !== startLabel) nodeMeta.delete(name);
 	}
 
 	const links = [...linkMap.entries()].map(([k, value]) => {
@@ -404,13 +464,10 @@ export function projectMultiHopAlluvial(
 		return { source, target, value };
 	});
 
-	// Hop headers deep → shallow: Hop N … Hop 1
 	const hopCats: string[] = [];
 	for (let s = stagesUsed; s >= 1; s--) {
 		const cat = hopCategory(s);
-		if ([...nodeMeta.values()].some((m) => m.category === cat)) {
-			hopCats.push(cat);
-		}
+		if ([...nodeMeta.values()].some((m) => m.category === cat)) hopCats.push(cat);
 	}
 	const categoryOrder = ['Imports', ...hopCats, 'File'];
 
@@ -461,7 +518,6 @@ function projectDirectImportsOnly(
 	}
 
 	if (!endCounts.size) {
-		// No direct package imports — fall back to empty/placeholder alluvial
 		return projectAlluvial(graph, startId, {
 			heightPx: opts.heightPx,
 			maxEnds: opts.maxEnds,
