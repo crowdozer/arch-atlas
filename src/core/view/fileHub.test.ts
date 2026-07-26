@@ -706,19 +706,21 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 			),
 		).toBe(true);
 
-		// types → zod External
+		// types → zod External (may pad; multi-instance types · h2)
 		const treeZod = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(treeZod).toHaveLength(1);
-		const typesLab = payload.options.alluvial.nodes.find((n) => {
-			const ref = payload.meta.nodeRef[n.name];
-			return ref?.kind === 'file' && ref.id === 'src/types.ts';
-		})?.name;
-		expect(typesLab).toBeTruthy();
-		expect(categoryOfTypes(payload, typesLab!)).toBe('Imports');
+		const typesLabs = payload.options.alluvial.nodes
+			.filter((n) => {
+				const ref = payload.meta.nodeRef[n.name];
+				return ref?.kind === 'file' && ref.id === 'src/types.ts';
+			})
+			.map((n) => n.name);
+		expect(typesLabs.length).toBeGreaterThan(0);
+		expect(typesLabs.some((lab) => categoryOfTypes(payload, lab) === 'Imports')).toBe(
+			true,
+		);
 		expect(
-			payload.data.some(
-				(l) => l.source === typesLab && l.target === treeZod[0]!.name,
-			),
+			typesLabs.some((lab) => linkPathExists(payload, lab, treeZod[0]!.name)),
 		).toBe(true);
 		const exportZod = packageNodesOnCategory(
 			payload,

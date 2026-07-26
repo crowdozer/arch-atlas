@@ -406,17 +406,15 @@ describe('hub tree-package residual mass (oauth island fix)', () => {
 					usersLabs.includes(l.source) && typeLabs.includes(l.target),
 			)
 			.reduce((s, l) => s + l.value, 0);
-		const typesToZod = payload.data
-			.filter(
-				(l) =>
-					typeLabs.includes(l.source) && zodLabs.includes(l.target),
-			)
+		// types → zod may pad through rails; sum mass into zod
+		const intoZod = payload.data
+			.filter((l) => zodLabs.includes(l.target))
 			.reduce((s, l) => s + l.value, 0);
 
 		expect(usersToTypes).toBeGreaterThan(0);
-		expect(typesToZod).toBeGreaterThan(0);
+		expect(intoZod).toBeGreaterThan(0);
 		// Residual law: package sink ≤ mass that reached the parent file
-		expect(typesToZod).toBeLessThanOrEqual(usersToTypes);
+		expect(intoZod).toBeLessThanOrEqual(usersToTypes);
 
 		// Still connected into the hub (not an isolated pair)
 		const focus = payload.meta.focus.label;
@@ -432,6 +430,47 @@ describe('hub tree-package residual mass (oauth island fix)', () => {
 		}
 		expect(isExternalCategory(categoryOf(payload, zodLabs[0]!))).toBe(true);
 		expect(categoryOf(payload, typeLabs[0]!)).toMatch(/^Import/);
+	});
+});
+
+describe('hub multi-instance dual-path branches', () => {
+	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+
+	it('userService: analytics branches to redis/logger instances; File still seeds both', () => {
+		const payload = hub(graph, 'src/services/userService.ts');
+		const focus = payload.meta.focus.label;
+		const analyticsLabs = labelsForFile(payload, 'src/lib/analytics.ts');
+		const redisLabs = labelsForFile(payload, 'src/lib/redis.ts');
+		const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
+		expect(analyticsLabs.length).toBeGreaterThan(0);
+		// Direct seeds
+		expect(
+			payload.data.some(
+				(l) =>
+					l.source === focus &&
+					redisLabs.some((r) => r === l.target),
+			),
+		).toBe(true);
+		expect(
+			payload.data.some(
+				(l) =>
+					l.source === focus &&
+					loggerLabs.some((r) => r === l.target),
+			),
+		).toBe(true);
+		// Branch under analytics (multi-instance)
+		expect(
+			payload.data.some(
+				(l) =>
+					analyticsLabs.includes(l.source) &&
+					(redisLabs.includes(l.target) ||
+						loggerLabs.includes(l.target)),
+			),
+			'analytics must link to redis and/or logger instances',
+		).toBe(true);
+		// Packages collapse: one ioredis
+		const io = labelsForPackage(payload, 'ioredis');
+		expect(io.length).toBe(1);
 	});
 });
 
@@ -468,28 +507,29 @@ describe('hub Carbon topology tooling', () => {
 		const focus = payload.meta.focus.label;
 		const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
 		expect(loggerLabs.length).toBeGreaterThan(0);
-		for (const lab of loggerLabs) {
-			const cat = categoryOf(payload, lab);
-			// Direct focus import → Imports column (not deepest hop / External)
-			expect(cat, `logger cat=${cat}`).toBe('Imports');
-			expect(isExternalCategory(cat)).toBe(false);
-			// Direct File → logger (no invisible shared rail with types/user)
+		// Seed instance at Imports (deeper multi-instances may also exist)
+		const seedLabs = loggerLabs.filter(
+			(lab) => categoryOf(payload, lab) === 'Imports',
+		);
+		expect(seedLabs.length, 'logger seed on Imports').toBeGreaterThan(0);
+		for (const lab of seedLabs) {
+			expect(isExternalCategory(categoryOf(payload, lab))).toBe(false);
+			// Direct File → logger seed (no invisible shared rail with types/user)
 			expect(
 				payload.data.some(
 					(l) => l.source === focus && l.target === lab && l.value > 0,
 				),
 				'logger must connect File → logger directly',
 			).toBe(true);
-			// No rail → logger as sole inbound (dual-path pad artifact)
 			const inbound = payload.data.filter((l) => l.target === lab);
 			expect(
 				inbound.every((l) => !isAlluvialRailName(l.source)),
-				'logger must not be fed only via pad rails',
+				'logger seed must not be fed only via pad rails',
 			).toBe(true);
 		}
-		// Post-Carbon: Imports header, not co-located under External packages
+		// Post-Carbon: seed under Imports header
 		const layout = layoutAlluvialLikeCarbon(payload);
-		for (const lab of loggerLabs) {
+		for (const lab of seedLabs) {
 			expect(carbonColumnHeader(layout, lab)).toBe('Imports');
 		}
 	});
