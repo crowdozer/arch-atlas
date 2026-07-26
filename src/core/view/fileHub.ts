@@ -2,8 +2,10 @@
  * Dual-side file hub alluvial — high-edge / barrel projection.
  *
  * Columns (L→R): Imports → File → Exports
- * When many importers and maxDepth ≥ 2, Imports expand past folders:
- *   Import folders → Import files → File → Exports
+ *
+ * **Depth (viz-only)** — one hop each direction at depth 1; expand import
+ * folders → call-site files when depth ≥ 2 (exports stay one hop outbound).
+ * Indexing/scan stays unbounded.
  *
  * Flow unit: one observed import edge touching the focus file
  * (inbound file edges + outbound file/package/unresolved edges).
@@ -12,8 +14,6 @@
  *
  * Imports (left) teal; Exports (right) yellow. Carbon colors bands by
  * source, so File→Export strokes are recolored in the client polish step.
- *
- * maxDepth is viz-only (does not affect graph scan / indexing).
  */
 
 import type {
@@ -122,7 +122,9 @@ export function projectFileHub(
 	const nodeMeta = new Map<string, { category: string; color: string }>();
 	nodeMeta.set(fileLabel, { category: 'File', color: TEAL.start });
 
-	// --- left: imports → hub (expand folders → files when depth allows) ---
+	// --- left: imports → hub ---
+	// Depth 1: one hop of importers (files or folders). Depth ≥ 2: hop past
+	// folders to call-site files when the importer set is large.
 	if (inEdges.length) {
 		const expandPastFolders =
 			maxDepth >= 2 && importerPaths.length > FILE_PROMOTE_THRESHOLD;
@@ -141,6 +143,7 @@ export function projectFileHub(
 				nodeMeta,
 			});
 		} else if (importerPaths.length > FILE_PROMOTE_THRESHOLD) {
+			// Depth 1 with many importers: folder buckets only (one hop)
 			addImportModules({
 				graph,
 				inEdges,
