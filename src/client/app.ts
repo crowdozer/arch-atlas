@@ -259,6 +259,25 @@ function updateCaption(view: AtlasView | null): void {
 }
 
 /**
+ * Pixel height available for the alluvial inside the stage.
+ * Caps to remaining viewport under the chart top so dense multi-hop
+ * projections cannot paint below the fold.
+ */
+function alluvialHeightPx(root: HTMLElement): number {
+	const rect = root.getBoundingClientRect();
+	const boxH = Math.floor(rect.height);
+	// Space from chart top to viewport bottom (small bottom pad for OS chrome)
+	const roomBelow = Math.floor(window.innerHeight - rect.top - 12);
+	const capped = Math.min(
+		boxH > 0 ? boxH : roomBelow,
+		roomBelow > 0 ? roomBelow : boxH,
+	);
+	// Prefer measured stage; fall back if layout not settled yet
+	const h = capped > 0 ? capped : Math.max(boxH, 360);
+	return Math.max(240, h);
+}
+
+/**
  * Mount (or remount) alluvial. Always replaces the holder DOM node —
  * Carbon Charts leave residual SVG/state if you only clear innerHTML.
  * Binds node/line click handlers after construct.
@@ -283,10 +302,7 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 
 	// Prefer model update path when possible; full remount is the reliable fallback.
 	try {
-		const heightPx = Math.max(
-			320,
-			Math.floor(root.getBoundingClientRect().height || 480),
-		);
+		const heightPx = alluvialHeightPx(root);
 		const options = {
 			...payload.options,
 			height: `${heightPx}px`,

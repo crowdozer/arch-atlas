@@ -694,7 +694,8 @@ cds-search.atlas-tree-search {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  overflow-x: hidden; /* stage bar controls must not push past viewport */
+  /* Clip both axes so a tall Carbon SVG cannot push past the viewport */
+  overflow: hidden;
   background: #09090b;
 }
 
@@ -955,13 +956,29 @@ cds-inline-notification.atlas-inspect__banner {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   padding: 0.5rem 0.75rem 0.75rem;
 }
 
+/*
+ * min-height: auto (flex default) lets Carbon’s SVG content force the holder
+ * taller than the stage — chart runs off the bottom of the screen. Force
+ * shrink-to-fit; chart height is set in px from available stage space.
+ */
 .atlas-stage__holder {
-  flex: 1;
-  min-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   width: 100%;
+  overflow: hidden;
+}
+
+.atlas-stage__holder .cds--chart-holder,
+.atlas-stage__holder .cds--cc--chart-wrapper,
+.atlas-stage__holder [class*='chart-holder'],
+.atlas-stage__holder [class*='chart-wrapper'] {
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* Hierarchical file tree */
@@ -1207,7 +1224,7 @@ cds-inline-notification.atlas-warning-notification {
     border-block-end: 1px solid #27272a;
   }
   .atlas-stage__holder {
-    min-height: 240px;
+    min-height: 0;
   }
 }
 
