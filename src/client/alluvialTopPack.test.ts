@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	centerHubFileSpine,
 	isExportSideCategory,
+	isFileCategory,
 	isHubFileSpine,
+	isImportRailLabel,
 	recomputeLinkBreadths,
 	rightTruncateLabel,
 } from './alluvialTopPack.ts';
@@ -123,5 +125,14 @@ describe('isExportSideCategory', () => {
 		expect(isExportSideCategory('Import hop 2')).toBe(false);
 		expect(isExportSideCategory('File')).toBe(false);
 		expect(isExportSideCategory('Hop 1')).toBe(false);
+	});
+});
+
+describe('isFileCategory / isImportRailLabel', () => {
+	it('identifies File category and import rails', () => {
+		expect(isFileCategory('File')).toBe(true);
+		expect(isFileCategory('Imports')).toBe(false);
+		expect(isImportRailLabel('\u200b·in-rail·h2')).toBe(true);
+		expect(isImportRailLabel('src/lib/x.ts')).toBe(false);
 	});
 });

@@ -2,14 +2,37 @@
  * Post-process Carbon alluvial SVG after mount:
  * 1. Center hub File spine when both sides have edges (asymmetric hops).
  * 2. Right-truncate long node labels (full paths stay in title / aria).
- * 3. Recolor File→Exports bands (Carbon paints stroke from source).
+ * 3. Highlight File column (spine bar + header) and inject Carbon document icon.
+ * 4. Recolor File→Exports bands (Carbon paints stroke from source).
  *
  * Column vertical packing is left to Carbon/d3-sankey.
  * Label edge clearance is CSS padding on the chart holder (see carbon-theme).
  */
 
+import { toString } from '@carbon/icon-helpers';
+import Document16 from '@carbon/icons/es/document/16.js';
+
 /** Max visible characters for node name (value suffix kept). Right end wins. */
 export const ALLUVIAL_LABEL_MAX_CHARS = 36;
+
+/** Teal accent for File spine (matches --cds-interactive / TEAL.start). */
+const FILE_SPINE_TEAL = '#14b8a6';
+
+type IconDescriptor = {
+	elem?: string;
+	attrs?: Record<string, string | number | undefined>;
+	content?: IconDescriptor[];
+	name?: string;
+	size?: number;
+};
+
+let cachedFileIconSvg: string | null = null;
+function fileHeaderIconSvg(): string {
+	if (!cachedFileIconSvg) {
+		cachedFileIconSvg = toString(Document16 as IconDescriptor);
+	}
+	return cachedFileIconSvg;
+}
 
 type SankeyLink = {
 	y0: number;
@@ -258,8 +281,89 @@ export function recolorExportBands(
 	}
 }
 
+export function isFileCategory(category: string | undefined): boolean {
+	return category === 'File';
+}
+
 /**
- * Center hub File spine, right-truncate labels, recolor export bands.
+ * Mark File-category node bars and inject a Carbon document icon in place of
+ * the "File" column header text (keeps aria-label "File").
+ */
+export function highlightFileSpine(holder: HTMLElement): void {
+	// Node bars + path labels
+	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
+		const d = readData<SankeyNode>(el);
+		if (!isFileCategory(d?.category)) continue;
+		el.classList.add('atlas-alluvial-file-spine');
+	}
+
+	// Category headers (Carbon: g.header-arrows > text)
+	for (const text of holder.querySelectorAll<SVGTextElement>(
+		'g.header-arrows text, .header-arrows text',
+	)) {
+		const label = (text.textContent ?? '').trim();
+		if (label !== 'File') continue;
+		text.classList.add('atlas-alluvial-file-header');
+		injectFileHeaderIcon(text);
+	}
+}
+
+/**
+ * Replace visible "File" header text with Document-16 icon.
+ * Full string stays on aria-label for screen readers.
+ */
+export function injectFileHeaderIcon(textEl: SVGTextElement): void {
+	const parent = textEl.parentElement;
+	if (!parent || parent.querySelector('.atlas-alluvial-file-header-icon')) return;
+
+	textEl.setAttribute('aria-label', 'File');
+	textEl.setAttribute('aria-hidden', 'true');
+	// Keep layout anchor; hide glyphs
+	textEl.style.fill = 'transparent';
+	textEl.textContent = '';
+
+	const x = Number.parseFloat(textEl.getAttribute('x') ?? '0') || 0;
+	const y = Number.parseFloat(textEl.getAttribute('y') ?? '20') || 20;
+
+	const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+	wrap.classList.add('atlas-alluvial-file-header-icon');
+	wrap.setAttribute('aria-hidden', 'true');
+	// Icon is 16×16; center under former text baseline
+	wrap.setAttribute('transform', `translate(${x}, ${y - 14})`);
+
+	try {
+		const parsed = new DOMParser().parseFromString(fileHeaderIconSvg(), 'image/svg+xml');
+		const icon = parsed.documentElement;
+		if (icon && icon.tagName.toLowerCase() === 'svg') {
+			icon.setAttribute('width', '16');
+			icon.setAttribute('height', '16');
+			icon.setAttribute('fill', FILE_SPINE_TEAL);
+			icon.style.fill = FILE_SPINE_TEAL;
+			// Import into current document
+			const adopted = document.importNode(icon, true);
+			wrap.appendChild(adopted);
+			parent.appendChild(wrap);
+			return;
+		}
+	} catch {
+		// fall through to path fallback
+	}
+
+	// Minimal document glyph if icon parse fails
+	const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+	path.setAttribute(
+		'd',
+		'M4 2h6l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm6 1.5V7h3.5',
+	);
+	path.setAttribute('fill', 'none');
+	path.setAttribute('stroke', FILE_SPINE_TEAL);
+	path.setAttribute('stroke-width', '1.25');
+	wrap.appendChild(path);
+	parent.appendChild(wrap);
+}
+
+/**
+ * Center hub File spine, highlight File column, right-truncate labels, recolor exports.
  */
 export function polishAlluvialHolder(
 	holder: HTMLElement,
@@ -273,6 +377,7 @@ export function polishAlluvialHolder(
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
+	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');
 	if (svg) svg.style.overflow = 'visible';

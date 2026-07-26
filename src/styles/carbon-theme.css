@@ -568,6 +568,44 @@ cds-tag.ui-tag--yellow {
   font-weight: 500;
 }
 
+/*
+ * Focus-file spine (category File): stronger bar + teal frame so the hub
+ * center reads as the delineator between import / export sides.
+ */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node {
+  fill: rgb(19 78 74) !important; /* teal-900 */
+  stroke: #14b8a6 !important; /* teal-500 */
+  stroke-width: 2.5px !important;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node-text-bg {
+  fill: rgb(19 78 74 / 0.95) !important;
+  stroke: #14b8a6;
+  stroke-width: 1px;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine text.node-text {
+  fill: #5eead4 !important; /* teal-300 */
+  font-weight: 600;
+}
+
+/* Column header "File" (when text remains) + Carbon document icon inject */
+.ui-carbon-chart .cds--cc--alluvial text.atlas-alluvial-file-header {
+  fill: #2dd4bf !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon {
+  pointer-events: none;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon svg,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon path {
+  fill: #14b8a6;
+  stroke: #14b8a6;
+}
+
 /* Drill-down affordance: clickable nodes and bands */
 .ui-carbon-chart .cds--cc--alluvial .node-group,
 .ui-carbon-chart .cds--cc--alluvial g.node,
