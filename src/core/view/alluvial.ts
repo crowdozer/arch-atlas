@@ -8,9 +8,14 @@
  */
 
 import { reachableFiles } from '@core/graph/build.ts';
-import type { AlluvialPayload, CodeGraph } from '@core/graph/types.ts';
+import type {
+	AlluvialFocus,
+	AlluvialNodeRef,
+	AlluvialPayload,
+	CodeGraph,
+} from '@core/graph/types.ts';
 
-const TEAL = {
+export const TEAL = {
 	start: '#14b8a6', // teal-500
 	module: '#2dd4bf', // teal-400
 	package: '#0d9488', // teal-600
@@ -19,19 +24,129 @@ const TEAL = {
 	other: '#71717a', // zinc-500
 };
 
-function basename(path: string): string {
+export function basename(path: string): string {
 	const i = path.lastIndexOf('/');
 	return i >= 0 ? path.slice(i + 1) : path;
 }
 
-function topFolder(path: string): string {
+/** Top-level module folder for grouping (src/lib, app, …). */
+export function topFolder(path: string): string {
 	const parts = path.split('/');
 	if (parts.length <= 1) return '(root)';
 	if (parts[0] === 'src' && parts.length > 2) return `src/${parts[1]}`;
 	return parts[0] ?? '(root)';
 }
 
+/** Collision-safe display labels for file paths (basename, or trailing segments). */
+export function uniqueFileLabels(paths: string[]): Map<string, string> {
+	const byBase = new Map<string, string[]>();
+	for (const p of paths) {
+		const b = basename(p);
+		const list = byBase.get(b) ?? [];
+		list.push(p);
+		byBase.set(b, list);
+	}
+	const out = new Map<string, string>();
+	for (const [base, group] of byBase) {
+		if (group.length === 1) {
+			out.set(group[0]!, base);
+			continue;
+		}
+		for (const p of group) {
+			const parts = p.split('/');
+			out.set(p, parts.length >= 2 ? parts.slice(-2).join('/') : p);
+		}
+	}
+	// Second pass if trailing-two still collides
+	const labelCounts = new Map<string, number>();
+	for (const label of out.values()) {
+		labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+	}
+	for (const [p, label] of out) {
+		if ((labelCounts.get(label) ?? 0) > 1) out.set(p, p);
+	}
+	return out;
+}
+
 type EndInfo = { label: string; kind: string };
+
+type NodeMetaEntry = { category: string; color: string };
+
+/**
+ * Shared Carbon alluvial payload builder.
+ * `categoryOrder` lists columns L→R (e.g. Ends → Modules → Code).
+ */
+export function buildAlluvialPayload(args: {
+	heightPx: number;
+	links: { source: string; target: string; value: number }[];
+	nodeMeta: Map<string, NodeMetaEntry>;
+	categoryOrder: string[];
+	focus: AlluvialFocus;
+	nodeRef: Record<string, AlluvialNodeRef>;
+	startId?: string;
+	units?: string;
+	ariaLabel?: string;
+}): AlluvialPayload | null {
+	const {
+		heightPx,
+		links,
+		nodeMeta,
+		categoryOrder,
+		focus,
+		nodeRef,
+		startId,
+		units = 'package imports',
+		ariaLabel,
+	} = args;
+	if (!links.length) return null;
+
+	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
+	const nodeRank: Record<string, number> = {};
+
+	for (const category of categoryOrder) {
+		const names = [...nodeMeta.entries()]
+			.filter(([, m]) => m.category === category)
+			.map(([n]) => n)
+			.sort();
+		let rank = 0;
+		for (const n of names) {
+			nodes.push({ name: n, category, rank });
+			nodeRank[n] = rank++;
+		}
+	}
+
+	const colorScale: Record<string, string> = {};
+	for (const [name, meta] of nodeMeta) colorScale[name] = meta.color;
+
+	return {
+		data: links,
+		options: {
+			title: '',
+			theme: 'g100',
+			height: `${heightPx}px`,
+			animations: false,
+			toolbar: { enabled: false },
+			legend: { enabled: false, clickable: false },
+			accessibility: {
+				svgAriaLabel:
+					ariaLabel ?? `Alluvial for ${focus.label}`,
+			},
+			alluvial: {
+				units,
+				nodes,
+				nodeAlignment: 'center',
+			},
+			color: { scale: colorScale },
+			tooltip: { enabled: true },
+		},
+		meta: {
+			...(startId !== undefined ? { startId } : {}),
+			focus,
+			nodeRef,
+			nodeRank,
+		},
+	};
+}
 
 /**
  * Build alluvial from a start file. Returns null if start missing or no flow.
@@ -49,6 +164,11 @@ export function projectAlluvial(
 
 	const reachable = reachableFiles(graph, startId);
 	const startLabel = basename(startId);
+	const focus: AlluvialFocus = {
+		kind: 'file',
+		id: startId,
+		label: startLabel,
+	};
 
 	// end → module (or '__code__' for direct start imports), counts
 	const endToModule = new Map<string, Map<string, number>>();
@@ -76,17 +196,25 @@ export function projectAlluvial(
 		bump(endKey, moduleKey, info);
 	}
 
+	const nodeRef: Record<string, AlluvialNodeRef> = {
+		[startLabel]: { kind: 'file', id: startId },
+	};
+
 	if (!endToModule.size) {
-		// reachable files but no package edges — show a single placeholder hop
-		return buildPayload({
-			startId,
-			startLabel,
+		const emptyLabel = '(no package imports)';
+		nodeRef[emptyLabel] = { kind: 'bucket', id: emptyLabel };
+		return buildAlluvialPayload({
 			heightPx,
-			links: [{ source: '(no package imports)', target: startLabel, value: 1 }],
+			links: [{ source: emptyLabel, target: startLabel, value: 1 }],
 			nodeMeta: new Map([
 				[startLabel, { category: 'Code', color: TEAL.start }],
-				['(no package imports)', { category: 'Ends', color: TEAL.other }],
+				[emptyLabel, { category: 'Ends', color: TEAL.other }],
 			]),
+			categoryOrder: ['Ends', 'Modules', 'Code'],
+			focus,
+			nodeRef,
+			startId,
+			ariaLabel: `Modules to code alluvial for ${startLabel}`,
 		});
 	}
 
@@ -137,10 +265,14 @@ export function projectAlluvial(
 		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
 	};
 
+	// endKey → display label after bucketing (for nodeRef)
+	const endDisplayId = new Map<string, string>();
+
 	for (const [endKey, row] of endToModule) {
 		const sourceLabel = keptEnds.has(endKey)
 			? (endMeta.get(endKey)?.label ?? endKey)
 			: '(other ends)';
+		if (keptEnds.has(endKey)) endDisplayId.set(sourceLabel, endKey);
 
 		for (const [mod, n] of row) {
 			const m = remapModule(mod);
@@ -160,7 +292,7 @@ export function projectAlluvial(
 		addLink(mod, startLabel, n);
 	}
 
-	const nodeMeta = new Map<string, { category: string; color: string }>();
+	const nodeMeta = new Map<string, NodeMetaEntry>();
 	nodeMeta.set(startLabel, { category: 'Code', color: TEAL.start });
 
 	for (const [mod] of moduleIn) {
@@ -168,6 +300,11 @@ export function projectAlluvial(
 			category: 'Modules',
 			color: mod.startsWith('(') ? TEAL.other : TEAL.module,
 		});
+		if (mod.startsWith('(')) {
+			nodeRef[mod] = { kind: 'bucket', id: mod };
+		} else {
+			nodeRef[mod] = { kind: 'module', id: mod };
+		}
 	}
 
 	const endLabelsSeen = new Set<string>();
@@ -177,24 +314,31 @@ export function projectAlluvial(
 		endLabelsSeen.add(source);
 	}
 	for (const label of endLabelsSeen) {
+		if (label.startsWith('(')) {
+			nodeMeta.set(label, { category: 'Ends', color: TEAL.other });
+			nodeRef[label] = { kind: 'bucket', id: label };
+			continue;
+		}
 		let kind = 'package';
-		if (!label.startsWith('(')) {
-			for (const info of endMeta.values()) {
-				if (info.label === label) {
-					kind = info.kind;
-					break;
-				}
+		let endKey = endDisplayId.get(label) ?? label;
+		for (const [ek, info] of endMeta) {
+			if (info.label === label) {
+				kind = info.kind;
+				endKey = ek;
+				break;
 			}
 		}
 		const color =
 			kind === 'unresolved'
 				? TEAL.unresolved
-				: kind === 'package' && graph.packages.get(label)?.source === 'builtin'
+				: kind === 'package' && graph.packages.get(endKey)?.source === 'builtin'
 					? TEAL.builtin
-					: label.startsWith('(')
-						? TEAL.other
-						: TEAL.package;
+					: TEAL.package;
 		nodeMeta.set(label, { category: 'Ends', color });
+		nodeRef[label] = {
+			kind: kind === 'unresolved' ? 'unresolved' : 'package',
+			id: endKey,
+		};
 	}
 
 	const links = [...linkMap.entries()].map(([k, value]) => {
@@ -202,81 +346,14 @@ export function projectAlluvial(
 		return { source, target, value };
 	});
 
-	return buildPayload({
-		startId,
-		startLabel,
+	return buildAlluvialPayload({
 		heightPx,
 		links,
 		nodeMeta,
+		categoryOrder: ['Ends', 'Modules', 'Code'],
+		focus,
+		nodeRef,
+		startId,
+		ariaLabel: `Modules to code alluvial for ${startLabel}`,
 	});
-}
-
-function buildPayload(args: {
-	startId: string;
-	startLabel: string;
-	heightPx: number;
-	links: { source: string; target: string; value: number }[];
-	nodeMeta: Map<string, { category: string; color: string }>;
-}): AlluvialPayload | null {
-	const { startId, startLabel, heightPx, links, nodeMeta } = args;
-	if (!links.length) return null;
-
-	const ends = [...nodeMeta.entries()]
-		.filter(([, m]) => m.category === 'Ends')
-		.map(([n]) => n)
-		.sort();
-	const mods = [...nodeMeta.entries()]
-		.filter(([, m]) => m.category === 'Modules')
-		.map(([n]) => n)
-		.sort();
-	const codes = [...nodeMeta.entries()]
-		.filter(([, m]) => m.category === 'Code')
-		.map(([n]) => n);
-
-	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
-	const nodeRank: Record<string, number> = {};
-	let rank = 0;
-	for (const n of ends) {
-		nodes.push({ name: n, category: 'Ends', rank });
-		nodeRank[n] = rank++;
-	}
-	rank = 0;
-	for (const n of mods) {
-		nodes.push({ name: n, category: 'Modules', rank });
-		nodeRank[n] = rank++;
-	}
-	rank = 0;
-	for (const n of codes) {
-		nodes.push({ name: n, category: 'Code', rank });
-		nodeRank[n] = rank++;
-	}
-
-	const colorScale: Record<string, string> = {};
-	for (const [name, meta] of nodeMeta) colorScale[name] = meta.color;
-
-	return {
-		data: links,
-		options: {
-			title: '',
-			theme: 'g100',
-			height: `${heightPx}px`,
-			animations: false,
-			toolbar: { enabled: false },
-			legend: { enabled: false, clickable: false },
-			accessibility: {
-				svgAriaLabel: `Modules to code alluvial for ${startLabel}`,
-			},
-			alluvial: {
-				units: 'package imports',
-				nodes,
-				nodeAlignment: 'center',
-			},
-			color: { scale: colorScale },
-			tooltip: { enabled: true },
-		},
-		meta: {
-			startId,
-			nodeRank,
-		},
-	};
 }

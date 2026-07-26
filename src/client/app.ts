@@ -9,6 +9,9 @@ import {
 	indexFiles,
 	ingestZip,
 	isSourceFile,
+	projectModuleFocus,
+	projectPackageImporters,
+	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type CodeGraph,
 	type MapCatalog,
@@ -39,8 +42,18 @@ type Session = {
 	expanded: Set<string>;
 };
 
+/** Nested alluvial focus (top of stack = current view). */
+type AtlasView =
+	| { type: 'file'; fileId: string }
+	| { type: 'package'; packageId: string; label: string }
+	| { type: 'module'; moduleId: string };
+
 let session: Session | null = null;
 let chart: InstanceType<typeof AlluvialChart> | null = null;
+/** Drill-down stack; not persisted in v1. */
+let viewStack: AtlasView[] = [];
+/** Last mounted payload (for click resolution). */
+let currentPayload: AlluvialPayload | null = null;
 
 function persistCheckbox(): HTMLInputElement | null {
 	return $('atlas-persist') as HTMLInputElement | null;
@@ -100,9 +113,53 @@ function destroyChart(): void {
 	chart = null;
 }
 
+function currentView(): AtlasView | null {
+	return viewStack.length ? viewStack[viewStack.length - 1]! : null;
+}
+
+function payloadForView(view: AtlasView): AlluvialPayload | null {
+	if (!session) return null;
+	switch (view.type) {
+		case 'file':
+			return alluvialForStart(session.graph, view.fileId);
+		case 'package':
+			return projectPackageImporters(session.graph, view.packageId);
+		case 'module':
+			return projectModuleFocus(session.graph, view.moduleId);
+	}
+}
+
+function captionForView(view: AtlasView): string {
+	switch (view.type) {
+		case 'file':
+			return `Modules → code for ${view.fileId}`;
+		case 'package':
+			return `Package importers · ${view.label}`;
+		case 'module':
+			return `Module ends · ${view.moduleId}`;
+	}
+}
+
+function updateBackButton(): void {
+	const btn = $('atlas-alluvial-back') as HTMLButtonElement | null;
+	if (!btn) return;
+	const deep = viewStack.length > 1;
+	btn.classList.toggle('hidden', !deep);
+	btn.disabled = !deep;
+}
+
+function updateCaption(view: AtlasView | null): void {
+	const caption = $('atlas-alluvial-caption');
+	if (!caption) return;
+	caption.textContent = view
+		? captionForView(view)
+		: 'Select a start to project modules → code.';
+}
+
 /**
  * Mount (or remount) alluvial. Always replaces the holder DOM node —
  * Carbon Charts leave residual SVG/state if you only clear innerHTML.
+ * Binds node/line click handlers after construct.
  */
 function mountAlluvial(payload: AlluvialPayload | null) {
 	const root = $('atlas-alluvial');
@@ -110,6 +167,7 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 
 	destroyChart();
 	root.replaceChildren();
+	currentPayload = payload;
 
 	const holder = document.createElement('div');
 	holder.className = 'ui-carbon-chart__holder atlas-stage__holder';
@@ -136,11 +194,193 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 			data: payload.data,
 			options,
 		});
+		bindAlluvialClicks(chart);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);
 		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
 		chart = null;
 	}
+}
+
+/** Extract node display name from Carbon alluvial event datum. */
+function datumName(raw: unknown): string | null {
+	if (typeof raw === 'string') return raw;
+	if (raw && typeof raw === 'object') {
+		const o = raw as Record<string, unknown>;
+		if (typeof o.name === 'string') return o.name;
+	}
+	return null;
+}
+
+function linkEndpointName(end: unknown): string | null {
+	if (typeof end === 'string') return end;
+	if (end && typeof end === 'object') {
+		const o = end as Record<string, unknown>;
+		if (typeof o.name === 'string') return o.name;
+		// sankey may nest source/target as node objects
+		if (o.source !== undefined || o.target !== undefined) return null;
+	}
+	return null;
+}
+
+function bindAlluvialClicks(instance: InstanceType<typeof AlluvialChart>): void {
+	const events = (
+		instance as unknown as {
+			services?: { events?: EventTarget };
+		}
+	).services?.events;
+	if (!events?.addEventListener) return;
+
+	events.addEventListener('alluvial-node-click', ((e: Event) => {
+		const detail = (e as CustomEvent).detail as {
+			datum?: { name?: string };
+		} | null;
+		const name = datumName(detail?.datum);
+		if (name) handleNodeClick(name);
+	}) as EventListener);
+
+	events.addEventListener('alluvial-line-click', ((e: Event) => {
+		const detail = (e as CustomEvent).detail as {
+			datum?: { source?: unknown; target?: unknown };
+		} | null;
+		const source = linkEndpointName(detail?.datum?.source);
+		const target = linkEndpointName(detail?.datum?.target);
+		if (source || target) handleLineClick(source, target);
+	}) as EventListener);
+}
+
+function refForName(name: string): AlluvialNodeRef | null {
+	return currentPayload?.meta.nodeRef[name] ?? null;
+}
+
+function pushView(view: AtlasView): void {
+	if (!session) return;
+	// Avoid pushing identical focus
+	const top = currentView();
+	if (
+		top &&
+		top.type === view.type &&
+		((view.type === 'file' && top.type === 'file' && top.fileId === view.fileId) ||
+			(view.type === 'package' &&
+				top.type === 'package' &&
+				top.packageId === view.packageId) ||
+			(view.type === 'module' &&
+				top.type === 'module' &&
+				top.moduleId === view.moduleId))
+	) {
+		return;
+	}
+	const payload = payloadForView(view);
+	if (!payload) {
+		setStatus(
+			view.type === 'package'
+				? `No importers for ${view.label}`
+				: view.type === 'module'
+					? `No package edges in ${view.moduleId}`
+					: `No import flow for ${view.fileId}`,
+		);
+		return;
+	}
+	viewStack.push(view);
+	updateCaption(view);
+	updateBackButton();
+	mountAlluvial(payload);
+	setStatus(
+		view.type === 'file'
+			? `Start: ${view.fileId}`
+			: view.type === 'package'
+				? `Package: ${view.label}`
+				: `Module: ${view.moduleId}`,
+	);
+}
+
+function popView(): void {
+	if (viewStack.length <= 1) return;
+	viewStack.pop();
+	const view = currentView();
+	if (!view || !session) return;
+	updateCaption(view);
+	updateBackButton();
+	mountAlluvial(payloadForView(view));
+	setStatus(
+		view.type === 'file'
+			? `Start: ${view.fileId}`
+			: view.type === 'package'
+				? `Package: ${view.label}`
+				: `Module: ${view.moduleId}`,
+	);
+}
+
+function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
+	if (ref.kind === 'bucket') {
+		setStatus(`Can't drill into aggregate “${displayName}”`);
+		return;
+	}
+	if (ref.kind === 'file') {
+		pushView({ type: 'file', fileId: ref.id });
+		return;
+	}
+	if (ref.kind === 'package' || ref.kind === 'unresolved') {
+		pushView({ type: 'package', packageId: ref.id, label: displayName });
+		return;
+	}
+	if (ref.kind === 'module') {
+		pushView({ type: 'module', moduleId: ref.id });
+	}
+}
+
+function handleNodeClick(name: string): void {
+	const ref = refForName(name);
+	if (!ref) {
+		setStatus(`No drill target for “${name}”`);
+		return;
+	}
+	drillFromRef(ref, name);
+}
+
+/**
+ * Line click: prefer file target, else package source, else module source, else package target.
+ */
+function handleLineClick(sourceName: string | null, targetName: string | null): void {
+	const sourceRef = sourceName ? refForName(sourceName) : null;
+	const targetRef = targetName ? refForName(targetName) : null;
+
+	if (targetRef?.kind === 'file') {
+		drillFromRef(targetRef, targetName!);
+		return;
+	}
+	if (sourceRef?.kind === 'package' || sourceRef?.kind === 'unresolved') {
+		drillFromRef(sourceRef, sourceName!);
+		return;
+	}
+	if (sourceRef?.kind === 'module') {
+		drillFromRef(sourceRef, sourceName!);
+		return;
+	}
+	if (targetRef?.kind === 'package' || targetRef?.kind === 'unresolved') {
+		drillFromRef(targetRef, targetName!);
+		return;
+	}
+	if (targetRef?.kind === 'module') {
+		drillFromRef(targetRef, targetName!);
+		return;
+	}
+	if (sourceRef?.kind === 'file') {
+		drillFromRef(sourceRef, sourceName!);
+		return;
+	}
+	if (sourceRef?.kind === 'bucket' || targetRef?.kind === 'bucket') {
+		setStatus("Can't drill into aggregate band");
+		return;
+	}
+	setStatus('No drill target for this band');
+}
+
+/** Remount chart for the top of the view stack (e.g. resize). */
+function remountCurrentView(): void {
+	const view = currentView();
+	if (!view || !session) return;
+	mountAlluvial(payloadForView(view));
 }
 
 function renderTree() {
@@ -355,12 +595,14 @@ function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	for (let i = 1; i < parts.length; i++) {
 		session.expanded.add(parts.slice(0, i).join('/'));
 	}
+	// Tree/catalog selection resets drill stack to file focus
+	const view: AtlasView = { type: 'file', fileId: startId };
+	viewStack = [view];
 	renderTree();
 	renderCatalog(session.catalog, startId);
-	const caption = $('atlas-alluvial-caption');
-	if (caption) caption.textContent = `Modules → code for ${startId}`;
-	const payload = alluvialForStart(session.graph, startId);
-	mountAlluvial(payload);
+	updateCaption(view);
+	updateBackButton();
+	mountAlluvial(payloadForView(view));
 	setStatus(`Start: ${startId}`);
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
@@ -463,10 +705,14 @@ function tryRestoreSession(): boolean {
 
 function resetSession() {
 	session = null;
+	viewStack = [];
+	currentPayload = null;
 	clearPersistedSession();
 	destroyChart();
 	const alluvial = $('atlas-alluvial');
 	if (alluvial) alluvial.replaceChildren();
+	updateCaption(null);
+	updateBackButton();
 
 	$('atlas-workspace')?.classList.add('hidden');
 	$('atlas-subbar')?.classList.add('hidden');
@@ -521,6 +767,10 @@ function wireUi() {
 
 	$('atlas-reset')?.addEventListener('click', resetSession);
 
+	$('atlas-alluvial-back')?.addEventListener('click', () => {
+		popView();
+	});
+
 	$('atlas-demo-react-simple')?.addEventListener('click', () => {
 		handleDemo('react-simple');
 	});
@@ -533,17 +783,18 @@ function wireUi() {
 		renderTree();
 	});
 
-	// Remount chart on resize so height tracks stage
+	// Remount chart on resize so height tracks stage (keep current drill view)
 	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 	window.addEventListener('resize', () => {
-		if (!session?.startId) return;
+		if (!currentView()) return;
 		if (resizeTimer) clearTimeout(resizeTimer);
 		resizeTimer = setTimeout(() => {
-			if (!session?.startId) return;
-			mountAlluvial(alluvialForStart(session.graph, session.startId));
+			if (!currentView()) return;
+			remountCurrentView();
 		}, 150);
 	});
 
+	updateBackButton();
 	tryRestoreSession();
 }
 

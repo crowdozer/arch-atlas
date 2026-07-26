@@ -131,11 +131,24 @@ import Layout from '../layouts/Layout.astro';
 
 			<section class="atlas-stage" aria-label="Alluvial projection">
 				<div class="atlas-stage__bar">
-					<div class="min-w-0">
-						<div class="ui-tile__label mb-0">Alluvial projection</div>
-						<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
-							Select a start to project modules → code.
-						</p>
+					<div class="min-w-0 flex flex-1 items-start gap-3">
+						<button
+							type="button"
+							id="atlas-alluvial-back"
+							class="atlas-alluvial-back hidden shrink-0"
+							aria-label="Back to previous alluvial view"
+						>
+							← Back
+						</button>
+						<div class="min-w-0">
+							<div class="ui-tile__label mb-0">Alluvial projection</div>
+							<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
+								Select a start to project modules → code.
+							</p>
+							<p class="mt-0.5 text-[0.7rem] text-zinc-600">
+								Click a band or label to drill in
+							</p>
+						</div>
 					</div>
 					<span
 						id="atlas-epistemic"

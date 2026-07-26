@@ -116,6 +116,23 @@ export type AlluvialNode = {
 	rank: number;
 };
 
+/** Focus of an alluvial projection (drill-down target). */
+export type AlluvialFocusKind = 'file' | 'package' | 'module' | 'unresolved';
+
+export type AlluvialFocus = {
+	kind: AlluvialFocusKind;
+	id: string;
+	label: string;
+};
+
+/** Display-name → durable identity for click drill-down. */
+export type AlluvialNodeRefKind = AlluvialFocusKind | 'bucket';
+
+export type AlluvialNodeRef = {
+	kind: AlluvialNodeRefKind;
+	id: string;
+};
+
 export type AlluvialPayload = {
 	data: AlluvialLink[];
 	options: {
@@ -135,7 +152,11 @@ export type AlluvialPayload = {
 		tooltip: { enabled: boolean };
 	};
 	meta: {
-		startId: string;
+		/** File focus only — start file path. */
+		startId?: string;
+		focus: AlluvialFocus;
+		/** Display node name → kind + id for drill resolution. */
+		nodeRef: Record<string, AlluvialNodeRef>;
 		nodeRank: Record<string, number>;
 	};
 };

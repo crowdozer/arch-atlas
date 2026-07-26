@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
+import { projectModuleFocus } from '@core/view/moduleFocus.ts';
+import { projectPackageImporters } from '@core/view/packageImporters.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -69,5 +71,155 @@ describe('projectAlluvial conservation', () => {
 			if (n.category !== 'Modules') continue;
 			expect(inn.get(n.name) ?? 0).toBe(out.get(n.name) ?? 0);
 		}
+	});
+
+	it('populates focus and nodeRef for drill-down', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const payload = projectAlluvial(graph, 'middleware.ts');
+		expect(payload).not.toBeNull();
+		expect(payload!.meta.startId).toBe('middleware.ts');
+		expect(payload!.meta.focus).toEqual({
+			kind: 'file',
+			id: 'middleware.ts',
+			label: 'middleware.ts',
+		});
+		expect(payload!.meta.nodeRef['middleware.ts']).toEqual({
+			kind: 'file',
+			id: 'middleware.ts',
+		});
+		// At least one package end should be drillable
+		const endNodes = payload!.options.alluvial.nodes.filter((n) => n.category === 'Ends');
+		const drillableEnd = endNodes.find((n) => !n.name.startsWith('('));
+		expect(drillableEnd).toBeTruthy();
+		const ref = payload!.meta.nodeRef[drillableEnd!.name];
+		expect(ref).toBeTruthy();
+		expect(['package', 'unresolved']).toContain(ref.kind);
+	});
+});
+
+describe('projectPackageImporters', () => {
+	it('nodemailer importers in demo-next-complex (src/lib/email.ts only)', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const payload = projectPackageImporters(graph, 'nodemailer');
+		expect(payload).not.toBeNull();
+		expect(payload!.meta.focus.kind).toBe('package');
+		expect(payload!.meta.focus.label).toBe('nodemailer');
+
+		// Right column is package; left is importer(s)
+		const packageNodes = payload!.options.alluvial.nodes.filter(
+			(n) => n.category === 'Package',
+		);
+		expect(packageNodes.map((n) => n.name)).toEqual(['nodemailer']);
+
+		const importers = payload!.options.alluvial.nodes.filter(
+			(n) => n.category === 'Importers',
+		);
+		expect(importers.length).toBe(1);
+		// Single importer → file promote; label is basename email.ts
+		expect(importers[0]!.name).toMatch(/email\.ts$/);
+
+		const total = payload!.data.reduce((s, l) => s + l.value, 0);
+		expect(total).toBe(1);
+		expect(payload!.data.every((l) => l.target === 'nodemailer')).toBe(true);
+
+		const importerRef = payload!.meta.nodeRef[importers[0]!.name];
+		expect(importerRef).toEqual({ kind: 'file', id: 'src/lib/email.ts' });
+		expect(payload!.meta.nodeRef.nodemailer.kind).toBe('package');
+	});
+
+	it('conserves importer → package weights', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		// redis is used from multiple places likely
+		const payload = projectPackageImporters(graph, 'ioredis');
+		// may or may not exist — try a common one; fall back to nodemailer
+		const p =
+			payload ??
+			projectPackageImporters(graph, 'nodemailer') ??
+			projectPackageImporters(graph, 'next');
+		expect(p).not.toBeNull();
+		const { out, inn } = flowTotals(p!.data);
+		const packageLabel = p!.meta.focus.label;
+		const packageIn = inn.get(packageLabel) ?? 0;
+		const importerOut = [...out.entries()]
+			.filter(([k]) => k !== packageLabel)
+			.reduce((s, [, v]) => s + v, 0);
+		expect(packageIn).toBe(importerOut);
+		expect(packageIn).toBeGreaterThan(0);
+	});
+
+	it('returns null for unknown package', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
+		expect(projectPackageImporters(graph, 'definitely-not-a-pkg-xyz')).toBeNull();
+	});
+});
+
+describe('projectModuleFocus', () => {
+	it('only includes package edges from the given folder', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const payload = projectModuleFocus(graph, 'src/lib');
+		expect(payload).not.toBeNull();
+		expect(payload!.meta.focus).toEqual({
+			kind: 'module',
+			id: 'src/lib',
+			label: 'src/lib',
+		});
+
+		// Module right node
+		expect(
+			payload!.options.alluvial.nodes.some(
+				(n) => n.category === 'Module' && n.name === 'src/lib',
+			),
+		).toBe(true);
+
+		// nodemailer only imported from src/lib — must appear
+		const endNames = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Ends')
+			.map((n) => n.name);
+		expect(endNames).toContain('nodemailer');
+
+		// All ends flow into the module node
+		expect(payload!.data.every((l) => l.target === 'src/lib')).toBe(true);
+
+		// Conservation: sum ends out == module in
+		const { out, inn } = flowTotals(payload!.data);
+		const endOut = endNames.reduce((s, e) => s + (out.get(e) ?? 0), 0);
+		expect(inn.get('src/lib')).toBe(endOut);
+
+		// Count should match graph edges from topFolder src/lib to package/unresolved
+		const expected = graph.edges.filter(
+			(e) =>
+				e.toKind !== 'file' &&
+				(e.from === 'src/lib' || e.from.startsWith('src/lib/')),
+		).length;
+		// topFolder('src/lib/email.ts') === 'src/lib'
+		const byTop = graph.edges.filter((e) => {
+			if (e.toKind === 'file') return false;
+			const parts = e.from.split('/');
+			const top =
+				parts.length <= 1
+					? '(root)'
+					: parts[0] === 'src' && parts.length > 2
+						? `src/${parts[1]}`
+						: parts[0];
+			return top === 'src/lib';
+		}).length;
+		expect(endOut).toBe(byTop);
+		expect(expected).toBe(byTop);
+	});
+
+	it('populates nodeRef for packages and module', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const payload = projectModuleFocus(graph, 'src/lib');
+		expect(payload).not.toBeNull();
+		expect(payload!.meta.nodeRef['src/lib']).toEqual({
+			kind: 'module',
+			id: 'src/lib',
+		});
+		expect(payload!.meta.nodeRef.nodemailer?.kind).toBe('package');
+	});
+
+	it('returns null for folder with no package edges', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
+		expect(projectModuleFocus(graph, 'definitely/missing')).toBeNull();
 	});
 });
