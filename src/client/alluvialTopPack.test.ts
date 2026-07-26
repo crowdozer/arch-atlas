@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { recomputeLinkBreadths, topPackColumns } from './alluvialTopPack.ts';
+import {
+	centerHubFileSpine,
+	isHubFileSpine,
+	recomputeLinkBreadths,
+	topPackColumns,
+} from './alluvialTopPack.ts';
 
 type N = {
 	name: string;
+	category?: string;
 	x0: number;
 	x1: number;
 	y0: number;
@@ -16,9 +22,11 @@ function node(
 	x0: number,
 	y0: number,
 	h: number,
+	category?: string,
 ): N {
 	return {
 		name,
+		category,
 		x0,
 		x1: x0 + 10,
 		y0,
@@ -88,6 +96,49 @@ describe('recomputeLinkBreadths', () => {
 		expect(l2.y0).toBe(10 + 40 + 30); // mid of second 60-wide band on source
 		expect(l1.y1).toBe(10 + 20); // mid on t1 (only target link)
 		expect(l2.y1).toBe(60 + 30); // mid on t2
+	});
+});
+
+describe('centerHubFileSpine', () => {
+	it('centers File with both in and out in the y-extent of side columns', () => {
+		// Asymmetric hops: tall import stack left, short export right; File floated high
+		const impA = node('a.ts', 0, 30, 40, 'Imports');
+		const impB = node('b.ts', 0, 80, 120, 'Imports');
+		const file = node('public.ts', 100, 30, 80, 'File');
+		const expA = node('dep.ts', 200, 30, 50, 'Exports');
+
+		const inL = { y0: 0, y1: 0, width: 40, source: impA, target: file };
+		const inL2 = { y0: 0, y1: 0, width: 40, source: impB, target: file };
+		const outL = { y0: 0, y1: 0, width: 50, source: file, target: expA };
+		impA.sourceLinks.push(inL);
+		impB.sourceLinks.push(inL2);
+		file.targetLinks.push(inL, inL2);
+		file.sourceLinks.push(outL);
+		expA.targetLinks.push(outL);
+
+		expect(isHubFileSpine(file)).toBe(true);
+		expect(isHubFileSpine(impA)).toBe(false);
+
+		const moved = centerHubFileSpine([impA, impB, file, expA]);
+		expect(moved).toBeGreaterThan(0);
+
+		// Others span 30..200; mid = 115; file h=80 → y0 = 75
+		const mid = (30 + 200) / 2;
+		expect(file.y0).toBeCloseTo(mid - 40, 5);
+		expect(file.y1).toBeCloseTo(mid + 40, 5);
+		// Side columns unchanged
+		expect(impA.y0).toBe(30);
+		expect(expA.y0).toBe(30);
+	});
+
+	it('no-op when File is source-only (reverse importers)', () => {
+		const file = node('logger.ts', 0, 30, 100, 'File');
+		const imp = node('a.ts', 100, 30, 50, 'Imports');
+		const l = { y0: 0, y1: 0, width: 50, source: file, target: imp };
+		file.sourceLinks.push(l);
+		imp.targetLinks.push(l);
+		expect(centerHubFileSpine([file, imp])).toBe(0);
+		expect(file.y0).toBe(30);
 	});
 });
 
