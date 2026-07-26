@@ -97,9 +97,10 @@ describe('projectFileHub demo-next-complex', () => {
 		assertColumnConservation(payload!, id);
 
 		const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Imports') || cats.has('Import folders')).toBe(true);
+		expect(cats.has('Imports')).toBe(true);
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Exports')).toBe(true);
+		expect(cats.has('Import folders')).toBe(false);
 		expect(payload!.options.alluvial.units).toBe('import edges');
 
 		// Export column uses yellow family (not teal import colors)

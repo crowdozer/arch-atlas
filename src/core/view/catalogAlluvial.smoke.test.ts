@@ -215,8 +215,9 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 				const cats = new Set(
 					payload!.options.alluvial.nodes.map((n) => n.category),
 				);
-				expect(cats.has('Imports') || cats.has('Import folders')).toBe(true);
+				expect(cats.has('Imports')).toBe(true);
 				expect(cats.has('Exports')).toBe(true);
+				expect(cats.has('Import folders')).toBe(false);
 			} else if (preferFileImportersView(graph, h.id)) {
 				// Reverse: focus outflow === inbound file edges (multi-hop conserves)
 				expect(focusOutflow(payload!), `${h.path} reverse mass`).toBe(h.inDegree);
@@ -261,10 +262,10 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(preferFileImportersView(graph, id)).toBe(true);
 		const payload = projectFileImporters(graph, id)!;
 		expect(focusOutflow(payload)).toBe(fileInDegree(graph, id));
-		// Many importers → folder hop, terminals are files
+		// Reverse fan-in: File → Imports only (no folder hop stage)
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Import folders')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('Import folders')).toBe(false);
 	});
 
 	it('every catalog end: package reverse total === inDegree', () => {

@@ -3,8 +3,9 @@
  *
  * Columns (L→R): Imports → File → Exports
  *
- * **Depth (viz-only)** — one hop each direction at depth 1; expand import
- * folders → call-site files when depth ≥ 2 (exports stay one hop outbound).
+ * **Depth (viz-only)** scales how many leaves we promote, not folder stages.
+ * Path prefixes on the Imports side are *labels* when the set is large —
+ * never intermediate hop columns. One reverse hop + one forward hop.
  * Indexing/scan stays unbounded.
  *
  * Flow unit: one observed import edge touching the focus file
@@ -122,34 +123,19 @@ export function projectFileHub(
 	const nodeMeta = new Map<string, { category: string; color: string }>();
 	nodeMeta.set(fileLabel, { category: 'File', color: TEAL.start });
 
-	// --- left: imports → hub ---
-	// Depth 1: one hop of importers (files or folders). Depth ≥ 2: hop past
-	// folders to call-site files when the importer set is large.
+	// --- left: imports → hub (one reverse hop; folders are leaf labels only) ---
 	if (inEdges.length) {
-		const expandPastFolders =
-			maxDepth >= 2 && importerPaths.length > FILE_PROMOTE_THRESHOLD;
-		if (expandPastFolders) {
-			addImportsMultiHop({
-				graph,
-				inEdges,
-				importerPaths,
-				fileLabel,
-				maxModules,
-				maxImporters,
-				maxDepth,
-				weightAxis,
-				addLink,
-				nodeRef,
-				nodeMeta,
-			});
-		} else if (importerPaths.length > FILE_PROMOTE_THRESHOLD) {
-			// Depth 1 with many importers: folder buckets only (one hop)
+		const leafBudget = Math.min(
+			48,
+			maxImporters + Math.max(0, maxDepth - 1) * 4,
+		);
+		if (importerPaths.length > FILE_PROMOTE_THRESHOLD) {
 			addImportModules({
 				graph,
 				inEdges,
 				importerPaths,
 				fileLabel,
-				maxModules,
+				maxModules: Math.min(maxModules, leafBudget),
 				weightAxis,
 				addLink,
 				nodeRef,
@@ -161,7 +147,7 @@ export function projectFileHub(
 				inEdges,
 				labels,
 				fileLabel,
-				maxImporters,
+				maxImporters: leafBudget,
 				weightAxis,
 				addLink,
 				nodeRef,
@@ -201,18 +187,9 @@ export function projectFileHub(
 	});
 	if (!links.length) return null;
 
-	// Category order: folder hop (if any), then call sites, file, exports
-	const hasFolders = [...nodeMeta.values()].some((m) => m.category === 'Import folders');
-	const hasImportFiles = [...nodeMeta.values()].some((m) => m.category === 'Imports');
-	const categoryOrder = [
-		...(hasFolders ? ['Import folders'] : []),
-		...(hasImportFiles ? ['Imports'] : []),
-		'File',
-		'Exports',
-	].filter((c, i, arr) => arr.indexOf(c) === i);
-
-	// Ensure File present even if only one side has data
-	if (!categoryOrder.includes('File')) categoryOrder.splice(-1, 0, 'File');
+	const categoryOrder = ['Imports', 'File', 'Exports'].filter((c) =>
+		[...nodeMeta.values()].some((m) => m.category === c),
+	);
 
 	return buildAlluvialPayload({
 		heightPx,
@@ -331,116 +308,6 @@ function addImportModules(
 	if (otherCount > 0) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-import-modules' };
 		nodeMeta.set(otherLabel, { category: 'Imports', color: TEAL.other });
-	}
-}
-
-/**
- * Folders → call-site files → hub. Restores hopping past folders when
- * maxDepth ≥ 2 and importer count is large.
- */
-function addImportsMultiHop(
-	args: LinkBuilder & {
-		inEdges: ImportEdge[];
-		importerPaths: string[];
-		maxModules: number;
-		maxImporters: number;
-		maxDepth: number;
-	},
-): void {
-	const {
-		graph,
-		inEdges,
-		importerPaths,
-		fileLabel,
-		maxModules,
-		maxImporters,
-		maxDepth,
-		weightAxis,
-		addLink,
-		nodeRef,
-		nodeMeta,
-	} = args;
-
-	const groupKey = importerGroupKey(importerPaths);
-
-	// Per-file mass + files under each module
-	const fileWeights = new Map<string, number>();
-	const moduleWeights = new Map<string, number>();
-	const filesByMod = new Map<string, string[]>();
-	for (const e of inEdges) {
-		const w = edgeWeight(e, graph, weightAxis);
-		fileWeights.set(e.from, (fileWeights.get(e.from) ?? 0) + w);
-		const mod = groupKey(e.from);
-		moduleWeights.set(mod, (moduleWeights.get(mod) ?? 0) + w);
-	}
-	for (const path of fileWeights.keys()) {
-		const mod = groupKey(path);
-		const list = filesByMod.get(mod) ?? [];
-		list.push(path);
-		filesByMod.set(mod, list);
-	}
-
-	const rankedMods = [...moduleWeights.entries()].sort(
-		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-	);
-	const keptMods = new Set(rankedMods.slice(0, maxModules).map(([k]) => k));
-	const otherModCount = rankedMods.filter(([k]) => !keptMods.has(k)).length;
-	const otherMods = otherModCount > 0 ? moreCountLabel(otherModCount) : '';
-
-	// Per-module promote files (depth ≥ 2 always promotes files here)
-	const maxFilesPerModule = Math.max(
-		3,
-		Math.min(6, Math.floor(maxImporters / Math.max(1, keptMods.size))),
-	);
-	const keptFilePaths = new Set<string>();
-	for (const mod of keptMods) {
-		const local = (filesByMod.get(mod) ?? []).sort(
-			(a, b) =>
-				(fileWeights.get(b) ?? 0) - (fileWeights.get(a) ?? 0) ||
-				a.localeCompare(b),
-		);
-		const cap =
-			local.length <= FILE_PROMOTE_THRESHOLD
-				? local.length
-				: Math.min(maxFilesPerModule, local.length);
-		// maxDepth>2: keep more files per module (viz budget scales with depth)
-		const depthBonus =
-			maxDepth >= 3 ? Math.min(local.length, cap + (maxDepth - 2) * 2) : cap;
-		for (const p of local.slice(0, depthBonus)) keptFilePaths.add(p);
-	}
-	const otherFilePaths = [...fileWeights.keys()].filter((p) => !keptFilePaths.has(p));
-	const otherFiles = otherFilePaths.length > 0 ? moreCountLabel(otherFilePaths.length) : '';
-	const fileLabels = uniqueFileLabels([...keptFilePaths]);
-
-	for (const e of inEdges) {
-		const w = edgeWeight(e, graph, weightAxis);
-		const modRaw = groupKey(e.from);
-		const mod = keptMods.has(modRaw) ? modRaw : otherMods;
-		const fileLab = keptFilePaths.has(e.from)
-			? (fileLabels.get(e.from) ?? basename(e.from))
-			: otherFiles;
-
-		// folder → file → hub
-		if (mod) addLink(mod, fileLab, w);
-		addLink(fileLab, fileLabel, w);
-
-		if (mod && mod !== otherMods) {
-			nodeRef[mod] = { kind: 'module', id: modRaw };
-			nodeMeta.set(mod, { category: 'Import folders', color: TEAL.package });
-		}
-		if (fileLab !== otherFiles) {
-			nodeRef[fileLab] = { kind: 'file', id: e.from };
-			nodeMeta.set(fileLab, { category: 'Imports', color: TEAL.module });
-		}
-	}
-
-	if (otherModCount > 0 && otherMods) {
-		nodeRef[otherMods] = { kind: 'bucket', id: 'other-import-folders' };
-		nodeMeta.set(otherMods, { category: 'Import folders', color: TEAL.other });
-	}
-	if (otherFilePaths.length > 0 && otherFiles) {
-		nodeRef[otherFiles] = { kind: 'bucket', id: 'other-imports' };
-		nodeMeta.set(otherFiles, { category: 'Imports', color: TEAL.other });
 	}
 }
 

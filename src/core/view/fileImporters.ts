@@ -1,18 +1,15 @@
 /**
  * File reverse projection: who imports this file?
  *
- * Columns when ≤ FILE_PROMOTE_THRESHOLD importers:
- *   File → Importers (call-site files)
+ * Columns (L→R): File → Imports
  *
- * Columns when many importers:
- *   File → Modules → Importers (call-site files)
+ * **Folders are not hop depth.** Every reverse edge is already one import hop
+ * (A imports logger). Path prefixes (app/, src/services, (root)) are only used
+ * as optional *leaf labels* when there are too many call sites to list — never
+ * as an intermediate depth column.
  *
- * Intermediate folder groups are hops, not terminals. The rightmost column is
- * always the actual importer files (or an overflow bucket), so bands do not
- * stop at `client/sim` for hubs like config.ts.
- *
- * Used for fan-in hubs (e.g. logger.ts, config.ts) that show high edge counts
- * from inbound edges but have little/no outbound import surface.
+ * maxDepth (viz-only) scales how many call sites we promote before overflow;
+ * it does not invent folder stages. Graph scan stays unbounded.
  */
 
 import type {
@@ -37,14 +34,12 @@ import {
 } from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
-const DEFAULT_MAX_MODULES = 12;
-/** Cap call-site files promoted under each module hop (rest → overflow). */
-const DEFAULT_MAX_FILES_PER_MODULE = 6;
+const DEFAULT_MAX_IMPORTERS = 16;
 
 /**
- * Pick a grouping function for many importers.
+ * Pick a grouping function for many importers (leaf labels only).
  * Prefer topFolder; if nearly all importers share one key, deepen one segment
- * so fan-in hubs (config.ts ← 186× under client/) are not a single band.
+ * so fan-in hubs are not a single band.
  */
 export function importerGroupKey(
 	importerPaths: readonly string[],
@@ -64,8 +59,6 @@ export function importerGroupKey(
 		return (path: string) => topFolder(path);
 	}
 
-	// Dominant key is already two-level (client/sim) → deepen to three when possible.
-	// Dominant key is one-level (client) → two-level or client/(files) for flat files.
 	const domParts = dominant.split('/');
 	return (path: string) => {
 		const parts = path.split('/').filter(Boolean);
@@ -83,6 +76,9 @@ export function importerGroupKey(
 /**
  * Project importers of a source file as an alluvial.
  * Returns null when nothing imports the file.
+ *
+ * @param opts.maxDepth Viz-only: higher depth promotes more call-site files
+ *   before "+ N more". Does not add folder hop stages.
  */
 export function projectFileImporters(
 	graph: CodeGraph,
@@ -92,7 +88,6 @@ export function projectFileImporters(
 		maxImporters?: number;
 		maxModules?: number;
 		maxFilesPerModule?: number;
-		/** Viz-only: ≥2 expands folders → call-site files. Scan is unbounded. */
 		maxDepth?: number;
 		weightAxis?: WeightAxis;
 	},
@@ -100,10 +95,11 @@ export function projectFileImporters(
 	if (!graph.files.has(fileId)) return null;
 
 	const heightPx = opts?.heightPx ?? 360;
-	const maxImporters = opts?.maxImporters ?? 16;
-	const maxModules = opts?.maxModules ?? DEFAULT_MAX_MODULES;
-	const maxFilesPerModule = opts?.maxFilesPerModule ?? DEFAULT_MAX_FILES_PER_MODULE;
 	const maxDepth = Math.max(1, opts?.maxDepth ?? 7);
+	// Depth scales leaf budget only (not folder stages)
+	const baseMax = opts?.maxImporters ?? DEFAULT_MAX_IMPORTERS;
+	const maxImporters = Math.min(48, baseMax + Math.max(0, maxDepth - 1) * 4);
+	const maxModules = opts?.maxModules ?? 12;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
 	const units = unitsForAxis(weightAxis, 'import-edges');
 
@@ -115,102 +111,94 @@ export function projectFileImporters(
 		id: fileId,
 		label: basename(fileId),
 	};
-	// Prefer full path as left-node name when basenames collide later; for the
-	// focus node itself use a stable label that matches nodeRef.
 	const labelsForFocus = uniqueFileLabels([fileId, ...edges.map((e) => e.from)]);
 	const fileLabel = labelsForFocus.get(fileId) ?? basename(fileId);
-
 	const importerPaths = [...new Set(edges.map((e) => e.from))];
 
-	// Few importers, or maxDepth 1: single Imports column (files, capped).
-	// Many + depth ≥ 2: folders → call-site files (hop past folders).
-	if (
-		importerPaths.length <= FILE_PROMOTE_THRESHOLD ||
-		maxDepth < 2
-	) {
-		return projectFileImportersFlat({
+	// Few importers → list files. Many → folder *leaves* (still one Imports column).
+	if (importerPaths.length <= FILE_PROMOTE_THRESHOLD) {
+		return projectImportsColumn({
 			graph,
 			fileId,
 			fileLabel,
 			focus,
 			edges,
-			importerPaths,
+			mode: 'files',
 			heightPx,
-			maxImporters,
+			maxLeaves: maxImporters,
 			weightAxis,
 			units,
 		});
 	}
 
-	// Scale file promotion with viz depth (still unbounded graph scan)
-	const depthFiles = Math.min(
-		24,
-		maxFilesPerModule + Math.max(0, maxDepth - 2) * 2,
-	);
-
-	return projectFileImportersMultiHop({
+	return projectImportsColumn({
 		graph,
 		fileId,
 		fileLabel,
 		focus,
 		edges,
-		importerPaths,
+		mode: 'folders',
 		heightPx,
-		maxImporters,
-		maxModules,
-		maxFilesPerModule: depthFiles,
+		maxLeaves: maxModules,
 		weightAxis,
 		units,
 	});
 }
 
-type EdgeSlice = {
+function projectImportsColumn(args: {
 	graph: CodeGraph;
 	fileId: string;
 	fileLabel: string;
 	focus: AlluvialFocus;
 	edges: CodeGraph['edges'];
-	importerPaths: string[];
+	mode: 'files' | 'folders';
 	heightPx: number;
-	maxImporters: number;
+	maxLeaves: number;
 	weightAxis: WeightAxis;
 	units: string;
-};
-
-/** Two-column reverse: File → call-site files. */
-function projectFileImportersFlat(
-	args: EdgeSlice,
-): AlluvialPayload | null {
+}): AlluvialPayload | null {
 	const {
 		graph,
 		fileId,
 		fileLabel,
 		focus,
 		edges,
-		importerPaths,
+		mode,
 		heightPx,
-		maxImporters,
+		maxLeaves,
 		weightAxis,
 		units,
 	} = args;
 
-	const labels = uniqueFileLabels(importerPaths);
 	const weights = new Map<string, number>();
-	const importerRef = new Map<string, AlluvialNodeRef>();
+	const leafRef = new Map<string, AlluvialNodeRef>();
 
-	for (const e of edges) {
-		const label = labels.get(e.from) ?? basename(e.from);
-		weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
-		importerRef.set(label, { kind: 'file', id: e.from });
+	if (mode === 'files') {
+		const paths = [...new Set(edges.map((e) => e.from))];
+		const labels = uniqueFileLabels(paths);
+		for (const e of edges) {
+			const label = labels.get(e.from) ?? basename(e.from);
+			weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
+			leafRef.set(label, { kind: 'file', id: e.from });
+		}
+	} else {
+		const paths = [...new Set(edges.map((e) => e.from))];
+		const groupKey = importerGroupKey(paths);
+		for (const e of edges) {
+			const mod = groupKey(e.from);
+			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
+			if (!leafRef.has(mod)) {
+				leafRef.set(mod, { kind: 'module', id: mod });
+			}
+		}
 	}
 
 	const ranked = [...weights.entries()].sort(
 		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
 	);
-	const kept = new Set(ranked.slice(0, maxImporters).map(([k]) => k));
+	const kept = new Set(ranked.slice(0, maxLeaves).map(([k]) => k));
 	const otherCount = ranked.filter(([k]) => !kept.has(k)).length;
-	const hasOther = otherCount > 0;
-	const otherLabel = moreCountLabel(otherCount);
+	const otherLabel = otherCount > 0 ? moreCountLabel(otherCount) : '';
 
 	const linkMap = new Map<string, number>();
 	const addLink = (source: string, target: string, value: number) => {
@@ -229,12 +217,15 @@ function projectFileImportersFlat(
 		const target = kept.has(key) ? key : otherLabel;
 		addLink(fileLabel, target, n);
 		if (target === otherLabel) continue;
-		const ref = importerRef.get(key);
+		const ref = leafRef.get(key);
 		if (ref) nodeRef[target] = ref;
-		nodeMeta.set(target, { category: 'Imports', color: TEAL.module });
+		// Folder keys and files both live under Imports — not a depth stage
+		nodeMeta.set(target, {
+			category: 'Imports',
+			color: mode === 'folders' ? TEAL.package : TEAL.module,
+		});
 	}
-	if (hasOther) {
-		// Stable bucket id for inspect/drill; display name is "+ N more"
+	if (otherCount > 0) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-imports' };
 		nodeMeta.set(otherLabel, { category: 'Imports', color: TEAL.other });
 	}
@@ -249,148 +240,6 @@ function projectFileImportersFlat(
 		links,
 		nodeMeta,
 		categoryOrder: ['File', 'Imports'],
-		focus,
-		nodeRef,
-		startId: fileId,
-		units,
-		ariaLabel: `Imports of ${fileId}`,
-	});
-}
-
-/**
- * Three-column reverse: File → Modules → call-site files.
- * Folders are intermediate hops; the right column is the call site.
- *
- * File promotion is **per module** so a fat band (client/sim × 80) still lands
- * on real call sites instead of draining entirely into a global overflow.
- */
-function projectFileImportersMultiHop(
-	args: EdgeSlice & { maxModules: number; maxFilesPerModule: number },
-): AlluvialPayload | null {
-	const {
-		graph,
-		fileId,
-		fileLabel,
-		focus,
-		edges,
-		importerPaths,
-		heightPx,
-		maxModules,
-		maxFilesPerModule,
-		weightAxis,
-		units,
-	} = args;
-
-	const groupKey = importerGroupKey(importerPaths);
-
-	// Per-file and per-module mass; files grouped under their module key
-	const fileWeights = new Map<string, number>();
-	const moduleWeights = new Map<string, number>();
-	const filesByMod = new Map<string, string[]>();
-	for (const e of edges) {
-		const w = edgeWeight(e, graph, weightAxis);
-		fileWeights.set(e.from, (fileWeights.get(e.from) ?? 0) + w);
-		const mod = groupKey(e.from);
-		moduleWeights.set(mod, (moduleWeights.get(mod) ?? 0) + w);
-	}
-	for (const path of fileWeights.keys()) {
-		const mod = groupKey(path);
-		const list = filesByMod.get(mod) ?? [];
-		list.push(path);
-		filesByMod.set(mod, list);
-	}
-
-	const rankedMods = [...moduleWeights.entries()].sort(
-		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-	);
-	const keptMods = new Set(rankedMods.slice(0, maxModules).map(([k]) => k));
-	const hasOtherMods = rankedMods.some(([k]) => !keptMods.has(k));
-
-	// Promote call sites under each kept module (all if small, else top N)
-	const keptFilePaths = new Set<string>();
-	for (const mod of keptMods) {
-		const local = (filesByMod.get(mod) ?? []).sort(
-			(a, b) =>
-				(fileWeights.get(b) ?? 0) - (fileWeights.get(a) ?? 0) ||
-				a.localeCompare(b),
-		);
-		const cap =
-			local.length <= FILE_PROMOTE_THRESHOLD
-				? local.length
-				: Math.min(maxFilesPerModule, local.length);
-		for (const p of local.slice(0, cap)) keptFilePaths.add(p);
-	}
-	const otherFilePaths = [...fileWeights.keys()].filter((p) => !keptFilePaths.has(p));
-	const hasOtherFiles = otherFilePaths.length > 0;
-	const fileLabels = uniqueFileLabels([...keptFilePaths]);
-
-	const otherFiles = moreCountLabel(otherFilePaths.length);
-	const otherMods = '(other modules)';
-
-	const linkMap = new Map<string, number>();
-	const addLink = (source: string, target: string, value: number) => {
-		if (value <= 0) return;
-		const k = `${source}\0${target}`;
-		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
-	};
-
-	const nodeRef: Record<string, AlluvialNodeRef> = {
-		[fileLabel]: { kind: 'file', id: fileId },
-	};
-	const nodeMeta = new Map<string, { category: string; color: string }>();
-	nodeMeta.set(fileLabel, { category: 'File', color: TEAL.start });
-
-	for (const e of edges) {
-		const w = edgeWeight(e, graph, weightAxis);
-		const modRaw = groupKey(e.from);
-		const mod = keptMods.has(modRaw) ? modRaw : otherMods;
-		const importerLabel = keptFilePaths.has(e.from)
-			? (fileLabels.get(e.from) ?? basename(e.from))
-			: otherFiles;
-
-		addLink(fileLabel, mod, w);
-		addLink(mod, importerLabel, w);
-
-		if (mod !== otherMods) {
-			nodeRef[mod] = { kind: 'module', id: modRaw };
-			nodeMeta.set(mod, { category: 'Import folders', color: TEAL.package });
-		}
-		if (importerLabel !== otherFiles) {
-			nodeRef[importerLabel] = { kind: 'file', id: e.from };
-			nodeMeta.set(importerLabel, { category: 'Imports', color: TEAL.module });
-		}
-	}
-
-	if (hasOtherMods) {
-		nodeRef[otherMods] = { kind: 'bucket', id: otherMods };
-		nodeMeta.set(otherMods, { category: 'Import folders', color: TEAL.other });
-	}
-	if (hasOtherFiles) {
-		nodeRef[otherFiles] = { kind: 'bucket', id: 'other-imports' };
-		nodeMeta.set(otherFiles, { category: 'Imports', color: TEAL.other });
-	}
-
-	// Drop nodes with no residual links (defensive)
-	const used = new Set<string>();
-	for (const k of linkMap.keys()) {
-		const [s, t] = k.split('\0') as [string, string];
-		used.add(s);
-		used.add(t);
-	}
-	for (const name of [...nodeMeta.keys()]) {
-		if (!used.has(name)) nodeMeta.delete(name);
-	}
-
-	const links = [...linkMap.entries()].map(([k, value]) => {
-		const [source, target] = k.split('\0') as [string, string];
-		return { source, target, value };
-	});
-
-	return buildAlluvialPayload({
-		heightPx,
-		links,
-		nodeMeta,
-		categoryOrder: ['File', 'Import folders', 'Imports'],
 		focus,
 		nodeRef,
 		startId: fileId,
@@ -421,8 +270,7 @@ export function fileInDegree(graph: CodeGraph, fileId: string): number {
  * Prefer reverse importers when fan-in dominates the file's edge activity.
  *
  * - Pure sinks (out=0, in>0): always reverse (logger.ts).
- * - Fan-in hubs (in > out): reverse so catalog "N edges" matches the chart
- *   (redis.ts has 12 importers + 2 outs — forward only shows ioredis→self).
+ * - Fan-in hubs (in > out): reverse so catalog "N edges" matches the chart.
  * - Outbound-heavy files: keep deps map (modules → code).
  */
 export function preferFileImportersView(graph: CodeGraph, fileId: string): boolean {

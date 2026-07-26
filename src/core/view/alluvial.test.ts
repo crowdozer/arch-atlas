@@ -231,17 +231,13 @@ describe('projectFileImporters', () => {
 			id: fileId,
 			label: 'logger.ts',
 		});
-		// File left; with many importers, folder hop then call-site files
+		// File → Imports only (folders are not a hop stage)
 		const cats = new Set(rev!.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('Import folders')).toBe(false);
 		const { out, inn } = flowTotals(rev!.data);
 		const fileOut = out.get('logger.ts') ?? out.get(fileId) ?? 0;
-		// Intermediate folders conserve; terminal Imports receive full mass
-		for (const n of rev!.options.alluvial.nodes) {
-			if (n.category !== 'Import folders') continue;
-			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
-		}
 		const importerIn = rev!.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.reduce((s, n) => s + (inn.get(n.name) ?? 0), 0);
