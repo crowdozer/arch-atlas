@@ -26,7 +26,6 @@ import Tag from '../components/ui/Tag.astro';
 	<div id="atlas-app" class="flex min-h-0 flex-1 flex-col">
 		<!-- Upload (centered, only before session) -->
 		<section id="atlas-upload" class="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
-			<p class="atlas-eyebrow mb-2">Level-1 index</p>
 			<h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
 				Upload a repository
 			</h1>
@@ -44,11 +43,7 @@ import Tag from '../components/ui/Tag.astro';
 			</div>
 
 			<div class="atlas-drop-host">
-				<FileUploader
-					class="atlas-file-uploader"
-					labelTitle="Repository ZIP"
-					labelDescription="Source stays on-device"
-				>
+				<FileUploader class="atlas-file-uploader" labelTitle="Repository ZIP">
 					<FileUploaderDropContainer
 						id="atlas-drop"
 						class="atlas-file-drop"
@@ -61,11 +56,7 @@ import Tag from '../components/ui/Tag.astro';
 			</div>
 
 			<div class="atlas-demo mt-6">
-				<p class="atlas-section-label mb-2">Or load a built-in demo</p>
-				<p class="mb-3 text-xs text-zinc-500">
-					Reproducible fixtures for feedback — written into the session like a ZIP, no
-					upload needed.
-				</p>
+				<p class="atlas-section-label mb-3">Or load a built-in demo</p>
 				<div class="atlas-demo__grid">
 					<button
 						type="button"
@@ -74,8 +65,10 @@ import Tag from '../components/ui/Tag.astro';
 						data-demo="react-simple"
 					>
 						<span class="atlas-demo__inner">
-							<Tag tone="teal" size="sm">Low complexity</Tag>
-							<span class="atlas-demo__title">React app</span>
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">React app</span>
+								<Tag tone="teal" size="sm">Low complexity</Tag>
+							</span>
 							<span class="atlas-demo__blurb">
 								Vite + React Router: pages, hooks, api, shared lib. Clean layers.
 							</span>
@@ -88,10 +81,12 @@ import Tag from '../components/ui/Tag.astro';
 						data-demo="next-complex"
 					>
 						<span class="atlas-demo__inner">
-							<Tag tone="yellow" size="sm">High complexity</Tag>
-							<span class="atlas-demo__title">Next.js app</span>
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Next.js app</span>
+								<Tag tone="yellow" size="sm">High complexity</Tag>
+							</span>
 							<span class="atlas-demo__blurb">
-								App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
+								App Router, APIs, services, DB/Redis/Stripe, legacy pages.
 							</span>
 						</span>
 					</button>

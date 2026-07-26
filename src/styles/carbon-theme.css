@@ -1337,8 +1337,18 @@ cds-checkbox.atlas-persist {
   overflow: visible;
 }
 
-.atlas-demo__inner cds-tag,
-.atlas-demo__inner .ui-tag {
+/* Title + complexity tag on one row */
+.atlas-demo__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.atlas-demo__heading cds-tag,
+.atlas-demo__heading .ui-tag {
   pointer-events: none;
   flex-shrink: 0;
 }
