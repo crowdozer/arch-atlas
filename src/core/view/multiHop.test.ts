@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { fileDistances, importDepthStats } from '@core/catalog/deepest.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
-import { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
+import {
+	hopCategory,
+	projectMultiHopAlluvial,
+	stageForDepth,
+} from '@core/view/multiHop.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -42,6 +46,17 @@ describe('stageForDepth', () => {
 		expect(stageForDepth(5, 5)).toBe(5);
 		expect(stageForDepth(8, 5)).toBe(5);
 		expect(stageForDepth(0, 5)).toBe(0);
+	});
+});
+
+describe('hopCategory', () => {
+	it('uses ≥ only on outermost stage when graph is deeper than viz cap', () => {
+		expect(hopCategory(1, 1, 4)).toBe('Hop ≥1');
+		expect(hopCategory(2, 2, 4)).toBe('Hop ≥2');
+		expect(hopCategory(1, 2, 4)).toBe('Hop 1');
+		// No collapse when stages cover the full tree
+		expect(hopCategory(4, 4, 4)).toBe('Hop 4');
+		expect(hopCategory(1, 4, 4)).toBe('Hop 1');
 	});
 });
 
@@ -127,4 +142,57 @@ describe('projectMultiHopAlluvial', () => {
 			expect(codeIn).toBeGreaterThan(0);
 		},
 	);
+
+	it('layout.tsx: each maxHopStages yields unique hop headers (no duplicate columns)', () => {
+		const start = 'app/layout.tsx';
+		expect(importDepthStats(graph, start).maxHops).toBe(4);
+
+		for (const maxHopStages of [1, 2, 3, 4, 5, 7]) {
+			const payload = projectMultiHopAlluvial(graph, start, { maxHopStages })!;
+			const hopCats = payload.options.alluvial.nodes
+				.map((n) => n.category)
+				.filter((c) => c.startsWith('Hop'));
+			const unique = new Set(hopCats);
+			// Carbon columns = unique categories; duplicates mean sankey split one stage
+			expect(
+				unique.size,
+				`maxHopStages=${maxHopStages} cats=${[...unique].join(',')}`,
+			).toBe(hopCats.filter((c, i, a) => a.indexOf(c) === i).length);
+
+			// Expected column count = min(maxHops, maxHopStages)
+			const expected = Math.min(4, maxHopStages);
+			expect(unique.size, `maxHopStages=${maxHopStages}`).toBe(expected);
+
+			// No same-category appearing twice in categoryOrder
+			const order = [
+				...new Set(
+					payload.options.alluvial.nodes
+						.map((n) => n.category)
+						.filter((c) => c.startsWith('Hop')),
+				),
+			];
+			// Order should be deep→shallow: higher stage first
+			if (maxHopStages === 1) {
+				expect([...unique][0]).toBe('Hop ≥1');
+			}
+			if (maxHopStages === 2) {
+				expect(order).toEqual(['Hop ≥2', 'Hop 1']);
+			}
+			if (maxHopStages === 3) {
+				expect(order).toEqual(['Hop ≥3', 'Hop 2', 'Hop 1']);
+			}
+			if (maxHopStages >= 4) {
+				expect(order).toEqual(['Hop 4', 'Hop 3', 'Hop 2', 'Hop 1']);
+			}
+
+			// Conservation still holds
+			const { out, inn } = flowTotals(payload.data);
+			const codeIn = inn.get('layout.tsx') ?? 0;
+			const endOut = payload.options.alluvial.nodes
+				.filter((n) => n.category === 'Ends')
+				.reduce((s, n) => s + (out.get(n.name) ?? 0), 0);
+			expect(codeIn).toBe(endOut);
+			expect(codeIn).toBeGreaterThan(0);
+		}
+	});
 });
