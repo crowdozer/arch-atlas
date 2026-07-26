@@ -54,6 +54,13 @@ type Session = {
 /**
  * Nested alluvial focus (top of stack = current view).
  * File opens are always file-hub traversal; package/module are drill-only.
+ *
+ * ## Navigation model
+ * `viewStack` is the sole owner of “where we are.” Session `startId` (tree /
+ * catalog selection + persist) is **derived** as the nearest file-hub frame on
+ * the stack — never updated as a parallel lifecycle. All stack mutations go
+ * through {@link navigateReplace} / {@link navigatePush} / {@link navigatePop},
+ * which commit chrome via {@link commitNavigation}.
  */
 type AtlasView =
 	/** Dual hub: importers → file → exporters (sole file projector). */
@@ -63,7 +70,7 @@ type AtlasView =
 
 let session: Session | null = null;
 let chart: InstanceType<typeof AlluvialChart> | null = null;
-/** Drill-down stack; not persisted in v1. */
+/** Drill-down stack — sole navigation owner (not persisted in v1). */
 let viewStack: AtlasView[] = [];
 /** Last mounted payload (for click resolution). */
 let currentPayload: AlluvialPayload | null = null;
@@ -450,75 +457,93 @@ function sameView(a: AtlasView, b: AtlasView): boolean {
 	return false;
 }
 
-/** File id when the view is a file-hub focus; null for package/module drills. */
-function fileIdFromView(view: AtlasView | null): string | null {
-	if (!view || view.type !== 'file-hub') return null;
-	return view.fileId;
+/**
+ * File focus for tree/catalog/persist: nearest file-hub frame under the stack
+ * top (package/module drills keep the underlying file selected).
+ */
+function nearestFileFocus(stack: readonly AtlasView[]): string | null {
+	for (let i = stack.length - 1; i >= 0; i--) {
+		const v = stack[i]!;
+		if (v.type === 'file-hub') return v.fileId;
+	}
+	return null;
+}
+
+function emptyPayloadStatus(view: AtlasView): string {
+	if (view.type === 'package') return `No importers for ${view.label}`;
+	if (view.type === 'module') return `No package edges in ${view.moduleId}`;
+	return `No hub edges for ${view.fileId}`;
 }
 
 /**
- * Keep tree + catalog selection in sync with the focused file (alluvial drill,
- * back, or catalog open). Expands ancestors so the active path is visible.
+ * Single chrome commit after stack mutation:
+ * 1. Derive session.startId from stack
+ * 2. Mount top view
+ * 3. Paint tree/catalog selection
  */
-function syncFileSelection(
-	fileId: string,
-	opts?: { skipPersist?: boolean },
-): void {
-	if (!session) return;
+function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
+	if (!session) return false;
+	const view = currentView();
+	if (!view) return false;
+
+	const fileId = nearestFileFocus(viewStack);
 	session.startId = fileId;
-	expandToPath(fileId);
+	if (fileId) expandToPath(fileId);
+
+	updateCaption(view);
+	updateBackButton();
+	syncDepthDropdown();
+
+	const payload = payloadForView(view);
+	const mounted = mountAlluvialGated(payload);
+	if (mounted) setStatus(statusForView(view));
+	else if (!payload) setStatus(emptyPayloadStatus(view));
+
 	renderTree();
 	renderCatalog(session.catalog, fileId);
+
 	if (!opts?.skipPersist) persistSessionIfEnabled();
+	return mounted;
 }
 
-function pushView(view: AtlasView): void {
-	if (!session) return;
-	const top = currentView();
-	if (top && sameView(top, view)) return;
+/** Root open: replace stack with one view (catalog / tree / restore). */
+function navigateReplace(view: AtlasView, opts?: { skipPersist?: boolean }): boolean {
+	if (!session) return false;
+	const payload = payloadForView(view);
+	if (!payload) {
+		setStatus(emptyPayloadStatus(view));
+		return false;
+	}
+	viewStack = [view];
+	applyDepthDefaultForView(view);
+	return commitNavigation(opts);
+}
 
-	// Mode default depth (hub 3) unless user set Depth manually
-	const prevType = top?.type;
-	if (prevType !== view.type) applyDepthDefaultForView(view);
+/** Drill deeper (alluvial click / ends list). */
+function navigatePush(view: AtlasView, opts?: { skipPersist?: boolean }): boolean {
+	if (!session) return false;
+	const top = currentView();
+	if (top && sameView(top, view)) return false;
 
 	const payload = payloadForView(view);
 	if (!payload) {
-		setStatus(
-			view.type === 'package'
-				? `No importers for ${view.label}`
-				: view.type === 'module'
-					? `No package edges in ${view.moduleId}`
-					: `No hub edges for ${view.fileId}`,
-		);
-		return;
+		setStatus(emptyPayloadStatus(view));
+		return false;
 	}
+
+	if (top?.type !== view.type) applyDepthDefaultForView(view);
 	viewStack.push(view);
-	updateCaption(view);
-	updateBackButton();
-	syncDepthDropdown();
-	if (mountAlluvialGated(payload)) {
-		setStatus(statusForView(view));
-	}
-	// Alluvial file drill → tree selection + expand path
-	const fid = fileIdFromView(view);
-	if (fid) syncFileSelection(fid);
+	return commitNavigation(opts);
 }
 
-function popView(): void {
-	if (viewStack.length <= 1) return;
+/** Back one level; restores file focus from remaining stack. */
+function navigatePop(opts?: { skipPersist?: boolean }): boolean {
+	if (!session || viewStack.length <= 1) return false;
 	viewStack.pop();
 	const view = currentView();
-	if (!view || !session) return;
+	if (!view) return false;
 	applyDepthDefaultForView(view);
-	updateCaption(view);
-	updateBackButton();
-	syncDepthDropdown();
-	if (mountAlluvialGated(payloadForView(view))) {
-		setStatus(statusForView(view));
-	}
-	// Restore tree selection to the file focus under the stack
-	const fid = fileIdFromView(view);
-	if (fid) syncFileSelection(fid);
+	return commitNavigation(opts);
 }
 
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
@@ -527,15 +552,15 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'file') {
-		pushView(viewForFileOpen(ref.id));
+		navigatePush(viewForFileOpen(ref.id));
 		return;
 	}
 	if (ref.kind === 'package' || ref.kind === 'unresolved') {
-		pushView({ type: 'package', packageId: ref.id, label: displayName });
+		navigatePush({ type: 'package', packageId: ref.id, label: displayName });
 		return;
 	}
 	if (ref.kind === 'module') {
-		pushView({ type: 'module', moduleId: ref.id });
+		navigatePush({ type: 'module', moduleId: ref.id });
 	}
 }
 
@@ -1207,7 +1232,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 				</span>
 				<span class="meta">${escapeHtml(e.kind)} · ${e.inDegree} importer${e.inDegree === 1 ? '' : 's'}</span>`;
 			row.addEventListener('click', () => {
-				pushView({ type: 'package', packageId: e.id, label: e.label });
+				navigatePush({ type: 'package', packageId: e.id, label: e.label });
 			});
 			endsHost.appendChild(row);
 		}
@@ -1248,25 +1273,10 @@ function expandToPath(startId: string): void {
 	}
 }
 
-function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: boolean }) {
-	if (!session) return;
-	viewStack = [view];
-	applyDepthDefaultForView(view);
-	// Tree + catalog selection (also used by alluvial drill via pushView)
-	syncFileSelection(startId, { skipPersist: true });
-	updateCaption(view);
-	updateBackButton();
-	syncDepthDropdown();
-	if (mountAlluvialGated(payloadForView(view))) {
-		setStatus(statusForView(view));
-	}
-	if (!opts?.skipPersist) persistSessionIfEnabled();
-}
-
-/** Catalog / tree / restore / drill: always open file-hub at startId. */
+/** Catalog / tree / restore: replace stack with file-hub at startId. */
 function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
-	openFileView(viewForFileOpen(startId), startId, opts);
+	navigateReplace(viewForFileOpen(startId), opts);
 }
 
 function openFromFiles(
@@ -1420,7 +1430,7 @@ function wireUi() {
 	$('atlas-reset')?.addEventListener('click', resetSession);
 
 	$('atlas-alluvial-back')?.addEventListener('click', () => {
-		popView();
+		navigatePop();
 	});
 
 	const weightDropdown = $('atlas-weight-axis') as (HTMLElement & { value?: string }) | null;
