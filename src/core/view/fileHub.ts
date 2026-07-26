@@ -1325,10 +1325,14 @@ function addExportRings(
 			d === 1 && classicLabels ? classicLabels : uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
-			// Deeper instances of a seed need a distinct display name
-			const isExtraInstance = d > 1 && fileSeed.has(f);
+			// Any second+ hop instance of a path needs a distinct label
+			// (seed extras and multi-hop non-seeds — avoid claimName "· file")
+			const hasShallower = [...Array(d).keys()].some(
+				(sd) => sd >= 1 && display.has(ik(f, sd)),
+			);
+			const isExtraInstance = d > 1 && (fileSeed.has(f) || hasShallower);
 			const preferred = isExtraInstance
-				? hopNodeDisplay(`${base} · h${d}`, 'out', d, radiusR, true)
+				? `${base} · h${d}`
 				: hopNodeDisplay(base, 'out', d, radiusR, plainHopLabels);
 			const name = claimName(
 				usedNames,
