@@ -19,6 +19,7 @@ import ModalFooter from '../components/ui/ModalFooter.astro';
 import ModalFooterButton from '../components/ui/ModalFooterButton.astro';
 import FileUploader from '../components/ui/FileUploader.astro';
 import FileUploaderDropContainer from '../components/ui/FileUploaderDropContainer.astro';
+import Tag from '../components/ui/Tag.astro';
 ---
 
 <Layout title="Arch Atlas">
@@ -64,10 +65,12 @@ import FileUploaderDropContainer from '../components/ui/FileUploaderDropContaine
 						class="atlas-demo__card"
 						data-demo="react-simple"
 					>
-						<span class="atlas-demo__tag">Low complexity</span>
-						<span class="atlas-demo__title">React app</span>
-						<span class="atlas-demo__blurb">
-							Vite + React Router: pages, hooks, api, shared lib. Clean layers.
+						<span class="atlas-demo__inner">
+							<Tag tone="teal" size="sm">Low complexity</Tag>
+							<span class="atlas-demo__title">React app</span>
+							<span class="atlas-demo__blurb">
+								Vite + React Router: pages, hooks, api, shared lib. Clean layers.
+							</span>
 						</span>
 					</button>
 					<button
@@ -76,10 +79,12 @@ import FileUploaderDropContainer from '../components/ui/FileUploaderDropContaine
 						class="atlas-demo__card"
 						data-demo="next-complex"
 					>
-						<span class="atlas-demo__tag atlas-demo__tag--high">High complexity</span>
-						<span class="atlas-demo__title">Next.js app</span>
-						<span class="atlas-demo__blurb">
-							App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
+						<span class="atlas-demo__inner">
+							<Tag tone="warning" size="sm">High complexity</Tag>
+							<span class="atlas-demo__title">Next.js app</span>
+							<span class="atlas-demo__blurb">
+								App Router, APIs, services, DB/Redis/Stripe, legacy pages — spaghetti OK.
+							</span>
 						</span>
 					</button>
 				</div>

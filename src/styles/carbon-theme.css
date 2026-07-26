@@ -1204,7 +1204,7 @@ cds-checkbox.atlas-persist {
   --cds-interactive: #14b8a6;
 }
 
-/* Built-in demo cards on upload step */
+/* Built-in demo cards on upload step — button role + Carbon tile chrome */
 .atlas-demo__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1217,55 +1217,54 @@ cds-checkbox.atlas-persist {
   }
 }
 
-/* Demo cards: Carbon layer tokens (button role kept for product demos) */
+/* Clickable demo surface: match .ui-tile layer tokens; keep type=button for app.ts */
 .atlas-demo__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
+  display: block;
+  width: 100%;
+  margin: 0;
   text-align: left;
   padding: 0.85rem 0.9rem;
   border-radius: 0.25rem;
   border: 1px solid var(--cds-border-subtle, #27272a);
-  background: var(--cds-layer, rgb(24 24 27 / 0.75));
-  color: var(--cds-text-primary, #e4e4e7);
+  background: var(--cds-layer-01, #18181b);
+  color: var(--cds-text-primary, #fafafa);
   cursor: pointer;
   font: inherit;
   transition: border-color 150ms ease, background 150ms ease;
 }
 
 .atlas-demo__card:hover {
-  border-color: #2dd4bf;
-  background: rgb(13 148 136 / 0.1);
+  border-color: var(--cds-border-interactive, #2dd4bf);
+  background: color-mix(in srgb, var(--cds-interactive, #14b8a6) 10%, var(--cds-layer-01, #18181b));
 }
 
 .atlas-demo__card:focus-visible {
-  outline: 2px solid #2dd4bf;
+  outline: 2px solid var(--cds-focus, #2dd4bf);
   outline-offset: 2px;
 }
 
-.atlas-demo__tag {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #2dd4bf;
+.atlas-demo__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
 }
 
-.atlas-demo__tag--high {
-  color: #fbbf24; /* amber-400 */
+.atlas-demo__inner .ui-tag,
+.atlas-demo__inner cds-tag {
+  pointer-events: none;
 }
 
 .atlas-demo__title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--cds-text-primary, #fafafa);
 }
 
 .atlas-demo__blurb {
   font-size: 0.75rem;
   line-height: 1.35;
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
 }
 
 .atlas-eyebrow {
