@@ -129,19 +129,19 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 **External** over the Imports column.
 
 Paint law: pure rail↔rail undrawn; **External package hop** bands
-(`parent → in-rail → External`) are undrawn and **redrawn as a straight**
-`parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
-Imports column does not show a package kink. Straighten identity comes from
+(`parent → in-rail → External` **and** direct pair-covered `parent → package`)
+are undrawn and **redrawn as a straight** `parent → package` ribbon in polish
+(`straightenExternalPackageBands`) so the Imports column does not show a package
+kink and deepest-hop attaches do not double-paint. Straighten identity comes from
 construction-time `meta.externalStraightPairs` (true residual parent→package
 widths), **not** from BFS ancestry on shared `·in-rail·hN` (shared rails merge
 multi-commodity pads; rail recovery invents parent×package cross-products).
-When pairs are present, polish also undraws **any** Carbon link matching a
-pair — including **direct** deepest-hop `parent → package` attaches that skip
-rails — so Carbon residual and straighten never double-paint the same edge.
-BFS remains a fallback only when meta pairs are absent (scaffold undraw only).
-**Out-rail free-source pads** (reverse column alignment into Exports free
-sources) are undrawn past/into terminators. Rail **nodes** stay hidden.
-Packages remain sinks.
+When pairs are present, straighten **all** pair packages even with no in-rail
+(pure File→pkg focus charts such as types.ts→zod). BFS + rail gate remain only
+when meta pairs are absent. Straighten ribbons are interactive (hover/click)
+like Carbon bands. **Out-rail free-source pads** (reverse column alignment into
+Exports free sources) are undrawn past/into terminators. Rail **nodes** stay
+hidden. Packages remain sinks.
 
 **Terminator chrome (contrast with column family):**
 

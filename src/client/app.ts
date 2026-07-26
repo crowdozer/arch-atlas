@@ -439,6 +439,8 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 		const terminators = payload.meta.terminators;
 		const exportTerminators = payload.meta.exportTerminators;
 		const externalStraightPairs = payload.meta.externalStraightPairs;
+		/** Label dim + cyan drill chip — shared by Carbon events and straight External bands. */
+		const focusApi = createAlluvialLabelFocus(holder);
 		const applyPolish = () => {
 			// Chart may have been destroyed between schedule and fire.
 			if (!chart) return;
@@ -448,13 +450,15 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 				exportTerminators,
 				externalStraightPairs,
 			});
+			// Straighten paths are re-injected each polish — rebind hit targets.
+			bindExternalStraightBandInteractions(holder, focusApi);
 		};
 		// Immediate pass for the constructor paint; re-apply on every later paint.
 		applyPolish();
 		bindAlluvialRenderPolish(chart, applyPolish);
 		bindAlluvialClicks(chart);
 		// Carbon dims path.link on hover but leaves label chips full opacity.
-		bindAlluvialLabelFocus(chart, holder);
+		bindAlluvialLabelFocus(chart, holder, focusApi);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);
 		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
@@ -544,22 +548,18 @@ function nodeNameFromGroup(g: Element): string | null {
 	return raw.replace(/\s+\([\d,.]+\)$/u, '');
 }
 
+type AlluvialLabelFocusApi = {
+	applyFocus: (active: Set<string>, drillTarget: string | null) => void;
+	clearFocus: () => void;
+};
+
 /**
  * Dim non-relevant node labels when hovering a ribbon or node — Carbon already
  * dims path.link stroke-opacity but leaves label chips at full opacity.
  * Port of Sentinel carbonCharts/client wireAlluvialLabelFocus.
+ * Shared with External straighten bands (injected DOM, not Carbon events).
  */
-function bindAlluvialLabelFocus(
-	instance: InstanceType<typeof AlluvialChart>,
-	holder: HTMLElement,
-): void {
-	const events = (
-		instance as unknown as {
-			services?: { events?: EventTarget };
-		}
-	).services?.events;
-	if (!events?.addEventListener) return;
-
+function createAlluvialLabelFocus(holder: HTMLElement): AlluvialLabelFocusApi {
 	const clearFocus = () => {
 		holder.classList.remove('ui-alluvial-label-dimming');
 		for (const g of holder.querySelectorAll('g.node-group')) {
@@ -569,6 +569,13 @@ function bindAlluvialLabelFocus(
 			title.style.opacity = '';
 			g.classList.remove('ui-alluvial-label-focus');
 			g.classList.remove('atlas-alluvial-drill-target');
+		}
+		// Reset straighten-band emphasis
+		for (const p of holder.querySelectorAll<SVGPathElement>(
+			'path.atlas-alluvial-external-straight',
+		)) {
+			p.classList.remove('atlas-alluvial-external-straight--focus');
+			p.style.strokeOpacity = p.dataset.baseOpacity || '0.5';
 		}
 	};
 
@@ -591,7 +598,42 @@ function bindAlluvialLabelFocus(
 				drillTarget != null && name === drillTarget,
 			);
 		}
+		// Straighten External bands: emphasize paths whose ends are in focus
+		for (const p of holder.querySelectorAll<SVGPathElement>(
+			'path.atlas-alluvial-external-straight',
+		)) {
+			const d = (p as unknown as { __data__?: {
+				source?: { name?: string };
+				target?: { name?: string };
+			} }).__data__;
+			const sn = d?.source?.name ?? '';
+			const tn = d?.target?.name ?? '';
+			const on =
+				(sn !== '' && active.has(sn)) || (tn !== '' && active.has(tn));
+			p.classList.toggle('atlas-alluvial-external-straight--focus', on);
+			if (!p.dataset.baseOpacity) {
+				p.dataset.baseOpacity = p.style.strokeOpacity || '0.5';
+			}
+			p.style.strokeOpacity = on ? '0.95' : ALLUVIAL_LABEL_UNFOCUS;
+		}
 	};
+
+	return { applyFocus, clearFocus };
+}
+
+function bindAlluvialLabelFocus(
+	instance: InstanceType<typeof AlluvialChart>,
+	holder: HTMLElement,
+	focusApi: AlluvialLabelFocusApi,
+): void {
+	const events = (
+		instance as unknown as {
+			services?: { events?: EventTarget };
+		}
+	).services?.events;
+	if (!events?.addEventListener) return;
+
+	const { applyFocus, clearFocus } = focusApi;
 
 	const namesFromLinkDatum = (datum: unknown): Set<string> | null => {
 		const d = datum as {
@@ -626,6 +668,20 @@ function bindAlluvialLabelFocus(
 			const n = l.source?.name;
 			if (n) s.add(n);
 		}
+		// Pair-covered External hops: undrawn Carbon links may still sit on the
+		// sankey node; also promote any straighten band endpoint sharing this name.
+		for (const p of holder.querySelectorAll<SVGPathElement>(
+			'path.atlas-alluvial-external-straight',
+		)) {
+			const ld = (p as unknown as { __data__?: {
+				source?: { name?: string };
+				target?: { name?: string };
+			} }).__data__;
+			const sn = ld?.source?.name;
+			const tn = ld?.target?.name;
+			if (sn === d.name && tn) s.add(tn);
+			if (tn === d.name && sn) s.add(sn);
+		}
 		return s;
 	};
 
@@ -654,6 +710,49 @@ function bindAlluvialLabelFocus(
 	events.addEventListener('alluvial-node-mouseout', (() => {
 		clearFocus();
 	}) as EventListener);
+}
+
+/**
+ * Injected External straight ribbons are not Carbon alluvial lines — wire
+ * hover/click so they participate in label focus + drill/inspect like real bands.
+ */
+function bindExternalStraightBandInteractions(
+	holder: HTMLElement,
+	focusApi: AlluvialLabelFocusApi,
+): void {
+	const { applyFocus, clearFocus } = focusApi;
+	for (const path of holder.querySelectorAll<SVGPathElement>(
+		'path.atlas-alluvial-external-straight',
+	)) {
+		if (path.dataset.atlasBound === '1') continue;
+		path.dataset.atlasBound = '1';
+		const ends = () => {
+			const d = (path as unknown as { __data__?: {
+				source?: { name?: string };
+				target?: { name?: string };
+			} }).__data__;
+			return {
+				sn: d?.source?.name ?? null,
+				tn: d?.target?.name ?? null,
+			};
+		};
+		path.addEventListener('mouseenter', () => {
+			const { sn, tn } = ends();
+			const active = new Set<string>();
+			if (sn) active.add(sn);
+			if (tn) active.add(tn);
+			if (!active.size) return;
+			applyFocus(active, drillTargetFromLine(sn, tn));
+		});
+		path.addEventListener('mouseleave', () => {
+			clearFocus();
+		});
+		path.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const { sn, tn } = ends();
+			handleLineClick(sn, tn);
+		});
+	}
 }
 
 function refForName(name: string): AlluvialNodeRef | null {

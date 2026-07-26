@@ -456,12 +456,21 @@ export function planExternalStraightBands(
 	}
 
 	for (const pkg of externalNames) {
-		// Must have at least one inbound from an in-rail (pad topology)
-		const directIn = inbound.get(pkg) ?? [];
-		if (!directIn.some((e) => isInRailName(e.source))) continue;
-
 		const pkgNode = nodeByName.get(pkg);
 		if (!pkgNode) continue;
+
+		// Pairs path: paint every construction parent even when topology is a
+		// *direct* file→package (no in-rail). Undraw already hides that Carbon
+		// link; without this gate-open, focus-only packages (types.ts→zod)
+		// vanish after pair undraw.
+		// BFS path: still require pad topology (rail inbound) so bare direct
+		// File→pkg charts leave Carbon alone (no double paint, no phantom).
+		if (!usePairs) {
+			const directIn = inbound.get(pkg) ?? [];
+			if (!directIn.some((e) => isInRailName(e.source))) continue;
+		} else if (!pairsByPkg.has(pkg)) {
+			continue;
+		}
 
 		const parents = usePairs
 			? (pairsByPkg.get(pkg) ?? []).map((p) => {
@@ -606,8 +615,13 @@ export function straightenExternalPackageBands(
 		);
 		path.setAttribute('fill', 'none');
 		path.setAttribute('stroke-width', String(Math.max(1, plan.width)));
+		// Hit-testable: undrawn Carbon pair links have pointer-events none;
+		// straighten is the only interactive ribbon for External package hops.
+		path.style.pointerEvents = 'stroke';
 		path.style.stroke = plan.stroke;
-		path.style.strokeOpacity = plan.opacity || '0.5';
+		const op = plan.opacity || '0.5';
+		path.style.strokeOpacity = op;
+		path.dataset.baseOpacity = op;
 		path.setAttribute('aria-label', `${plan.parent} → ${plan.packageName}`);
 		(path as unknown as { __data__?: unknown }).__data__ = {
 			source: { name: plan.parent, category: plan.parentCategory },

@@ -138,6 +138,24 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Landed:** construction-time `meta.externalStraightPairs`; polish prefers pairs; BFS fallback only when meta absent (simple fixtures).
 - **Tests:** multi-parent shared-rail unit (BFS 9 vs pairs 3); userService meta denies false mesh.
 
+### E13 — Direct deepest package attach double-paint + pure-direct vanish
+
+- **Symptom A:** main.tsx → react shows 4 parents but **5 bands** (useUser thin+thick).
+- **Cause A:** deepest file hop short-circuits `padBetween` to direct `file→pkg`;
+  Carbon paints it; straighten also paints because package has rail inbound from
+  shallower parents.
+- **Fix A:** undraw **pair-covered** parent→package links (incl. direct), then
+  straighten once from `externalStraightPairs`.
+- **Symptom B:** types.ts → zod **missing** after A.
+- **Cause B:** pure-direct packages have no in-rail inbound; straighten still
+  required rail gate → undraw without redraw.
+- **Fix B:** when pairs present, straighten **all** pair packages (no rail gate);
+  rail gate remains for pairless BFS fallback.
+- **Symptom C:** External straight bands ignore hover highlight / drill.
+- **Cause C:** injected SVG not in Carbon alluvial-line events.
+- **Fix C:** `pointer-events: stroke` + native mouseenter/leave/click wired to
+  same label-focus + `handleLineClick` as Carbon bands.
+
 ### E12 — Single-hop reverse terminator missing cyan (AdminFlags)
 
 - **Symptom:** `app/dashboard/page.tsx` on Exports is the only reverse free source; no cyan.

@@ -941,6 +941,71 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		expect(planParents.size).toBe(4);
 	});
 
+	it('types.ts→zod: pairs-only direct File→pkg still straightens (no rail gate)', () => {
+		// After pair undraw, packages with only direct attaches must still get
+		// a straighten plan — otherwise External vanishes (types.ts hub).
+		const { graph } = indexFiles(
+			walkFixtures(path.join(fixturesRoot, 'demo-react-simple')),
+		);
+		const payload = projectFileHub(graph, 'src/types.ts', {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		const zodPair = pairs.find((p) => p.packageName === 'zod');
+		expect(zodPair, 'types→zod construction pair').toBeTruthy();
+		expect(zodPair!.parent).toBe('src/types.ts');
+
+		const direct = payload.data.find(
+			(l) => l.source === 'src/types.ts' && l.target === 'zod',
+		);
+		expect(direct, 'payload File→zod').toBeTruthy();
+		// No in-rail into zod on pure focus-package chart
+		const railIntoZod = payload.data.some(
+			(l) =>
+				l.target === 'zod' &&
+				String(l.source).includes('in-rail'),
+		);
+		expect(railIntoZod, 'no pad rails required').toBe(false);
+
+		const nodes = payload.options.alluvial.nodes.map((n, i) => ({
+			name: n.name,
+			category: n.category,
+			x0: n.category === 'External' ? 300 : 100,
+			x1: n.category === 'External' ? 304 : 104,
+			y0: i * 16,
+			y1: i * 16 + 10,
+		}));
+		const links = payload.data.map((l) => ({
+			source: l.source,
+			target: l.target,
+			width: l.value,
+		}));
+		// Without pairs: rail-gated planner must not invent straighten
+		expect(planExternalStraightBands(nodes, links)).toHaveLength(0);
+		// With pairs: one straight types→zod band
+		const planned = planExternalStraightBands(nodes, links, pairs);
+		const zodPlans = planned.filter((p) => p.packageName === 'zod');
+		expect(zodPlans).toHaveLength(1);
+		expect(zodPlans[0]!.parent).toBe('src/types.ts');
+
+		// Undraw File→zod when pairs present
+		const holder = new MiniEl('div', ['ui-carbon-chart']);
+		const svg = new MiniEl('svg', []);
+		holder.appendChild(svg);
+		const linkEl = new MiniEl('path', ['link']);
+		linkEl.__data__ = {
+			source: { name: 'src/types.ts', category: 'File' },
+			target: { name: 'zod', category: 'External' },
+			width: 1,
+		};
+		svg.appendChild(linkEl);
+		hideAlluvialRails(holder as unknown as HTMLElement, { pairs });
+		expect(linkEl.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+	});
+
 	it('marks terminators with contrast classes; polish wires both', () => {
 		const holder = fixtureHolder();
 		// Reverse free sources → cyan class
