@@ -224,12 +224,20 @@ export function isOutRailName(name: string): boolean {
 }
 
 /**
- * Import free-source scaffolding link — either end is an **in-rail**.
- * These bands are undrawn (ghost columns). Export File→out-rail→target
- * ribbons carry real File mass and must **not** match.
+ * Pad bands that should be undrawn (ghost columns).
+ *
+ * Hub free-source reverse pads use **out-rails** (export side). Forward
+ * File→deep file pads use **in-rails** and carry real mass to dual-path seeds
+ * (e.g. logger at longest dist 3 while also a direct focus import) — those
+ * bands must stay painted. Undraw only pure rail→rail free-source chains that
+ * never touch a real file/package (legacy reverse free-source scaffold).
+ *
+ * Historically this matched any in-rail endpoint and erased import-side mass
+ * pads, making deep dual-path files look disconnected / under External.
  */
 export function isImportPadScaffoldLink(source: string, target: string): boolean {
-	return isInRailName(source) || isInRailName(target);
+	// Pure rail↔rail only; File/file/package endpoints keep their ribbons.
+	return isInRailName(source) && isInRailName(target);
 }
 
 function linkEndsFromUnknown(

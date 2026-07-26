@@ -358,18 +358,21 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 	});
 
 	/**
-	 * Paint law: only import free-source scaffolding is invisible pad-band.
-	 * Export File→out-rail→deep-target carries real File mass — not scaffold.
+	 * Paint law: only pure in-rail↔in-rail is invisible pad-band.
+	 * File→in-rail→deep file carries real dual-path seed mass and must paint.
+	 * Out-rail mass carriers also paint.
 	 */
-	it('import pad scaffold vs export out-rail mass carriers', () => {
+	it('import pad scaffold vs forward mass carriers', () => {
 		const inRail = '\u200b·in-rail·h2';
 		const outRail = '\u200b·out-rail·h1';
 		const file = 'src/types.ts';
 		const focus = 'UserCard.tsx';
-		// Import free-source pads → scaffold
-		expect(isImportPadScaffoldLink(inRail, file)).toBe(true);
+		// Pure rail↔rail only
 		expect(isImportPadScaffoldLink(inRail, '\u200b·in-rail·h1')).toBe(true);
-		// Export intermediate pads → paint-eligible (NOT scaffold)
+		// File↔rail mass pads paint (logger dual-path case)
+		expect(isImportPadScaffoldLink(inRail, file)).toBe(false);
+		expect(isImportPadScaffoldLink(focus, inRail)).toBe(false);
+		// Out-rail mass carriers paint
 		expect(isImportPadScaffoldLink(focus, outRail)).toBe(false);
 		expect(isImportPadScaffoldLink(outRail, file)).toBe(false);
 		expect(isImportPadScaffoldLink(outRail, '\u200b·out-rail·h2')).toBe(false);

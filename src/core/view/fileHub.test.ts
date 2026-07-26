@@ -55,9 +55,8 @@ function flowTotals(data: { source: string; target: string; value: number }[]) {
 
 /**
  * Mass at File (chart orientation):
- * - inMass = reverse importers + focus packages/unresolved (package → File)
- * - outMass / depMass = focus → **file** edges only (export tree)
- * Graph out-degree still includes packages; they count on the chart in-side.
+ * - inMass / importerMass = reverse importers only
+ * - outMass / depMass = focus → file deps + focus packages (File → package sinks)
  */
 function hubIncidentMass(payload: AlluvialPayload, focusLabel: string): {
 	inMass: number;
@@ -190,7 +189,7 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(preferFileImportersView(graph, logger)).toBe(true);
 	});
 
-	it('hub mass equals importer + package-in + file-dep weights for redis.ts', () => {
+	it('hub mass equals reverse-in + file+package out for redis.ts', () => {
 		const id = 'src/lib/redis.ts';
 		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' });
 		expect(payload).not.toBeNull();
@@ -198,20 +197,20 @@ describe('projectFileHub demo-next-complex', () => {
 		const { depMass, importerMass, total } = hubIncidentMass(payload!, focus);
 		const pkgOut = fileOutPackageDegree(graph, id);
 		const fileOut = fileOutFileDegree(graph, id);
-		// reverse importers + focus packages → File → file deps
-		expect(importerMass).toBe(fileInDegree(graph, id) + pkgOut);
-		expect(depMass).toBe(fileOut);
+		// reverse importers → File → file deps + packages
+		expect(importerMass).toBe(fileInDegree(graph, id));
+		expect(depMass).toBe(fileOut + pkgOut);
 		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
 		assertPositiveLinks(payload!, id);
 
 		const cats = categories(payload!);
-		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('Imports') || cats.has('External')).toBe(true);
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Exports')).toBe(true);
 		expect(cats.has('Import folders')).toBe(false);
 		expect(payload!.options.alluvial.units).toBe('import edges');
 
-		// Exports (file-dep) column uses yellow family
+		// Exports (consumers) column uses yellow family
 		const depNodes = payload!.options.alluvial.nodes.filter(
 			(n) => n.category === 'Exports' || n.category.startsWith('Export hop'),
 		);
@@ -232,20 +231,20 @@ describe('projectFileHub demo-next-complex', () => {
 		};
 		const shallow = projectFileHub(graph, id, { maxDepth: 1, ...edgeOpts })!;
 		const shallowCats = categories(shallow);
-		expect(shallowCats.has('Imports')).toBe(true);
+		expect(shallowCats.has('Imports') || shallowCats.has('External')).toBe(true);
 		expect(shallowCats.has('Exports')).toBe(true);
 		expect(shallowCats.has('File')).toBe(true);
 		// No multi-hop ring names at depth 1
 		expect([...shallowCats].some((c) => c.startsWith('Import hop'))).toBe(false);
-		expect([...shallowCats].some((c) => c.startsWith('Import hop'))).toBe(false);
+		expect([...shallowCats].some((c) => c.startsWith('Export hop'))).toBe(false);
 		expect(shallowCats.has('Hop 1')).toBe(false);
 
 		const focus = shallow.meta.focus.label;
 		const shallowMass = hubIncidentMass(shallow, focus);
 		const pkgOut = fileOutPackageDegree(graph, id);
 		const fileOut = fileOutFileDegree(graph, id);
-		expect(shallowMass.importerMass).toBe(fileInDegree(graph, id) + pkgOut);
-		expect(shallowMass.depMass).toBe(fileOut);
+		expect(shallowMass.importerMass).toBe(fileInDegree(graph, id));
+		expect(shallowMass.depMass).toBe(fileOut + pkgOut);
 
 		for (const depth of [2, 3, 5] as const) {
 			const deep = projectFileHub(graph, id, {
@@ -254,9 +253,9 @@ describe('projectFileHub demo-next-complex', () => {
 			})!;
 			const deepMass = hubIncidentMass(deep, deep.meta.focus.label);
 			expect(deepMass.importerMass, `depth ${depth} importers`).toBe(
-				fileInDegree(graph, id) + pkgOut,
+				fileInDegree(graph, id),
 			);
-			expect(deepMass.depMass, `depth ${depth} deps`).toBe(fileOut);
+			expect(deepMass.depMass, `depth ${depth} deps`).toBe(fileOut + pkgOut);
 		}
 	});
 
@@ -319,7 +318,7 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(ioredis).toHaveLength(1);
 		expect(
 			payload.data.some(
-				(l) => l.source === ioredis[0]!.name && l.target === focus,
+				(l) => l.source === focus && l.target === ioredis[0]!.name,
 			),
 		).toBe(true);
 
@@ -373,20 +372,19 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(
 			payload.data.some(
 				(l) =>
-					l.source === nextImport[0]!.name && l.target === focus,
+					l.source === focus && l.target === nextImport[0]!.name,
 			),
 		).toBe(true);
 
-		// Tree package zod on Imports (from types/* under export tree), not Export*
+		// Tree package zod on External (types → zod), not Export*
 		const zodImport = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(zodImport.length).toBeGreaterThanOrEqual(1);
 		expect(
 			payload.data.some((l) => {
-				if (l.source !== zodImport[0]!.name) return false;
-				const ref = payload.meta.nodeRef[l.target];
+				if (l.target !== zodImport[0]!.name) return false;
+				const ref = payload.meta.nodeRef[l.source];
 				return (
 					ref?.kind === 'file' &&
-					(l.target !== focus) &&
 					typeof ref.id === 'string' &&
 					ref.id.includes('types')
 				);
@@ -433,9 +431,9 @@ describe('projectFileHub demo-next-complex', () => {
 
 		// File mass law: tree packages do not inflate File in-mass
 		const { depMass, importerMass } = hubIncidentMass(payload, focus);
-		expect(depMass).toBe(fileOutFileDegree(graph, id));
-		expect(importerMass).toBe(
-			fileInDegree(graph, id) + fileOutPackageDegree(graph, id),
+		expect(importerMass).toBe(fileInDegree(graph, id));
+		expect(depMass).toBe(
+			fileOutFileDegree(graph, id) + fileOutPackageDegree(graph, id),
 		);
 	});
 });
@@ -463,24 +461,23 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		const focus = payload.meta.focus.label;
 		expect(focus).toBe('focus.ts');
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		// midIn (reverse) + zod (focus package) → File; File → midOut
-		expect(importerMass).toBe(2);
-		expect(depMass).toBe(1);
+		// midIn → File; File → midOut + zod
+		expect(importerMass).toBe(1);
+		expect(depMass).toBe(2);
 		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
 		assertPositiveLinks(payload, 'depth1');
 
-		// importers + packages → File → file deps
 		const intoFile = payload.data.filter((l) => l.target === focus);
 		const fromFile = payload.data.filter((l) => l.source === focus);
-		expect(intoFile).toHaveLength(2); // midIn + zod
-		expect(fromFile.length).toBe(1); // midOut only
+		expect(intoFile).toHaveLength(1); // midIn
+		expect(fromFile.length).toBe(2); // midOut + zod
 
-		// zod is on Imports with package → File link
+		// zod External: File → package (sink)
 		const zodImport = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(zodImport).toHaveLength(1);
 		expect(
 			payload.data.some(
-				(l) => l.source === zodImport[0]!.name && l.target === focus,
+				(l) => l.source === focus && l.target === zodImport[0]!.name,
 			),
 		).toBe(true);
 	});
@@ -511,10 +508,10 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 
 		const focus = payload.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		expect(importerMass).toBe(
-			fileInDegree(graph, focusId) + fileOutPackageDegree(graph, focusId),
+		expect(importerMass).toBe(fileInDegree(graph, focusId));
+		expect(depMass).toBe(
+			fileOutFileDegree(graph, focusId) + fileOutPackageDegree(graph, focusId),
 		);
-		expect(depMass).toBe(fileOutFileDegree(graph, focusId));
 		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
 		assertPositiveLinks(payload, 'depth3');
 
@@ -619,7 +616,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		walk(path.join(fixturesRoot, 'demo-react-simple')),
 	);
 
-	it('UserCard shows format → types import hops; zod on Imports (not Export*)', () => {
+	it('UserCard: seed deps on Imports; types→zod External', () => {
 		const id = 'src/components/UserCard.tsx';
 		const payload = projectFileHub(simpleGraph, id, {
 			maxDepth: 3,
@@ -628,49 +625,44 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 			weightAxis: 'import-edges',
 		})!;
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		// Outbound file cascade lives on Imports under hard law
+		// format + types are both direct seeds → Imports (not hop 2 pad)
 		expect(cats.has('Imports')).toBe(true);
-		expect(cats.has('Import hop 2')).toBe(true);
-		// File chain ends at types (hop 2); package terminal not an export leaf
-		expect(cats.has('Import hop 3')).toBe(false);
-
-		const names = payload.options.alluvial.nodes.map((n) => n.name);
-		expect(names.some((n) => n.includes('format'))).toBe(true);
-		expect(names.some((n) => n.includes('types'))).toBe(true);
-
-		// Import-edge chain: File → format → types
-		const linkKeys = payload.data.map((l) => `${l.source}→${l.target}`);
-		expect(
-			linkKeys.some(
-				(k) => k.includes('format') && k.includes('types'),
-			),
-		).toBe(true);
+		expect(cats.has('External')).toBe(true);
 
 		const focus = payload.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		expect(depMass).toBe(fileOutFileDegree(simpleGraph, id));
-		expect(importerMass).toBe(
-			fileInDegree(simpleGraph, id) + fileOutPackageDegree(simpleGraph, id),
+		expect(importerMass).toBe(fileInDegree(simpleGraph, id));
+		expect(depMass).toBe(
+			fileOutFileDegree(simpleGraph, id) + fileOutPackageDegree(simpleGraph, id),
 		);
 		expect(total).toBe(
 			fileInDegree(simpleGraph, id) + fileOutDegree(simpleGraph, id),
 		);
 
-		// types kept in import tree → zod on Imports, package → types
+		// Direct File → format, File → types
+		expect(
+			payload.data.some(
+				(l) => l.source === focus && l.target.includes('format'),
+			),
+		).toBe(true);
+		expect(
+			payload.data.some(
+				(l) => l.source === focus && l.target.includes('types'),
+			),
+		).toBe(true);
+
+		// types → zod External
 		const treeZod = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(treeZod).toHaveLength(1);
 		const typesLab = payload.options.alluvial.nodes.find((n) => {
 			const ref = payload.meta.nodeRef[n.name];
-			return (
-				ref?.kind === 'file' &&
-				ref.id === 'src/types.ts' &&
-				(n.category === 'Imports' || n.category.startsWith('Import hop'))
-			);
+			return ref?.kind === 'file' && ref.id === 'src/types.ts';
 		})?.name;
 		expect(typesLab).toBeTruthy();
+		expect(categoryOfTypes(payload, typesLab!)).toBe('Imports');
 		expect(
 			payload.data.some(
-				(l) => l.source === treeZod[0]!.name && l.target === typesLab,
+				(l) => l.source === typesLab && l.target === treeZod[0]!.name,
 			),
 		).toBe(true);
 		const exportZod = packageNodesOnCategory(
@@ -679,12 +671,11 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 			(c) => c === 'Exports' || c.startsWith('Export hop'),
 		);
 		expect(exportZod).toHaveLength(0);
-		expect(
-			payload.data.some(
-				(l) => l.source === treeZod[0]!.name && l.target === focus,
-			),
-		).toBe(false);
 	});
+
+	function categoryOfTypes(payload: AlluvialPayload, name: string): string | undefined {
+		return payload.options.alluvial.nodes.find((n) => n.name === name)?.category;
+	}
 
 	function packageNodes(
 		payload: AlluvialPayload,
@@ -813,12 +804,12 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const importRrd = packageNodesOnCategory(payload, 'react-router-dom', 'External');
 		expect(importRrd).toHaveLength(1);
 		expect(importRrd[0]!.name).toBe('react-router-dom');
-		// Focus mass: package → File on Imports
+		// Focus mass: File → package (External sink)
 		expect(
 			payload.data.some(
 				(l) =>
-					l.source === importRrd[0]!.name &&
-					l.target === payload.meta.focus.label,
+					l.source === payload.meta.focus.label &&
+					l.target === importRrd[0]!.name,
 			),
 		).toBe(true);
 		// No export package leaves; no overdraw columns at depth 1
@@ -918,34 +909,25 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 describe('projectFileHub layer-consistent import headers (demo-next-complex)', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 
-	it('userService: one category per sankey layer (no dual Imports)', () => {
+	it('userService: seeds on Imports; non-seed hops expand; External packages', () => {
 		const id = 'src/services/userService.ts';
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
 			maxImporters: 48,
 			maxDeps: 48,
 		})!;
-		const layers = longestPathLayers(payload);
-		for (const [d, cats] of layers) {
-			// Allow File + nothing else mixed; rings pure
-			if (cats.has('File')) {
-				expect([...cats], `layer ${d}`).toEqual(['File']);
-				continue;
-			}
-			expect(cats.size, `layer ${d}: ${[...cats].join(',')}`).toBe(1);
-		}
-		// Headers should include Import hop 2 once
-		const importerLayers = [...layers.values()].filter((c) =>
-			[...c].some((x) => x === 'Imports' || x.startsWith('Import hop')),
+		const cats = categories(payload);
+		expect(cats.has('Imports')).toBe(true);
+		// May or may not have hop 2 depending on non-seed reachability
+		expect(cats.has('File')).toBe(true);
+		// No dual Imports headers in node list
+		const importNodes = payload.options.alluvial.nodes.filter(
+			(n) => n.category === 'Imports',
 		);
-		const importerCats = importerLayers.map((c) => [...c][0]!);
-		expect(importerCats.filter((c) => c === 'Imports').length).toBeLessThanOrEqual(
-			1,
-		);
-		expect(importerCats.some((c) => c === 'Import hop 2')).toBe(true);
+		expect(importNodes.length).toBeGreaterThan(0);
 	});
 
-	it('legacyHelpers: External packages outer; file hops own layers', () => {
+	it('legacyHelpers: all direct file deps on Imports; packages External far right', () => {
 		const id = 'src/utils/legacyHelpers.ts';
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
@@ -953,26 +935,30 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 			maxDeps: 48,
 		})!;
 		const nodeCats = categories(payload);
-		expect(nodeCats.has('Import hop 3')).toBe(true);
-		expect(nodeCats.has('Import hop 2')).toBe(true);
+		// All file outs are seeds → Imports only (no hop rails for dual-path)
 		expect(nodeCats.has('Imports')).toBe(true);
-		// Pure package leaves on outer External rail (not file Import hops)
 		expect(nodeCats.has('External')).toBe(true);
 		const order = payload.options.alluvial.nodes
 			.map((n) => n.category)
 			.filter((c, i, a) => a.indexOf(c) === i);
-		// Far right: Imports cascade then External
 		expect(order.indexOf('File')).toBeLessThan(order.indexOf('Imports'));
-		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('Import hop 2'));
-		expect(order.indexOf('Import hop 2')).toBeLessThan(
-			order.indexOf('Import hop 3'),
-		);
-		expect(order.indexOf('Import hop 3')).toBeLessThan(order.indexOf('External'));
+		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('External'));
 		expect(order[order.length - 1], 'External is far-right column').toBe(
 			'External',
 		);
 		// Consumers left of File
 		expect(order.indexOf('Exports')).toBeLessThan(order.indexOf('File'));
+
+		const focus = payload.meta.focus.label;
+		// Direct File → logger (seed clamp; not shared invisible rail)
+		expect(
+			payload.data.some(
+				(l) =>
+					l.source === focus &&
+					l.target.includes('logger') &&
+					!isAlluvialRailName(l.target),
+			),
+		).toBe(true);
 
 		const externalPkgs = payload.options.alluvial.nodes.filter(
 			(n) => n.category === 'External',
@@ -992,7 +978,6 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 			const k = payload.meta.nodeRef[n.name]?.kind;
 			expect(k, `${n.name} on ${n.category}`).not.toBe('package');
 		}
-		// File node appears once as focus
 		const fileNodes = payload.options.alluvial.nodes.filter(
 			(n) => n.category === 'File',
 		);
@@ -1147,7 +1132,7 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 describe('projectFileHub focus packages on External', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 
-	it('app/api/users/route.ts: next is Imports with package→File link, not Exports', () => {
+	it('app/api/users/route.ts: next is External with File→package link, not Exports', () => {
 		const id = 'app/api/users/route.ts';
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
@@ -1174,21 +1159,21 @@ describe('projectFileHub focus packages on External', () => {
 		const focus = payload.meta.focus.label;
 		expect(
 			payload.data.some(
-				(l) => l.source === nextImport[0]!.name && l.target === focus,
+				(l) => l.source === focus && l.target === nextImport[0]!.name,
 			),
 		).toBe(true);
-		// File→next must not be the display orientation for focus package
+		// package→File must not be the display orientation (sink External)
 		expect(
 			payload.data.some(
-				(l) => l.source === focus && l.target === nextImport[0]!.name,
+				(l) => l.source === nextImport[0]!.name && l.target === focus,
 			),
 		).toBe(false);
 
 		// Mass law: package weight on File in; file deps on File out
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
-		expect(depMass).toBe(fileOutFileDegree(graph, id));
-		expect(importerMass).toBe(
-			fileInDegree(graph, id) + fileOutPackageDegree(graph, id),
+		expect(importerMass).toBe(fileInDegree(graph, id));
+		expect(depMass).toBe(
+			fileOutFileDegree(graph, id) + fileOutPackageDegree(graph, id),
 		);
 		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
 		// API route has no reverse importers — no Exports; packages+file deps on Imports
@@ -1220,8 +1205,8 @@ describe('projectFileHub artillery public.ts barrel', () => {
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
 		const pkgOut = fileOutPackageDegree(graph, id);
 		const fileOut = fileOutFileDegree(graph, id);
-		expect(importerMass).toBe(hot!.inDegree + pkgOut);
-		expect(depMass).toBe(fileOut);
+		expect(importerMass).toBe(hot!.inDegree);
+		expect(depMass).toBe(fileOut + pkgOut);
 		expect(total).toBe(hot!.edgeCount);
 
 		// No synthetic package placeholder

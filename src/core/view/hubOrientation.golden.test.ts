@@ -326,3 +326,72 @@ describe('hub orientation hard law — demo-react-simple UserCard', () => {
 		}
 	});
 });
+
+/**
+ * Carbon/@d3-sankey columns = path length from free sources; headers = category
+ * at each x0. Topology tests catch free-source packages and dual-path seeds
+ * that only connect via undrawn scaffolds.
+ */
+describe('hub Carbon topology tooling', () => {
+	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+
+	function freeSources(payload: AlluvialPayload): string[] {
+		const targets = new Set(payload.data.map((l) => l.target));
+		return payload.options.alluvial.nodes
+			.map((n) => n.name)
+			.filter((n) => !targets.has(n));
+	}
+
+	it('no package/unresolved is a free source (would share left column with export free-sources)', () => {
+		for (const id of [
+			'app/api/users/route.ts',
+			'src/utils/legacyHelpers.ts',
+			'middleware.ts',
+		]) {
+			const payload = hub(graph, id);
+			for (const name of freeSources(payload)) {
+				const ref = payload.meta.nodeRef[name];
+				expect(
+					ref?.kind,
+					`${id}: free source ${name} must not be package`,
+				).not.toBe('package');
+				expect(ref?.kind).not.toBe('unresolved');
+			}
+		}
+	});
+
+	it('users route: logger is direct seed on Imports with File→logger (not External, not rail pad)', () => {
+		const payload = hub(graph, 'app/api/users/route.ts');
+		const focus = payload.meta.focus.label;
+		const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
+		expect(loggerLabs.length).toBeGreaterThan(0);
+		for (const lab of loggerLabs) {
+			const cat = categoryOf(payload, lab);
+			// Direct focus import → Imports column (not deepest hop / External)
+			expect(cat, `logger cat=${cat}`).toBe('Imports');
+			expect(isExternalCategory(cat)).toBe(false);
+			// Direct File → logger (no invisible shared rail with types/user)
+			expect(
+				payload.data.some(
+					(l) => l.source === focus && l.target === lab && l.value > 0,
+				),
+				'logger must connect File → logger directly',
+			).toBe(true);
+			// No rail → logger as sole inbound (dual-path pad artifact)
+			const inbound = payload.data.filter((l) => l.target === lab);
+			expect(
+				inbound.every((l) => !isAlluvialRailName(l.source)),
+				'logger must not be fed only via pad rails',
+			).toBe(true);
+		}
+	});
+
+	it('External nodes are only package/unresolved/bucket (never files)', () => {
+		const payload = hub(graph, 'app/api/users/route.ts');
+		for (const n of payload.options.alluvial.nodes) {
+			if (n.category !== 'External') continue;
+			const k = payload.meta.nodeRef[n.name]?.kind;
+			expect(['package', 'unresolved', 'bucket']).toContain(k);
+		}
+	});
+});

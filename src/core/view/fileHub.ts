@@ -14,19 +14,24 @@
  *   focus (inbound reverse BFS). Never outbound deps.
  * - **Imports / Import hop k (right of File):** outbound **file** deps only.
  *   Never reverse consumers; never package leaves.
- * - **External (far right):** pure package/unresolved leaves (node_modules /
- *   unresolved) — one extra import-rail depth past file hops. Display:
- *   package → parent file (or File for focus packages).
+ * - **External:** pure package/unresolved leaves (node_modules / unresolved).
+ *   Display links are **parent → package** (sinks). Never free sources —
+ *   Carbon headers = category of nodes at each d3-sankey x0; free-source
+ *   packages would share the leftmost layer with free-source export consumers
+ *   (e.g. app/layout.tsx under an "External" header). Do **not** pad package
+ *   mass through ·in-rail· (polish undraws those bands → floating packages).
  *
- * **Edge orientation** remains A → B means A imports B. Carbon columns are
- * driven by **category**.
+ * **Edge orientation** remains A → B means A imports B.
  *
- * **Depth (viz-only)** dual hop radius for file hops; External is an extra
- * outer column when any package leaf is present.
+ * **Import-tree placement (dual-path seeds):**
+ * Focus-incident file deps (seeds) always sit on **Imports** (dist 1) with a
+ * direct File → seed link. Longest-path dist only expands **non-seed** files
+ * (e.g. format → types). Placing seeds at longest dist forced File → in-rail →
+ * seed pads that looked like floating External nodes (logger on users route).
  *
  * **Mass (chart File node):**
- * - Into File: reverse importer edges + focus package/unresolved (package→File)
- * - Out of File: focus → **file** deps only
+ * - Into File: reverse importer edges only
+ * - Out of File: focus → file deps + focus package/unresolved
  *
  * **{@link PackageLeafMode}** placement no-op for export packages; still
  * controls plain hop labels (`per-hop` vs plain).
@@ -263,10 +268,28 @@ export function projectFileHub(
 		}
 	}
 
-	// --- Imports side: focus package / unresolved (package → File) ---
+	// --- Imports side: forward longest-path file deps (what focus imports) ---
+	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
 	const focusPkgEdges = outEdges.filter(
 		(e) => e.toKind === 'package' || e.toKind === 'unresolved',
 	);
+	const importTreeResult = addExportRings({
+		graph,
+		fileId,
+		fileLabel,
+		outEdges: fileOutEdges,
+		hubRadius,
+		maxPerHop: Math.min(48, maxDeps),
+		weightAxis,
+		packageLeafMode,
+		addLink,
+		nodeRef,
+		nodeMeta,
+		usedNames,
+		classicLabels,
+	});
+
+	// --- External: focus packages as File → package sinks (direct, painted) ---
 	if (focusPkgEdges.length) {
 		addFocusPackageImports({
 			graph,
@@ -281,33 +304,11 @@ export function projectFileHub(
 		});
 	}
 
-	// --- Imports side: forward longest-path file deps (what focus imports) ---
-	const fileOutEdges = outEdges.filter((e) => e.toKind === 'file');
-	let importFileDisplay = new Map<string, string>();
-	if (fileOutEdges.length) {
-		importFileDisplay = addExportRings({
-			graph,
-			fileId,
-			fileLabel,
-			outEdges: fileOutEdges,
-			hubRadius,
-			maxPerHop: Math.min(48, maxDeps),
-			weightAxis,
-			packageLeafMode,
-			addLink,
-			nodeRef,
-			nodeMeta,
-			usedNames,
-			classicLabels,
-		});
-	}
-
-	// --- Imports side: packages of kept import-tree files (package → that file) ---
-	if (importFileDisplay.size) {
+	// --- External: packages of import-tree files as parent → package sinks ---
+	if (importTreeResult.tree.size) {
 		addExportTreePackageImports({
 			graph,
-			fileLabel,
-			exportFileDisplay: importFileDisplay,
+			importTree: importTreeResult.tree,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
 			addLink,
@@ -470,8 +471,8 @@ function edgeWeightIntoSet(
 }
 
 /**
- * Focus-incident package/unresolved → **External** column (outer import rail).
- * Display: package → File. Graph edge remains file → package.
+ * Focus-incident package/unresolved → **External** sinks.
+ * **File → package** only (no in-rail pad — those bands are undrawn by polish).
  */
 function addFocusPackageImports(
 	args: LinkBuilder & {
@@ -531,13 +532,13 @@ function addFocusPackageImports(
 
 	for (const entry of kept) {
 		const name = claimName(usedNames, entry.preferredLabel, entry.ref.kind);
-		// package → File; column External (outer import rail)
-		addLink(name, fileLabel, entry.weight);
 		nodeRef[name] = entry.ref;
 		nodeMeta.set(name, {
 			category: EXTERNAL_IMPORT_CATEGORY,
 			color: entry.color,
 		});
+		// Direct File → package (visible band; not free-source)
+		addLink(fileLabel, name, entry.weight);
 	}
 	if (overflow.length) {
 		const otherName = claimName(
@@ -545,34 +546,31 @@ function addFocusPackageImports(
 			moreCountLabel(overflow.length),
 			'external-pkgs',
 		);
-		for (const entry of overflow) {
-			addLink(otherName, fileLabel, entry.weight);
-		}
 		nodeRef[otherName] = { kind: 'bucket', id: 'other-external-pkgs' };
 		nodeMeta.set(otherName, {
 			category: EXTERNAL_IMPORT_CATEGORY,
 			color: TEAL.other,
 		});
+		for (const entry of overflow) {
+			addLink(fileLabel, otherName, entry.weight);
+		}
 	}
 }
 
 /**
- * Packages imported by kept **import-tree** files → **External** column
- * (display: package → importingFile). Never on Export* or file Import hops.
- *
- * One display node per package id (reuses focus External node when shared).
- * Structural mass only when targeting intermediate files (not File).
+ * Packages of kept import-tree files → **External** sinks (**parent → package**).
+ * Direct edges only (no in-rail pad). Never free sources; never Export*.
  */
 function addExportTreePackageImports(
 	args: LinkBuilder & {
-		/** path → display name for kept non-bucket import-tree files */
-		exportFileDisplay: Map<string, string>;
+		/** path → { label, dist } for kept non-bucket import-tree files */
+		importTree: Map<string, { lab: string; dist: number }>;
 		maxPerHop: number;
 	},
 ): void {
 	const {
 		graph,
-		exportFileDisplay,
+		importTree,
 		maxPerHop,
 		weightAxis,
 		addLink,
@@ -592,9 +590,9 @@ function addExportTreePackageImports(
 	};
 	const recs = new Map<string, PkgRec>();
 
-	for (const fPath of exportFileDisplay.keys()) {
-		const fLab = exportFileDisplay.get(fPath)!;
-		if (nodeRef[fLab]?.kind === 'bucket') continue;
+	for (const fPath of importTree.keys()) {
+		const entry = importTree.get(fPath)!;
+		if (nodeRef[entry.lab]?.kind === 'bucket') continue;
 		for (const e of graph.edges) {
 			if (e.from !== fPath) continue;
 			if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
@@ -665,9 +663,10 @@ function addExportTreePackageImports(
 
 	const linkParents = (pkgName: string, parents: Map<string, number>) => {
 		for (const [fPath, w] of parents) {
-			const fLab = exportFileDisplay.get(fPath);
-			if (!fLab || nodeRef[fLab]?.kind === 'bucket') continue;
-			addLink(pkgName, fLab, w);
+			const parent = importTree.get(fPath);
+			if (!parent || nodeRef[parent.lab]?.kind === 'bucket') continue;
+			// Direct parent → package (visible band; sink External)
+			addLink(parent.lab, pkgName, w);
 		}
 	};
 
@@ -944,29 +943,36 @@ function padImportRailsInto(
 	if (prev) addLink(prev, targetLab, mass);
 }
 
+type ImportTreePadResult = {
+	/** path → label + longest-path dist for kept non-bucket import-tree files */
+	tree: Map<string, { lab: string; dist: number }>;
+	maxFileDist: number;
+	padFromFile: (targetLab: string, toDist: number, w: number) => void;
+	padBetween: (
+		fromLab: string,
+		fromDist: number,
+		toLab: string,
+		toDist: number,
+		w: number,
+	) => void;
+};
+
 /**
- * Forward multi-hop: File → Exports → … → Export hop N (**file→file only**).
- *
- * Callers pass **file-only** outEdges (focus packages go through
- * {@link addFocusPackageImports}). File columns use **longest simple path**
- * so chains like focus→format→types expand even when types is also a direct
- * dep. Focus file out-mass is conserved along file children; package outs of
- * export-tree files are never materialised on export hops — see
- * {@link addExportTreePackageImports} (Imports side).
- *
- * @returns path → display name for kept non-bucket export-tree files
+ * Forward multi-hop file deps on **Imports / Import hop N** (file→file only).
+ * Packages are placed later as External sinks ({@link addFocusPackageImports} /
+ * {@link addExportTreePackageImports}).
  */
 function addExportRings(
 	args: LinkBuilder & {
 		fileId: string;
-		/** File→file out-edges only (packages handled on Imports). */
+		/** File→file out-edges only (packages handled as External). */
 		outEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
 		packageLeafMode: PackageLeafMode;
 		classicLabels?: Map<string, string>;
 	},
-): Map<string, string> {
+): ImportTreePadResult {
 	const {
 		graph,
 		fileId,
@@ -997,33 +1003,9 @@ function addExportRings(
 		fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
 	}
 
-	// Include every seed file even if longest dist exceeds radius (cap to radiusR)
-	const filesAt = new Map<number, string[]>();
-	for (const [path, rawD] of dist) {
-		if (rawD < 1) continue;
-		const d = Math.min(rawD, radiusR);
-		if (path === fileId) continue;
-		const list = filesAt.get(d) ?? [];
-		if (!list.includes(path)) list.push(path);
-		filesAt.set(d, list);
-	}
-	// Seed-only files missing from dist (shouldn't happen) — force dist 1
-	for (const path of fileSeed.keys()) {
-		if (path === fileId) continue;
-		if (![...filesAt.values()].some((list) => list.includes(path))) {
-			const list = filesAt.get(1) ?? [];
-			list.push(path);
-			filesAt.set(1, list);
-		}
-	}
-
-	const display = new Map<string, string>();
-	const keptByDist = new Map<number, string[]>();
-	const mass = new Map<string, number>();
-
-	/** Rails through stage maxStage (inclusive) for layer-consistent pads. */
-	const ensureExportRailsUpTo = (maxStage: number) => {
-		const cap = Math.max(maxStage, radiusR);
+	// Pad helpers always available for External package placement
+	const ensureImportRailsUpTo = (maxStage: number) => {
+		const cap = Math.max(maxStage, radiusR, 1);
 		for (let s = 1; s <= maxStage; s++) {
 			const id = importRailId(s);
 			if (nodeMeta.has(id)) continue;
@@ -1034,11 +1016,6 @@ function addExportRings(
 			nodeRef[id] = { kind: 'bucket', id };
 		}
 	};
-
-	/**
-	 * Path from a node at `fromDist` (0 = File) into a target at `toDist`
-	 * so sankey layer matches hop labels (pad short paths with out-rails).
-	 */
 	const padBetween = (
 		fromLab: string,
 		fromDist: number,
@@ -1051,7 +1028,7 @@ function addExportRings(
 			addLink(fromLab, toLab, w);
 			return;
 		}
-		ensureExportRailsUpTo(toDist - 1);
+		ensureImportRailsUpTo(toDist - 1);
 		let prev = fromLab;
 		for (let stage = fromDist + 1; stage < toDist; stage++) {
 			const rail = importRailId(stage);
@@ -1060,11 +1037,47 @@ function addExportRings(
 		}
 		addLink(prev, toLab, w);
 	};
-
-	/** File → (rails) → target so longest-path dist matches sankey layer. */
-	const padFromFile = (targetLab: string, d: number, w: number) => {
-		padBetween(fileLabel, 0, targetLab, d, w);
+	const padFromFile = (targetLab: string, toDist: number, w: number) => {
+		padBetween(fileLabel, 0, targetLab, toDist, w);
 	};
+
+	if (!fileSeed.size) {
+		return {
+			tree: new Map(),
+			maxFileDist: 0,
+			padFromFile,
+			padBetween,
+		};
+	}
+
+	// Place files: seeds (focus direct file deps) always dist 1 (Imports).
+	// Non-seeds use longest-path dist so format→types still expands.
+	const filesAt = new Map<number, string[]>();
+	const placeAt = (path: string, d: number) => {
+		if (d < 1 || path === fileId) return;
+		const list = filesAt.get(d) ?? [];
+		if (!list.includes(path)) list.push(path);
+		filesAt.set(d, list);
+	};
+	for (const [path, rawD] of dist) {
+		if (rawD < 1 || path === fileId) continue;
+		if (fileSeed.has(path)) {
+			placeAt(path, 1);
+			continue;
+		}
+		placeAt(path, Math.min(rawD, radiusR));
+	}
+	// Seeds missing from dist — force Imports
+	for (const path of fileSeed.keys()) {
+		if (path === fileId) continue;
+		if (![...filesAt.values()].some((list) => list.includes(path))) {
+			placeAt(path, 1);
+		}
+	}
+
+	const display = new Map<string, string>();
+	const keptByDist = new Map<number, string[]>();
+	const mass = new Map<string, number>();
 
 	// --- Place files hop by hop (longest-path dist) ---
 	for (let d = 1; d <= radiusR; d++) {
@@ -1130,26 +1143,26 @@ function addExportRings(
 		}
 	}
 
-	// --- Seed focus out-mass onto file deps (pad when longest dist > 1) ---
+	// Display dist for all placed files (incl. overflow members → hop bucket)
+	const displayDist = new Map<string, number>();
+	for (const [d, paths] of filesAt) {
+		for (const f of paths) displayDist.set(f, d);
+	}
+
+	// --- Seed focus out-mass: always File → seed (dist 1, no pad rails) ---
 	for (const [f, w] of fileSeed) {
 		if (w <= 0) continue;
 		const lab = display.get(f);
-		if (!lab) {
-			// Overflowed: dump mass into hop bucket if any, else skip structure
-			continue;
+		if (!lab) continue;
+		// Direct only — seeds are on Imports; pad rails created fake topology
+		// (logger shared invisible rail with types/user).
+		addLink(fileLabel, lab, w);
+		if (nodeRef[lab]?.kind !== 'bucket') {
+			mass.set(f, (mass.get(f) ?? 0) + w);
 		}
-		if (nodeRef[lab]?.kind === 'bucket') {
-			// Folded into overflow — still count File mass into that bucket
-			const d = Math.min(dist.get(f) ?? 1, radiusR);
-			padFromFile(lab, d, w);
-			continue;
-		}
-		const d = Math.min(dist.get(f) ?? 1, radiusR);
-		padFromFile(lab, d, w);
-		mass.set(f, (mass.get(f) ?? 0) + w);
 	}
 
-	// --- Route outward mass file→file only (no package leaves) ---
+	// --- Route outward mass file→file only along display hops ---
 	for (let d = 1; d <= radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -1163,11 +1176,12 @@ function addExportRings(
 			const targets: { lab: string; path: string }[] = [];
 			if (d < radiusR) {
 				for (const c of fwdAdj.get(f) ?? []) {
-					if ((dist.get(c) ?? 0) !== d + 1 || !display.has(c)) continue;
+					// Match display columns (not raw longest) so seed→non-seed works
+					if (displayDist.get(c) !== d + 1 || !display.has(c)) continue;
 					targets.push({ lab: display.get(c)!, path: c });
 				}
 			}
-			// Leaf files (no kept file children, or only package outs) keep mass
+			// Leaf files keep mass (packages attach as External sinks separately)
 			if (!targets.length) continue;
 
 			const base = Math.floor(m / targets.length);
@@ -1183,16 +1197,23 @@ function addExportRings(
 		}
 	}
 
-	// Kept non-bucket export-tree files (for Imports-side package placement)
-	const keptDisplay = new Map<string, string>();
-	for (const [, paths] of keptByDist) {
+	// Kept non-bucket import-tree files + display dist for External packages
+	const tree = new Map<string, { lab: string; dist: number }>();
+	let maxFileDist = 0;
+	for (const [d, paths] of keptByDist) {
 		for (const f of paths) {
 			const lab = display.get(f);
 			if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
-			keptDisplay.set(f, lab);
+			tree.set(f, { lab, dist: d });
+			if (d > maxFileDist) maxFileDist = d;
 		}
 	}
-	return keptDisplay;
+	return {
+		tree,
+		maxFileDist,
+		padFromFile,
+		padBetween,
+	};
 }
 
 /** Sum edge weights from any of `froms` into `to`. */

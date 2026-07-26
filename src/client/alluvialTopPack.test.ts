@@ -365,12 +365,34 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		// Out-rail **nodes** still hide chrome
 		expect(outRailG?.classList.contains('atlas-alluvial-rail')).toBe(true);
 
-		const pad = holder.querySelectorAll('path.link').find((p) => {
-			const d = p.__data__ as { source?: { name?: string } };
-			return d?.source?.name?.includes('in-rail');
+		// in-rail → file is a mass carrier (not pure rail↔rail scaffold)
+		const inToFile = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				d?.target?.name === 'app/layout.tsx'
+			);
 		});
-		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
-		expect(pad?.getAttribute('pointer-events')).toBe('none');
+		expect(inToFile?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+
+		// Pure in-rail → in-rail still scaffold if present
+		const railToRail = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				String(d?.target?.name ?? '').includes('in-rail')
+			);
+		});
+		// fixture may not have rail→rail; only assert when present
+		if (railToRail) {
+			expect(railToRail.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		}
 
 		// Law: export out-rail mass carriers must NOT be pad-band
 		const fileToOut = holder.querySelectorAll('path.link').find((p) => {
@@ -424,9 +446,15 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		const term2 = holder2.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
 		);
-		const pad = holder2.querySelectorAll('path.link').find((p) => {
-			const d = p.__data__ as { source?: { name?: string } };
-			return d?.source?.name?.includes('in-rail');
+		const inToFile = holder2.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				d?.target?.name === 'app/layout.tsx'
+			);
 		});
 		const outLink = holder2.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as { target?: { name?: string } };
@@ -434,7 +462,8 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		});
 		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
 		expect(term2?.classList.contains('atlas-alluvial-terminator')).toBe(true);
-		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		// in-rail → file is a mass carrier (paint), not pure scaffold
+		expect(inToFile?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
 		expect(outLink?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
 	});
 });

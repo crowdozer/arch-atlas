@@ -104,8 +104,9 @@ function focusOutflow(payload: AlluvialPayload): number {
 /**
  * Intermediate columns: sum(in) === sum(out) for nodes that both receive and emit.
  * Dual-hub focus is exempt — left in-mass and right out-mass are independent.
- * Export-tree files that sink package free-source mass (package → file on Imports)
- * may have in > out; that excess is structural, not File-routed mass.
+ * Import-tree files that emit structural package mass (file → External package)
+ * may have out > in; External packages themselves are sinks.
+ * Rails and overflow buckets skip balance.
  */
 function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	const { out, inn } = flowTotals(payload.data);
@@ -126,21 +127,22 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 			focusNames.add(n.name);
 		}
 	}
-	const isPackageLikeSource = (src: string): boolean => {
-		const ref = payload.meta.nodeRef[src];
+	const isPackageLike = (name: string): boolean => {
+		const ref = payload.meta.nodeRef[name];
 		if (!ref) return false;
 		if (ref.kind === 'package' || ref.kind === 'unresolved') return true;
 		if (
 			ref.kind === 'bucket' &&
-			(ref.id.includes('pkg') || ref.id.includes('import-tree'))
+			(ref.id.includes('pkg') || ref.id.includes('external'))
 		) {
 			return true;
 		}
-		return false;
+		return categories.get(name) === 'External';
 	};
-	const sinksPackageStructural = (name: string): boolean =>
+	/** File that fans structural mass into External packages (out may exceed in). */
+	const emitsPackageStructural = (name: string): boolean =>
 		payload.data.some(
-			(l) => l.target === name && isPackageLikeSource(l.source),
+			(l) => l.source === name && isPackageLike(l.target),
 		);
 
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
@@ -148,8 +150,8 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 		// Overflow / aggregate buckets may under-draw under integer multi-parent
 		// split (accepted hub default) — skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
-		// package → export-tree file free-source mass ends at the file
-		if (sinksPackageStructural(name)) continue;
+		if (isPackageLike(name)) continue;
+		if (emitsPackageStructural(name)) continue;
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {
