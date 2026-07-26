@@ -79,7 +79,15 @@ function labelsForPackage(payload: AlluvialPayload, pkgId: string): string[] {
 }
 
 function isImportCategory(cat: string | undefined): boolean {
-	return cat === 'Imports' || (cat?.startsWith('Import hop') ?? false);
+	return (
+		cat === 'Imports' ||
+		cat === 'External' ||
+		(cat?.startsWith('Import hop') ?? false)
+	);
+}
+
+function isExternalCategory(cat: string | undefined): boolean {
+	return cat === 'External';
 }
 
 function isExportCategory(cat: string | undefined): boolean {
@@ -165,7 +173,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 	describe('Case C — redis.ts deps Imports, consumers Exports', () => {
 		const focusId = 'src/lib/redis.ts';
 
-		it('logger (file dep) and ioredis (package) on Imports', () => {
+		it('logger (file dep) on Imports; ioredis (package) on External', () => {
 			const payload = hub(graph, focusId);
 			expect(fileImportsFile(graph, focusId, 'src/lib/logger.ts')).toBe(true);
 			expect(fileImportsPackage(graph, focusId, 'ioredis')).toBe(true);
@@ -174,11 +182,12 @@ describe('hub orientation hard law (golden catalog)', () => {
 			expect(loggerLabs.length).toBeGreaterThan(0);
 			for (const lab of loggerLabs) {
 				expect(isImportCategory(categoryOf(payload, lab))).toBe(true);
+				expect(isExternalCategory(categoryOf(payload, lab))).toBe(false);
 			}
 			const ioLabs = labelsForPackage(payload, 'ioredis');
 			expect(ioLabs.length).toBeGreaterThan(0);
 			for (const lab of ioLabs) {
-				expect(isImportCategory(categoryOf(payload, lab))).toBe(true);
+				expect(isExternalCategory(categoryOf(payload, lab))).toBe(true);
 			}
 		});
 
@@ -204,24 +213,24 @@ describe('hub orientation hard law (golden catalog)', () => {
 	describe('Case A+B — stripe route packages on Imports, not Export hops', () => {
 		const focusId = 'app/api/webhooks/stripe/route.ts';
 
-		it('next (focus package import) on Imports', () => {
+		it('next (focus package import) on External', () => {
 			const payload = hub(graph, focusId);
 			expect(fileImportsPackage(graph, focusId, 'next')).toBe(true);
 			const labs = labelsForPackage(payload, 'next');
 			expect(labs.length).toBeGreaterThan(0);
 			for (const lab of labs) {
-				expect(isImportCategory(categoryOf(payload, lab))).toBe(true);
+				expect(isExternalCategory(categoryOf(payload, lab))).toBe(true);
 				expect(isExportCategory(categoryOf(payload, lab))).toBe(false);
 			}
 		});
 
-		it('zod never on Export* (may appear on Imports via import-tree)', () => {
+		it('zod never on Export* (lives on External via import-tree)', () => {
 			const payload = hub(graph, focusId);
 			const zodLabs = labelsForPackage(payload, 'zod');
 			for (const lab of zodLabs) {
 				const cat = categoryOf(payload, lab);
 				expect(isExportCategory(cat), `zod on ${cat}`).toBe(false);
-				expect(isImportCategory(cat)).toBe(true);
+				expect(isExternalCategory(cat)).toBe(true);
 			}
 		});
 
@@ -308,12 +317,12 @@ describe('hub orientation hard law — demo-react-simple UserCard', () => {
 		}
 	});
 
-	it('re-hub types.ts: zod on Imports as focus package', () => {
+	it('re-hub types.ts: zod on External as focus package', () => {
 		const payload = hub(graph, 'src/types.ts');
 		const labs = labelsForPackage(payload, 'zod');
 		expect(labs.length).toBeGreaterThan(0);
 		for (const lab of labs) {
-			expect(isImportCategory(categoryOf(payload, lab))).toBe(true);
+			expect(isExternalCategory(categoryOf(payload, lab))).toBe(true);
 		}
 	});
 });

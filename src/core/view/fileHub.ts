@@ -3,25 +3,24 @@
  *
  * Columns (L→R), category names fixed:
  *
- *   Import hop N … → Imports → File → Exports → Export hop N
+ *   External → Import hop N … → Imports → File → Exports → Export hop N
  *
  * **Hard product law** (membership of each side; cascades pure):
  *
- * - **Imports / Import hop k:** only what the focus **imports** (outbound).
- *   Forward longest-path **file** deps + packages/unresolved along that tree
- *   (focus packages: package → File; intermediate packages: package → parent
- *   file). Never reverse consumers.
+ * - **External:** pure package/unresolved leaves from node_modules (and
+ *   unresolved specs) — one extra outer import-rail depth beyond file hops.
+ *   Display: package → parent file (or File for focus packages).
+ * - **Imports / Import hop k:** outbound **file** deps only (what the focus
+ *   imports along the forward longest-path tree). Never reverse consumers;
+ *   never package leaves (those are External).
  * - **Exports / Export hop k:** only what **imports from** the focus (inbound
- *   reverse BFS consumers). Never outbound deps of the focus.
- * - Rules apply at every hop: import cascade does not absorb export candidates
- *   and vice versa.
+ *   reverse BFS). Never outbound deps of the focus.
  *
  * **Edge orientation** remains A → B means A imports B. Carbon columns are
- * driven by **category** (not pure path-from-source), so Import-side file deps
- * may sit left of File with File → dep links, and Export-side consumers sit
- * right of File with consumer → File links.
+ * driven by **category**.
  *
- * **Depth (viz-only)** dual hop radius. Asymmetric sides omit empty columns.
+ * **Depth (viz-only)** dual hop radius for file hops; External is an extra
+ * outer column when any package leaf is present.
  *
  * **Mass (chart File node):**
  * - Into File: reverse importer edges + focus package/unresolved (package→File)
@@ -116,6 +115,12 @@ export function preferFileHubView(graph: CodeGraph, fileId: string): boolean {
 	return inn > 0 && out > 0;
 }
 
+/**
+ * Outer import-side column for pure external package/unresolved leaves
+ * (node_modules / unresolved). One rail depth beyond file Import hops.
+ */
+export const EXTERNAL_IMPORT_CATEGORY = 'External';
+
 /** dist-1 keeps Imports/Exports; outer rings are Import hop k / Export hop k. */
 export function importHopCategory(dist: number): string {
 	return dist <= 1 ? 'Imports' : `Import hop ${dist}`;
@@ -123,6 +128,15 @@ export function importHopCategory(dist: number): string {
 
 export function exportHopCategory(dist: number): string {
 	return dist <= 1 ? 'Exports' : `Export hop ${dist}`;
+}
+
+/** True for Imports, Import hop N, or External package rail. */
+export function isImportSideCategory(category: string): boolean {
+	return (
+		category === 'Imports' ||
+		category === EXTERNAL_IMPORT_CATEGORY ||
+		category.startsWith('Import hop')
+	);
 }
 
 /** Shared invisible rail for reverse-path padding at import hop stage s (s≥2). */
@@ -326,9 +340,14 @@ export function projectFileHub(
 	}
 
 	const present = new Set([...nodeMeta.values()].map((m) => m.category));
-	// Left: outer Import hop N … → Imports
+	// Left: External (packages) → outer Import hop N … → Imports
+	let maxImportHop = hubRadius;
+	for (const cat of present) {
+		const m = /^Import hop (\d+)$/.exec(cat);
+		if (m) maxImportHop = Math.max(maxImportHop, Number(m[1]));
+	}
 	const importHops: string[] = [];
-	for (let d = hubRadius; d >= 2; d--) {
+	for (let d = maxImportHop; d >= 2; d--) {
 		const cat = importHopCategory(d);
 		if (present.has(cat)) importHops.push(cat);
 	}
@@ -344,6 +363,9 @@ export function projectFileHub(
 		if (present.has(cat)) exportHops.push(cat);
 	}
 	const categoryOrder = [
+		...(present.has(EXTERNAL_IMPORT_CATEGORY)
+			? [EXTERNAL_IMPORT_CATEGORY]
+			: []),
 		...importHops,
 		...(present.has('Imports') ? ['Imports'] : []),
 		'File',
@@ -447,10 +469,8 @@ function edgeWeightIntoSet(
 }
 
 /**
- * Place focus-incident package/unresolved imports on the **Imports** side.
- * Display links are package → File (so sankey sits left of File); graph edges
- * remain file → package. Coexists with reverse-importer rings in the same
- * Imports category family. Import-side teal/package colors (not export yellow).
+ * Focus-incident package/unresolved → **External** column (outer import rail).
+ * Display: package → File. Graph edge remains file → package.
  */
 function addFocusPackageImports(
 	args: LinkBuilder & {
@@ -510,11 +530,11 @@ function addFocusPackageImports(
 
 	for (const entry of kept) {
 		const name = claimName(usedNames, entry.preferredLabel, entry.ref.kind);
-		// package → File (import-side orientation for sankey layer)
+		// package → File; column External (outer import rail)
 		addLink(name, fileLabel, entry.weight);
 		nodeRef[name] = entry.ref;
 		nodeMeta.set(name, {
-			category: 'Imports',
+			category: EXTERNAL_IMPORT_CATEGORY,
 			color: entry.color,
 		});
 	}
@@ -522,30 +542,29 @@ function addFocusPackageImports(
 		const otherName = claimName(
 			usedNames,
 			moreCountLabel(overflow.length),
-			'import-pkgs',
+			'external-pkgs',
 		);
 		for (const entry of overflow) {
 			addLink(otherName, fileLabel, entry.weight);
 		}
-		nodeRef[otherName] = { kind: 'bucket', id: 'other-import-pkgs' };
+		nodeRef[otherName] = { kind: 'bucket', id: 'other-external-pkgs' };
 		nodeMeta.set(otherName, {
-			category: 'Imports',
+			category: EXTERNAL_IMPORT_CATEGORY,
 			color: TEAL.other,
 		});
 	}
 }
 
 /**
- * Packages imported by kept **export-tree** files appear on **Imports**
- * (display: package → importingFile). Never on Export hops.
+ * Packages imported by kept **import-tree** files → **External** column
+ * (display: package → importingFile). Never on Export* or file Import hops.
  *
- * One display node per package id (reuses focus package node when the same
- * package is already on Imports). Structural mass only — does not change File
- * in/out mass (links target intermediate export-tree files, not File).
+ * One display node per package id (reuses focus External node when shared).
+ * Structural mass only when targeting intermediate files (not File).
  */
 function addExportTreePackageImports(
 	args: LinkBuilder & {
-		/** path → display name for kept non-bucket export-tree files */
+		/** path → display name for kept non-bucket import-tree files */
 		exportFileDisplay: Map<string, string>;
 		maxPerHop: number;
 	},
@@ -607,23 +626,21 @@ function addExportTreePackageImports(
 	}
 	if (!recs.size) return;
 
-	const findExistingImportPkg = (
+	const findExistingExternalPkg = (
 		kind: AlluvialNodeRef['kind'],
 		id: string,
 	): string | undefined => {
 		for (const [name, ref] of Object.entries(nodeRef)) {
 			if (ref.kind !== kind || ref.id !== id) continue;
-			if (nodeMeta.get(name)?.category === 'Imports') return name;
+			if (nodeMeta.get(name)?.category === EXTERNAL_IMPORT_CATEGORY) return name;
 		}
 		return undefined;
 	};
 
-	// Packages already on Imports (focus) always get tree→file links; new ones
-	// compete for maxPerHop budget by rank.
 	const already: PkgRec[] = [];
 	const fresh: PkgRec[] = [];
 	for (const rec of recs.values()) {
-		if (findExistingImportPkg(rec.ref.kind, rec.ref.id)) already.push(rec);
+		if (findExistingExternalPkg(rec.ref.kind, rec.ref.id)) already.push(rec);
 		else fresh.push(rec);
 	}
 	fresh.sort(
@@ -634,12 +651,12 @@ function addExportTreePackageImports(
 	const overflowFresh = fresh.slice(maxPerHop);
 
 	const ensurePkgNode = (rec: PkgRec): string => {
-		const existing = findExistingImportPkg(rec.ref.kind, rec.ref.id);
+		const existing = findExistingExternalPkg(rec.ref.kind, rec.ref.id);
 		if (existing) return existing;
 		const name = claimName(usedNames, rec.preferredLabel, rec.ref.kind);
 		nodeRef[name] = rec.ref;
 		nodeMeta.set(name, {
-			category: 'Imports',
+			category: EXTERNAL_IMPORT_CATEGORY,
 			color: rec.color,
 		});
 		return name;
@@ -663,11 +680,11 @@ function addExportTreePackageImports(
 		const otherName = claimName(
 			usedNames,
 			moreCountLabel(overflowFresh.length),
-			'import-tree-pkgs',
+			'external-tree-pkgs',
 		);
-		nodeRef[otherName] = { kind: 'bucket', id: 'other-import-tree-pkgs' };
+		nodeRef[otherName] = { kind: 'bucket', id: 'other-external-tree-pkgs' };
 		nodeMeta.set(otherName, {
-			category: 'Imports',
+			category: EXTERNAL_IMPORT_CATEGORY,
 			color: TEAL.other,
 		});
 		for (const rec of overflowFresh) {
