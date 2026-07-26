@@ -5,12 +5,23 @@
 
 export type Epistemic = 'observed' | 'inferred' | 'declared';
 
+/** How a file relates to Level-1 import extraction (see parse/capability). */
+export type FileParseKind =
+	| 'js-ts-import'
+	| 'config'
+	| 'text'
+	| 'unsupported-language';
+
 export type FileNode = {
 	id: string; // path
 	kind: 'file';
 	path: string;
-	/** true when content was parsed for imports */
+	/** true when content was parsed for imports (import-parseable) */
 	isSource: boolean;
+	/** Parse capability kind (intelligent map entry). */
+	parseKind: FileParseKind;
+	/** Human reason when not import-parseable (tree tooltip / status). */
+	parseNote: string;
 	byteLength: number;
 };
 
@@ -52,6 +63,17 @@ export type ImportEdge = {
 	bindings: ImportBinding[];
 };
 
+/**
+ * Durable parse-capability map for one path (mirrors FileNode parse fields).
+ * Kept as an explicit map so views/UI do not re-derive extension rules ad hoc.
+ */
+export type ParseMapEntry = {
+	path: string;
+	importParseable: boolean;
+	kind: FileParseKind;
+	note: string;
+};
+
 export type CodeGraph = {
 	files: Map<string, FileNode>;
 	packages: Map<string, PackageNode>;
@@ -60,9 +82,18 @@ export type CodeGraph = {
 	contents: Map<string, string>;
 	/** package.json parsed at repo roots (usually one) */
 	packageJsonPaths: string[];
+	/**
+	 * Intelligent parse map: every graph file → whether imports were/can be parsed.
+	 * Same membership as `files`; authority for tree greying and status copy.
+	 */
+	parseMap: Map<string, ParseMapEntry>;
 	stats: {
 		fileCount: number;
 		sourceCount: number;
+		/** Count of import-parseable files (isSource). */
+		parseableCount: number;
+		/** Count of kept files that are not import-parseable. */
+		unparseableCount: number;
 		edgeCount: number;
 		packageCount: number;
 		unresolvedCount: number;

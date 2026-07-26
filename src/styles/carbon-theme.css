@@ -950,10 +950,34 @@ cds-dropdown.atlas-stage__precision {
   color: #e4e4e7;
 }
 
+/* Kept in graph but not import-parseable (config, text, unsupported langs). */
+.atlas-tree__row--file.is-unparseable {
+  color: #52525b; /* zinc-600 */
+  opacity: 0.72;
+  cursor: default;
+}
+
+.atlas-tree__row--file.is-unparseable:hover {
+  background: rgb(39 39 42 / 0.45);
+  color: #71717a;
+  opacity: 0.85;
+}
+
+/* Folder with no import-parseable descendants */
+.atlas-tree__row--dir.is-unparseable {
+  color: #3f3f46;
+  opacity: 0.7;
+}
+
+.atlas-tree__row--dir.is-unparseable:hover {
+  color: #52525b;
+}
+
 .atlas-tree__row--file.is-selected {
   background: rgb(13 148 136 / 0.22);
   color: #5eead4;
   outline: 1px solid rgb(45 212 191 / 0.35);
+  opacity: 1;
 }
 
 .atlas-tree__chevron {
@@ -993,6 +1017,16 @@ cds-dropdown.atlas-stage__precision {
 .atlas-tree__row--file.is-source .atlas-tree__icon,
 .atlas-tree__icon--source {
   color: #5eead4; /* teal-300 */
+}
+
+.atlas-tree__row--file.is-unparseable .atlas-tree__icon,
+.atlas-tree__icon--muted {
+  color: #3f3f46; /* zinc-700 */
+  opacity: 0.9;
+}
+
+.atlas-tree__row--dir.is-unparseable .atlas-tree__icon {
+  color: #3f3f46;
 }
 
 .atlas-tree__row--file.is-selected .atlas-tree__icon {

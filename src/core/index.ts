@@ -15,10 +15,19 @@ export type {
 	CatalogHotspot,
 	CatalogStart,
 	CodeGraph,
+	FileParseKind,
 	MapCatalog,
+	ParseMapEntry,
 	SuggestedView,
 	VirtualFile,
 } from '@core/graph/types.ts';
+export {
+	buildParseMap,
+	classifyFileParse,
+	importParseablePaths,
+	shouldKeepInGraph,
+} from '@core/parse/capability.ts';
+export type { FileParseInfo } from '@core/parse/capability.ts';
 export { buildMapCatalog } from '@core/catalog/views.ts';
 export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';

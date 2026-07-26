@@ -12,7 +12,6 @@ import {
 	evidenceForEdges,
 	indexFiles,
 	ingestZip,
-	isSourceFile,
 	preferFileImportersView,
 	projectFileImporters,
 	projectModuleFocus,
@@ -672,6 +671,40 @@ function remountCurrentView(): void {
 	mountAlluvialGated(payloadForView(view));
 }
 
+function parseableSetFromGraph(): Set<string> {
+	const g = session?.graph;
+	if (!g) return new Set();
+	if (g.parseMap?.size) {
+		const s = new Set<string>();
+		for (const [path, entry] of g.parseMap) {
+			if (entry.importParseable) s.add(path);
+		}
+		return s;
+	}
+	// Fallback if older in-memory shape
+	const s = new Set<string>();
+	for (const [path, node] of g.files) {
+		if (node.isSource) s.add(path);
+	}
+	return s;
+}
+
+function parseNotesFromGraph(): Map<string, string> {
+	const g = session?.graph;
+	const m = new Map<string, string>();
+	if (!g) return m;
+	if (g.parseMap?.size) {
+		for (const [path, entry] of g.parseMap) {
+			m.set(path, entry.note);
+		}
+		return m;
+	}
+	for (const [path, node] of g.files) {
+		if (node.parseNote) m.set(path, node.parseNote);
+	}
+	return m;
+}
+
 function renderTree() {
 	const host = $('atlas-tree');
 	if (!host || !session) return;
@@ -680,7 +713,10 @@ function renderTree() {
 	const filter =
 		($('atlas-tree-filter') as HTMLInputElement | null)?.value ?? '';
 	const paths = [...session.graph.files.keys()];
-	const tree = buildFileTree(paths);
+	const tree = buildFileTree(paths, {
+		importParseable: parseableSetFromGraph(),
+		parseNotes: parseNotesFromGraph(),
+	});
 	const q = filter.trim();
 
 	// When filtering, force-open matching ancestors (merge with user expand state)
@@ -716,16 +752,20 @@ function renderTreeNode(
 		const row = document.createElement('button');
 		row.type = 'button';
 		row.className = 'atlas-tree__row atlas-tree__row--dir';
+		if (node.unparseable) row.classList.add('is-unparseable');
 		row.style.paddingLeft = `${0.4 + depth * 0.85}rem`;
 		row.setAttribute('aria-expanded', open ? 'true' : 'false');
 		row.dataset.path = node.path;
+		const dirTitle = node.unparseable
+			? `${node.path} — no import-parseable files in this folder`
+			: node.path;
+		row.title = dirTitle;
 		row.innerHTML = `
 			<span class="atlas-tree__chevron" aria-hidden="true">${open ? '▾' : '▸'}</span>
 			<span class="atlas-tree__icon" aria-hidden="true">${treeIconSvg('dir', node.path, { open })}</span>
 			<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
 			<span class="atlas-tree__badge">${node.children.length}</span>
 		`;
-		row.title = node.path;
 		row.addEventListener('click', (e) => {
 			e.preventDefault();
 			if (!session) return;
@@ -748,25 +788,33 @@ function renderTreeNode(
 		return wrap;
 	}
 
-	// file
-	const isSrc = isSourceFile(node.path);
+	// file — greying from parseMap / tree annotation (not ad-hoc extension checks)
+	const isSrc = node.isSource;
 	const btn = document.createElement('button');
 	btn.type = 'button';
 	btn.className = 'atlas-tree__row atlas-tree__row--file';
 	if (isSrc) btn.classList.add('is-source');
+	else btn.classList.add('is-unparseable');
 	if (session?.startId === node.path) btn.classList.add('is-selected');
 	btn.style.paddingLeft = `${0.4 + depth * 0.85}rem`;
 	btn.dataset.path = node.path;
-	btn.title = node.path; // full path on hover — disambiguates index.tsx siblings
+	const note = node.parseNote || session?.graph.parseMap.get(node.path)?.note || '';
+	btn.title = note ? `${node.path}\n${note}` : node.path;
+	btn.setAttribute('aria-disabled', isSrc ? 'false' : 'true');
 
 	btn.innerHTML = `
 		<span class="atlas-tree__chevron atlas-tree__chevron--spacer" aria-hidden="true"></span>
-		<span class="atlas-tree__icon${isSrc ? ' atlas-tree__icon--source' : ''}" aria-hidden="true">${treeIconSvg('file', node.path)}</span>
+		<span class="atlas-tree__icon${isSrc ? ' atlas-tree__icon--source' : ' atlas-tree__icon--muted'}" aria-hidden="true">${treeIconSvg('file', node.path)}</span>
 		<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
 	`;
 	btn.addEventListener('click', () => {
-		if (isSrc) selectStart(node.path);
-		else setStatus(`Not a source file: ${node.path}`);
+		if (isSrc) {
+			selectStart(node.path);
+			return;
+		}
+		const entry = session?.graph.parseMap.get(node.path);
+		const why = entry?.note || note || 'Not import-parseable at Level-1';
+		setStatus(`${node.path}: ${why}`);
 	});
 	return btn;
 }
@@ -1115,7 +1163,7 @@ function openFromFiles(
 			warnings: opts?.warnings ?? [],
 			expanded: expandPathsForFilter(paths, ''),
 		},
-		`${prefix} ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges`,
+		`${prefix} ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.unparseableCount ?? 0} unparseable · ${graph.stats.edgeCount} edges`,
 	);
 }
 

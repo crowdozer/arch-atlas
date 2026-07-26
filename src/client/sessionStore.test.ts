@@ -5,25 +5,39 @@ import { encodeSession, parsePersistedSession } from './sessionStore.ts';
 function minimalGraph(files: { path: string; content: string }[]): CodeGraph {
 	const fileMap = new Map();
 	const contents = new Map<string, string>();
+	const parseMap = new Map();
 	for (const f of files) {
+		const isSource = f.path.endsWith('.ts');
 		fileMap.set(f.path, {
 			id: f.path,
 			kind: 'file' as const,
 			path: f.path,
-			isSource: f.path.endsWith('.ts'),
+			isSource,
+			parseKind: isSource ? ('js-ts-import' as const) : ('text' as const),
+			parseNote: isSource ? 'Import-parsed' : 'Text',
 			byteLength: f.content.length,
 		});
 		contents.set(f.path, f.content);
+		parseMap.set(f.path, {
+			path: f.path,
+			importParseable: isSource,
+			kind: isSource ? 'js-ts-import' : 'text',
+			note: isSource ? 'Import-parsed' : 'Text',
+		});
 	}
+	const sourceCount = files.filter((f) => f.path.endsWith('.ts')).length;
 	return {
 		files: fileMap,
 		packages: new Map(),
 		edges: [],
 		contents,
 		packageJsonPaths: [],
+		parseMap,
 		stats: {
 			fileCount: files.length,
-			sourceCount: files.filter((f) => f.path.endsWith('.ts')).length,
+			sourceCount,
+			parseableCount: sourceCount,
+			unparseableCount: files.length - sourceCount,
 			edgeCount: 0,
 			packageCount: 0,
 			unresolvedCount: 0,

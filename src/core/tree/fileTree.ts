@@ -10,19 +10,47 @@ export type FileTreeNode = {
 	path: string;
 	kind: 'dir' | 'file';
 	children: FileTreeNode[];
+	/**
+	 * File: import-parseable (Level-1).
+	 * Dir: true when any descendant file is import-parseable.
+	 */
 	isSource: boolean;
+	/**
+	 * File: false when not import-parseable (grey in UI).
+	 * Dir: true when folder has no import-parseable descendants.
+	 */
+	unparseable: boolean;
+	/** Parse note for files (from parseMap); empty for dirs. */
+	parseNote: string;
+};
+
+export type BuildFileTreeOpts = {
+	/**
+	 * Paths that are import-parseable. Defaults to treating all files as
+	 * parseable when omitted (legacy tests).
+	 */
+	importParseable?: ReadonlySet<string>;
+	/** Optional notes from graph.parseMap for tooltips. */
+	parseNotes?: ReadonlyMap<string, string>;
 };
 
 /**
  * Build a sorted directory tree from a list of file paths.
  */
-export function buildFileTree(paths: readonly string[]): FileTreeNode {
+export function buildFileTree(
+	paths: readonly string[],
+	opts?: BuildFileTreeOpts,
+): FileTreeNode {
+	const parseable = opts?.importParseable;
+	const notes = opts?.parseNotes;
 	const root: FileTreeNode = {
 		name: '',
 		path: '',
 		kind: 'dir',
 		children: [],
 		isSource: false,
+		unparseable: true,
+		parseNote: '',
 	};
 
 	const sorted = [...paths].sort((a, b) => a.localeCompare(b));
@@ -37,12 +65,19 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
 			const kind: 'dir' | 'file' = isFile ? 'file' : 'dir';
 			let next = cur.children.find((c) => c.name === name && c.kind === kind);
 			if (!next) {
+				const fileParseable = isFile
+					? parseable
+						? parseable.has(childPath)
+						: true
+					: false;
 				next = {
 					name,
 					path: childPath,
 					kind,
 					children: [],
-					isSource: false,
+					isSource: isFile ? fileParseable : false,
+					unparseable: isFile ? !fileParseable : true,
+					parseNote: isFile ? (notes?.get(childPath) ?? '') : '',
 				};
 				cur.children.push(next);
 			}
@@ -51,7 +86,20 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
 	}
 
 	sortTree(root);
+	annotateDirParseability(root);
 	return root;
+}
+
+/** Roll up dir isSource / unparseable from children. */
+function annotateDirParseability(node: FileTreeNode): boolean {
+	if (node.kind === 'file') return node.isSource;
+	let any = false;
+	for (const c of node.children) {
+		if (annotateDirParseability(c)) any = true;
+	}
+	node.isSource = any;
+	node.unparseable = !any;
+	return any;
 }
 
 function sortTree(node: FileTreeNode): void {

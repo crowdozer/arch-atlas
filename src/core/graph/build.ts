@@ -2,14 +2,16 @@
  * Build Level-1 CodeGraph from virtual files.
  */
 
-import { isConfigFile, isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';
+import { normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 import type {
 	CodeGraph,
 	FileNode,
 	ImportEdge,
 	PackageNode,
+	ParseMapEntry,
 	VirtualFile,
 } from '@core/graph/types.ts';
+import { classifyFileParse, shouldKeepInGraph } from '@core/parse/capability.ts';
 import { extractImports } from '@core/parse/imports.ts';
 import { resolveSpecifier } from '@core/parse/resolve.ts';
 import { parseTsconfigPaths, type PathAliasConfig } from '@core/parse/tsconfig.ts';
@@ -64,29 +66,31 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 	const contents = new Map<string, string>();
 	const files = new Map<string, FileNode>();
 	const packages = new Map<string, PackageNode>();
+	const parseMap = new Map<string, ParseMapEntry>();
 	const edges: ImportEdge[] = [];
 	const packageJsonPaths: string[] = [];
 
 	for (const f of input) {
 		const path = normalizePath(f.path);
 		if (!path || shouldIgnorePath(path)) continue;
-		// keep source + configs + package.json for tree/analysis
-		const keep =
-			isSourceFile(path) ||
-			isConfigFile(path) ||
-			path.endsWith('package.json') ||
-			// show other text-ish files in tree but don't parse
-			/\.(json|md|css|html|svg|yml|yaml|toml|txt)$/i.test(path);
+		if (!shouldKeepInGraph(path)) continue;
 
-		if (!keep) continue;
-
+		const parse = classifyFileParse(path);
 		contents.set(path, f.content);
 		files.set(path, {
 			id: path,
 			kind: 'file',
 			path,
-			isSource: isSourceFile(path),
+			isSource: parse.importParseable,
+			parseKind: parse.kind,
+			parseNote: parse.note,
 			byteLength: f.byteLength || f.content.length,
+		});
+		parseMap.set(path, {
+			path,
+			importParseable: parse.importParseable,
+			kind: parse.kind,
+			note: parse.note,
 		});
 		if (path.endsWith('package.json')) packageJsonPaths.push(path);
 	}
@@ -161,6 +165,7 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 	}
 
 	const sourceCount = [...files.values()].filter((f) => f.isSource).length;
+	const unparseableCount = files.size - sourceCount;
 
 	return {
 		files,
@@ -168,9 +173,12 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 		edges,
 		contents,
 		packageJsonPaths,
+		parseMap,
 		stats: {
 			fileCount: files.size,
 			sourceCount,
+			parseableCount: sourceCount,
+			unparseableCount,
 			edgeCount: edges.length,
 			packageCount: packages.size,
 			unresolvedCount,

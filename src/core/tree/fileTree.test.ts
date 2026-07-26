@@ -28,6 +28,36 @@ describe('buildFileTree', () => {
 		expect(ui.children[0]?.path).toBe('app/components/ui/index.tsx');
 	});
 
+	it('marks unparseable files and folders from importParseable set', () => {
+		const parseable = new Set(['src/a.ts']);
+		const notes = new Map([
+			['src/a.ts', 'Import-parsed'],
+			['docs/README.md', 'Text asset'],
+			['scripts/run.py', 'Language not supported'],
+		]);
+		const root = buildFileTree(
+			['src/a.ts', 'docs/README.md', 'scripts/run.py'],
+			{ importParseable: parseable, parseNotes: notes },
+		);
+		const src = root.children.find((c) => c.name === 'src')!;
+		const docs = root.children.find((c) => c.name === 'docs')!;
+		const scripts = root.children.find((c) => c.name === 'scripts')!;
+		expect(src.unparseable).toBe(false);
+		expect(src.isSource).toBe(true);
+		expect(docs.unparseable).toBe(true);
+		expect(scripts.unparseable).toBe(true);
+
+		const a = src.children[0]!;
+		expect(a.isSource).toBe(true);
+		expect(a.unparseable).toBe(false);
+		expect(a.parseNote).toBe('Import-parsed');
+
+		const md = docs.children[0]!;
+		expect(md.isSource).toBe(false);
+		expect(md.unparseable).toBe(true);
+		expect(md.parseNote).toMatch(/Text/);
+	});
+
 	it('expandPathsForFilter opens ancestors of matches', () => {
 		const open = expandPathsForFilter(
 			['app/components/ui/index.tsx', 'lib/utils.ts'],
