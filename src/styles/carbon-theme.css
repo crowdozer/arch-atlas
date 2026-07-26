@@ -634,6 +634,7 @@ cds-header {
   flex: 1;
   min-width: 0;
   min-height: 0;
+  overflow-x: hidden; /* stage bar controls must not push past viewport */
   background: #09090b;
 }
 
@@ -643,25 +644,48 @@ cds-header {
   justify-content: space-between;
   gap: 0.75rem;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid #27272a;
+  /* Allow controls to wrap under caption on narrow stage widths */
+  flex-wrap: wrap;
 }
 
 /* Compact Carbon controls: weight dropdown + drill/inspect switcher */
 .atlas-stage__controls {
   display: flex;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
+/*
+ * Carbon form-items default to flex: 1 1 auto and grow past the stage.
+ * Pin the weight dropdown so the bar never overflows the viewport.
+ */
 .atlas-stage__weight {
-  min-inline-size: 11rem;
-  max-inline-size: 15rem;
+  box-sizing: border-box;
+  flex: 0 1 13rem !important;
+  width: 13rem;
+  max-width: min(13rem, 100%);
+  min-width: 0;
+}
+
+/* List box fills the host; long option labels truncate in the field */
+.atlas-stage__weight::part(trigger-button),
+.atlas-stage__weight .cds--list-box,
+.atlas-stage__weight .cds--list-box__field {
+  max-width: 100%;
 }
 
 .atlas-stage__mode {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 /* Inspect modal body */
@@ -953,6 +977,10 @@ cds-header {
   }
   .atlas-stage__holder {
     min-height: 240px;
+  }
+  .atlas-stage__weight {
+    width: min(13rem, 100%);
+    flex-basis: min(13rem, 100%) !important;
   }
 }
 
