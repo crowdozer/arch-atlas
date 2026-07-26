@@ -97,16 +97,18 @@ describe('projectFileImporters artillery config.ts', () => {
 		const rev = projectFileImporters(graph, fileId)!;
 		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('File')).toBe(true);
-		expect(cats.has('Modules')).toBe(true);
-		expect(cats.has('Importers')).toBe(true);
+		expect(cats.has('Import folders')).toBe(true);
+		expect(cats.has('Imports')).toBe(true);
 
 		// Intermediate hop — folder is not the terminal column
-		const moduleNodes = rev.options.alluvial.nodes.filter((n) => n.category === 'Modules');
+		const moduleNodes = rev.options.alluvial.nodes.filter(
+			(n) => n.category === 'Import folders',
+		);
 		expect(moduleNodes.some((n) => n.name === 'client/sim')).toBe(true);
 
 		// Right column is call-site files (or overflow), not module folders
 		const importerNodes = rev.options.alluvial.nodes.filter(
-			(n) => n.category === 'Importers',
+			(n) => n.category === 'Imports',
 		);
 		expect(importerNodes.length).toBeGreaterThan(0);
 		for (const n of importerNodes) {
@@ -120,7 +122,7 @@ describe('projectFileImporters artillery config.ts', () => {
 		// Fat band client/sim must land on at least one named call-site file
 		const simOut = rev.data.filter((l) => l.source === 'client/sim');
 		const moreLabel = rev.options.alluvial.nodes.find(
-			(n) => n.category === 'Importers' && /^\+\s*\d+\s+more$/.test(n.name),
+			(n) => n.category === 'Imports' && /^\+\s*\d+\s+more$/.test(n.name),
 		);
 		expect(moreLabel, 'overflow label "+ N more"').toBeTruthy();
 		const simNamed = simOut.filter((l) => l.target !== moreLabel!.name);
@@ -128,9 +130,9 @@ describe('projectFileImporters artillery config.ts', () => {
 		for (const l of simNamed) {
 			expect(rev.meta.nodeRef[l.target]?.kind).toBe('file');
 		}
-		// Overflow sorts to bottom of Importers column
+		// Overflow sorts to bottom of Imports column
 		const importerRanks = rev.options.alluvial.nodes
-			.filter((n) => n.category === 'Importers')
+			.filter((n) => n.category === 'Imports')
 			.map((n) => n.rank);
 		const maxRank = Math.max(...importerRanks);
 		expect(moreLabel!.rank).toBe(maxRank);
@@ -156,7 +158,7 @@ describe('projectFileImporters demo fixtures', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const rev = projectFileImporters(graph, 'src/lib/redis.ts')!;
 		// ≤12 importers → flat File → files
-		expect(rev.options.alluvial.nodes.some((n) => n.category === 'Modules')).toBe(
+		expect(rev.options.alluvial.nodes.some((n) => n.category === 'Import folders')).toBe(
 			false,
 		);
 		expect(focusMass(rev, 'redis.ts')).toBe(12);
@@ -169,17 +171,17 @@ describe('projectFileImporters demo fixtures', () => {
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
 
 		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Modules')).toBe(true);
-		expect(cats.has('Importers')).toBe(true);
+		expect(cats.has('Import folders')).toBe(true);
+		expect(cats.has('Imports')).toBe(true);
 
 		const { out, inn } = flowTotals(rev.data);
 		expect(out.get('logger.ts')).toBe(fileInMass(graph, fileId));
 		for (const n of rev.options.alluvial.nodes) {
-			if (n.category !== 'Modules') continue;
+			if (n.category !== 'Import folders') continue;
 			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
 		}
 		const importerNodes = rev.options.alluvial.nodes.filter(
-			(n) => n.category === 'Importers',
+			(n) => n.category === 'Imports',
 		);
 		for (const n of importerNodes) {
 			if (n.name.startsWith('(')) continue;

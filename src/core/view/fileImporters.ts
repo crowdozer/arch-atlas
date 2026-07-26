@@ -92,6 +92,8 @@ export function projectFileImporters(
 		maxImporters?: number;
 		maxModules?: number;
 		maxFilesPerModule?: number;
+		/** Viz-only: ≥2 expands folders → call-site files. Scan is unbounded. */
+		maxDepth?: number;
 		weightAxis?: WeightAxis;
 	},
 ): AlluvialPayload | null {
@@ -101,6 +103,7 @@ export function projectFileImporters(
 	const maxImporters = opts?.maxImporters ?? 16;
 	const maxModules = opts?.maxModules ?? DEFAULT_MAX_MODULES;
 	const maxFilesPerModule = opts?.maxFilesPerModule ?? DEFAULT_MAX_FILES_PER_MODULE;
+	const maxDepth = Math.max(1, opts?.maxDepth ?? 7);
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
 	const units = unitsForAxis(weightAxis, 'import-edges');
 
@@ -118,9 +121,13 @@ export function projectFileImporters(
 	const fileLabel = labelsForFocus.get(fileId) ?? basename(fileId);
 
 	const importerPaths = [...new Set(edges.map((e) => e.from))];
-	const useFilesOnly = importerPaths.length <= FILE_PROMOTE_THRESHOLD;
 
-	if (useFilesOnly) {
+	// Few importers, or maxDepth 1: single Imports column (files, capped).
+	// Many + depth ≥ 2: folders → call-site files (hop past folders).
+	if (
+		importerPaths.length <= FILE_PROMOTE_THRESHOLD ||
+		maxDepth < 2
+	) {
 		return projectFileImportersFlat({
 			graph,
 			fileId,
@@ -135,6 +142,12 @@ export function projectFileImporters(
 		});
 	}
 
+	// Scale file promotion with viz depth (still unbounded graph scan)
+	const depthFiles = Math.min(
+		24,
+		maxFilesPerModule + Math.max(0, maxDepth - 2) * 2,
+	);
+
 	return projectFileImportersMultiHop({
 		graph,
 		fileId,
@@ -145,7 +158,7 @@ export function projectFileImporters(
 		heightPx,
 		maxImporters,
 		maxModules,
-		maxFilesPerModule,
+		maxFilesPerModule: depthFiles,
 		weightAxis,
 		units,
 	});
@@ -218,12 +231,12 @@ function projectFileImportersFlat(
 		if (target === otherLabel) continue;
 		const ref = importerRef.get(key);
 		if (ref) nodeRef[target] = ref;
-		nodeMeta.set(target, { category: 'Importers', color: TEAL.module });
+		nodeMeta.set(target, { category: 'Imports', color: TEAL.module });
 	}
 	if (hasOther) {
 		// Stable bucket id for inspect/drill; display name is "+ N more"
-		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-importers' };
-		nodeMeta.set(otherLabel, { category: 'Importers', color: TEAL.other });
+		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-imports' };
+		nodeMeta.set(otherLabel, { category: 'Imports', color: TEAL.other });
 	}
 
 	const links = [...linkMap.entries()].map(([k, value]) => {
@@ -235,12 +248,12 @@ function projectFileImportersFlat(
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['File', 'Importers'],
+		categoryOrder: ['File', 'Imports'],
 		focus,
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Importers of ${fileId}`,
+		ariaLabel: `Imports of ${fileId}`,
 	});
 }
 
@@ -340,21 +353,21 @@ function projectFileImportersMultiHop(
 
 		if (mod !== otherMods) {
 			nodeRef[mod] = { kind: 'module', id: modRaw };
-			nodeMeta.set(mod, { category: 'Modules', color: TEAL.module });
+			nodeMeta.set(mod, { category: 'Import folders', color: TEAL.package });
 		}
 		if (importerLabel !== otherFiles) {
 			nodeRef[importerLabel] = { kind: 'file', id: e.from };
-			nodeMeta.set(importerLabel, { category: 'Importers', color: TEAL.start });
+			nodeMeta.set(importerLabel, { category: 'Imports', color: TEAL.module });
 		}
 	}
 
 	if (hasOtherMods) {
 		nodeRef[otherMods] = { kind: 'bucket', id: otherMods };
-		nodeMeta.set(otherMods, { category: 'Modules', color: TEAL.other });
+		nodeMeta.set(otherMods, { category: 'Import folders', color: TEAL.other });
 	}
 	if (hasOtherFiles) {
-		nodeRef[otherFiles] = { kind: 'bucket', id: 'other-importers' };
-		nodeMeta.set(otherFiles, { category: 'Importers', color: TEAL.other });
+		nodeRef[otherFiles] = { kind: 'bucket', id: 'other-imports' };
+		nodeMeta.set(otherFiles, { category: 'Imports', color: TEAL.other });
 	}
 
 	// Drop nodes with no residual links (defensive)
@@ -377,12 +390,12 @@ function projectFileImportersMultiHop(
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['File', 'Modules', 'Importers'],
+		categoryOrder: ['File', 'Import folders', 'Imports'],
 		focus,
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Importers of ${fileId}`,
+		ariaLabel: `Imports of ${fileId}`,
 	});
 }
 

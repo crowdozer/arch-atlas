@@ -231,19 +231,19 @@ describe('projectFileImporters', () => {
 			id: fileId,
 			label: 'logger.ts',
 		});
-		// File left; with many importers, Modules hop then call-site files
+		// File left; with many importers, folder hop then call-site files
 		const cats = new Set(rev!.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('File')).toBe(true);
-		expect(cats.has('Importers')).toBe(true);
+		expect(cats.has('Imports')).toBe(true);
 		const { out, inn } = flowTotals(rev!.data);
 		const fileOut = out.get('logger.ts') ?? out.get(fileId) ?? 0;
-		// Intermediate modules conserve; terminal Importers receive full mass
+		// Intermediate folders conserve; terminal Imports receive full mass
 		for (const n of rev!.options.alluvial.nodes) {
-			if (n.category !== 'Modules') continue;
+			if (n.category !== 'Import folders') continue;
 			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
 		}
 		const importerIn = rev!.options.alluvial.nodes
-			.filter((n) => n.category === 'Importers')
+			.filter((n) => n.category === 'Imports')
 			.reduce((s, n) => s + (inn.get(n.name) ?? 0), 0);
 		expect(fileOut).toBe(importerIn);
 		expect(fileOut).toBeGreaterThan(5); // many demo modules import logger

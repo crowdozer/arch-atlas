@@ -224,6 +224,30 @@ import Tag from '../components/ui/Tag.astro';
 					</div>
 					<div class="atlas-stage__controls">
 						<div class="atlas-stage__control-group">
+							<span class="atlas-stage__control-label" id="atlas-depth-label">Depth</span>
+							<Dropdown
+								id="atlas-max-depth"
+								class="atlas-stage__depth"
+								size="sm"
+								hideLabel
+								labelText="Depth"
+								titleText="Viz hop depth (scan stays unbounded)"
+								value="7"
+								aria-labelledby="atlas-depth-label"
+							>
+								<DropdownItem value="1">1</DropdownItem>
+								<DropdownItem value="2">2</DropdownItem>
+								<DropdownItem value="3">3</DropdownItem>
+								<DropdownItem value="4">4</DropdownItem>
+								<DropdownItem value="5">5</DropdownItem>
+								<DropdownItem value="6">6</DropdownItem>
+								<DropdownItem value="7">7</DropdownItem>
+								<DropdownItem value="8">8</DropdownItem>
+								<DropdownItem value="10">10</DropdownItem>
+								<DropdownItem value="12">12</DropdownItem>
+							</Dropdown>
+						</div>
+						<div class="atlas-stage__control-group">
 							<span class="atlas-stage__control-label" id="atlas-weight-label">Weight</span>
 							<Dropdown
 								id="atlas-weight-axis"

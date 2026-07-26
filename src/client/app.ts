@@ -6,6 +6,8 @@ import { AlluvialChart } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	HUB_DEFAULT_MAX_DEPTH,
+	NORMAL_DEFAULT_MAX_DEPTH,
 	alluvialForStart,
 	edgesForBand,
 	edgesForNode,
@@ -77,12 +79,20 @@ let currentPayload: AlluvialPayload | null = null;
 let weightAxis: WeightAxis = 'import-edges';
 /** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
 let locPrecision: LocPrecision = 'estimate';
+/**
+ * Viz-only hop/folder expansion depth (does not bound graph scan).
+ * Barrel/hub defaults to 3; other views default to 7 when not user-set.
+ */
+let vizMaxDepth = NORMAL_DEFAULT_MAX_DEPTH;
+/** True after the user picks Depth manually (stops auto mode defaults). */
+let depthUserSet = false;
 /** Click behavior: drill navigates; inspect opens import evidence. */
 type InteractionMode = 'drill' | 'inspect';
 let interactionMode: InteractionMode = 'drill';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
 const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
+const VIZ_DEPTH_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12] as const;
 
 function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'import-edges';
@@ -100,6 +110,38 @@ function parseInteractionMode(raw: string): InteractionMode {
 
 function weightOpts(): { weightAxis: WeightAxis } {
 	return { weightAxis };
+}
+
+function parseVizMaxDepth(raw: string): number {
+	const n = Number.parseInt(raw, 10);
+	if (!Number.isFinite(n) || n < 1) return NORMAL_DEFAULT_MAX_DEPTH;
+	return Math.min(32, Math.floor(n));
+}
+
+/** Default viz depth for a view type (barrel hub = 3, else 7). */
+function defaultDepthForView(view: AtlasView): number {
+	return view.type === 'file-hub' ? HUB_DEFAULT_MAX_DEPTH : NORMAL_DEFAULT_MAX_DEPTH;
+}
+
+function syncDepthDropdown(): void {
+	const el = $('atlas-max-depth') as (HTMLElement & { value?: string }) | null;
+	if (!el) return;
+	el.value = String(vizMaxDepth);
+	el.setAttribute('value', String(vizMaxDepth));
+}
+
+/**
+ * Apply mode-default depth when the user has not overridden the dropdown.
+ * Call when the top-of-stack view type changes.
+ */
+function applyDepthDefaultForView(view: AtlasView): void {
+	if (depthUserSet) return;
+	vizMaxDepth = defaultDepthForView(view);
+	syncDepthDropdown();
+}
+
+function vizDepthOpts(): { maxDepth: number; maxHopStages: number } {
+	return { maxDepth: vizMaxDepth, maxHopStages: vizMaxDepth };
 }
 
 /** When exact + target-loc, refuse remount with estimate numbers. */
@@ -192,15 +234,25 @@ function currentView(): AtlasView | null {
 function payloadForView(view: AtlasView): AlluvialPayload | null {
 	if (!session) return null;
 	const opts = weightOpts();
+	const depth = vizDepthOpts();
 	switch (view.type) {
 		case 'file':
 			return alluvialForStart(session.graph, view.fileId, opts);
 		case 'file-multihop':
-			return projectMultiHopAlluvial(session.graph, view.fileId, opts);
+			return projectMultiHopAlluvial(session.graph, view.fileId, {
+				...opts,
+				maxHopStages: depth.maxHopStages,
+			});
 		case 'file-importers':
-			return projectFileImporters(session.graph, view.fileId, opts);
+			return projectFileImporters(session.graph, view.fileId, {
+				...opts,
+				maxDepth: depth.maxDepth,
+			});
 		case 'file-hub':
-			return projectFileHub(session.graph, view.fileId, opts);
+			return projectFileHub(session.graph, view.fileId, {
+				...opts,
+				maxDepth: depth.maxDepth,
+			});
 		case 'package':
 			return projectPackageImporters(session.graph, view.packageId, opts);
 		case 'module':
@@ -215,11 +267,11 @@ function captionForView(view: AtlasView): string {
 		case 'file-multihop':
 			return `Dependency tree · ${view.fileId}`;
 		case 'file-importers':
-			return `File · ${view.fileId} → importers`;
+			return `File · ${view.fileId} → imports`;
 		case 'file-hub':
-			return `Importers → ${view.fileId} → Exporters`;
+			return `Imports → ${view.fileId} → Exports`;
 		case 'package':
-			return `Package · ${view.label} → importers`;
+			return `Package · ${view.label} → imports`;
 		case 'module':
 			return `Module ends · ${view.moduleId}`;
 	}
@@ -246,9 +298,9 @@ function statusForView(view: AtlasView): string {
 		case 'file-multihop':
 			return `Tree map: ${view.fileId}`;
 		case 'file-importers':
-			return `Importers of ${view.fileId}`;
+			return `Imports of ${view.fileId}`;
 		case 'file-hub':
-			return `Importers · Exporters · ${view.fileId}`;
+			return `Imports · Exports · ${view.fileId}`;
 		case 'package':
 			return `Package: ${view.label}`;
 		case 'module':
@@ -329,8 +381,10 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 			data: payload.data,
 			options,
 		});
-		// Top-pack sparse columns + pad viewBox so entry labels don't clip.
-		polishAlluvialHolder(holder);
+		// Top-pack columns; recolor File→Exports bands (Carbon uses source color).
+		polishAlluvialHolder(holder, {
+			colorScale: payload.options.color.scale,
+		});
 		bindAlluvialClicks(chart);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);
@@ -416,6 +470,10 @@ function pushView(view: AtlasView): void {
 	const top = currentView();
 	if (top && sameView(top, view)) return;
 
+	// Mode default depth (3 hub / 7 normal) unless user set Depth manually
+	const prevType = top?.type;
+	if (prevType !== view.type) applyDepthDefaultForView(view);
+
 	const payload = payloadForView(view);
 	if (!payload) {
 		setStatus(
@@ -424,7 +482,7 @@ function pushView(view: AtlasView): void {
 				: view.type === 'module'
 					? `No package edges in ${view.moduleId}`
 					: view.type === 'file-importers'
-						? `No importers for ${view.fileId}`
+						? `No imports for ${view.fileId}`
 						: view.type === 'file-hub'
 							? `No hub edges for ${view.fileId}`
 							: view.type === 'file-multihop'
@@ -446,6 +504,7 @@ function popView(): void {
 	viewStack.pop();
 	const view = currentView();
 	if (!view || !session) return;
+	applyDepthDefaultForView(view);
 	updateCaption(view);
 	updateBackButton();
 	if (mountAlluvialGated(payloadForView(view))) {
@@ -1183,6 +1242,7 @@ function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: b
 	session.startId = startId;
 	expandToPath(startId);
 	viewStack = [view];
+	applyDepthDefaultForView(view);
 	renderTree();
 	renderCatalog(session.catalog, startId);
 	updateCaption(view);
@@ -1375,6 +1435,22 @@ function wireUi() {
 				detail?.item?.value ??
 				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
 			weightAxis = parseWeightAxis(next);
+			remountCurrentView();
+		}) as EventListener);
+	}
+
+	const depthDropdown = $('atlas-max-depth') as (HTMLElement & { value?: string }) | null;
+	if (depthDropdown) {
+		syncDepthDropdown();
+		depthDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof depthDropdown.value === 'string' ? depthDropdown.value : '');
+			vizMaxDepth = parseVizMaxDepth(next);
+			depthUserSet = true;
 			remountCurrentView();
 		}) as EventListener);
 	}

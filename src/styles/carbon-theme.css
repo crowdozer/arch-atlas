@@ -760,6 +760,19 @@ cds-dropdown.atlas-stage__weight,
   align-self: center;
 }
 
+cds-dropdown.atlas-stage__depth,
+.atlas-stage__depth {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 4.5rem !important;
+  flex-direction: row !important;
+  width: 4.5rem !important;
+  max-width: 4.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
 cds-dropdown.atlas-stage__precision,
 .atlas-stage__precision {
   box-sizing: border-box;
@@ -783,6 +796,7 @@ cds-dropdown.atlas-stage__precision,
 }
 
 cds-dropdown.atlas-stage__weight,
+cds-dropdown.atlas-stage__depth,
 cds-dropdown.atlas-stage__precision {
   position: relative;
   z-index: 2; /* open list above content-switcher */

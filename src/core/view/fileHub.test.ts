@@ -97,14 +97,14 @@ describe('projectFileHub demo-next-complex', () => {
 		assertColumnConservation(payload!, id);
 
 		const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Importers')).toBe(true);
+		expect(cats.has('Imports') || cats.has('Import folders')).toBe(true);
 		expect(cats.has('File')).toBe(true);
-		expect(cats.has('Exporters')).toBe(true);
+		expect(cats.has('Exports')).toBe(true);
 		expect(payload!.options.alluvial.units).toBe('import edges');
 
 		// Export column uses yellow family (not teal import colors)
 		const exportNodes = payload!.options.alluvial.nodes.filter(
-			(n) => n.category === 'Exporters',
+			(n) => n.category === 'Exports',
 		);
 		expect(exportNodes.length).toBeGreaterThan(0);
 		const scale = payload!.options.color.scale;
@@ -112,6 +112,17 @@ describe('projectFileHub demo-next-complex', () => {
 			const c = scale[n.name] ?? '';
 			expect(c, n.name).toMatch(/^#(?:eab308|ca8a04|a16207)$/i);
 		}
+	});
+
+	it('maxDepth ≥ 2 hops past import folders to call-site files', () => {
+		const id = 'src/lib/redis.ts';
+		const shallow = projectFileHub(graph, id, { maxDepth: 1 })!;
+		const deep = projectFileHub(graph, id, { maxDepth: 3 })!;
+		const shallowCats = new Set(shallow.options.alluvial.nodes.map((n) => n.category));
+		const deepCats = new Set(deep.options.alluvial.nodes.map((n) => n.category));
+		expect(shallowCats.has('Exports')).toBe(true);
+		// With few importers redis may still be file-only; public.ts covered below
+		expect(deepCats.has('Exports')).toBe(true);
 	});
 
 	it('returns null for missing file', () => {

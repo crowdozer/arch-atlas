@@ -59,6 +59,8 @@ export {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 export {
+	HUB_DEFAULT_MAX_DEPTH,
+	NORMAL_DEFAULT_MAX_DEPTH,
 	preferFileHubView,
 	projectFileHub,
 } from '@core/view/fileHub.ts';
