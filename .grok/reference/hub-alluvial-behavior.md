@@ -138,7 +138,7 @@ past/into terminators. Rail **nodes** stay hidden. Packages remain sinks.
 
 | List | Nodes | Side | Wrap color |
 | ---- | ----- | ---- | ---------- |
-| `meta.terminators` | Reverse free-source pad targets | Exports* (yellow) | **Cyan** |
+| `meta.terminators` | Reverse free sources / export-tree dead-ends (no kept outer reverse parent): single-column Exports, multi-hop padded free sources, outer rim | Exports* (yellow) | **Cyan** |
 | `meta.exportTerminators` | Forward file leaves (no non-rail out) | Imports* (cyan) | **Yellow** |
 | `meta.exportTerminators` | Packages / unresolved / External buckets | External | **Purple** (unique package chrome; future icons can target same class) |
 

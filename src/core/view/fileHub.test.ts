@@ -293,9 +293,45 @@ describe('projectFileHub demo-next-complex', () => {
 	});
 
 	/**
+	 * Single reverse hop only (max reverse BFS = 1): Exports free sources still
+	 * get cyan terminators — pad rails require radiusL≥2, but chrome does not.
+	 * AdminFlags ← app/dashboard/page.tsx only.
+	 */
+	it('AdminFlags: single-hop Exports free source is a reverse terminator', () => {
+		const focus = 'src/features/admin/AdminFlags.tsx';
+		const payload = projectFileHub(graph, focus, {
+			maxDepth: 3,
+			weightAxis: 'import-edges',
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		expect(payload).not.toBeNull();
+		const exportNodes = payload.options.alluvial.nodes.filter(
+			(n) => n.category === 'Exports',
+		);
+		expect(
+			exportNodes.some((n) => n.name.includes('dashboard')),
+			'dashboard on Exports',
+		).toBe(true);
+		const terminators = payload.meta.terminators ?? [];
+		const dashLabel =
+			exportNodes.find((n) => n.name.includes('dashboard'))?.name ??
+			'app/dashboard/page.tsx';
+		expect(
+			terminators,
+			'single-hop export dead-end must be reverse terminator',
+		).toContain(dashLabel);
+		// No multi-hop reverse → no out-rail pads required
+		const rails = payload.options.alluvial.nodes
+			.map((n) => n.name)
+			.filter((n) => isOutRailName(n));
+		expect(rails.length, 'no out-rails when max reverse hops is 1').toBe(0);
+	});
+
+	/**
 	 * Observability for ghost pad-rail chrome (redis Import hop 2/3).
 	 * No Carbon mount — gates payload contract only: rails exist for layout;
-	 * terminators list padded free-source files (not rail ids).
+	 * terminators list reverse free sources (not rail ids).
 	 */
 	it('redis depth 3: reverse terminators + forward leaves; rails not marked', () => {
 		const id = 'src/lib/redis.ts';

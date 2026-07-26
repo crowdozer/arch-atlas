@@ -229,7 +229,7 @@ export function projectFileHub(
 
 	// Shared display-name registry so import/export sides never collide
 	const usedNames = new Set<string>([fileLabel]);
-	/** Reverse-hop display names that received free-source pad rails. */
+	/** Reverse free sources / export-tree dead-ends (cyan polish chrome). */
 	const terminators: string[] = [];
 	/**
 	 * Construction-time parent → External package widths (display labels).
@@ -917,8 +917,9 @@ function allocateProportional(
  * Mass = focus-incident reverse edges, routed outward for structure.
  * Outer hops ranked by connectivity into the kept inner ring.
  *
- * Returns display names of reverse-hop files that were **padded** (no outer
- * reverse parent) — hub terminators for polish chrome.
+ * Returns display names of reverse free sources (no kept outer reverse parent)
+ * — hub terminators for cyan polish chrome. Includes single-hop Exports leaves
+ * (no pad) and multi-hop free sources (padded when d < radiusL).
  */
 function addImportRings(
 	args: LinkBuilder & {
@@ -1075,13 +1076,13 @@ function addImportRings(
 		}
 	}
 
-	// Pad short reverse paths so every BFS dist shares one sankey column.
-	// Without this, dist-1 sources sit beside hop-2 sources → dual "Imports" headers.
-	const terminators: string[] = [];
+	// Reverse free sources = no kept outer reverse parent (export-tree dead-ends).
+	// Multi-hop: pad short free sources so BFS dist shares one sankey column.
+	// Single-hop (radiusL === 1): still mark Exports free sources for cyan chrome
+	// (e.g. AdminFlags ← dashboard only — no Export hop 2, previously skipped).
+	const receivesOuter = new Set<string>();
 	if (radiusL >= 2) {
 		ensureImportRails(nodeMeta, nodeRef, radiusL);
-		// Display names that already receive a real outer→inner reverse edge
-		const receivesOuter = new Set<string>();
 		for (let d = 1; d < radiusL; d++) {
 			for (const f of filesAt.get(d) ?? []) {
 				if ((mass.get(f) ?? 0) <= 0) continue;
@@ -1096,32 +1097,32 @@ function addImportRings(
 				if (outer.length) receivesOuter.add(innerLab);
 			}
 		}
+	}
 
-		const terminatorSet = new Set<string>();
-		for (let d = 1; d <= radiusL; d++) {
-			for (const f of filesAt.get(d) ?? []) {
-				const m = mass.get(f) ?? 0;
-				if (m <= 0) continue;
-				const lab = display.get(f);
-				if (!lab) continue;
-				if (receivesOuter.has(lab)) continue;
-				// Free-source: pad short paths to radius (no-op when d >= radiusL).
-				if (d < radiusL) {
-					padImportRailsInto(addLink, lab, d, radiusL, m);
-					// Only real file leaves (not rails / overflow buckets).
-					if (
-						nodeRef[lab]?.kind === 'file' &&
-						!lab.includes('·in-rail') &&
-						!lab.includes('·out-rail')
-					) {
-						terminatorSet.add(lab);
-					}
-				}
+	const terminatorSet = new Set<string>();
+	for (let d = 1; d <= radiusL; d++) {
+		for (const f of filesAt.get(d) ?? []) {
+			const m = mass.get(f) ?? 0;
+			if (m <= 0) continue;
+			const lab = display.get(f);
+			if (!lab) continue;
+			if (receivesOuter.has(lab)) continue;
+			// Pad short paths only when multi-hop columns exist (d < radiusL).
+			if (radiusL >= 2 && d < radiusL) {
+				padImportRailsInto(addLink, lab, d, radiusL, m);
+			}
+			// Cyan chrome: all reverse free sources (padded short paths, outer rim
+			// at radiusL, and single-column Exports when max reverse hops is 1).
+			if (
+				nodeRef[lab]?.kind === 'file' &&
+				!lab.includes('·in-rail') &&
+				!lab.includes('·out-rail')
+			) {
+				terminatorSet.add(lab);
 			}
 		}
-		terminators.push(...terminatorSet);
 	}
-	return terminators;
+	return [...terminatorSet];
 }
 
 /** Register shared import rails (hidden labels) for stages 2..radius. */
