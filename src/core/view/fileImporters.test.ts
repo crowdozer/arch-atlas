@@ -138,7 +138,7 @@ describe('projectFileImporters artillery config.ts', () => {
 		expect(moreLabel!.rank).toBe(maxRank);
 		expect(rev.meta.nodeRef[moreLabel!.name]).toEqual({
 			kind: 'bucket',
-			id: 'other-importers',
+			id: 'other-imports',
 		});
 
 		// Conserved mass = inbound edges
