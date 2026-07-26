@@ -396,6 +396,8 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 		applyPolish();
 		bindAlluvialRenderPolish(chart, applyPolish);
 		bindAlluvialClicks(chart);
+		// Carbon dims path.link on hover but leaves label chips full opacity.
+		bindAlluvialLabelFocus(chart, holder);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);
 		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
@@ -461,6 +463,119 @@ function bindAlluvialClicks(instance: InstanceType<typeof AlluvialChart>): void 
 		const source = linkEndpointName(detail?.datum?.source);
 		const target = linkEndpointName(detail?.datum?.target);
 		if (source || target) handleLineClick(source, target);
+	}) as EventListener);
+}
+
+/** Match Carbon alluvial link unfocus (~0.3) for label chips. */
+const ALLUVIAL_LABEL_UNFOCUS = '0.3';
+
+function detailDatum(e: Event): unknown {
+	const ce = e as CustomEvent<{ datum?: unknown }>;
+	return ce.detail?.datum ?? ce.detail;
+}
+
+/**
+ * Prefer bound sankey name (stable after label truncate); fall back to text.
+ */
+function nodeNameFromGroup(g: Element): string | null {
+	const d = (g as Element & { __data__?: { name?: string } }).__data__;
+	if (d && typeof d.name === 'string' && d.name) return d.name;
+	const textEl = g.querySelector('text.node-text');
+	const raw = textEl?.textContent?.trim() ?? '';
+	if (!raw) return null;
+	// Carbon paints `name (value)` — drop mass suffix when reading from DOM.
+	return raw.replace(/\s+\([\d,.]+\)$/u, '');
+}
+
+/**
+ * Dim non-relevant node labels when hovering a ribbon or node — Carbon already
+ * dims path.link stroke-opacity but leaves label chips at full opacity.
+ * Port of Sentinel carbonCharts/client wireAlluvialLabelFocus.
+ */
+function bindAlluvialLabelFocus(
+	instance: InstanceType<typeof AlluvialChart>,
+	holder: HTMLElement,
+): void {
+	const events = (
+		instance as unknown as {
+			services?: { events?: EventTarget };
+		}
+	).services?.events;
+	if (!events?.addEventListener) return;
+
+	const clearFocus = () => {
+		holder.classList.remove('ui-alluvial-label-dimming');
+		for (const g of holder.querySelectorAll('g.node-group')) {
+			const title = g.querySelector('g[id*="alluvial-node-title"]');
+			if (!(title instanceof SVGElement)) continue;
+			if (title.style.display === 'none') continue;
+			title.style.opacity = '';
+			g.classList.remove('ui-alluvial-label-focus');
+		}
+	};
+
+	const applyFocus = (active: Set<string>) => {
+		holder.classList.add('ui-alluvial-label-dimming');
+		for (const g of holder.querySelectorAll('g.node-group')) {
+			const title = g.querySelector('g[id*="alluvial-node-title"]');
+			if (!(title instanceof SVGElement)) continue;
+			if (title.style.display === 'none') continue;
+			const name = nodeNameFromGroup(g);
+			const on = name != null && active.has(name);
+			title.style.opacity = on ? '1' : ALLUVIAL_LABEL_UNFOCUS;
+			g.classList.toggle('ui-alluvial-label-focus', on);
+		}
+	};
+
+	const namesFromLinkDatum = (datum: unknown): Set<string> | null => {
+		const d = datum as {
+			source?: { name?: string } | string;
+			target?: { name?: string } | string;
+		} | null;
+		if (!d || typeof d !== 'object') return null;
+		const sn = linkEndpointName(d.source);
+		const tn = linkEndpointName(d.target);
+		if (!sn && !tn) return null;
+		const s = new Set<string>();
+		if (sn) s.add(sn);
+		if (tn) s.add(tn);
+		return s;
+	};
+
+	const namesFromNodeDatum = (datum: unknown): Set<string> | null => {
+		const d = datum as {
+			name?: string;
+			sourceLinks?: Array<{ target?: { name?: string } }>;
+			targetLinks?: Array<{ source?: { name?: string } }>;
+		} | null;
+		if (!d || typeof d !== 'object' || typeof d.name !== 'string') {
+			return null;
+		}
+		const s = new Set<string>([d.name]);
+		for (const l of d.sourceLinks ?? []) {
+			const n = l.target?.name;
+			if (n) s.add(n);
+		}
+		for (const l of d.targetLinks ?? []) {
+			const n = l.source?.name;
+			if (n) s.add(n);
+		}
+		return s;
+	};
+
+	events.addEventListener('alluvial-line-mouseover', ((e: Event) => {
+		const names = namesFromLinkDatum(detailDatum(e));
+		if (names) applyFocus(names);
+	}) as EventListener);
+	events.addEventListener('alluvial-line-mouseout', (() => {
+		clearFocus();
+	}) as EventListener);
+	events.addEventListener('alluvial-node-mouseover', ((e: Event) => {
+		const names = namesFromNodeDatum(detailDatum(e));
+		if (names) applyFocus(names);
+	}) as EventListener);
+	events.addEventListener('alluvial-node-mouseout', (() => {
+		clearFocus();
 	}) as EventListener);
 }
 

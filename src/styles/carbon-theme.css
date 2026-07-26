@@ -632,6 +632,14 @@ cds-tag.ui-tag--yellow {
   cursor: pointer;
 }
 
+/*
+ * Label focus: client sets opacity on title groups during ribbon/node hover
+ * (Carbon only dims path.link). Smooth the transition. Port of Sentinel.
+ */
+.ui-carbon-chart .cds--cc--alluvial g[id*='alluvial-node-title'] {
+  transition: opacity 120ms ease;
+}
+
 /* Back is now cds-button ghost — keep layout + hide when at root */
 .atlas-alluvial-back {
   margin-top: 0.15rem;
