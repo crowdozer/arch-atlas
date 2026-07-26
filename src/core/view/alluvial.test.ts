@@ -131,7 +131,9 @@ describe('projectAlluvial conservation', () => {
 describe('projectPackageImporters', () => {
 	it('nodemailer importers in demo-next-complex (src/lib/email.ts only)', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
-		const payload = projectPackageImporters(graph, 'nodemailer');
+		const payload = projectPackageImporters(graph, 'nodemailer', {
+			weightAxis: 'import-edges',
+		});
 		expect(payload).not.toBeNull();
 		expect(payload!.meta.focus.kind).toBe('package');
 		expect(payload!.meta.focus.label).toBe('nodemailer');
@@ -204,8 +206,8 @@ describe('projectFileImporters', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const fileId = 'src/lib/redis.ts';
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
-		const rev = projectFileImporters(graph, fileId)!;
-		const forward = projectAlluvial(graph, fileId)!;
+		const rev = projectFileImporters(graph, fileId, { weightAxis: 'import-edges' })!;
+		const forward = projectAlluvial(graph, fileId, { weightAxis: 'import-edges' })!;
 		const revTotal = flowTotals(rev.data).out.get(fileId) ?? 0;
 		const fwdTotal = forward.data.reduce((s, l) => s + l.value, 0);
 		expect(revTotal).toBeGreaterThan(fwdTotal);
@@ -266,7 +268,9 @@ describe('projectFileImporters', () => {
 describe('projectModuleFocus', () => {
 	it('only includes package edges from the given folder', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
-		const payload = projectModuleFocus(graph, 'src/lib');
+		const payload = projectModuleFocus(graph, 'src/lib', {
+			weightAxis: 'import-edges',
+		});
 		expect(payload).not.toBeNull();
 		expect(payload!.meta.focus).toEqual({
 			kind: 'module',

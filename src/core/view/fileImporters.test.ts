@@ -96,7 +96,10 @@ describe('projectFileImporters', () => {
 	it('logger: File → Imports only (no folder hop column)', () => {
 		const fileId = 'src/lib/logger.ts';
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
-		const rev = projectFileImporters(graph, fileId, { maxDepth: 2 })!;
+		const rev = projectFileImporters(graph, fileId, {
+			maxDepth: 2,
+			weightAxis: 'import-edges',
+		})!;
 		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);
@@ -111,7 +114,9 @@ describe('projectFileImporters', () => {
 	});
 
 	it('redis: flat file leaves when few importers', () => {
-		const rev = projectFileImporters(graph, 'src/lib/redis.ts')!;
+		const rev = projectFileImporters(graph, 'src/lib/redis.ts', {
+			weightAxis: 'import-edges',
+		})!;
 		expect(rev.options.alluvial.nodes.some((n) => n.category === 'Import folders')).toBe(
 			false,
 		);
@@ -138,7 +143,7 @@ describe('projectFileImporters artillery config.ts', () => {
 		const fileId = 'config.ts';
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
 
-		const rev = projectFileImporters(graph, fileId)!;
+		const rev = projectFileImporters(graph, fileId, { weightAxis: 'import-edges' })!;
 		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);

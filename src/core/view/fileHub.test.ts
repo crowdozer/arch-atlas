@@ -128,7 +128,7 @@ describe('projectFileHub demo-next-complex', () => {
 
 	it('hub mass equals in + out edge weights for redis.ts', () => {
 		const id = 'src/lib/redis.ts';
-		const payload = projectFileHub(graph, id);
+		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' });
 		expect(payload).not.toBeNull();
 		const focus = payload!.meta.focus.label;
 		const { inMass, outMass, total } = hubIncidentMass(payload!, focus);
@@ -158,7 +158,12 @@ describe('projectFileHub demo-next-complex', () => {
 
 	it('depth=1 stays Imports/File/Exports; deeper depth adds hop columns when graph allows', () => {
 		const id = 'src/lib/redis.ts';
-		const shallow = projectFileHub(graph, id, { maxDepth: 1, maxImporters: 48, maxDeps: 48 })!;
+		const edgeOpts = {
+			weightAxis: 'import-edges' as const,
+			maxImporters: 48,
+			maxDeps: 48,
+		};
+		const shallow = projectFileHub(graph, id, { maxDepth: 1, ...edgeOpts })!;
 		const shallowCats = categories(shallow);
 		expect(shallowCats.has('Exports')).toBe(true);
 		expect(shallowCats.has('Imports')).toBe(true);
@@ -177,8 +182,7 @@ describe('projectFileHub demo-next-complex', () => {
 		for (const depth of [2, 3, 5] as const) {
 			const deep = projectFileHub(graph, id, {
 				maxDepth: depth,
-				maxImporters: 48,
-				maxDeps: 48,
+				...edgeOpts,
 			})!;
 			const deepMass = hubIncidentMass(deep, deep.meta.focus.label);
 			expect(deepMass.inMass, `depth ${depth} in`).toBe(fileInDegree(graph, id));
@@ -196,7 +200,10 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 	const focusId = 'focus.ts';
 
 	it('depth=1 is classic three-column hub with focus-incident mass', () => {
-		const payload = projectFileHub(graph, focusId, { maxDepth: 1 })!;
+		const payload = projectFileHub(graph, focusId, {
+			maxDepth: 1,
+			weightAxis: 'import-edges',
+		})!;
 		const cats = categories(payload);
 		expect([...cats].sort()).toEqual(['Exports', 'File', 'Imports']);
 		expect(cats.has('Import hop 2')).toBe(false);
@@ -217,7 +224,10 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 	});
 
 	it('depth=3 shows Import hop 2 and Export hop 2 with conserved File mass', () => {
-		const payload = projectFileHub(graph, focusId, { maxDepth: 3 })!;
+		const payload = projectFileHub(graph, focusId, {
+			maxDepth: 3,
+			weightAxis: 'import-edges',
+		})!;
 		const cats = categories(payload);
 		expect(cats.has('Import hop 2')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);
@@ -313,6 +323,44 @@ function longestPathLayers(payload: AlluvialPayload): Map<number, Set<string>> {
 	}
 	return byLayer;
 }
+
+describe('projectFileHub export longest-path (demo-react-simple)', () => {
+	it('UserCard shows format → types → zod as export hops', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
+		const id = 'src/components/UserCard.tsx';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxDeps: 48,
+			maxImporters: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('Exports')).toBe(true);
+		expect(cats.has('Export hop 2')).toBe(true);
+		expect(cats.has('Export hop 3')).toBe(true);
+
+		const names = payload.options.alluvial.nodes.map((n) => n.name);
+		expect(names.some((n) => n.includes('format'))).toBe(true);
+		expect(names.some((n) => n.includes('types'))).toBe(true);
+		expect(names.some((n) => n.includes('zod'))).toBe(true);
+
+		// Structural chain: format → types and types → zod
+		const linkKeys = payload.data.map((l) => `${l.source}→${l.target}`);
+		expect(
+			linkKeys.some(
+				(k) => k.includes('format') && k.includes('types'),
+			),
+		).toBe(true);
+		expect(linkKeys.some((k) => k.includes('types') && k.includes('zod'))).toBe(
+			true,
+		);
+
+		// File out-mass still focus-incident only
+		const focus = payload.meta.focus.label;
+		const { outMass } = hubIncidentMass(payload, focus);
+		expect(outMass).toBe(fileOutDegree(graph, id));
+	});
+});
 
 describe('projectFileHub layer-consistent import headers (demo-next-complex)', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
@@ -419,6 +467,7 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 			maxDepth: 2,
 			maxDeps: 2,
 			maxImporters: 8,
+			weightAxis: 'import-edges',
 		})!;
 		const cats = categories(payload);
 		expect(cats.has('Export hop 2')).toBe(true);
@@ -474,11 +523,13 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 			maxDepth: 1,
 			maxModules: 8,
 			maxImporters: 48,
+			weightAxis: 'import-edges',
 		})!;
 		const deep = projectFileHub(graph, 'focus.ts', {
 			maxDepth: 3,
 			maxModules: 8,
 			maxImporters: 48,
+			weightAxis: 'import-edges',
 		})!;
 
 		// depth=1: module refs on Imports (folder collapse)
@@ -528,7 +579,7 @@ describe('projectFileHub artillery public.ts barrel', () => {
 		expect(hot!.edgeCount).toBe(hot!.outDegree + hot!.inDegree);
 		expect(preferFileHubView(graph, id)).toBe(true);
 
-		const payload = projectFileHub(graph, id)!;
+		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' })!;
 		const focus = payload.meta.focus.label;
 		const { inMass, outMass, total } = hubIncidentMass(payload, focus);
 		expect(inMass).toBe(hot!.inDegree);
@@ -541,7 +592,7 @@ describe('projectFileHub artillery public.ts barrel', () => {
 		expect(payload.data.every((l) => l.value >= 1)).toBe(true);
 
 		// Pure reverse would only show the in side
-		const rev = projectFileImporters(graph, id)!;
+		const rev = projectFileImporters(graph, id, { weightAxis: 'import-edges' })!;
 		const revFocusOut = flowTotals(rev.data).out.get(rev.meta.focus.label) ?? 0;
 		expect(total).toBeGreaterThan(revFocusOut);
 	});

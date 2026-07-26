@@ -614,6 +614,15 @@ cds-tag.ui-tag--yellow {
   stroke: var(--atlas-select-strong, #a78bfa);
 }
 
+/* Invisible hop-padding rails (import/export layer holders) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail {
+  pointer-events: none;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node {
+  opacity: 0 !important;
+  stroke: none !important;
+}
+
 /* Drill-down affordance: clickable nodes and bands */
 .ui-carbon-chart .cds--cc--alluvial .node-group,
 .ui-carbon-chart .cds--cc--alluvial g.node,

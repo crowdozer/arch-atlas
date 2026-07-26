@@ -89,7 +89,10 @@ describe('projectMultiHopAlluvial depth semantics (layout.tsx)', () => {
 	});
 
 	it('depth 1: Imports → File only (no hop columns)', () => {
-		const payload = projectMultiHopAlluvial(graph, start, { maxDepth: 1 })!;
+		const payload = projectMultiHopAlluvial(graph, start, {
+			maxDepth: 1,
+			weightAxis: 'import-edges',
+		})!;
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('Imports')).toBe(true);
 		expect(cats.has('File')).toBe(true);

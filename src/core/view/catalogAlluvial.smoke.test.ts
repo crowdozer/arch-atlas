@@ -130,7 +130,8 @@ function assertNodeRefCoversNamedNodes(payload: AlluvialPayload, label: string) 
 
 /** Payload the UI mounts for any file catalog click (always file-hub). */
 function payloadForFileClick(graph: CodeGraph, fileId: string): AlluvialPayload | null {
-	return projectFileHub(graph, fileId);
+	// Edge-count conservation assertions use import-edges (UI default is importer-loc).
+	return projectFileHub(graph, fileId, { weightAxis: 'import-edges' });
 }
 
 /** Incident mass on hub focus (in + out); one-sided hubs use the present side. */
@@ -223,7 +224,7 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const out = fileOutDegree(graph, id);
 		expect(inn).toBeGreaterThan(0);
 		expect(out).toBeGreaterThan(0);
-		const payload = projectFileHub(graph, id)!;
+		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' })!;
 		expect(focusIncidentMass(payload)).toBe(inn + out);
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
 		expect(cats.has('Imports')).toBe(true);
@@ -248,11 +249,15 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		for (const end of catalog.ends) {
 			if (end.inDegree === 0) {
 				// Declared package with no imports — no reverse payload
-				const p = projectPackageImporters(graph, end.id);
+				const p = projectPackageImporters(graph, end.id, {
+					weightAxis: 'import-edges',
+				});
 				expect(p).toBeNull();
 				continue;
 			}
-			const payload = projectPackageImporters(graph, end.id);
+			const payload = projectPackageImporters(graph, end.id, {
+				weightAxis: 'import-edges',
+			});
 			expect(payload, `package ${end.label}`).not.toBeNull();
 			assertColumnConservation(payload!, `end ${end.label}`);
 			assertNodeRefCoversNamedNodes(payload!, `end ${end.label}`);

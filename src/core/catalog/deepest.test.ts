@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	catalogComplex,
 	catalogDeepest,
+	fileDistances,
+	fileImportAdj,
+	fileLongestDistances,
 	importDepthStats,
 } from '@core/catalog/deepest.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
@@ -28,6 +31,23 @@ function walk(dir: string, base = dir): VirtualFile[] {
 	}
 	return out;
 }
+
+describe('fileLongestDistances', () => {
+	it('expands format→types when types is also a direct dep (UserCard)', () => {
+		const { graph } = indexFiles(
+			walk(path.join(fixturesRoot, 'demo-react-simple')),
+		);
+		const id = 'src/components/UserCard.tsx';
+		const adj = fileImportAdj(graph);
+		const short = fileDistances(graph, id, adj);
+		const long = fileLongestDistances(graph, id, adj);
+		expect(short.dist.get('src/types.ts')).toBe(1);
+		expect(short.maxHops).toBe(1);
+		expect(long.dist.get('src/lib/format.ts')).toBe(1);
+		expect(long.dist.get('src/types.ts')).toBe(2);
+		expect(long.maxHops).toBe(2);
+	});
+});
 
 describe('catalogDeepest / importDepthStats', () => {
 	it('ranks next-complex by max hops descending', () => {

@@ -180,9 +180,14 @@ export function rightTruncateLabel(text: string, maxChars: number): string {
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
  * Full original string goes on title + aria-label for hover/a11y.
  */
-/** Hub import padding rails — hold sankey layers; labels should stay invisible. */
+/** Hub padding rails — hold sankey layers; labels should stay invisible. */
 export function isImportRailLabel(name: string): boolean {
-	return name.startsWith('\u200b·in-rail') || name.includes('·in-rail·');
+	return (
+		name.startsWith('\u200b·in-rail') ||
+		name.includes('·in-rail·') ||
+		name.startsWith('\u200b·out-rail') ||
+		name.includes('·out-rail·')
+	);
 }
 
 export function rightTruncateAlluvialLabels(
@@ -199,13 +204,20 @@ export function rightTruncateAlluvialLabels(
 		const g = text.parentElement;
 		const bg = g?.querySelector<SVGRectElement>('rect.node-text-bg');
 
-		// Hide multi-hop import padding rails (zero-width layer holders)
+		// Hide padding rails (layer holders) — bar + label
 		if (isImportRailLabel(name)) {
 			text.textContent = '';
 			text.setAttribute('aria-hidden', 'true');
 			if (bg) {
 				bg.setAttribute('width', '0');
 				bg.setAttribute('height', '0');
+			}
+			const group = text.closest('g.node-group');
+			group?.classList.add('atlas-alluvial-rail');
+			const bar = group?.querySelector<SVGRectElement>('rect.node');
+			if (bar) {
+				bar.setAttribute('width', '0');
+				bar.setAttribute('opacity', '0');
 			}
 			continue;
 		}

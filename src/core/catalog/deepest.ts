@@ -31,7 +31,8 @@ export function fileImportedByAdj(graph: CodeGraph): Map<string, string[]> {
 }
 
 /**
- * BFS distances from start along file imports (start = 0).
+ * Shortest-path BFS distances from start along file imports (start = 0).
+ * First visit wins — good for reverse “who imports me” radius.
  */
 export function fileDistances(
 	graph: CodeGraph,
@@ -53,6 +54,45 @@ export function fileDistances(
 			dist.set(n, d + 1);
 			q.push(n);
 		}
+	}
+	return { dist, maxHops };
+}
+
+/**
+ * Longest simple-path distances from start along file imports (start = 0).
+ * Cycle-safe (skips back-edges on the active stack). Used for **export** hub
+ * columns so chains like focus→format→types stay expanded even when types is
+ * also a direct dependency of focus (shortest-path would collapse types to 1).
+ */
+export function fileLongestDistances(
+	graph: CodeGraph,
+	startId: string,
+	adj?: Map<string, string[]>,
+): { dist: Map<string, number>; maxHops: number } {
+	const a = adj ?? fileImportAdj(graph);
+	const dist = new Map<string, number>();
+	dist.set(startId, 0);
+
+	const dfs = (cur: string, stack: Set<string>) => {
+		const d = dist.get(cur) ?? 0;
+		for (const n of a.get(cur) ?? []) {
+			if (stack.has(n)) continue; // cycle
+			const nd = d + 1;
+			const prev = dist.get(n);
+			if (prev !== undefined && nd <= prev) continue;
+			dist.set(n, nd);
+			stack.add(n);
+			dfs(n, stack);
+			stack.delete(n);
+		}
+	};
+
+	const stack = new Set<string>([startId]);
+	dfs(startId, stack);
+
+	let maxHops = 0;
+	for (const d of dist.values()) {
+		if (d > maxHops) maxHops = d;
 	}
 	return { dist, maxHops };
 }

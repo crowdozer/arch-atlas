@@ -13,10 +13,10 @@
  * Radius = depth (not multiHop’s depth−1). Asymmetric sides omit empty hop columns.
  * Indexing/scan stays unbounded.
  *
- * **Mass:** route focus-incident edge weights through consecutive BFS rings.
- * File in-mass = depth-1 import total; File out-mass = depth-1 export total
- * (including packages/unresolved from focus). Outer rings carry routed mass only —
- * they do not union all edges in the radius.
+ * **Mass:** route focus-incident edge weights through consecutive rings.
+ * File in-mass = reverse edge total; File out-mass = focus out-edge total
+ * (including packages/unresolved from focus). Outer export rings also show
+ * package leaves of intermediate files (structural; not added to File mass).
  *
  * Integer multi-parent split (multiHop-style): a node with mass 1 and N outer
  * neighbors lights only one outer link (`floor(1/N)=0`, remainder to the first
@@ -24,13 +24,18 @@
  * weights; accepted product default for conserving File incident mass.
  *
  * dist-1 categories stay `Imports` / `Exports`; outer rings `Import hop k` /
- * `Export hop k` (k≥2). Packages/unresolved appear only on export dist-1 from
- * focus out-edges. Folder collapse (importerGroupKey) only at depth=1.
+ * `Export hop k` (k≥2). Folder collapse (importerGroupKey) only at depth=1.
+ *
+ * **Export distances use longest simple path** so focus→format→types expands
+ * even when types is also a direct import of focus (shortest BFS would pin
+ * types at dist 1 and hide the chain). Imports still use shortest reverse BFS.
  *
  * **Layer-consistent import topology:** d3-sankey columns = longest path from
  * sources. Dist-1 files with no outer importers would share a column with hop-2
  * sources (duplicate “Imports” headers). Shared zero-width import rails pad
  * short reverse paths so every BFS dist sits on one column (multiHop-style).
+ * Export side pads short File→deep-file paths with out-rails when a direct
+ * dep’s longest-path dist is &gt; 1.
  *
  * Imports (left) teal; Exports (right) yellow. Carbon colors bands by source,
  * so File→Export strokes are recolored in the client polish step.
@@ -40,6 +45,7 @@ import {
 	fileDistances,
 	fileImportAdj,
 	fileImportedByAdj,
+	fileLongestDistances,
 } from '@core/catalog/deepest.ts';
 import type {
 	AlluvialFocus,
@@ -100,6 +106,11 @@ export function exportHopCategory(dist: number): string {
 /** Shared invisible rail for reverse-path padding at import hop stage s (s≥2). */
 export function importRailId(stage: number): string {
 	return `\u200b·in-rail·h${stage}`;
+}
+
+/** Shared invisible rail for File→deep export padding (stage = hop column index). */
+export function exportRailId(stage: number): string {
+	return `\u200b·out-rail·h${stage}`;
 }
 
 /**
@@ -557,10 +568,11 @@ function padImportRailsInto(
 }
 
 /**
- * Forward multi-hop: File → Exports (dist-1 files + pkgs) → … → Export hop N.
- * Mass = focus-incident out edges; packages only from focus on dist-1.
- * Outer hops ranked by connectivity from the kept inner ring; overflow buckets
- * receive routed mass (file or bucket via display map).
+ * Forward multi-hop: File → Exports → … → Export hop N.
+ *
+ * File columns use **longest simple path** so chains like focus→format→types
+ * expand even when types is also a direct dep. Focus out-mass is conserved;
+ * package leaves of intermediate files are structural (not File mass).
  */
 function addExportRings(
 	args: LinkBuilder & {
@@ -587,11 +599,10 @@ function addExportRings(
 	} = args;
 
 	const fwdAdj = fileImportAdj(graph);
-	const { dist, maxHops } = fileDistances(graph, fileId, fwdAdj);
-	// Packages-only (no file hop) still needs a dist-1 Exports column
+	// Longest path: format→types stays at hop 2 when types is also a direct dep
+	const { dist, maxHops } = fileLongestDistances(graph, fileId, fwdAdj);
 	const radiusR = Math.min(hubRadius, Math.max(maxHops, 1));
 
-	// Seed mass from focus out-edges
 	type NonFileDep = {
 		preferredLabel: string;
 		weight: number;
@@ -599,8 +610,10 @@ function addExportRings(
 		color: string;
 		key: string;
 	};
+	/** Focus-incident file deps (seed mass), keyed by path. */
 	const fileSeed = new Map<string, number>();
-	const nonFile = new Map<string, NonFileDep>();
+	/** Focus-incident packages (always on Exports / dist-1). */
+	const focusPackages = new Map<string, NonFileDep>();
 
 	for (const e of outEdges) {
 		const w = edgeWeight(e, graph, weightAxis);
@@ -611,10 +624,10 @@ function addExportRings(
 		const pkgLabel =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
 		const key = `${e.toKind}:${e.to}`;
-		const prev = nonFile.get(key);
+		const prev = focusPackages.get(key);
 		if (prev) prev.weight += w;
 		else {
-			nonFile.set(key, {
+			focusPackages.set(key, {
 				key,
 				preferredLabel: pkgLabel,
 				weight: w,
@@ -627,137 +640,74 @@ function addExportRings(
 		}
 	}
 
+	// Include every seed file even if longest dist exceeds radius (cap to radiusR)
 	const filesAt = new Map<number, string[]>();
-	for (const [path, d] of dist) {
-		if (d < 1 || d > radiusR) continue;
+	for (const [path, rawD] of dist) {
+		if (rawD < 1) continue;
+		const d = Math.min(rawD, radiusR);
+		if (path === fileId) continue;
 		const list = filesAt.get(d) ?? [];
-		list.push(path);
+		if (!list.includes(path)) list.push(path);
 		filesAt.set(d, list);
+	}
+	// Seed-only files missing from dist (shouldn't happen) — force dist 1
+	for (const path of fileSeed.keys()) {
+		if (path === fileId) continue;
+		if (![...filesAt.values()].some((list) => list.includes(path))) {
+			const list = filesAt.get(1) ?? [];
+			list.push(path);
+			filesAt.set(1, list);
+		}
 	}
 
 	const display = new Map<string, string>();
 	const keptByDist = new Map<number, string[]>();
 	const mass = new Map<string, number>();
 
-	// --- dist-1: combined files + packages under maxPerHop (classic maxDeps) ---
-	type RankedExport = {
-		kind: 'file' | 'nonfile';
-		key: string;
-		weight: number;
-		preferredLabel: string;
-		entry?: NonFileDep;
+	const ensureExportRails = () => {
+		for (let s = 1; s <= radiusR; s++) {
+			const id = exportRailId(s);
+			if (nodeMeta.has(id)) continue;
+			nodeMeta.set(id, {
+				category: exportHopCategory(s),
+				color: exportHopColor(s, radiusR),
+			});
+			nodeRef[id] = { kind: 'bucket', id };
+		}
 	};
-	const dist1Candidates = filesAt.get(1) ?? [];
-	const dist1Labels =
-		classicLabels ?? uniqueFileLabels(dist1Candidates);
-	const combined: RankedExport[] = [];
-	for (const f of dist1Candidates) {
-		combined.push({
-			kind: 'file',
-			key: f,
-			weight: fileSeed.get(f) ?? 0,
-			preferredLabel: hopFileLabel(
-				dist1Labels.get(f) ?? f,
-				'out',
-				1,
-				radiusR,
-			),
-		});
-	}
-	const pkgLabelCount = new Map<string, number>();
-	for (const entry of nonFile.values()) {
-		pkgLabelCount.set(
-			entry.preferredLabel,
-			(pkgLabelCount.get(entry.preferredLabel) ?? 0) + 1,
-		);
-	}
-	for (const [key, entry] of nonFile) {
-		let preferred = entry.preferredLabel;
-		if ((pkgLabelCount.get(preferred) ?? 0) > 1) {
-			preferred = `${preferred} · ${entry.ref.kind}`;
+
+	/** File → (rails) → target so longest-path dist matches sankey layer. */
+	const padFromFile = (targetLab: string, d: number, w: number) => {
+		if (w <= 0) return;
+		if (d <= 1) {
+			addLink(fileLabel, targetLab, w);
+			return;
 		}
-		combined.push({
-			kind: 'nonfile',
-			key,
-			weight: entry.weight,
-			preferredLabel: preferred,
-			entry,
-		});
-	}
-	combined.sort(
-		(a, b) => b.weight - a.weight || a.preferredLabel.localeCompare(b.preferredLabel),
-	);
-
-	const keptCombined = combined.slice(0, maxPerHop);
-	const overflowCombined = combined.slice(maxPerHop);
-	const exportOtherLabel =
-		overflowCombined.length > 0
-			? claimName(
-					usedNames,
-					radiusR <= 1
-						? moreCountLabel(overflowCombined.length)
-						: hopOverflowLabel(
-								moreCountLabel(overflowCombined.length),
-								'out',
-								1,
-							),
-					'exports',
-				)
-			: '';
-
-	const keptDist1Files: string[] = [];
-	for (const item of keptCombined) {
-		if (item.kind === 'file') {
-			const w = item.weight;
-			if (w <= 0) continue;
-			const name = claimName(usedNames, item.preferredLabel, 'out');
-			display.set(item.key, name);
-			nodeRef[name] = { kind: 'file', id: item.key };
-			nodeMeta.set(name, {
-				category: 'Exports',
-				color: exportHopColor(1, radiusR),
-			});
-			mass.set(item.key, w);
-			addLink(fileLabel, name, w);
-			keptDist1Files.push(item.key);
-		} else if (item.entry) {
-			const name = claimName(usedNames, item.preferredLabel, item.entry.ref.kind);
-			addLink(fileLabel, name, item.weight);
-			nodeRef[name] = item.entry.ref;
-			nodeMeta.set(name, {
-				category: 'Exports',
-				color: item.entry.color,
-			});
+		ensureExportRails();
+		let prev = fileLabel;
+		for (let stage = 1; stage < d; stage++) {
+			const rail = exportRailId(stage);
+			addLink(prev, rail, w);
+			prev = rail;
 		}
-	}
+		addLink(prev, targetLab, w);
+	};
 
-	// Overflow dist-1 (files + packages) still contribute File out-mass
-	for (const item of overflowCombined) {
-		if (!exportOtherLabel) continue;
-		addLink(fileLabel, exportOtherLabel, item.weight);
-		if (item.kind === 'file') {
-			display.set(item.key, exportOtherLabel);
-			// No further hop routing from overflowed dist-1 files unless they
-			// share display — mass already spent into overflow bucket at File.
-		}
-	}
-	if (exportOtherLabel) {
-		nodeRef[exportOtherLabel] = { kind: 'bucket', id: 'other-exports' };
-		nodeMeta.set(exportOtherLabel, {
-			category: 'Exports',
-			color: TEAL.exportOther,
-		});
-	}
-	keptByDist.set(1, keptDist1Files);
-
-	// --- outer hops: rank by connectivity from kept inner; route mass ---
-	for (let d = 2; d <= radiusR; d++) {
+	// --- Place files hop by hop (longest-path dist) ---
+	for (let d = 1; d <= radiusR; d++) {
 		const files = filesAt.get(d) ?? [];
 		const keptInner = new Set(keptByDist.get(d - 1) ?? []);
 		const ranked = [...files].sort((a, b) => {
-			// Connectivity: edges from kept parents at d−1 into candidate
-			const sa = edgeWeightFromSet(graph, keptInner, a, weightAxis);
-			const sb = edgeWeightFromSet(graph, keptInner, b, weightAxis);
+			const sa =
+				d === 1
+					? (fileSeed.get(a) ?? 0)
+					: edgeWeightFromSet(graph, keptInner, a, weightAxis) ||
+						(fileSeed.get(a) ?? 0);
+			const sb =
+				d === 1
+					? (fileSeed.get(b) ?? 0)
+					: edgeWeightFromSet(graph, keptInner, b, weightAxis) ||
+						(fileSeed.get(b) ?? 0);
 			return sb - sa || a.localeCompare(b);
 		});
 		const kept = ranked.slice(0, maxPerHop);
@@ -766,7 +716,10 @@ function addExportRings(
 		const otherCount = ranked.length - kept.length;
 
 		if (otherCount > 0) {
-			const preferred = hopOverflowLabel(moreCountLabel(otherCount), 'out', d);
+			const preferred =
+				radiusR <= 1
+					? moreCountLabel(otherCount)
+					: hopOverflowLabel(moreCountLabel(otherCount), 'out', d);
 			const otherName = claimName(usedNames, preferred, `out h${d}`);
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(f, otherName);
@@ -778,7 +731,8 @@ function addExportRings(
 			});
 		}
 
-		const pathLabels = uniqueFileLabels(kept);
+		const pathLabels =
+			d === 1 && classicLabels ? classicLabels : uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
 			const preferred = hopFileLabel(base, 'out', d, radiusR);
@@ -790,37 +744,181 @@ function addExportRings(
 				color: exportHopColor(d, radiusR),
 			});
 		}
+	}
 
-		// Route mass from dist d−1 → d (file or overflow bucket via display)
-		const parents = [...(filesAt.get(d - 1) ?? [])].sort((a, b) =>
+	// --- Seed focus out-mass onto file deps (pad when longest dist > 1) ---
+	for (const [f, w] of fileSeed) {
+		if (w <= 0) continue;
+		const lab = display.get(f);
+		if (!lab) {
+			// Overflowed: dump mass into hop bucket if any, else skip structure
+			continue;
+		}
+		if (nodeRef[lab]?.kind === 'bucket') {
+			// Folded into overflow — still count File mass into that bucket
+			const d = Math.min(dist.get(f) ?? 1, radiusR);
+			padFromFile(lab, d, w);
+			continue;
+		}
+		const d = Math.min(dist.get(f) ?? 1, radiusR);
+		padFromFile(lab, d, w);
+		mass.set(f, (mass.get(f) ?? 0) + w);
+	}
+
+	// Focus packages on Exports (dist-1), under maxPerHop budget shared with files
+	const focusPkgList = [...focusPackages.values()].sort(
+		(a, b) => b.weight - a.weight || a.preferredLabel.localeCompare(b.preferredLabel),
+	);
+	const dist1FileCount = keptByDist.get(1)?.length ?? 0;
+	const pkgBudget = Math.max(0, maxPerHop - dist1FileCount);
+	const keptPkgs = focusPkgList.slice(0, pkgBudget);
+	const overflowPkgs = focusPkgList.slice(pkgBudget);
+	for (const entry of keptPkgs) {
+		let preferred = entry.preferredLabel;
+		const name = claimName(usedNames, preferred, entry.ref.kind);
+		addLink(fileLabel, name, entry.weight);
+		nodeRef[name] = entry.ref;
+		nodeMeta.set(name, {
+			category: 'Exports',
+			color: entry.color,
+		});
+	}
+	if (overflowPkgs.length) {
+		const otherName = claimName(
+			usedNames,
+			moreCountLabel(overflowPkgs.length),
+			'export-pkgs',
+		);
+		for (const entry of overflowPkgs) {
+			addLink(fileLabel, otherName, entry.weight);
+		}
+		nodeRef[otherName] = { kind: 'bucket', id: 'other-export-pkgs' };
+		nodeMeta.set(otherName, {
+			category: 'Exports',
+			color: TEAL.exportOther,
+		});
+	}
+
+	// --- Route mass: consecutive file children + package leaves (conserving) ---
+	// Packages of intermediate files appear at hop d+1 (capped at hubRadius).
+	for (let d = 1; d <= radiusR; d++) {
+		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
 		);
+		const pkgDist = Math.min(d + 1, hubRadius);
+
 		for (const f of parents) {
 			const m = mass.get(f) ?? 0;
 			if (m <= 0) continue;
 			const fromLab = display.get(f);
-			if (!fromLab) continue;
-			// Skip if parent was folded into dist-1 overflow bucket only (no file node)
-			if (nodeRef[fromLab]?.kind === 'bucket' && (dist.get(f) ?? 0) === 1) {
-				// Dist-1 overflow: mass already linked File → overflow; do not fan out
-				continue;
+			if (!fromLab || nodeRef[fromLab]?.kind === 'bucket') continue;
+
+			type Child =
+				| { kind: 'file'; path: string; lab: string }
+				| {
+						kind: 'package';
+						preferredLabel: string;
+						ref: AlluvialNodeRef;
+						color: string;
+				  };
+
+			const children: Child[] = [];
+			if (d < radiusR) {
+				for (const c of fwdAdj.get(f) ?? []) {
+					if ((dist.get(c) ?? 0) !== d + 1 || !display.has(c)) continue;
+					const lab = display.get(c)!;
+					children.push({ kind: 'file', path: c, lab });
+				}
+			}
+			// Package / unresolved deps of this file (structure further out)
+			type PkgCand = {
+				preferredLabel: string;
+				ref: AlluvialNodeRef;
+				color: string;
+				rank: number;
+			};
+			const pkgCands: PkgCand[] = [];
+			for (const e of graph.edges) {
+				if (e.from !== f || e.toKind === 'file') continue;
+				const pkgLabel =
+					e.toKind === 'unresolved'
+						? e.specifier
+						: e.to.replace(/^unresolved:/, '');
+				pkgCands.push({
+					preferredLabel: pkgLabel,
+					ref: {
+						kind: e.toKind === 'unresolved' ? 'unresolved' : 'package',
+						id: e.to,
+					},
+					color: e.toKind === 'unresolved' ? TEAL.exportOther : TEAL.exportPkg,
+					rank: edgeWeight(e, graph, weightAxis),
+				});
+			}
+			pkgCands.sort(
+				(a, b) =>
+					b.rank - a.rank || a.preferredLabel.localeCompare(b.preferredLabel),
+			);
+			const fileChildCount = children.length;
+			const pkgBudget = Math.max(0, maxPerHop - fileChildCount);
+			for (const p of pkgCands.slice(0, pkgBudget)) {
+				children.push({
+					kind: 'package',
+					preferredLabel: p.preferredLabel,
+					ref: p.ref,
+					color: p.color,
+				});
+			}
+			const overflowPkg = pkgCands.slice(pkgBudget);
+
+			if (!children.length && !overflowPkg.length) continue;
+
+			const targets: { lab: string; path?: string }[] = [];
+			for (const ch of children) {
+				if (ch.kind === 'file') {
+					targets.push({ lab: ch.lab, path: ch.path });
+				} else {
+					const name = claimName(
+						usedNames,
+						hopFileLabel(ch.preferredLabel, 'out', pkgDist, hubRadius),
+						ch.ref.kind,
+					);
+					nodeRef[name] = ch.ref;
+					nodeMeta.set(name, {
+						category: exportHopCategory(pkgDist),
+						color: ch.color,
+					});
+					targets.push({ lab: name });
+				}
+			}
+			if (overflowPkg.length) {
+				const otherName = claimName(
+					usedNames,
+					hopOverflowLabel(moreCountLabel(overflowPkg.length), 'out', pkgDist),
+					`pkg-h${pkgDist}`,
+				);
+				nodeRef[otherName] = {
+					kind: 'bucket',
+					id: `other-export-pkg-h${pkgDist}`,
+				};
+				nodeMeta.set(otherName, {
+					category: exportHopCategory(pkgDist),
+					color: TEAL.exportOther,
+				});
+				targets.push({ lab: otherName });
 			}
 
-			const children = (fwdAdj.get(f) ?? []).filter(
-				(c) => dist.get(c) === d && display.has(c),
-			);
-			if (!children.length) continue;
-
-			const base = Math.floor(m / children.length);
-			let rem = m - base * children.length;
-			for (const c of children) {
+			if (!targets.length) continue;
+			const base = Math.floor(m / targets.length);
+			let rem = m - base * targets.length;
+			for (const t of targets) {
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
 				if (share <= 0) continue;
-				const toLab = display.get(c)!;
-				addLink(fromLab, toLab, share);
-				mass.set(c, (mass.get(c) ?? 0) + share);
+				addLink(fromLab, t.lab, share);
+				if (t.path) mass.set(t.path, (mass.get(t.path) ?? 0) + share);
 			}
+			// Mass fully spent outward from this file
+			mass.set(f, 0);
 		}
 	}
 }
