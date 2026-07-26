@@ -122,8 +122,11 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 `File → ioredis` share depth and Carbon’s last-category-wins header paints
 **External** over the Imports column.
 
-Paint law: pure rail↔rail undrawn; `File`/`file`/`package` endpoints keep ribbons
-(rail **nodes** stay hidden by polish). Packages remain sinks.
+Paint law: pure rail↔rail undrawn; **External package hop** bands
+(`parent → in-rail → External`) are undrawn and **redrawn as a straight**
+`parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
+Imports column does not show a package kink. Rail **nodes** stay hidden.
+Packages remain sinks.
 
 **Never:** package free sources; packages on Export*; packages only reachable via
 undrawn pure rail↔rail scaffolds (floating External / wrong left headers).

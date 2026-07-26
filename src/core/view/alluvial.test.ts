@@ -455,20 +455,25 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 	});
 
 	/**
-	 * Paint law: only pure in-rail↔in-rail is invisible pad-band.
-	 * File→in-rail→deep file carries real dual-path seed mass and must paint.
-	 * Out-rail mass carriers also paint.
+	 * Paint law: pure in-rail↔in-rail + External package hop pads undrawn.
+	 * parent→in-rail and in-rail→External undrawn (straightened in polish).
+	 * Out-rail mass carriers paint. in-rail→file (legacy dual-path) still paints
+	 * unless target is External.
 	 */
 	it('import pad scaffold vs forward mass carriers', () => {
 		const inRail = '\u200b·in-rail·h2';
 		const outRail = '\u200b·out-rail·h1';
 		const file = 'src/types.ts';
 		const focus = 'UserCard.tsx';
-		// Pure rail↔rail only
+		// Pure rail↔rail
 		expect(isImportPadScaffoldLink(inRail, '\u200b·in-rail·h1')).toBe(true);
-		// File↔rail mass pads paint (logger dual-path case)
+		// External package hop pads (hub topology)
+		expect(isImportPadScaffoldLink(focus, inRail)).toBe(true);
+		expect(
+			isImportPadScaffoldLink(inRail, 'ioredis', { targetCategory: 'External' }),
+		).toBe(true);
+		// in-rail → non-External file still paints (not package hop)
 		expect(isImportPadScaffoldLink(inRail, file)).toBe(false);
-		expect(isImportPadScaffoldLink(focus, inRail)).toBe(false);
 		// Out-rail mass carriers paint
 		expect(isImportPadScaffoldLink(focus, outRail)).toBe(false);
 		expect(isImportPadScaffoldLink(outRail, file)).toBe(false);

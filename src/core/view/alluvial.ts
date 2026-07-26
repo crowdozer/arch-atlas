@@ -229,19 +229,37 @@ export function isOutRailName(name: string): boolean {
 /**
  * Pad bands that should be undrawn (ghost columns).
  *
- * Hub free-source reverse pads use **out-rails** (export side). Forward
- * File→deep file pads use **in-rails** and carry real mass to dual-path seeds
- * (e.g. logger at longest dist 3 while also a direct focus import) — those
- * bands must stay painted. Undraw only pure rail→rail free-source chains that
- * never touch a real file/package (legacy reverse free-source scaffold).
+ * - Pure **in-rail↔in-rail** free-source scaffold
+ * - **External package hop pads**: parent → in-rail → External (topology only;
+ *   polish redraws a straight parent→package band). Hub seeds are File→seed
+ *   direct — in-rails on the import side are package pads only.
  *
- * Historically this matched any in-rail endpoint and erased import-side mass
- * pads, making deep dual-path files look disconnected / under External.
+ * Export File→out-rail→deep-target mass carriers stay painted.
  */
-export function isImportPadScaffoldLink(source: string, target: string): boolean {
-	// Pure rail↔rail only; File/file/package endpoints keep their ribbons.
-	return isInRailName(source) && isInRailName(target);
+export function isImportPadScaffoldLink(
+	source: string,
+	target: string,
+	meta?: { sourceCategory?: string; targetCategory?: string },
+): boolean {
+	if (isInRailName(source) && isInRailName(target)) return true;
+	// parent → in-rail (package External hop)
+	if (isInRailName(target)) return true;
+	// in-rail → External package/bucket
+	if (
+		isInRailName(source) &&
+		(meta?.targetCategory === 'External' ||
+			meta?.targetCategory === EXTERNAL_IMPORT_CATEGORY_SAFE)
+	) {
+		return true;
+	}
+	return false;
 }
+
+/**
+ * Local alias so alluvial.ts does not import fileHub (cycle risk).
+ * Must match {@link EXTERNAL_IMPORT_CATEGORY} in fileHub (`External`).
+ */
+const EXTERNAL_IMPORT_CATEGORY_SAFE = 'External';
 
 function linkEndsFromUnknown(
 	raw: unknown,

@@ -192,9 +192,10 @@ export function isImportRailLabel(name: string): boolean {
 
 /**
  * Hide pad-rail **nodes** (in-rail and out-rail bars/chips).
- * Undraw **import free-source scaffolding bands only** (either end is in-rail).
- * Export File→out-rail→deep-target ribbons stay painted (real File mass).
+ * Undraw import pad scaffolds: pure in-rail↔in-rail and External package hops
+ * (parent→in-rail→External). Export File→out-rail→deep-target ribbons stay painted.
  * Tooltips still scrub rail names via {@link alluvialTooltipCustomHTML}.
+ * Pair with {@link straightenExternalPackageBands} for straight External bands.
  */
 export function hideAlluvialRails(holder: HTMLElement): void {
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
@@ -234,11 +235,12 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		}
 	}
 
-	// Import free-source scaffolding only — NOT export out-rail mass carriers
+	// Import pad scaffold + External package hop pads (parent→in-rail→External).
+	// Export out-rail mass carriers stay painted.
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<{
-			source?: { name?: string } | string;
-			target?: { name?: string } | string;
+			source?: { name?: string; category?: string } | string;
+			target?: { name?: string; category?: string } | string;
 		}>(path);
 		const sn =
 			typeof link?.source === 'string'
@@ -248,12 +250,287 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 			typeof link?.target === 'string'
 				? link.target
 				: (link?.target?.name ?? '');
-		if (!isImportPadScaffoldLink(sn, tn)) continue;
+		const sc =
+			typeof link?.source === 'object' && link?.source
+				? link.source.category
+				: undefined;
+		const tc =
+			typeof link?.target === 'object' && link?.target
+				? link.target.category
+				: undefined;
+		if (!isImportPadScaffoldLink(sn, tn, { sourceCategory: sc, targetCategory: tc })) {
+			continue;
+		}
 		path.classList.add('atlas-alluvial-pad-band');
 		path.setAttribute('pointer-events', 'none');
-		// in-rail → in-rail pure scaffolding
 		if (isInRailName(sn) && isInRailName(tn)) {
 			path.classList.add('atlas-alluvial-rail-link');
+		}
+		if (isInRailName(sn) || isInRailName(tn)) {
+			path.classList.add('atlas-alluvial-external-pad');
+		}
+	}
+}
+
+type LinkEnd = { name?: string; category?: string; x0?: number; x1?: number; y0?: number; y1?: number };
+
+function endName(end: LinkEnd | string | undefined): string {
+	if (typeof end === 'string') return end;
+	return end?.name ?? '';
+}
+
+export type ExternalStraightBandPlan = {
+	parent: string;
+	packageName: string;
+	parentCategory?: string;
+	width: number;
+	stroke: string;
+	opacity: string;
+	x0: number;
+	y0: number;
+	x1: number;
+	y1: number;
+};
+
+/**
+ * Pure planner: given layout nodes + links, find External packages only
+ * reachable via in-rail pads and return straight parent→package bands.
+ */
+export function planExternalStraightBands(
+	nodes: readonly {
+		name: string;
+		category?: string;
+		x0: number;
+		x1: number;
+		y0: number;
+		y1: number;
+	}[],
+	links: readonly {
+		source: string;
+		target: string;
+		width: number;
+		stroke?: string;
+		opacity?: string;
+	}[],
+): ExternalStraightBandPlan[] {
+	const nodeByName = new Map(nodes.map((n) => [n.name, n]));
+	const inbound = new Map<
+		string,
+		{ source: string; width: number; stroke: string; opacity: string }[]
+	>();
+	for (const l of links) {
+		const list = inbound.get(l.target) ?? [];
+		list.push({
+			source: l.source,
+			width: l.width,
+			stroke: l.stroke ?? '#0d9488',
+			opacity: l.opacity ?? '0.5',
+		});
+		inbound.set(l.target, list);
+	}
+
+	const externalNames = nodes
+		.filter((n) => n.category === 'External' && !isAlluvialRailName(n.name))
+		.map((n) => n.name);
+
+	const realParents = (
+		pkg: string,
+	): { parent: string; width: number; stroke: string; opacity: string }[] => {
+		const out: {
+			parent: string;
+			width: number;
+			stroke: string;
+			opacity: string;
+		}[] = [];
+		const seen = new Set<string>([pkg]);
+		const q: {
+			name: string;
+			width: number;
+			stroke: string;
+			opacity: string;
+		}[] = [{ name: pkg, width: 0, stroke: '', opacity: '' }];
+		while (q.length) {
+			const cur = q.shift()!;
+			for (const edge of inbound.get(cur.name) ?? []) {
+				if (isInRailName(edge.source)) {
+					if (seen.has(edge.source)) continue;
+					seen.add(edge.source);
+					q.push({
+						name: edge.source,
+						width: edge.width,
+						stroke: edge.stroke,
+						opacity: edge.opacity,
+					});
+				} else if (!isAlluvialRailName(edge.source)) {
+					// Only straighten when package was pad-routed (path touched a rail)
+					if (cur.name === pkg && !isInRailName(cur.name)) {
+						// direct parent→package (no pad) — skip straighten
+						continue;
+					}
+					out.push({
+						parent: edge.source,
+						width: edge.width || cur.width || 1,
+						stroke: edge.stroke || cur.stroke,
+						opacity: edge.opacity || cur.opacity,
+					});
+				}
+			}
+		}
+		return out;
+	};
+
+	const plans: ExternalStraightBandPlan[] = [];
+	const drawn = new Set<string>();
+	for (const pkg of externalNames) {
+		// Must have at least one inbound from an in-rail (pad topology)
+		const directIn = inbound.get(pkg) ?? [];
+		if (!directIn.some((e) => isInRailName(e.source))) continue;
+
+		const parents = realParents(pkg);
+		const pkgNode = nodeByName.get(pkg);
+		if (!pkgNode || !parents.length) continue;
+		for (const { parent, width, stroke, opacity } of parents) {
+			const key = `${parent}\0${pkg}`;
+			if (drawn.has(key)) continue;
+			drawn.add(key);
+			const pNode = nodeByName.get(parent);
+			if (!pNode) continue;
+			plans.push({
+				parent,
+				packageName: pkg,
+				parentCategory: pNode.category,
+				width,
+				stroke,
+				opacity,
+				x0: pNode.x1,
+				y0: (pNode.y0 + pNode.y1) / 2,
+				x1: pkgNode.x0,
+				y1: (pkgNode.y0 + pkgNode.y1) / 2,
+			});
+		}
+	}
+	return plans;
+}
+
+/**
+ * After undrawing External package pad kinks (File → in-rail → package), paint a
+ * single straight band from the real parent to the External package so the chart
+ * does not show an intermediate hop on Imports.
+ */
+export function straightenExternalPackageBands(holder: HTMLElement): void {
+	const nodes: {
+		name: string;
+		category?: string;
+		x0: number;
+		x1: number;
+		y0: number;
+		y1: number;
+	}[] = [];
+	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
+		const d = readData<SankeyNode>(el);
+		if (!d?.name) continue;
+		nodes.push({
+			name: d.name,
+			category: d.category,
+			x0: d.x0,
+			x1: d.x1,
+			y0: d.y0,
+			y1: d.y1,
+		});
+	}
+
+	type RawLink = {
+		source?: LinkEnd | string;
+		target?: LinkEnd | string;
+		value?: number;
+		width?: number;
+	};
+
+	const linkSpecs: {
+		source: string;
+		target: string;
+		width: number;
+		stroke: string;
+		opacity: string;
+	}[] = [];
+	for (const el of holder.querySelectorAll<SVGPathElement>('path.link')) {
+		const d = readData<RawLink>(el);
+		if (!d) continue;
+		const sn = endName(d.source);
+		const tn = endName(d.target);
+		if (!sn || !tn) continue;
+		const width =
+			typeof d.width === 'number' && d.width > 0
+				? d.width
+				: typeof d.value === 'number'
+					? d.value
+					: 1;
+		let stroke = el.style?.stroke || el.getAttribute?.('stroke') || '';
+		if (!stroke && typeof getComputedStyle === 'function') {
+			try {
+				stroke = getComputedStyle(el).stroke;
+			} catch {
+				stroke = '';
+			}
+		}
+		const opacity =
+			el.style?.strokeOpacity ||
+			el.getAttribute?.('stroke-opacity') ||
+			'0.5';
+		linkSpecs.push({
+			source: sn,
+			target: tn,
+			width,
+			stroke: stroke || '#0d9488',
+			opacity,
+		});
+	}
+
+	const plans = planExternalStraightBands(nodes, linkSpecs);
+	if (!plans.length) return;
+
+	// Prefer the Carbon link layer group
+	const linkLayer =
+		[...holder.querySelectorAll('path.link')][0]?.parentElement ??
+		holder.querySelector('svg') ??
+		holder;
+
+	// MiniEl / non-SVG fixtures: skip DOM inject (planner is unit-tested)
+	if (typeof document === 'undefined' || !document.createElementNS) return;
+	if (
+		linkLayer &&
+		typeof (linkLayer as { appendChild?: unknown }).appendChild !== 'function'
+	) {
+		return;
+	}
+
+	for (const plan of plans) {
+		const path = document.createElementNS(
+			'http://www.w3.org/2000/svg',
+			'path',
+		);
+		path.setAttribute('class', 'link atlas-alluvial-external-straight');
+		path.setAttribute(
+			'd',
+			horizontalLinkPath(plan.x0, plan.y0, plan.x1, plan.y1),
+		);
+		path.setAttribute('fill', 'none');
+		path.setAttribute('stroke-width', String(Math.max(1, plan.width)));
+		path.style.stroke = plan.stroke;
+		path.style.strokeOpacity = plan.opacity || '0.5';
+		path.setAttribute('aria-label', `${plan.parent} → ${plan.packageName}`);
+		(path as unknown as { __data__?: unknown }).__data__ = {
+			source: { name: plan.parent, category: plan.parentCategory },
+			target: { name: plan.packageName, category: 'External' },
+			value: plan.width,
+			width: plan.width,
+			y0: plan.y0,
+			y1: plan.y1,
+		};
+		try {
+			linkLayer.appendChild(path);
+		} catch {
+			// MiniEl appendChild may reject real SVGPathElement
 		}
 	}
 }
@@ -474,6 +751,8 @@ export function polishAlluvialHolder(
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	hideAlluvialRails(holder);
+	// Undraw File→in-rail→External kinks, then paint straight parent→package
+	straightenExternalPackageBands(holder);
 	markAlluvialTerminators(holder, opts?.terminators);
 	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
