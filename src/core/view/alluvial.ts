@@ -14,6 +14,14 @@ import type {
 	AlluvialPayload,
 	CodeGraph,
 } from '@core/graph/types.ts';
+import {
+	edgeWeight,
+	resolveWeightAxis,
+	unitsForAxis,
+	type WeightAxis,
+} from '@core/view/weight.ts';
+
+export type { WeightAxis };
 
 export const TEAL = {
 	start: '#14b8a6', // teal-500
@@ -154,13 +162,20 @@ export function buildAlluvialPayload(args: {
 export function projectAlluvial(
 	graph: CodeGraph,
 	startId: string,
-	opts?: { heightPx?: number; maxModules?: number; maxEnds?: number },
+	opts?: {
+		heightPx?: number;
+		maxModules?: number;
+		maxEnds?: number;
+		weightAxis?: WeightAxis;
+	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
 
 	const maxModules = opts?.maxModules ?? 12;
 	const maxEnds = opts?.maxEnds ?? 16;
 	const heightPx = opts?.heightPx ?? 360;
+	const weightAxis = resolveWeightAxis(opts?.weightAxis);
+	const units = unitsForAxis(weightAxis, 'package-mass');
 
 	const reachable = reachableFiles(graph, startId);
 	const startLabel = basename(startId);
@@ -170,18 +185,18 @@ export function projectAlluvial(
 		label: startLabel,
 	};
 
-	// end → module (or '__code__' for direct start imports), counts
+	// end → module (or '__code__' for direct start imports), weighted mass
 	const endToModule = new Map<string, Map<string, number>>();
 	const endMeta = new Map<string, EndInfo>();
 
-	const bump = (endKey: string, moduleKey: string, info: EndInfo) => {
+	const bump = (endKey: string, moduleKey: string, info: EndInfo, w: number) => {
 		endMeta.set(endKey, info);
 		let row = endToModule.get(endKey);
 		if (!row) {
 			row = new Map();
 			endToModule.set(endKey, row);
 		}
-		row.set(moduleKey, (row.get(moduleKey) ?? 0) + 1);
+		row.set(moduleKey, (row.get(moduleKey) ?? 0) + w);
 	};
 
 	for (const e of graph.edges) {
@@ -193,7 +208,7 @@ export function projectAlluvial(
 		const endKey = e.to;
 		const info: EndInfo = { label, kind: e.toKind };
 		const moduleKey = e.from === startId ? '__code__' : topFolder(e.from);
-		bump(endKey, moduleKey, info);
+		bump(endKey, moduleKey, info, edgeWeight(e, graph, weightAxis));
 	}
 
 	const nodeRef: Record<string, AlluvialNodeRef> = {
@@ -214,6 +229,7 @@ export function projectAlluvial(
 			focus,
 			nodeRef,
 			startId,
+			units,
 			ariaLabel: `Modules to code alluvial for ${startLabel}`,
 		});
 	}
@@ -354,6 +370,7 @@ export function projectAlluvial(
 		focus,
 		nodeRef,
 		startId,
+		units,
 		ariaLabel: `Modules to code alluvial for ${startLabel}`,
 	});
 }

@@ -18,7 +18,13 @@ import {
 	TEAL,
 	topFolder,
 	uniqueFileLabels,
+	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import {
+	edgeWeight,
+	resolveWeightAxis,
+	unitsForAxis,
+} from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
 
@@ -29,12 +35,14 @@ const FILE_PROMOTE_THRESHOLD = 12;
 export function projectFileImporters(
 	graph: CodeGraph,
 	fileId: string,
-	opts?: { heightPx?: number; maxImporters?: number },
+	opts?: { heightPx?: number; maxImporters?: number; weightAxis?: WeightAxis },
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
 
 	const heightPx = opts?.heightPx ?? 360;
 	const maxImporters = opts?.maxImporters ?? 16;
+	const weightAxis = resolveWeightAxis(opts?.weightAxis);
+	const units = unitsForAxis(weightAxis, 'import-edges');
 
 	const edges = graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId);
 	if (!edges.length) return null;
@@ -59,13 +67,13 @@ export function projectFileImporters(
 		const labels = uniqueFileLabels(importerPaths);
 		for (const e of edges) {
 			const label = labels.get(e.from) ?? basename(e.from);
-			weights.set(label, (weights.get(label) ?? 0) + 1);
+			weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
 			importerRef.set(label, { kind: 'file', id: e.from });
 		}
 	} else {
 		for (const e of edges) {
 			const mod = topFolder(e.from);
-			weights.set(mod, (weights.get(mod) ?? 0) + 1);
+			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
 			if (!importerRef.has(mod)) {
 				importerRef.set(mod, { kind: 'module', id: mod });
 			}
@@ -117,7 +125,7 @@ export function projectFileImporters(
 		focus,
 		nodeRef,
 		startId: fileId,
-		units: 'import edges',
+		units,
 		ariaLabel: `Importers of ${fileId}`,
 	});
 }

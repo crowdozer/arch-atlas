@@ -105,4 +105,26 @@ describe('projectMultiHopAlluvial', () => {
 		);
 		expect(hopCats.length).toBe(0);
 	});
+
+	it.each(['importer-loc', 'target-loc'] as const)(
+		'conserves hop nodes under weightAxis=%s',
+		(weightAxis) => {
+			const start = 'app/page.tsx';
+			const payload = projectMultiHopAlluvial(graph, start, { weightAxis })!;
+			const { out, inn } = flowTotals(payload.data);
+			for (const n of payload.options.alluvial.nodes) {
+				if (!n.category.startsWith('Hop')) continue;
+				const i = inn.get(n.name) ?? 0;
+				const o = out.get(n.name) ?? 0;
+				if (i > 0 && o > 0) expect(i, n.name).toBe(o);
+			}
+			// code inflow equals total end outflow (global conservation)
+			const codeIn = inn.get('page.tsx') ?? 0;
+			const endOut = payload.options.alluvial.nodes
+				.filter((n) => n.category === 'Ends')
+				.reduce((s, n) => s + (out.get(n.name) ?? 0), 0);
+			expect(codeIn).toBe(endOut);
+			expect(codeIn).toBeGreaterThan(0);
+		},
+	);
 });

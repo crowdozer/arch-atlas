@@ -30,6 +30,13 @@ export {
 	importDepthStats,
 } from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
+export type { WeightAxis } from '@core/view/weight.ts';
+export {
+	edgeWeight,
+	fileLineCount,
+	lineCount,
+	unitsForAxis,
+} from '@core/view/weight.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {
@@ -52,6 +59,7 @@ export type { FileTreeNode } from '@core/tree/fileTree.ts';
 import { buildGraph } from '@core/graph/build.ts';
 import { buildMapCatalog } from '@core/catalog/views.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
+import type { WeightAxis } from '@core/view/weight.ts';
 import type { AlluvialPayload, CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
 
 export type IndexResult = {
@@ -70,6 +78,7 @@ export function indexFiles(files: VirtualFile[]): IndexResult {
 export function alluvialForStart(
 	graph: CodeGraph,
 	startId: string,
+	opts?: { weightAxis?: WeightAxis },
 ): AlluvialPayload | null {
-	return projectAlluvial(graph, startId);
+	return projectAlluvial(graph, startId, opts);
 }
