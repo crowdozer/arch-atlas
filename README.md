@@ -53,6 +53,8 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 | Static import/require/export edges | Type-aware resolution / LSP |
 | `tsconfig` `paths` / `baseUrl` (best-effort) | Full monorepo workspace semantics |
 | Inferred entrypoints + package ends | Call graph, symbols, DB entities |
+| Weight axes (edges / importer LOC / **estimated** target file LOC) | Exact tree-shaken imported LOC (Precision → Exact requires LSP — not implemented) |
+| Inspect evidence (import + target excerpt + estimated callsites) | Type-checked references / multi-language exact surface |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |
 
 ## Layout

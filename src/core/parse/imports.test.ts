@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { extractImports, stripComments } from '@core/parse/imports.ts';
+import {
+	extractImports,
+	parseImportClause,
+	stripComments,
+} from '@core/parse/imports.ts';
 
 describe('extractImports', () => {
 	it('finds static import, export-from, require, and dynamic import', () => {
@@ -27,9 +31,35 @@ const d = import('node:fs');
 		expect(specs).not.toContain('./block');
 	});
 
+	it('extracts named, default, namespace, and side-effect bindings', () => {
+		const imps = extractImports(`
+import { a, b as c } from './named';
+import def from './def';
+import * as ns from './ns';
+import './side';
+`);
+		const by = Object.fromEntries(imps.map((i) => [i.specifier, i.bindings]));
+		expect(by['./named']).toEqual([
+			{ kind: 'named', imported: 'a', local: 'a' },
+			{ kind: 'named', imported: 'b', local: 'c' },
+		]);
+		expect(by['./def']).toEqual([{ kind: 'default', local: 'def' }]);
+		expect(by['./ns']).toEqual([{ kind: 'namespace', local: 'ns' }]);
+		expect(by['./side']).toEqual([{ kind: 'side-effect' }]);
+	});
+
 	it('stripComments preserves strings with //', () => {
 		const s = stripComments(`const u = "http://x"; // trail`);
 		expect(s).toContain('http://x');
 		expect(s).not.toContain('trail');
+	});
+});
+
+describe('parseImportClause', () => {
+	it('parses default + named', () => {
+		expect(parseImportClause('React, { useState }')).toEqual([
+			{ kind: 'default', local: 'React' },
+			{ kind: 'named', imported: 'useState', local: 'useState' },
+		]);
 	});
 });

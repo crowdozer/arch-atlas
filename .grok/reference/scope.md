@@ -27,7 +27,7 @@ from becoming merely a prettier dependency graph.
 | **0** | Repo scaffold (Astro + `.grok`, AGENTS) | Done |
 | **1** | Graph model + Level-1 static analysis (files, imports, packages) | **MVP done** (routes = file heuristics only) |
 | **2** | Framework adapters + richer map catalog | Partial — catalog + first alluvial without full adapter interface |
-| **3** | Progressive expansion, weights, epistemic layers in UI | Partial — labels present; expand UX later |
+| **3** | Progressive expansion, weights, epistemic layers in UI | Partial — weight axes + estimate/exact gate + inspect evidence; progressive stage insert later |
 | **4+** | Deeper adapters, optional runtime overlays, diff mode | Later |
 
 ## Core contracts (draft)

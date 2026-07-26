@@ -30,11 +30,15 @@ export {
 	importDepthStats,
 } from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
-export type { WeightAxis } from '@core/view/weight.ts';
+export type { LocPrecision, WeightAxis, WeightResolution } from '@core/view/weight.ts';
 export {
+	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	axisNeedsImportedSurface,
 	edgeWeight,
 	fileLineCount,
 	lineCount,
+	resolveLocPrecision,
+	resolveWeightRequest,
 	unitsForAxis,
 } from '@core/view/weight.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
@@ -47,12 +51,26 @@ export {
 } from '@core/view/fileImporters.ts';
 export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
 export {
+	callSitesForEdge,
 	edgesForBand,
 	edgesForNode,
+	evidenceForEdges,
+	importedCodeForEdge,
 	snippetsForEdges,
 } from '@core/view/inspect.ts';
-export type { ImportSnippet } from '@core/view/inspect.ts';
-export { extractImports } from '@core/parse/imports.ts';
+export type {
+	CallSiteSnippet,
+	EvidenceBlocker,
+	ImportEvidence,
+	ImportSnippet,
+	ImportedCodeSnippet,
+} from '@core/view/inspect.ts';
+export {
+	extractImports,
+	localNamesFromBindings,
+	parseImportClause,
+} from '@core/parse/imports.ts';
+export type { ImportBinding } from '@core/graph/types.ts';
 export { ingestZip } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 export {

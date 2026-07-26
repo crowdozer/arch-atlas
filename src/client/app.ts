@@ -5,9 +5,11 @@
 import { AlluvialChart } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import {
+	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	alluvialForStart,
 	edgesForBand,
 	edgesForNode,
+	evidenceForEdges,
 	indexFiles,
 	ingestZip,
 	isSourceFile,
@@ -16,11 +18,12 @@ import {
 	projectModuleFocus,
 	projectMultiHopAlluvial,
 	projectPackageImporters,
-	snippetsForEdges,
+	resolveWeightRequest,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type CodeGraph,
-	type ImportSnippet,
+	type ImportEvidence,
+	type LocPrecision,
 	type MapCatalog,
 	type VirtualFile,
 	type WeightAxis,
@@ -68,14 +71,23 @@ let viewStack: AtlasView[] = [];
 let currentPayload: AlluvialPayload | null = null;
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'import-edges';
-/** Click behavior: drill navigates; inspect opens import-line evidence. */
+/** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
+let locPrecision: LocPrecision = 'estimate';
+/** Click behavior: drill navigates; inspect opens import evidence. */
 type InteractionMode = 'drill' | 'inspect';
 let interactionMode: InteractionMode = 'drill';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
+const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
 
 function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'import-edges';
+}
+
+function parseLocPrecision(raw: string): LocPrecision {
+	return (LOC_PRECISIONS as string[]).includes(raw)
+		? (raw as LocPrecision)
+		: 'estimate';
 }
 
 function parseInteractionMode(raw: string): InteractionMode {
@@ -84,6 +96,24 @@ function parseInteractionMode(raw: string): InteractionMode {
 
 function weightOpts(): { weightAxis: WeightAxis } {
 	return { weightAxis };
+}
+
+/** When exact + target-loc, refuse remount with estimate numbers. */
+function canMountWeight(): { ok: true } | { ok: false; message: string } {
+	const r = resolveWeightRequest(weightAxis, locPrecision);
+	if (!r.ok) return { ok: false, message: r.message };
+	return { ok: true };
+}
+
+/** Mount payload only when weight precision allows; never fake exact target-loc. */
+function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
+	const gate = canMountWeight();
+	if (!gate.ok) {
+		setStatus(gate.message);
+		return false;
+	}
+	mountAlluvial(payload);
+	return true;
 }
 
 function persistCheckbox(): HTMLInputElement | null {
@@ -357,8 +387,9 @@ function pushView(view: AtlasView): void {
 	viewStack.push(view);
 	updateCaption(view);
 	updateBackButton();
-	mountAlluvial(payload);
-	setStatus(statusForView(view));
+	if (mountAlluvialGated(payload)) {
+		setStatus(statusForView(view));
+	}
 }
 
 function popView(): void {
@@ -368,8 +399,9 @@ function popView(): void {
 	if (!view || !session) return;
 	updateCaption(view);
 	updateBackButton();
-	mountAlluvial(payloadForView(view));
-	setStatus(statusForView(view));
+	if (mountAlluvialGated(payloadForView(view))) {
+		setStatus(statusForView(view));
+	}
 }
 
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
@@ -396,46 +428,146 @@ function closeInspectModal(): void {
 	if (modal) modal.open = false;
 }
 
-function openInspectModal(title: string, snippets: ImportSnippet[], emptyHint: string): void {
+function appendCodeBlock(
+	parent: HTMLElement,
+	pathHtml: string,
+	text: string,
+): void {
+	const path = document.createElement('div');
+	path.className = 'atlas-inspect__path';
+	path.innerHTML = pathHtml;
+	const code = document.createElement('pre');
+	code.className = 'atlas-inspect__code';
+	code.textContent = text;
+	parent.append(path, code);
+}
+
+function openInspectModal(
+	title: string,
+	evidence: ImportEvidence[],
+	emptyHint: string,
+): void {
 	const modal = $('atlas-inspect-modal') as (HTMLElement & { open?: boolean }) | null;
 	const heading = $('atlas-inspect-heading');
+	const label = $('atlas-inspect-label');
 	const body = $('atlas-inspect-body');
 	if (!modal || !heading || !body) return;
 
 	heading.textContent = title;
+	if (label) {
+		label.textContent =
+			locPrecision === 'exact'
+				? 'Import evidence · exact unavailable'
+				: 'Import evidence · estimate';
+	}
 	body.replaceChildren();
 
-	if (!snippets.length) {
+	if (!evidence.length) {
 		const p = document.createElement('p');
 		p.className = 'atlas-inspect__empty';
 		p.textContent = emptyHint;
 		body.appendChild(p);
-	} else {
-		const meta = document.createElement('p');
-		meta.className = 'atlas-inspect__meta';
-		meta.textContent =
-			snippets.length === 1
-				? '1 observed import statement'
-				: `${snippets.length} observed import statements`;
-		body.appendChild(meta);
-
-		const list = document.createElement('ul');
-		list.className = 'atlas-inspect__list';
-		for (const sn of snippets) {
-			const li = document.createElement('li');
-			li.className = 'atlas-inspect__item';
-			const path = document.createElement('div');
-			path.className = 'atlas-inspect__path';
-			path.innerHTML = `${escapeHtml(sn.path)} <span class="atlas-inspect__line-num">L${sn.line}</span> <span class="atlas-inspect__form">${escapeHtml(sn.form)}</span>`;
-			const code = document.createElement('pre');
-			code.className = 'atlas-inspect__code';
-			code.textContent = sn.text;
-			li.append(path, code);
-			list.appendChild(li);
-		}
-		body.appendChild(list);
+		modal.open = true;
+		return;
 	}
 
+	const meta = document.createElement('p');
+	meta.className = 'atlas-inspect__meta';
+	meta.textContent =
+		evidence.length === 1
+			? '1 observed import statement'
+			: `${evidence.length} observed import statements`;
+	body.appendChild(meta);
+
+	const anyExactBlocker = evidence.some((ev) =>
+		ev.blockers.some((b) => b.code === 'exact-not-implemented'),
+	);
+	if (anyExactBlocker) {
+		const banner = document.createElement('p');
+		banner.className = 'atlas-inspect__banner';
+		banner.textContent = EXACT_NOT_IMPLEMENTED_MESSAGE;
+		body.appendChild(banner);
+	}
+
+	const list = document.createElement('ul');
+	list.className = 'atlas-inspect__list';
+
+	for (const ev of evidence) {
+		const li = document.createElement('li');
+		li.className = 'atlas-inspect__item';
+
+		// Import statement (always observed when present)
+		const impSec = document.createElement('div');
+		impSec.className = 'atlas-inspect__section';
+		const impH = document.createElement('div');
+		impH.className = 'atlas-inspect__section-title';
+		impH.textContent = 'Import';
+		impSec.appendChild(impH);
+		appendCodeBlock(
+			impSec,
+			`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">L${ev.import.line}</span> <span class="atlas-inspect__form">${escapeHtml(ev.import.form)}</span>`,
+			ev.import.text,
+		);
+		li.appendChild(impSec);
+
+		// Imported code (estimate only)
+		const codeSec = document.createElement('div');
+		codeSec.className = 'atlas-inspect__section';
+		const codeH = document.createElement('div');
+		codeH.className = 'atlas-inspect__section-title';
+		codeH.textContent = 'Imported code';
+		codeSec.appendChild(codeH);
+		if (ev.importedCode) {
+			appendCodeBlock(
+				codeSec,
+				`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__form">${escapeHtml(ev.importedCode.note)}</span>`,
+				ev.importedCode.text,
+			);
+		} else {
+			const note = document.createElement('p');
+			note.className = 'atlas-inspect__section-empty';
+			const blocker =
+				ev.blockers.find((b) => b.code === 'exact-not-implemented') ??
+				ev.blockers.find((b) => b.code === 'package-target' || b.code === 'no-source');
+			note.textContent = blocker?.message ?? 'No imported code excerpt available.';
+			codeSec.appendChild(note);
+		}
+		li.appendChild(codeSec);
+
+		// Callsites (estimate only)
+		const callSec = document.createElement('div');
+		callSec.className = 'atlas-inspect__section';
+		const callH = document.createElement('div');
+		callH.className = 'atlas-inspect__section-title';
+		callH.textContent =
+			locPrecision === 'exact'
+				? 'Callsites (exact unavailable)'
+				: 'Possible callsites (estimate — not type-checked)';
+		callSec.appendChild(callH);
+		if (ev.callsites.length) {
+			for (const cs of ev.callsites) {
+				appendCodeBlock(
+					callSec,
+					`${escapeHtml(cs.path)} <span class="atlas-inspect__line-num">L${cs.line}</span> <span class="atlas-inspect__form">${escapeHtml(cs.symbol)}</span>`,
+					cs.text,
+				);
+			}
+		} else {
+			const note = document.createElement('p');
+			note.className = 'atlas-inspect__section-empty';
+			const blocker = ev.blockers.find(
+				(b) => b.code === 'exact-not-implemented' || b.code === 'no-bindings',
+			);
+			note.textContent =
+				blocker?.message ?? 'No estimated callsites found for import bindings.';
+			callSec.appendChild(note);
+		}
+		li.appendChild(callSec);
+
+		list.appendChild(li);
+	}
+
+	body.appendChild(list);
 	modal.open = true;
 }
 
@@ -450,10 +582,10 @@ function inspectNode(name: string, ref: AlluvialNodeRef): void {
 		return;
 	}
 	const edges = edgesForNode(session.graph, ref);
-	const snippets = snippetsForEdges(session.graph, edges);
+	const evidence = evidenceForEdges(session.graph, edges, locPrecision);
 	openInspectModal(
 		name,
-		snippets,
+		evidence,
 		'No observed import lines for this node in the current graph.',
 	);
 }
@@ -464,10 +596,10 @@ function inspectBand(sourceName: string | null, targetName: string | null): void
 	const targetRef = targetName ? refForName(targetName) : null;
 	const title = [sourceName, targetName].filter(Boolean).join(' → ') || 'Band';
 	const edges = edgesForBand(session.graph, sourceRef, targetRef);
-	const snippets = snippetsForEdges(session.graph, edges);
+	const evidence = evidenceForEdges(session.graph, edges, locPrecision);
 	openInspectModal(
 		title,
-		snippets,
+		evidence,
 		'No observed import lines for this band (aggregate or unresolved topology).',
 	);
 }
@@ -537,7 +669,7 @@ function handleLineClick(sourceName: string | null, targetName: string | null): 
 function remountCurrentView(): void {
 	const view = currentView();
 	if (!view || !session) return;
-	mountAlluvial(payloadForView(view));
+	mountAlluvialGated(payloadForView(view));
 }
 
 function renderTree() {
@@ -945,8 +1077,9 @@ function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: b
 	renderCatalog(session.catalog, startId);
 	updateCaption(view);
 	updateBackButton();
-	mountAlluvial(payloadForView(view));
-	setStatus(statusForView(view));
+	if (mountAlluvialGated(payloadForView(view))) {
+		setStatus(statusForView(view));
+	}
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
@@ -1141,6 +1274,36 @@ function wireUi() {
 		}) as EventListener);
 	}
 
+	const precisionDropdown = $('atlas-loc-precision') as (HTMLElement & {
+		value?: string;
+	}) | null;
+	if (precisionDropdown) {
+		precisionDropdown.value = locPrecision;
+		precisionDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof precisionDropdown.value === 'string'
+					? precisionDropdown.value
+					: 'estimate');
+			locPrecision = parseLocPrecision(next);
+			if (locPrecision === 'exact' && weightAxis === 'target-loc') {
+				setStatus(EXACT_NOT_IMPLEMENTED_MESSAGE);
+				// Do not remount with estimate numbers labeled as exact
+				return;
+			}
+			if (locPrecision === 'estimate') {
+				remountCurrentView();
+			} else {
+				// exact + non-target-loc: chart still valid; status notes mode
+				setStatus('Exact mode — imported surface analysis not implemented (LSP)');
+				remountCurrentView();
+			}
+		}) as EventListener);
+	}
+
 	const modeSwitch = $('atlas-interaction-mode') as (HTMLElement & { value?: string }) | null;
 	if (modeSwitch) {
 		modeSwitch.value = interactionMode;
@@ -1152,7 +1315,11 @@ function wireUi() {
 				detail?.item?.value ??
 				(typeof modeSwitch.value === 'string' ? modeSwitch.value : 'drill');
 			interactionMode = parseInteractionMode(next);
-			setStatus(interactionMode === 'inspect' ? 'Inspect mode — click for import lines' : 'Drill mode');
+			setStatus(
+				interactionMode === 'inspect'
+					? 'Inspect mode — click for import evidence'
+					: 'Drill mode',
+			);
 		}) as EventListener);
 	}
 

@@ -213,8 +213,26 @@ import Layout from '../layouts/Layout.astro';
 									>Importer lines of code</cds-dropdown-item
 								>
 								<cds-dropdown-item value="target-loc"
-									>Imported file lines of code</cds-dropdown-item
+									>Imported file lines (estimate)</cds-dropdown-item
 								>
+							</cds-dropdown>
+						</div>
+						<div class="atlas-stage__control-group">
+							<span class="atlas-stage__control-label" id="atlas-precision-label"
+								>Precision</span
+							>
+							<cds-dropdown
+								id="atlas-loc-precision"
+								class="atlas-stage__precision"
+								size="sm"
+								hide-label
+								label-text="Precision"
+								title-text="Imported LOC precision"
+								value="estimate"
+								aria-labelledby="atlas-precision-label"
+							>
+								<cds-dropdown-item value="estimate">Estimate</cds-dropdown-item>
+								<cds-dropdown-item value="exact">Exact (LSP)</cds-dropdown-item>
 							</cds-dropdown>
 						</div>
 						<cds-content-switcher
@@ -247,7 +265,7 @@ import Layout from '../layouts/Layout.astro';
 	<cds-modal id="atlas-inspect-modal" class="atlas-inspect-modal" size="lg" aria-label="Import evidence">
 		<cds-modal-header class="atlas-inspect-modal__header">
 			<cds-modal-close-button></cds-modal-close-button>
-			<cds-modal-label>Observed imports</cds-modal-label>
+			<cds-modal-label id="atlas-inspect-label">Import evidence · estimate</cds-modal-label>
 			<cds-modal-heading id="atlas-inspect-heading">Import evidence</cds-modal-heading>
 		</cds-modal-header>
 		<cds-modal-body class="atlas-inspect-modal__body">

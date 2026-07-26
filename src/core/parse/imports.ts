@@ -3,7 +3,7 @@
  * Observed only — no type resolution. Not a language server.
  */
 
-import type { ExtractedImport } from '@core/graph/types.ts';
+import type { ExtractedImport, ImportBinding } from '@core/graph/types.ts';
 
 /** Strip // line comments and /* block comments without breaking strings (best-effort). */
 export function stripComments(source: string): string {
@@ -93,48 +93,132 @@ function lineOf(source: string, index: number): number {
 	return line;
 }
 
+/** Parse named members inside `{ a, b as c, type D }`. */
+function parseNamedMembers(body: string): ImportBinding[] {
+	const out: ImportBinding[] = [];
+	for (const raw of body.split(',')) {
+		let part = raw.trim();
+		if (!part) continue;
+		part = part.replace(/^type\s+/, '').trim();
+		if (!part) continue;
+		const asM = part.match(/^([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)$/);
+		if (asM) {
+			out.push({ kind: 'named', imported: asM[1]!, local: asM[2]! });
+			continue;
+		}
+		const id = part.match(/^([A-Za-z_$][\w$]*)$/);
+		if (id) {
+			out.push({ kind: 'named', imported: id[1]!, local: id[1]! });
+		}
+	}
+	return out;
+}
+
 /**
- * Extract import/export/require/dynamic-import string specifiers.
+ * Best-effort import/export-from clause → bindings.
+ * Not type-aware; multi-line / exotic syntax may yield side-effect or empty.
+ */
+export function parseImportClause(clause: string | undefined | null): ImportBinding[] {
+	if (clause == null) return [{ kind: 'side-effect' }];
+	const c = clause.trim();
+	if (!c) return [{ kind: 'side-effect' }];
+
+	// * as ns
+	const ns = c.match(/^\*\s+as\s+([A-Za-z_$][\w$]*)$/);
+	if (ns) return [{ kind: 'namespace', local: ns[1]! }];
+
+	// export * from — no local bindings in the exporting file for callsite scan
+	if (c === '*' || c.startsWith('*')) return [{ kind: 'side-effect' }];
+
+	const bindings: ImportBinding[] = [];
+	const brace = c.match(/\{([^}]*)\}/);
+	if (brace) {
+		bindings.push(...parseNamedMembers(brace[1]!));
+	}
+
+	// default: identifier before comma / brace (not `type` alone)
+	const withoutNamed = c
+		.replace(/\{[^}]*\}/g, '')
+		.replace(/,/g, ' ')
+		.trim();
+	if (withoutNamed && !withoutNamed.startsWith('*')) {
+		const cleaned = withoutNamed.replace(/^type\s+/, '').trim();
+		const def = cleaned.match(/^([A-Za-z_$][\w$]*)/);
+		if (def) bindings.unshift({ kind: 'default', local: def[1]! });
+	}
+
+	return bindings.length ? bindings : [{ kind: 'side-effect' }];
+}
+
+/** Local names useful for estimate callsite scan. */
+export function localNamesFromBindings(bindings: ImportBinding[]): string[] {
+	const names: string[] = [];
+	for (const b of bindings) {
+		if (b.kind === 'side-effect') continue;
+		names.push(b.local);
+	}
+	return names;
+}
+
+/**
+ * Extract import/export/require/dynamic-import string specifiers + clause bindings.
  */
 export function extractImports(source: string): ExtractedImport[] {
 	const cleaned = stripComments(source);
 	const found: ExtractedImport[] = [];
 	const seen = new Set<string>();
 
-	const push = (specifier: string, form: ExtractedImport['form'], index: number) => {
+	const push = (
+		specifier: string,
+		form: ExtractedImport['form'],
+		index: number,
+		bindings: ImportBinding[],
+	) => {
 		const spec = specifier.trim();
 		if (!spec) return;
 		const key = `${form}\0${spec}`;
 		if (seen.has(key)) return;
 		seen.add(key);
-		found.push({ specifier: spec, form, line: lineOf(cleaned, index) });
+		found.push({
+			specifier: spec,
+			form,
+			line: lineOf(cleaned, index),
+			bindings,
+		});
 	};
 
-	// import ... from 'x'  |  import 'x'
+	// import [clause] from 'x'  |  import 'x'
 	const importFrom =
-		/\bimport\s+(?:type\s+)?(?:[^'";\n]+?\s+from\s+)?['"]([^'"]+)['"]/g;
+		/\bimport\s+(?:type\s+)?(?:([^'";\n]+?)\s+from\s+)?['"]([^'"]+)['"]/g;
 	let m: RegExpExecArray | null;
 	while ((m = importFrom.exec(cleaned)) !== null) {
-		push(m[1]!, 'import', m.index);
+		const clause = m[1];
+		const bindings = parseImportClause(clause);
+		push(m[2]!, 'import', m.index, bindings);
 	}
 
 	// export ... from 'x'  |  export * from 'x'
 	const exportFrom =
-		/\bexport\s+(?:type\s+)?(?:\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
+		/\bexport\s+(?:type\s+)?(\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
 	while ((m = exportFrom.exec(cleaned)) !== null) {
-		push(m[1]!, 'export', m.index);
+		const clause = m[1]!;
+		const bindings =
+			clause === '*'
+				? ([{ kind: 'side-effect' }] as ImportBinding[])
+				: parseImportClause(clause);
+		push(m[2]!, 'export', m.index, bindings);
 	}
 
-	// require('x')
+	// require('x') — binding lives on the left-hand side; not extracted here
 	const requireRe = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = requireRe.exec(cleaned)) !== null) {
-		push(m[1]!, 'require', m.index);
+		push(m[1]!, 'require', m.index, [{ kind: 'side-effect' }]);
 	}
 
 	// import('x') dynamic — string literal only
 	const dynRe = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = dynRe.exec(cleaned)) !== null) {
-		push(m[1]!, 'dynamic', m.index);
+		push(m[1]!, 'dynamic', m.index, [{ kind: 'side-effect' }]);
 	}
 
 	return found;

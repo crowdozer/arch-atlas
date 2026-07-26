@@ -1,20 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { buildGraph } from '@core/graph/build.ts';
 import {
+	callSitesForEdge,
 	edgesForBand,
 	edgesForNode,
+	evidenceForEdges,
+	importedCodeForEdge,
 	snippetsForEdges,
 } from '@core/view/inspect.ts';
 
 const sample = [
 	{
 		path: 'src/main.ts',
-		content: `import { x } from './lib/util';\nimport zod from 'zod';\n`,
+		content: `import { x } from './lib/util';\nimport zod from 'zod';\nconst y = x + 1;\nconsole.log(x);\n`,
 		byteLength: 0,
 	},
 	{
 		path: 'src/lib/util.ts',
-		content: `export const x = 1;\nimport 'react';\n`,
+		content: `export const x = 1;\nimport 'react';\nexport function helper() {\n  return x;\n}\n`,
 		byteLength: 0,
 	},
 	{
@@ -27,10 +30,18 @@ const sample = [
 describe('inspect evidence', () => {
 	const graph = buildGraph(sample);
 
-	it('stores line numbers on edges', () => {
+	it('stores line numbers and bindings on edges', () => {
 		const zod = graph.edges.find((e) => e.specifier === 'zod');
 		expect(zod?.line).toBe(2);
 		expect(zod?.from).toBe('src/main.ts');
+		expect(zod?.bindings.some((b) => b.kind === 'default' && b.local === 'zod')).toBe(
+			true,
+		);
+
+		const util = graph.edges.find((e) => e.specifier.includes('util'));
+		expect(util?.bindings).toEqual([
+			{ kind: 'named', imported: 'x', local: 'x' },
+		]);
 	});
 
 	it('edgesForNode package lists importers', () => {
@@ -65,5 +76,41 @@ describe('inspect evidence', () => {
 			{ kind: 'file', id: 'src/main.ts' },
 		);
 		expect(edges.some((e) => e.specifier.includes('util'))).toBe(true);
+	});
+
+	it('importedCodeForEdge returns whole-file estimate for file targets', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const code = importedCodeForEdge(graph, util);
+		expect(code).toBeTruthy();
+		expect(code!.path).toBe('src/lib/util.ts');
+		expect(code!.text).toContain('export const x');
+		expect(code!.note).toMatch(/whole file/i);
+	});
+
+	it('callSitesForEdge finds local uses of named import', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const sites = callSitesForEdge(graph, util);
+		expect(sites.length).toBeGreaterThanOrEqual(2);
+		expect(sites.every((s) => s.symbol === 'x')).toBe(true);
+		expect(sites.every((s) => s.line !== util.line)).toBe(true);
+	});
+
+	it('evidenceForEdges estimate includes import + code + callsites', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const [ev] = evidenceForEdges(graph, [util], 'estimate');
+		expect(ev).toBeTruthy();
+		expect(ev!.import.text).toContain('util');
+		expect(ev!.importedCode?.text).toContain('export const x');
+		expect(ev!.callsites.length).toBeGreaterThan(0);
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(false);
+	});
+
+	it('evidenceForEdges exact withholds imported surface and callsites', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const [ev] = evidenceForEdges(graph, [util], 'exact');
+		expect(ev!.import.text).toContain('util');
+		expect(ev!.importedCode).toBeUndefined();
+		expect(ev!.callsites).toHaveLength(0);
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(true);
 	});
 });

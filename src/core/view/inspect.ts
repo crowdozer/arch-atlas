@@ -1,17 +1,28 @@
 /**
- * Inspect-mode evidence: map alluvial clicks → observed import lines.
- * Projection helper only; graph stays SoR.
+ * Inspect-mode evidence: map alluvial clicks → observed imports + estimate
+ * imported-code / callsite snippets. Projection helper only; graph stays SoR.
+ *
+ * Exact precision does not invent tree-shaken surface — callers get blockers.
  */
 
 import type {
 	AlluvialNodeRef,
 	CodeGraph,
+	ImportBinding,
 	ImportEdge,
 } from '@core/graph/types.ts';
+import { localNamesFromBindings } from '@core/parse/imports.ts';
 import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
 import { topFolder } from '@core/view/alluvial.ts';
+import {
+	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	type LocPrecision,
+	resolveLocPrecision,
+} from '@core/view/weight.ts';
 
 const MAX_SNIPPETS = 40;
+const MAX_IMPORTED_LINES = 48;
+const MAX_CALLSITES_PER_EDGE = 24;
 
 export type ImportSnippet = {
 	path: string;
@@ -20,6 +31,38 @@ export type ImportSnippet = {
 	form: ImportEdge['form'];
 	specifier: string;
 	toLabel: string;
+};
+
+export type ImportedCodeSnippet = {
+	epistemic: 'observed' | 'inferred';
+	path: string;
+	startLine: number;
+	endLine: number;
+	text: string;
+	/** e.g. "whole file (estimate)" */
+	note: string;
+};
+
+export type CallSiteSnippet = {
+	epistemic: 'inferred';
+	path: string;
+	line: number;
+	text: string;
+	symbol: string;
+};
+
+export type EvidenceBlocker = {
+	code: 'exact-not-implemented' | 'no-source' | 'no-bindings' | 'package-target';
+	message: string;
+};
+
+export type ImportEvidence = {
+	precision: LocPrecision;
+	edgeId: string;
+	import: ImportSnippet;
+	importedCode?: ImportedCodeSnippet;
+	callsites: CallSiteSnippet[];
+	blockers: EvidenceBlocker[];
 };
 
 function lineText(source: string, line: number): string {
@@ -37,10 +80,30 @@ function lineText(source: string, line: number): string {
 	return '';
 }
 
+/** Split source into 1-based lines (no trailing empty from final newline alone). */
+export function sourceLines(source: string): string[] {
+	if (!source) return [];
+	const parts = source.split('\n');
+	if (parts.length > 1 && parts[parts.length - 1] === '') parts.pop();
+	return parts;
+}
+
 function toLabel(e: ImportEdge): string {
 	if (e.toKind === 'unresolved') return e.specifier;
 	if (e.toKind === 'package') return e.to.replace(/^unresolved:/, '');
 	return e.to;
+}
+
+function snippetForEdge(graph: CodeGraph, e: ImportEdge): ImportSnippet {
+	const src = graph.contents.get(e.from) ?? '';
+	return {
+		path: e.from,
+		line: e.line,
+		text: lineText(src, e.line) || `// (line ${e.line}) ${e.form} '${e.specifier}'`,
+		form: e.form,
+		specifier: e.specifier,
+		toLabel: toLabel(e),
+	};
 }
 
 /** Build snippets from edges (stable path+line order, capped). */
@@ -54,15 +117,170 @@ export function snippetsForEdges(
 	const out: ImportSnippet[] = [];
 	for (const e of sorted) {
 		if (out.length >= MAX_SNIPPETS) break;
-		const src = graph.contents.get(e.from) ?? '';
-		out.push({
-			path: e.from,
-			line: e.line,
-			text: lineText(src, e.line) || `// (line ${e.line}) ${e.form} '${e.specifier}'`,
-			form: e.form,
-			specifier: e.specifier,
-			toLabel: toLabel(e),
+		out.push(snippetForEdge(graph, e));
+	}
+	return out;
+}
+
+/**
+ * Whole-file excerpt of the import target (estimate).
+ * Packages / missing source → undefined (caller adds blocker).
+ */
+export function importedCodeForEdge(
+	graph: CodeGraph,
+	e: ImportEdge,
+): ImportedCodeSnippet | undefined {
+	if (e.toKind !== 'file') return undefined;
+	const text = graph.contents.get(e.to);
+	if (text === undefined) return undefined;
+	const lines = sourceLines(text);
+	if (!lines.length) {
+		return {
+			epistemic: 'observed',
+			path: e.to,
+			startLine: 1,
+			endLine: 1,
+			text: '',
+			note: 'whole file (estimate)',
+		};
+	}
+	const slice = lines.slice(0, MAX_IMPORTED_LINES);
+	const truncated = lines.length > MAX_IMPORTED_LINES;
+	const body = truncated
+		? `${slice.join('\n')}\n// … ${lines.length - MAX_IMPORTED_LINES} more lines (estimate cap)`
+		: slice.join('\n');
+	return {
+		epistemic: 'observed',
+		path: e.to,
+		startLine: 1,
+		endLine: Math.min(lines.length, MAX_IMPORTED_LINES),
+		text: body,
+		note: truncated
+			? `whole file excerpt (estimate; ${lines.length} lines total)`
+			: 'whole file (estimate)',
+	};
+}
+
+/**
+ * Best-effort local identifier hits in the importer for import bindings.
+ * Not type-checked; excludes the import line; word-boundary match on stripped-ish lines.
+ */
+export function callSitesForEdge(
+	graph: CodeGraph,
+	e: ImportEdge,
+): CallSiteSnippet[] {
+	const names = localNamesFromBindings(e.bindings ?? []);
+	if (!names.length) return [];
+	const src = graph.contents.get(e.from);
+	if (src === undefined) return [];
+	const lines = sourceLines(src);
+	const out: CallSiteSnippet[] = [];
+	const nameSet = new Set(names);
+
+	for (let i = 0; i < lines.length; i++) {
+		const lineNo = i + 1;
+		if (lineNo === e.line) continue;
+		const line = lines[i]!;
+		// Skip obvious comment-only lines
+		const trimmed = line.trim();
+		if (trimmed.startsWith('//')) continue;
+
+		for (const symbol of nameSet) {
+			const re = new RegExp(`\\b${escapeRegExp(symbol)}\\b`);
+			if (!re.test(line)) continue;
+			out.push({
+				epistemic: 'inferred',
+				path: e.from,
+				line: lineNo,
+				text: line,
+				symbol,
+			});
+			if (out.length >= MAX_CALLSITES_PER_EDGE) return out;
+		}
+	}
+	return out;
+}
+
+function escapeRegExp(s: string): string {
+	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function evidenceForEdge(
+	graph: CodeGraph,
+	e: ImportEdge,
+	precision: LocPrecision,
+): ImportEvidence {
+	const blockers: EvidenceBlocker[] = [];
+	const imp = snippetForEdge(graph, e);
+
+	if (precision === 'exact') {
+		blockers.push({
+			code: 'exact-not-implemented',
+			message: EXACT_NOT_IMPLEMENTED_MESSAGE,
 		});
+		// Observed import lines remain; exact imported surface / callsites withheld
+		return {
+			precision,
+			edgeId: e.id,
+			import: imp,
+			callsites: [],
+			blockers,
+		};
+	}
+
+	// estimate
+	let importedCode = importedCodeForEdge(graph, e);
+	if (e.toKind !== 'file') {
+		blockers.push({
+			code: 'package-target',
+			message: 'No local source for package/unresolved target (estimate)',
+		});
+	} else if (!importedCode) {
+		blockers.push({
+			code: 'no-source',
+			message: 'Target file source not available in graph',
+		});
+	}
+
+	const locals = localNamesFromBindings(e.bindings ?? []);
+	const callsites = callSitesForEdge(graph, e);
+	if (!locals.length) {
+		const onlySide =
+			!e.bindings?.length ||
+			e.bindings.every((b: ImportBinding) => b.kind === 'side-effect');
+		if (onlySide) {
+			blockers.push({
+				code: 'no-bindings',
+				message:
+					'No named import bindings to scan for callsites (side-effect, require, or dynamic)',
+			});
+		}
+	}
+
+	return {
+		precision,
+		edgeId: e.id,
+		import: imp,
+		importedCode,
+		callsites,
+		blockers,
+	};
+}
+
+/** Compose structured evidence for a set of edges (capped). */
+export function evidenceForEdges(
+	graph: CodeGraph,
+	edges: ImportEdge[],
+	precision?: LocPrecision,
+): ImportEvidence[] {
+	const p = resolveLocPrecision(precision);
+	const sorted = [...edges].sort(
+		(a, b) => a.from.localeCompare(b.from) || a.line - b.line || a.id.localeCompare(b.id),
+	);
+	const out: ImportEvidence[] = [];
+	for (const e of sorted) {
+		if (out.length >= MAX_SNIPPETS) break;
+		out.push(evidenceForEdge(graph, e, p));
 	}
 	return out;
 }

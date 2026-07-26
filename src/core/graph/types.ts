@@ -25,6 +25,16 @@ export type PackageNode = {
 
 export type GraphNode = FileNode | PackageNode;
 
+/**
+ * Local names introduced by an import clause (Level-1 parse; not type-checked).
+ * Used for estimate callsites / evidence — not for exact tree-shaken surface.
+ */
+export type ImportBinding =
+	| { kind: 'named'; imported: string; local: string }
+	| { kind: 'default'; local: string }
+	| { kind: 'namespace'; local: string }
+	| { kind: 'side-effect' };
+
 export type ImportEdge = {
 	id: string;
 	kind: 'imports';
@@ -38,6 +48,8 @@ export type ImportEdge = {
 	form: 'import' | 'export' | 'require' | 'dynamic';
 	/** 1-based line of the import statement in `from` (observed). */
 	line: number;
+	/** Clause bindings from Level-1 parse (estimate evidence). */
+	bindings: ImportBinding[];
 };
 
 export type CodeGraph = {
@@ -67,6 +79,8 @@ export type ExtractedImport = {
 	specifier: string;
 	form: ImportEdge['form'];
 	line: number;
+	/** Observed clause bindings; empty when form has no clause (or unparsed). */
+	bindings: ImportBinding[];
 };
 
 export type CatalogStart = {

@@ -652,7 +652,7 @@ cds-header {
 }
 
 /*
- * Weight + Drill|Inspect: single horizontal strip, same height (sm = 2rem).
+ * Weight + Precision + Drill|Inspect: single horizontal strip, same height (sm = 2rem).
  * External label + hide-label dropdown avoids Carbon form-item stacking
  * the label above the field (which pushed the select under the switcher).
  */
@@ -698,10 +698,23 @@ cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 12.5rem !important;
+  flex: 0 0 11.5rem !important;
   flex-direction: row !important;
-  width: 12.5rem !important;
-  max-width: 12.5rem !important;
+  width: 11.5rem !important;
+  max-width: 11.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
+cds-dropdown.atlas-stage__precision,
+.atlas-stage__precision {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 8.5rem !important;
+  flex-direction: row !important;
+  width: 8.5rem !important;
+  max-width: 8.5rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -716,7 +729,8 @@ cds-dropdown.atlas-stage__weight,
   z-index: 1;
 }
 
-cds-dropdown.atlas-stage__weight {
+cds-dropdown.atlas-stage__weight,
+cds-dropdown.atlas-stage__precision {
   position: relative;
   z-index: 2; /* open list above content-switcher */
 }
@@ -780,20 +794,59 @@ cds-dropdown.atlas-stage__weight {
   font-size: 0.75rem;
 }
 
+.atlas-inspect__banner {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.25rem;
+  border: 1px solid #854d0e;
+  background: #422006;
+  color: #fde68a;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .atlas-inspect__list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .atlas-inspect__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
   border: 1px solid #27272a;
   border-radius: 0.25rem;
   background: #18181b;
   overflow: hidden;
+  padding: 0.5rem 0.5rem 0.65rem;
+}
+
+.atlas-inspect__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.atlas-inspect__section-title {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  margin: 0 0 0.15rem;
+}
+
+.atlas-inspect__section-empty {
+  margin: 0;
+  padding: 0.35rem 0.15rem;
+  color: #71717a;
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .atlas-inspect__path {
@@ -801,8 +854,11 @@ cds-dropdown.atlas-stage__weight {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.35rem 0.75rem;
-  padding: 0.35rem 0.5rem;
-  border-block-end: 1px solid #27272a;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid #27272a;
+  border-bottom: none;
+  border-radius: 0.2rem 0.2rem 0 0;
+  background: #09090b;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.7rem;
   color: #a1a1aa;
@@ -821,9 +877,14 @@ cds-dropdown.atlas-stage__weight {
 }
 
 .atlas-inspect__code {
-  margin: 0;
+  margin: 0 0 0.35rem;
   padding: 0.5rem 0.65rem;
   overflow-x: auto;
+  max-block-size: 12rem;
+  overflow-y: auto;
+  border: 1px solid #27272a;
+  border-radius: 0 0 0.2rem 0.2rem;
+  background: #09090b;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.75rem;
   line-height: 1.45;

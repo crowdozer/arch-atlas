@@ -5,6 +5,7 @@ import {
 	edgeWeight,
 	fileLineCount,
 	lineCount,
+	resolveWeightRequest,
 	unitsForAxis,
 	type WeightAxis,
 } from '@core/view/weight.ts';
@@ -17,6 +18,7 @@ function edge(partial: Partial<ImportEdge> & Pick<ImportEdge, 'from' | 'to' | 't
 		epistemic: 'observed',
 		form: 'import',
 		line: 1,
+		bindings: [{ kind: 'side-effect' }],
 		...partial,
 	};
 }
@@ -126,8 +128,38 @@ describe('unitsForAxis', () => {
 		expect(unitsForAxis('import-edges', 'import-edges')).toBe('import edges');
 	});
 
-	it('LOC units are honest about package fallback', () => {
+	it('LOC units are honest about package fallback and estimate', () => {
 		expect(unitsForAxis('importer-loc')).toMatch(/importer/i);
+		expect(unitsForAxis('target-loc')).toMatch(/estimated/i);
 		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
+	});
+});
+
+describe('resolveWeightRequest', () => {
+	it('allows estimate for all axes', () => {
+		for (const axis of ['import-edges', 'importer-loc', 'target-loc'] as WeightAxis[]) {
+			const r = resolveWeightRequest(axis, 'estimate');
+			expect(r.ok).toBe(true);
+			if (r.ok) expect(r.axis).toBe(axis);
+		}
+	});
+
+	it('exact + target-loc is not implemented', () => {
+		const r = resolveWeightRequest('target-loc', 'exact');
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.reason).toBe('exact-not-implemented');
+			expect(r.message).toMatch(/language server/i);
+		}
+	});
+
+	it('exact + import-edges is ok (no imported-surface claim)', () => {
+		const r = resolveWeightRequest('import-edges', 'exact');
+		expect(r.ok).toBe(true);
+	});
+
+	it('exact + importer-loc is ok (whole-file importer size)', () => {
+		const r = resolveWeightRequest('importer-loc', 'exact');
+		expect(r.ok).toBe(true);
 	});
 });
