@@ -958,13 +958,18 @@ cds-inline-notification.atlas-inspect__banner {
  * min-height: auto (flex default) lets Carbon’s SVG content force the holder
  * taller than the stage — chart runs off the bottom of the screen. Force
  * shrink-to-fit; chart height is set in px from available stage space.
+ *
+ * Padding clears hanging entry labels (config.ts (186), + N more) without
+ * touching SVG viewBox (Carbon width="100%" breaks viewBox math → zoom).
  */
 .atlas-stage__holder {
+  box-sizing: border-box;
   flex: 1 1 auto;
   align-self: stretch;
   min-height: 0;
   max-height: 100%;
   width: 100%;
+  padding: 0.35rem 1rem 1rem 0.75rem;
   overflow: hidden;
 }
 
@@ -973,10 +978,10 @@ cds-inline-notification.atlas-inspect__banner {
 .atlas-stage__holder [class*='chart-holder'],
 .atlas-stage__holder [class*='chart-wrapper'] {
   max-height: 100%;
-  overflow: hidden;
+  /* Let labels paint into holder padding; stage still clips viewport */
+  overflow: visible;
 }
 
-/* Entry labels hang outside node rects; viewBox pad + visible SVG overflow */
 .atlas-stage__holder svg {
   overflow: visible;
 }
