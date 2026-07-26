@@ -7,13 +7,16 @@ pad/paint helpers in `src/core/view/alluvial.ts`, polish in
 `src/client/alluvialTopPack.ts`  
 **Tests that lock membership:** `src/core/view/hubOrientation.golden.test.ts`,
 parts of `fileHub.test.ts` / `alluvial.test.ts` / `alluvialTopPack.test.ts`  
-**Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
+**Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)  
+**Hover focus / highlight (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) —
+LogicalFocusGraph FocusPlan; do **not** retcon this geometry matrix to fix hover.
 
 This document is the **working behavioral contract** for dual-side file hub
 layout and mass pull-in. It is not a redesign brief. Update it only when product
 intent for hub columns deliberately changes — not when a bug fix drifts behavior.
 For "why did we try X and reject Y?", use the field notes — do not grow this
-matrix into a changelog.
+matrix into a changelog. **Focus/highlight law lives in hub-focus-behavior.md**
+(pairs + non-rail file edges); it must not rewrite pad/rail membership.
 
 ---
 
