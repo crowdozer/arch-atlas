@@ -308,8 +308,8 @@ function captionForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file-hub':
 			return vizMaxDepth > 1
-				? `Importers×${vizMaxDepth} → ${view.fileId} → Imports×${vizMaxDepth}`
-				: `Importers → ${view.fileId} → Imports`;
+				? `Imports×${vizMaxDepth} → ${view.fileId} → Exports×${vizMaxDepth}`
+				: `Imports → ${view.fileId} → Exports`;
 		case 'package':
 			return `Package · ${view.label} → imports`;
 		case 'module':
@@ -325,7 +325,7 @@ function viewForFileOpen(fileId: string): AtlasView {
 function statusForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file-hub':
-			return `Importers · Imports · ${view.fileId}`;
+			return `Imports · Exports · ${view.fileId}`;
 		case 'package':
 			return `Package: ${view.label}`;
 		case 'module':

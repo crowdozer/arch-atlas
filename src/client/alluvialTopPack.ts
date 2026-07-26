@@ -313,18 +313,14 @@ export function topPackAlluvialHolder(
 
 /**
  * Carbon alluvial paints band strokes from the **source** node color.
- * Dep-side columns (what the focus imports) should stay yellow when bands
- * enter them. After hub mass-flow flip those categories are `Imports` /
- * `Import hop N` (legacy hub used `Exports` / `Export hop N`).
+ * Export side (right, yellow — packages/files the focus imports) should keep
+ * yellow bands when painted from File or another export-side source.
  */
 export function isExportSideCategory(category: string): boolean {
 	return (
 		category === 'Exports' ||
 		category === 'Exporters' ||
-		category.startsWith('Export hop') ||
-		// Hub flip: dependency side
-		category === 'Imports' ||
-		category.startsWith('Import hop')
+		category.startsWith('Export hop')
 	);
 }
 

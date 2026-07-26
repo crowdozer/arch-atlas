@@ -3,19 +3,16 @@
  *
  * Columns (L→R), **import-edge direction** (A → B means A imports B):
  *
- *   Importer hop N … → Importers → File → Imports → Import hop N
+ *   Import hop N … → Imports → File → Exports → Export hop N
  *
- * - **Left (Importers):** who imports the focus (reverse BFS).
- * - **Right (Imports):** what the focus imports (forward / longest-path deps).
- *
- * Display names use Importers / Imports (not the ambiguous Imports / Exports
- * pair that read as inverted).
+ * - **Left (Imports, cyan):** who imports the focus (reverse BFS).
+ * - **Right (Exports, yellow):** what the focus imports (forward / longest-path).
  *
  * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
  *
  * | Depth | Layout |
  * | ----- | ------ |
- * | 1     | Importers → File → Imports |
+ * | 1     | Imports → File → Exports |
  * | N     | Up to N hops each way |
  *
  * Radius = depth (not multiHop’s depth−1). Asymmetric sides omit empty hop columns.
@@ -39,18 +36,15 @@
  * path). Outer fan-out may therefore under-draw structure under unit edge
  * weights; accepted product default for conserving File incident mass.
  *
- * Display categories: dist-1 `Importers` / `Imports`; outer rings
- * `Importer hop k` / `Import hop k` (k≥2). Folder collapse only at depth=1.
- *
  * **Dependency distances use longest simple path** so focus→format→types
- * expands even when types is also a direct import of focus. Importer side
+ * expands even when types is also a direct import of focus. Import side
  * still uses shortest reverse BFS.
  *
  * **Layer-consistent topology:** d3-sankey columns = path length from sources.
  * Shared zero-width rails pad short paths so each hop sits on one column.
  *
- * Importers (left) teal; Imports/deps (right) yellow. Carbon paints bands by
- * source — dep-side strokes are recolored in the client polish step.
+ * Imports (left) cyan; Exports (right) yellow. Carbon paints bands by source —
+ * export-side strokes are recolored in the client polish step.
  */
 
 import {
@@ -304,29 +298,29 @@ export function projectFileHub(
 	}
 
 	const present = new Set([...nodeMeta.values()].map((m) => m.category));
-	// Left: outer importers → … → Importers
-	const importerHops: string[] = [];
+	// Left: outer Import hop N … → Imports
+	const importHops: string[] = [];
 	for (let d = hubRadius; d >= 2; d--) {
-		const cat = `Importer hop ${d}`;
-		if (present.has(cat)) importerHops.push(cat);
+		const cat = importHopCategory(d);
+		if (present.has(cat)) importHops.push(cat);
 	}
-	// Right: Imports → … → outer Import hop (may overdraw past hubRadius)
-	let maxDepHop = hubRadius;
+	// Right: Exports → … → outer Export hop (may overdraw past hubRadius)
+	let maxExportHop = hubRadius;
 	for (const cat of present) {
-		const m = /^Import hop (\d+)$/.exec(cat);
-		if (m) maxDepHop = Math.max(maxDepHop, Number(m[1]));
+		const m = /^Export hop (\d+)$/.exec(cat);
+		if (m) maxExportHop = Math.max(maxExportHop, Number(m[1]));
 	}
-	const depHops: string[] = [];
-	for (let d = 2; d <= maxDepHop; d++) {
-		const cat = `Import hop ${d}`;
-		if (present.has(cat)) depHops.push(cat);
+	const exportHops: string[] = [];
+	for (let d = 2; d <= maxExportHop; d++) {
+		const cat = exportHopCategory(d);
+		if (present.has(cat)) exportHops.push(cat);
 	}
 	const categoryOrder = [
-		...importerHops,
-		...(present.has('Importers') ? ['Importers'] : []),
-		'File',
+		...importHops,
 		...(present.has('Imports') ? ['Imports'] : []),
-		...depHops,
+		'File',
+		...(present.has('Exports') ? ['Exports'] : []),
+		...exportHops,
 	].filter((c) => present.has(c) || c === 'File');
 
 	return buildAlluvialPayload({
@@ -338,22 +332,19 @@ export function projectFileHub(
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Hub importers and imports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
+		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
 	});
 }
 
 /**
- * Internal build tags reverse-BFS as Imports/Import hop and forward deps as
- * Exports/Export hop. Display: Importers… (left) / Imports… (right deps).
+ * Normalize legacy display tags. Build already uses Imports/Import hop (left)
+ * and Exports/Export hop (right).
  */
 export function displayHubCategory(category: string): string {
-	if (category === 'Exports' || category === 'Exporters') return 'Imports';
-	if (category.startsWith('Export hop ')) {
-		return category.replace(/^Export hop /, 'Import hop ');
-	}
-	if (category === 'Imports') return 'Importers';
-	if (category.startsWith('Import hop ')) {
-		return category.replace(/^Import hop /, 'Importer hop ');
+	if (category === 'Exporters') return 'Exports';
+	if (category === 'Importers') return 'Imports';
+	if (category.startsWith('Importer hop ')) {
+		return category.replace(/^Importer hop /, 'Import hop ');
 	}
 	return category;
 }
@@ -390,16 +381,16 @@ function claimName(
 	return final;
 }
 
-/** Teal hop gradient — closer to File is brighter. */
+/** Cyan hop gradient (Imports / left) — closer to File is brighter. */
 function importHopColor(dist: number, maxDist: number): string {
 	const t = dist / Math.max(maxDist, 1);
-	if (t > 0.75) return '#0f766e';
-	if (t > 0.5) return '#0d9488';
-	if (t > 0.25) return TEAL.package;
-	return TEAL.module;
+	if (t > 0.75) return '#0e7490'; // cyan-700
+	if (t > 0.5) return '#0891b2'; // cyan-600
+	if (t > 0.25) return '#06b6d4'; // cyan-500
+	return '#22d3ee'; // cyan-400
 }
 
-/** Yellow hop gradient — closer to File is brighter. */
+/** Yellow hop gradient (Exports / right) — closer to File is brighter. */
 function exportHopColor(dist: number, maxDist: number): string {
 	const t = dist / Math.max(maxDist, 1);
 	if (t > 0.75) return TEAL.exportOther;
@@ -1616,13 +1607,13 @@ function addImportModules(
 			const source = claimName(usedNames, mod, 'module');
 			addLink(source, fileLabel, n);
 			nodeRef[source] = { kind: 'module', id: mod };
-			nodeMeta.set(source, { category: 'Imports', color: TEAL.module });
+			nodeMeta.set(source, { category: 'Imports', color: '#06b6d4' });
 		} else if (otherLabel) {
 			addLink(otherLabel, fileLabel, n);
 		}
 	}
 	if (otherLabel) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-import-modules' };
-		nodeMeta.set(otherLabel, { category: 'Imports', color: TEAL.other });
+		nodeMeta.set(otherLabel, { category: 'Imports', color: '#0e7490' });
 	}
 }

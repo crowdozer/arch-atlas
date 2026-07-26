@@ -174,8 +174,8 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
 			const hasImportSide = fileInDegree(graph, d.id) > 0;
 			const hasExportSide = fileOutDegree(graph, d.id) > 0;
-			if (hasImportSide) expect(cats.has('Importers')).toBe(true);
-			if (hasExportSide) expect(cats.has('Imports')).toBe(true);
+			if (hasImportSide) expect(cats.has('Imports')).toBe(true);
+			if (hasExportSide) expect(cats.has('Exports')).toBe(true);
 		}
 	});
 
@@ -211,8 +211,8 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			const cats = new Set(
 				payload!.options.alluvial.nodes.map((n) => n.category),
 			);
-			if (h.inDegree > 0) expect(cats.has('Importers')).toBe(true);
-			if (h.outDegree > 0) expect(cats.has('Imports')).toBe(true);
+			if (h.inDegree > 0) expect(cats.has('Imports')).toBe(true);
+			if (h.outDegree > 0) expect(cats.has('Exports')).toBe(true);
 			expect(cats.has('Import folders')).toBe(false);
 		}
 	});
@@ -227,11 +227,11 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const payload = projectFileHub(graph, id, { weightAxis: 'import-edges' })!;
 		expect(focusIncidentMass(payload)).toBe(inn + out);
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Importers')).toBe(true);
 		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('Exports')).toBe(true);
 	});
 
-	it('logger.ts pure sink opens hub Importers-only with full importer count', () => {
+	it('logger.ts pure sink opens hub Imports-only with full importer count', () => {
 		const id = 'src/lib/logger.ts';
 		// preferFileHubView is false (no out) but UI still opens hub
 		expect(preferFileHubView(graph, id)).toBe(false);
@@ -240,8 +240,8 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const payload = payloadForFileClick(graph, id)!;
 		expect(focusIncidentMass(payload)).toBe(inn);
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Importers')).toBe(true);
-		expect(cats.has('Imports')).toBe(false);
+		expect(cats.has('Imports')).toBe(true);
+		expect(cats.has('Exports')).toBe(false);
 		expect(cats.has('Import folders')).toBe(false);
 	});
 
