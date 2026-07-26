@@ -12,6 +12,7 @@ Agents: start here, then load playbooks from the preamble.
 3. [.grok/reference/conversation.md](.grok/reference/conversation.md) — design conversation (source vision)
 4. Project overlay: [.grok/skills/_shared/preamble.md](.grok/skills/_shared/preamble.md)
 5. **Hub alluvial work:** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) — column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
+6. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) — try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
 
 ## Role skills
 

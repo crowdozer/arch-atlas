@@ -178,10 +178,11 @@ laterals / package emits.
 
 | Rail id | Side | Category | Role | Painted? |
 | --- | --- | --- | --- | --- |
-| `·out-rail·hN` | Export (left) | `Export hop N` | Free-source scaffold for short reverse paths | Out-rail mass carriers paint; pure rail↔rail undrawn only for **in-rail↔in-rail** |
-| `·in-rail·hN` | Import (right) | Import-side hop categories | Historical File→deep dual-path pads; **seed path must not reintroduce** File→seed via rails | Only pure in-rail ↔ in-rail undrawn; File/file/package endpoints keep ribbons |
+| `·out-rail·hN` | Export (left) | `Export hop N` | Free-source scaffold for short reverse paths when `radiusL ≥ 2` | Out-rail free-source pad bands undrawn; rail nodes hidden |
+| `·in-rail·hN` | Import (right) | Import-side hop categories | External hop depth pads (shared stage rails); **seed path must not reintroduce** File→seed via rails | Parent→in-rail→External undrawn (straighten via pairs); pure in-rail↔in-rail undrawn |
 
-Client polish may treat reverse free-source display names as **terminators**.
+Client polish marks reverse free sources as **terminators** (cyan) even when
+`radiusL === 1` (no out-rail pads) — chrome is not gated on multi-hop.
 
 ---
 
@@ -216,6 +217,8 @@ category alone.
 | Topology: External kinds | Only package/unresolved/bucket |
 | fileHub mass helpers | File in = reverse; File out = files + focus packages |
 | Paint law tests | Pure in-rail scaffold undrawn; File↔rail carriers paint |
+| External straighten pairs | Multi-parent shared-rail: pairs deny cross-product; BFS fallback only without meta |
+| AdminFlags single reverse hop | `meta.terminators` includes Exports free source without out-rails |
 
 **If a change flips membership (Imports ↔ Exports ↔ External) or seed placement
 without an explicit product request, that is a product fork — surface it; do not

@@ -24,6 +24,7 @@ stay pure; ship only stitches them.
 - Scope: [reference/scope.md](../../reference/scope.md)
 - Vision notes: [reference/conversation.md](../../reference/conversation.md)
 - Hub alluvial matrix: [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
+- Hub alluvial field notes: [reference/hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) — try/fail journal (Carbon free-source, residual, straighten cross-product, terminators); not product law
 
 ## Product contracts (draft — from design conversation)
 
@@ -77,6 +78,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [scope.md](../../reference/scope.md) | Product intent, draft contracts, views ladder |
 | [conversation.md](../../reference/conversation.md) | Full design conversation notes |
 | [hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) | File-hub columns, mass, pads; **before any alluvial/hub change** |
+| [hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) | Scar tissue: diagnosis table + episode log for alluvial/Carbon mishaps |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |
 
