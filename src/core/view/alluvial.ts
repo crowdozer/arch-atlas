@@ -37,12 +37,22 @@ export function basename(path: string): string {
 	return i >= 0 ? path.slice(i + 1) : path;
 }
 
-/** Top-level module folder for grouping (src/lib, app, …). */
+/**
+ * Module-folder key for alluvial / reverse-importer grouping.
+ *
+ * - `config.ts` → `(root)`
+ * - `lib/utils.ts` → `lib`
+ * - `src/lib/email.ts` → `src/lib` (two segments when deep enough)
+ * - `client/sim/foo.ts` → `client/sim` (not just `client`)
+ *
+ * Using two path segments for depth≥3 avoids monorepo collapse where hundreds
+ * of importers under `client/` or `server/` become one useless alluvial node.
+ */
 export function topFolder(path: string): string {
-	const parts = path.split('/');
+	const parts = path.split('/').filter(Boolean);
 	if (parts.length <= 1) return '(root)';
-	if (parts[0] === 'src' && parts.length > 2) return `src/${parts[1]}`;
-	return parts[0] ?? '(root)';
+	if (parts.length >= 3) return `${parts[0]}/${parts[1]}`;
+	return parts[0]!;
 }
 
 /** Collision-safe display labels for file paths (basename, or trailing segments). */

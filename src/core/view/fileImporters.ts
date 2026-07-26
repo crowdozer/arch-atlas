@@ -29,6 +29,45 @@ import {
 const FILE_PROMOTE_THRESHOLD = 12;
 
 /**
+ * Pick a grouping function for many importers.
+ * Prefer topFolder; if nearly all importers share one key, deepen one segment
+ * so fan-in hubs (config.ts ← 186× under client/) are not a single band.
+ */
+export function importerGroupKey(
+	importerPaths: readonly string[],
+): (path: string) => string {
+	const byTop = new Map<string, number>();
+	for (const p of importerPaths) {
+		const k = topFolder(p);
+		byTop.set(k, (byTop.get(k) ?? 0) + 1);
+	}
+	const ranked = [...byTop.entries()].sort((a, b) => b[1] - a[1]);
+	const [dominant, dominantN] = ranked[0] ?? ['', 0];
+	const collapse =
+		ranked.length <= 1 ||
+		(importerPaths.length >= 8 && dominantN / importerPaths.length >= 0.85);
+
+	if (!collapse || !dominant || dominant === '(root)') {
+		return (path: string) => topFolder(path);
+	}
+
+	// Dominant key is already two-level (client/sim) → deepen to three when possible.
+	// Dominant key is one-level (client) → two-level or client/(files) for flat files.
+	const domParts = dominant.split('/');
+	return (path: string) => {
+		const parts = path.split('/').filter(Boolean);
+		if (domParts.length >= 2) {
+			if (parts.length >= 4) return parts.slice(0, 3).join('/');
+			if (parts.length >= 3) return parts.slice(0, 2).join('/');
+			return topFolder(path);
+		}
+		if (parts.length >= 3) return `${parts[0]}/${parts[1]}`;
+		if (parts.length === 2) return `${parts[0]}/(files)`;
+		return topFolder(path);
+	};
+}
+
+/**
  * Project importers of a source file as an alluvial.
  * Returns null when nothing imports the file.
  */
@@ -71,8 +110,12 @@ export function projectFileImporters(
 			importerRef.set(label, { kind: 'file', id: e.from });
 		}
 	} else {
+		// Group by module folder (two-level keys via topFolder). If that still
+		// collapses to a single bucket (legacy one-segment monorepos), fall back
+		// to a deeper key so the chart is not "file ↔ one folder".
+		const groupKey = importerGroupKey(importerPaths);
 		for (const e of edges) {
-			const mod = topFolder(e.from);
+			const mod = groupKey(e.from);
 			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
 			if (!importerRef.has(mod)) {
 				importerRef.set(mod, { kind: 'module', id: mod });
