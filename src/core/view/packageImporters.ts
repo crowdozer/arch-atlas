@@ -1,8 +1,9 @@
 /**
- * Reverse package projection: who imports this package?
- * Columns (L→R): Importers → Package
+ * Package drill-down: from a package outward to its importers.
+ * Columns (L→R): Package → Importers (files or modules)
  *
  * Graph-wide (not start-scoped). Unit = one observed edge into the package.
+ * Orientation matches “subject on the left, dependents on the right.”
  */
 
 import type {
@@ -122,14 +123,15 @@ export function projectPackageImporters(
 
 	const otherLabel = '(other importers)';
 	for (const [key, n] of weights) {
-		const source = kept.has(key) ? key : otherLabel;
-		const k = `${source}\0${packageLabel}`;
+		const target = kept.has(key) ? key : otherLabel;
+		// Package (left) → Importer (right)
+		const k = `${packageLabel}\0${target}`;
 		linkMap.set(k, (linkMap.get(k) ?? 0) + n);
 
-		if (source === otherLabel) continue;
+		if (target === otherLabel) continue;
 		const ref = importerRef.get(key);
-		if (ref) nodeRef[source] = ref;
-		nodeMeta.set(source, {
+		if (ref) nodeRef[target] = ref;
+		nodeMeta.set(target, {
 			category: 'Importers',
 			color: useFiles ? TEAL.start : TEAL.module,
 		});
@@ -148,10 +150,10 @@ export function projectPackageImporters(
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['Importers', 'Package'],
+		categoryOrder: ['Package', 'Importers'],
 		focus,
 		nodeRef,
 		units: 'import edges',
-		ariaLabel: `Importers of ${packageLabel}`,
+		ariaLabel: `Package ${packageLabel} imported into files`,
 	});
 }

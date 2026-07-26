@@ -105,7 +105,7 @@ describe('projectPackageImporters', () => {
 		expect(payload!.meta.focus.kind).toBe('package');
 		expect(payload!.meta.focus.label).toBe('nodemailer');
 
-		// Right column is package; left is importer(s)
+		// Left column is package; right is importer(s)
 		const packageNodes = payload!.options.alluvial.nodes.filter(
 			(n) => n.category === 'Package',
 		);
@@ -120,14 +120,15 @@ describe('projectPackageImporters', () => {
 
 		const total = payload!.data.reduce((s, l) => s + l.value, 0);
 		expect(total).toBe(1);
-		expect(payload!.data.every((l) => l.target === 'nodemailer')).toBe(true);
+		expect(payload!.data.every((l) => l.source === 'nodemailer')).toBe(true);
+		expect(payload!.data.every((l) => l.target !== 'nodemailer')).toBe(true);
 
 		const importerRef = payload!.meta.nodeRef[importers[0]!.name];
 		expect(importerRef).toEqual({ kind: 'file', id: 'src/lib/email.ts' });
 		expect(payload!.meta.nodeRef.nodemailer.kind).toBe('package');
 	});
 
-	it('conserves importer → package weights', () => {
+	it('conserves package → importer weights', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		// redis is used from multiple places likely
 		const payload = projectPackageImporters(graph, 'ioredis');
@@ -139,12 +140,12 @@ describe('projectPackageImporters', () => {
 		expect(p).not.toBeNull();
 		const { out, inn } = flowTotals(p!.data);
 		const packageLabel = p!.meta.focus.label;
-		const packageIn = inn.get(packageLabel) ?? 0;
-		const importerOut = [...out.entries()]
+		const packageOut = out.get(packageLabel) ?? 0;
+		const importerIn = [...inn.entries()]
 			.filter(([k]) => k !== packageLabel)
 			.reduce((s, [, v]) => s + v, 0);
-		expect(packageIn).toBe(importerOut);
-		expect(packageIn).toBeGreaterThan(0);
+		expect(packageOut).toBe(importerIn);
+		expect(packageOut).toBeGreaterThan(0);
 	});
 
 	it('returns null for unknown package', () => {
@@ -164,7 +165,7 @@ describe('projectModuleFocus', () => {
 			label: 'src/lib',
 		});
 
-		// Module right node
+		// Module left node
 		expect(
 			payload!.options.alluvial.nodes.some(
 				(n) => n.category === 'Module' && n.name === 'src/lib',
@@ -177,13 +178,13 @@ describe('projectModuleFocus', () => {
 			.map((n) => n.name);
 		expect(endNames).toContain('nodemailer');
 
-		// All ends flow into the module node
-		expect(payload!.data.every((l) => l.target === 'src/lib')).toBe(true);
+		// Module radiates to package ends
+		expect(payload!.data.every((l) => l.source === 'src/lib')).toBe(true);
 
-		// Conservation: sum ends out == module in
+		// Conservation: module out == sum ends in
 		const { out, inn } = flowTotals(payload!.data);
-		const endOut = endNames.reduce((s, e) => s + (out.get(e) ?? 0), 0);
-		expect(inn.get('src/lib')).toBe(endOut);
+		const endIn = endNames.reduce((s, e) => s + (inn.get(e) ?? 0), 0);
+		expect(out.get('src/lib')).toBe(endIn);
 
 		// Count should match graph edges from topFolder src/lib to package/unresolved
 		const expected = graph.edges.filter(
@@ -203,7 +204,7 @@ describe('projectModuleFocus', () => {
 						: parts[0];
 			return top === 'src/lib';
 		}).length;
-		expect(endOut).toBe(byTop);
+		expect(endIn).toBe(byTop);
 		expect(expected).toBe(byTop);
 	});
 

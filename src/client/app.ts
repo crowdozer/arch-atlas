@@ -134,7 +134,7 @@ function captionForView(view: AtlasView): string {
 		case 'file':
 			return `Modules → code for ${view.fileId}`;
 		case 'package':
-			return `Package importers · ${view.label}`;
+			return `Package · ${view.label} → importers`;
 		case 'module':
 			return `Module ends · ${view.moduleId}`;
 	}

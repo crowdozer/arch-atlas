@@ -1,8 +1,9 @@
 /**
  * Module-folder projection: package ends used by files under a topFolder.
- * Columns (L→R): Ends → Module
+ * Columns (L→R): Module → Ends (packages)
  *
  * Unit = one package/unresolved edge from a file in that folder.
+ * Focus subject on the left (same convention as package drill-down).
  */
 
 import type {
@@ -67,12 +68,13 @@ export function projectModuleFocus(
 
 	const otherLabel = '(other ends)';
 	for (const [endKey, info] of endCounts) {
-		const source = topKeys.has(endKey) ? info.label : otherLabel;
-		const k = `${source}\0${moduleFolder}`;
+		const target = topKeys.has(endKey) ? info.label : otherLabel;
+		// Module (left) → Package end (right)
+		const k = `${moduleFolder}\0${target}`;
 		linkMap.set(k, (linkMap.get(k) ?? 0) + info.n);
 
-		if (source === otherLabel) continue;
-		nodeRef[source] = {
+		if (target === otherLabel) continue;
+		nodeRef[target] = {
 			kind: info.kind === 'unresolved' ? 'unresolved' : 'package',
 			id: endKey,
 		};
@@ -83,7 +85,7 @@ export function projectModuleFocus(
 					  graph.packages.get(endKey)?.source === 'builtin'
 					? TEAL.builtin
 					: TEAL.package;
-		nodeMeta.set(source, { category: 'Ends', color });
+		nodeMeta.set(target, { category: 'Ends', color });
 	}
 	if (hasOther) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: otherLabel };
@@ -95,12 +97,12 @@ export function projectModuleFocus(
 		return { source, target, value };
 	});
 
-	// Total conserved: sum of end outflows == module inflow
+	// Conserved: module outflow == sum of end inflows
 	return buildAlluvialPayload({
 		heightPx,
 		links,
 		nodeMeta,
-		categoryOrder: ['Ends', 'Module'],
+		categoryOrder: ['Module', 'Ends'],
 		focus,
 		nodeRef,
 		units: 'package imports',
