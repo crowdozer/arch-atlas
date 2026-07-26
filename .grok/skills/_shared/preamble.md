@@ -16,10 +16,10 @@ stay pure; ship only stitches them.
 ## Workspace
 
 - Repo: **arch-atlas**
-- Stack: **Astro + TypeScript (minimal)**; later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned)
-- Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → framework adapters → suggested alluvial atlas views (source stays on-device)
-- Design language: track **Sentinel** (Carbon UI wrappers, zinc/emerald brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
-- Mode: local `npm run dev` (Astro); no remote source upload in the target product model
+- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; client workspace in `src/client/`; later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned)
+- Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → catalog/heuristics → suggested alluvial atlas views (source stays on-device)
+- Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
+- Mode: local `npm run dev` (Astro static + client index); no remote source upload
 - Agent hub: [AGENTS.md](../../../AGENTS.md)
 - Scope: [reference/scope.md](../../reference/scope.md)
 - Vision notes: [reference/conversation.md](../../reference/conversation.md)
@@ -82,10 +82,11 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 
 | Area | Path / focus |
 | ---- | ------------ |
-| Astro app shell | `src/` (minimal template) |
-| Graph core | _(TBD — pure TS under e.g. `src/core/` once started)_ |
-| Framework adapters | _(TBD)_ |
-| UI / alluvial | _(TBD — track Sentinel visual grammar)_ |
+| Astro app shell | `src/pages/`, `src/layouts/` |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
+| Client workspace | `src/client/app.ts` |
+| Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
+| UI / Carbon / alluvial | `src/components/ui/`, `src/styles/`, `@carbon/charts` |
 
 ## Commands
 
@@ -94,6 +95,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm run dev` | Astro dev server |
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
+| `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
 
 If a command is not in `package.json`, do not invent CI that depends on it —

@@ -25,9 +25,9 @@ from becoming merely a prettier dependency graph.
 | Phase | Focus | Status |
 | ----- | ----- | ------ |
 | **0** | Repo scaffold (Astro + `.grok`, AGENTS) | Done |
-| **1** | Graph model + Level-1 static analysis (files, imports, packages, routes) | Next |
-| **2** | Framework adapters + map catalog + first alluvial projection | Not started |
-| **3** | Progressive expansion, weights, epistemic layers in UI | Not started |
+| **1** | Graph model + Level-1 static analysis (files, imports, packages) | **MVP done** (routes = file heuristics only) |
+| **2** | Framework adapters + richer map catalog | Partial — catalog + first alluvial without full adapter interface |
+| **3** | Progressive expansion, weights, epistemic layers in UI | Partial — labels present; expand UX later |
 | **4+** | Deeper adapters, optional runtime overlays, diff mode | Later |
 
 ## Core contracts (draft)
@@ -38,7 +38,7 @@ from becoming merely a prettier dependency graph.
 4. **Suggested views** — adapters propose toolkits (API architecture, DB access, externals, god-files, layer violations, blast radius, …).
 5. **Directed graph reality** — rooted route views may look tree-like; shared deps, cycles, dynamic imports mean alluvial merges matter.
 6. **Capability ladder** — useful output at Level 1 before perfect symbol/call resolution.
-7. **Design language tracks Sentinel** — Carbon wrappers, zinc/emerald shell, alluvial/Sankey as signature; do not fork Sentinel product domain.
+7. **Design language tracks Sentinel** — Carbon wrappers, zinc/**teal** shell (not emerald), alluvial/Sankey as signature; do not fork Sentinel product domain.
 
 ## Normalized graph (sketch)
 
@@ -108,12 +108,12 @@ reachable modules, runtime (later), latency, churn, cost, etc.
 
 ## Design language (Sentinel-tracking)
 
-Target visual/UX grammar (install later; not in this scaffold):
+Visual/UX grammar (MVP shell landed):
 
 - **IBM Carbon** web components via thin wrappers (pages never raw `cds-*`)
-- **Zinc** base shell + **emerald** interactive/active chrome
-- **Alluvial / Sankey** as the signature architecture visual
-- Thin Astro pages + pure core modules for analysis
+- **Zinc** base shell + **teal** interactive/active chrome (brand map: teal-600/500/400)
+- **Alluvial / Sankey** (`@carbon/charts`) as the signature architecture visual
+- Thin Astro pages + pure core modules for analysis (`src/core/`)
 
 Reference (do not copy wholesale): `~/git-personal/sentinel/.grok/reference/carbon-ui.md`
 
@@ -125,9 +125,11 @@ Reference (do not copy wholesale): `~/git-personal/sentinel/.grok/reference/carb
 - Inventing CI that is not wired in `package.json`
 - Full Sentinel product domain (investing, satellite ops, etc.)
 
-## Success bars (fill later)
+## Success bars
 
-- [ ] Runnable local dev path documented (yes: `npm run dev`)
-- [ ] Level-1 graph from a sample ZIP in-browser
-- [ ] At least one adapter-suggested view opens an alluvial projection
-- [ ] Observed vs inferred labels visible in UI
+- [x] Runnable local dev path documented (`npm run dev`)
+- [x] Level-1 graph from a sample ZIP in-browser
+- [x] At least one catalog-suggested view opens an alluvial projection
+- [x] Observed vs inferred labels visible in UI
+- [ ] Full framework adapter interface (`detect/classify/enrich/suggest/inspect`)
+- [ ] Progressive alluvial stage insertion

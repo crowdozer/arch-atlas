@@ -111,5 +111,5 @@ Alluvial = signature visual language; inferred catalog prevents “prettier dep 
 
 ## Design language note (this repo)
 
-Track **Sentinel** visual/UX grammar (Carbon wrappers, zinc/emerald, alluvial
+Track **Sentinel** visual/UX grammar (Carbon wrappers, zinc/**teal**, alluvial
 charts). Do not import Sentinel investing/ops domain.

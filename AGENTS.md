@@ -42,6 +42,7 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run dev` | Astro dev server |
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
+| `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
 
 ## How to treat this repo
@@ -50,6 +51,6 @@ This repository is a **working hypothesis**. Confirmed product intent and labele
 invariants win over provisional file layout. See global personality in
 `~/git-personal/dotfiles/grok/skills/_shared/personality.md`.
 
-**UI design language:** track **Sentinel** (Carbon wrappers, zinc/emerald shell,
+**UI design language:** track **Sentinel** (Carbon wrappers, zinc/**teal** shell,
 alluvial/Sankey as signature visual) — do not fork Sentinel product domain or
 copy wholesale; re-home the visual/UX grammar here as needed.
