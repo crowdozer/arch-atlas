@@ -12,6 +12,7 @@ import {
 	preferFileImportersView,
 	projectFileImporters,
 	projectModuleFocus,
+	projectMultiHopAlluvial,
 	projectPackageImporters,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
@@ -47,6 +48,8 @@ type Session = {
 /** Nested alluvial focus (top of stack = current view). */
 type AtlasView =
 	| { type: 'file'; fileId: string }
+	/** Multi-stage deepest-tree map (Most hops catalog). */
+	| { type: 'file-multihop'; fileId: string }
 	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
 	| { type: 'file-importers'; fileId: string }
 	| { type: 'package'; packageId: string; label: string }
@@ -126,6 +129,8 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 	switch (view.type) {
 		case 'file':
 			return alluvialForStart(session.graph, view.fileId);
+		case 'file-multihop':
+			return projectMultiHopAlluvial(session.graph, view.fileId);
 		case 'file-importers':
 			return projectFileImporters(session.graph, view.fileId);
 		case 'package':
@@ -139,6 +144,8 @@ function captionForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file':
 			return `Modules → code for ${view.fileId}`;
+		case 'file-multihop':
+			return `Most hops · dependency tree · ${view.fileId}`;
 		case 'file-importers':
 			return `File · ${view.fileId} → importers`;
 		case 'package':
@@ -160,6 +167,8 @@ function statusForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file':
 			return `Start: ${view.fileId}`;
+		case 'file-multihop':
+			return `Most hops: ${view.fileId}`;
 		case 'file-importers':
 			return `Importers of ${view.fileId}`;
 		case 'package':
@@ -285,6 +294,9 @@ function refForName(name: string): AlluvialNodeRef | null {
 function sameView(a: AtlasView, b: AtlasView): boolean {
 	if (a.type !== b.type) return false;
 	if (a.type === 'file' && b.type === 'file') return a.fileId === b.fileId;
+	if (a.type === 'file-multihop' && b.type === 'file-multihop') {
+		return a.fileId === b.fileId;
+	}
 	if (a.type === 'file-importers' && b.type === 'file-importers') {
 		return a.fileId === b.fileId;
 	}
@@ -311,7 +323,9 @@ function pushView(view: AtlasView): void {
 					? `No package edges in ${view.moduleId}`
 					: view.type === 'file-importers'
 						? `No importers for ${view.fileId}`
-						: `No import flow for ${view.fileId}`,
+						: view.type === 'file-multihop'
+							? `No multi-hop surface for ${view.fileId}`
+							: `No import flow for ${view.fileId}`,
 		);
 		return;
 	}
@@ -625,7 +639,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${hopsLabel}</span>
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			btn.addEventListener('click', () => selectStart(d.id));
+			btn.addEventListener('click', () => selectDeepStart(d.id));
 			deepestHost.appendChild(btn);
 		}
 		if (!list.length) {
@@ -644,10 +658,17 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			// Views only store total edgeCount; resolve out/in from starts/hotspots if present
 			const startMeta = catalog.starts.find((s) => s.id === v.startId);
 			const hotMeta = catalog.hotspots?.find((h) => h.id === v.startId);
-			const outD = startMeta?.outDegree ?? hotMeta?.outDegree ?? v.edgeCount ?? 0;
-			const inD = startMeta?.inDegree ?? hotMeta?.inDegree ?? 0;
+			const deepMeta = catalog.deepest?.find((d) => d.id === v.startId);
+			const outD =
+				startMeta?.outDegree ??
+				hotMeta?.outDegree ??
+				deepMeta?.outDegree ??
+				v.edgeCount ??
+				0;
+			const inD =
+				startMeta?.inDegree ?? hotMeta?.inDegree ?? deepMeta?.inDegree ?? 0;
 			const badge =
-				typeof v.edgeCount === 'number' || startMeta || hotMeta
+				typeof v.edgeCount === 'number' || startMeta || hotMeta || deepMeta
 					? edgeBadge(outD, inD)
 					: '';
 			btn.innerHTML = `
@@ -656,7 +677,11 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badge}
 				</span>
 				<span class="meta">${escapeHtml(v.description)}</span>`;
-			btn.addEventListener('click', () => selectStart(v.startId));
+			// most-hops suggested views open multi-stage tree
+			btn.addEventListener('click', () => {
+				if (v.id.startsWith('most-hops:')) selectDeepStart(v.startId);
+				else selectStart(v.startId);
+			});
 			viewsHost.appendChild(btn);
 		}
 		if (!catalog.views.length) {
@@ -737,16 +762,18 @@ function activateSession(
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
-function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
+function expandToPath(startId: string): void {
 	if (!session) return;
-	session.startId = startId;
-	// ensure parents of selected file are expanded
 	const parts = startId.split('/');
 	for (let i = 1; i < parts.length; i++) {
 		session.expanded.add(parts.slice(0, i).join('/'));
 	}
-	// Tree/catalog selection resets drill stack; fan-in hubs open reverse view
-	const view = viewForFileOpen(startId);
+}
+
+function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: boolean }) {
+	if (!session) return;
+	session.startId = startId;
+	expandToPath(startId);
 	viewStack = [view];
 	renderTree();
 	renderCatalog(session.catalog, startId);
@@ -755,6 +782,18 @@ function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	mountAlluvial(payloadForView(view));
 	setStatus(statusForView(view));
 	if (!opts?.skipPersist) persistSessionIfEnabled();
+}
+
+function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
+	if (!session) return;
+	// Tree / high-edges / starts: 3-col or reverse fan-in
+	openFileView(viewForFileOpen(startId), startId, opts);
+}
+
+/** Most hops catalog: multi-stage deepest-tree alluvial. */
+function selectDeepStart(startId: string, opts?: { skipPersist?: boolean }) {
+	if (!session) return;
+	openFileView({ type: 'file-multihop', fileId: startId }, startId, opts);
 }
 
 function openFromFiles(

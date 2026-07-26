@@ -22,7 +22,11 @@ export { buildMapCatalog } from '@core/catalog/views.ts';
 export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
-export { catalogDeepest, importDepthStats } from '@core/catalog/deepest.ts';
+export {
+	catalogDeepest,
+	fileDistances,
+	importDepthStats,
+} from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
@@ -32,6 +36,7 @@ export {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
+export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
 export { extractImports } from '@core/parse/imports.ts';
 export { ingestZip } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';

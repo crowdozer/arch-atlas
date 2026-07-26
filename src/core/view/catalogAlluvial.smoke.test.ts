@@ -16,6 +16,7 @@ import {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
+import { projectMultiHopAlluvial } from '@core/view/multiHop.ts';
 import { projectPackageImporters } from '@core/view/packageImporters.ts';
 
 const fixturesRoot = path.join(
@@ -103,14 +104,23 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
-	it('every most-hops entry: open yields conserved alluvial', () => {
+	it('every most-hops entry: multi-hop open conserves and matches package mass', () => {
 		for (const d of catalog.deepest) {
 			expect(d.maxHops).toBeGreaterThanOrEqual(1);
-			const payload = payloadForFileClick(graph, d.id);
+			const payload = projectMultiHopAlluvial(graph, d.id);
 			expect(payload, `deepest ${d.path}`).not.toBeNull();
 			assertColumnConservation(payload!, `deepest ${d.path}`);
 			assertNodeRefCoversNamedNodes(payload!, `deepest ${d.path}`);
 			expect(totalValue(payload!)).toBeGreaterThan(0);
+
+			if (d.maxHops >= 2) {
+				const hopNodes = payload!.options.alluvial.nodes.filter((n) =>
+					n.category.startsWith('Hop'),
+				);
+				expect(hopNodes.length, `${d.path} should have hop columns`).toBeGreaterThan(
+					0,
+				);
+			}
 		}
 	});
 

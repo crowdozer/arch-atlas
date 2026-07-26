@@ -6,7 +6,7 @@
 import type { CatalogDeep, CodeGraph } from '@core/graph/types.ts';
 
 /** Adjacency: file → imported files. */
-function fileAdj(graph: CodeGraph): Map<string, string[]> {
+export function fileImportAdj(graph: CodeGraph): Map<string, string[]> {
 	const adj = new Map<string, string[]>();
 	for (const e of graph.edges) {
 		if (e.toKind !== 'file') continue;
@@ -17,16 +17,27 @@ function fileAdj(graph: CodeGraph): Map<string, string[]> {
 	return adj;
 }
 
+/** Reverse adjacency: file → files that import it. */
+export function fileImportedByAdj(graph: CodeGraph): Map<string, string[]> {
+	const adj = new Map<string, string[]>();
+	for (const e of graph.edges) {
+		if (e.toKind !== 'file') continue;
+		const list = adj.get(e.to) ?? [];
+		list.push(e.from);
+		adj.set(e.to, list);
+	}
+	return adj;
+}
+
 /**
- * BFS from start along file imports.
- * Returns max hop depth, reachable file count (incl. start), and distinct package ends.
+ * BFS distances from start along file imports (start = 0).
  */
-export function importDepthStats(
+export function fileDistances(
 	graph: CodeGraph,
 	startId: string,
 	adj?: Map<string, string[]>,
-): { maxHops: number; reachableFiles: number; packageEnds: number } {
-	const a = adj ?? fileAdj(graph);
+): { dist: Map<string, number>; maxHops: number } {
+	const a = adj ?? fileImportAdj(graph);
 	const dist = new Map<string, number>();
 	const q: string[] = [startId];
 	dist.set(startId, 0);
@@ -42,11 +53,23 @@ export function importDepthStats(
 			q.push(n);
 		}
 	}
+	return { dist, maxHops };
+}
 
-	const reachable = dist;
+/**
+ * BFS from start along file imports.
+ * Returns max hop depth, reachable file count (incl. start), and distinct package ends.
+ */
+export function importDepthStats(
+	graph: CodeGraph,
+	startId: string,
+	adj?: Map<string, string[]>,
+): { maxHops: number; reachableFiles: number; packageEnds: number } {
+	const { dist, maxHops } = fileDistances(graph, startId, adj);
+
 	const packageEnds = new Set<string>();
 	for (const e of graph.edges) {
-		if (!reachable.has(e.from)) continue;
+		if (!dist.has(e.from)) continue;
 		if (e.toKind === 'package' || e.toKind === 'unresolved') {
 			packageEnds.add(e.to);
 		}
@@ -54,7 +77,7 @@ export function importDepthStats(
 
 	return {
 		maxHops,
-		reachableFiles: reachable.size,
+		reachableFiles: dist.size,
 		packageEnds: packageEnds.size,
 	};
 }
@@ -64,7 +87,7 @@ export function importDepthStats(
  * Skips leaves (maxHops === 0) — they belong in fan-in / high-edges, not depth.
  */
 export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
-	const adj = fileAdj(graph);
+	const adj = fileImportAdj(graph);
 	const outDeg = new Map<string, number>();
 	const inDeg = new Map<string, number>();
 	for (const e of graph.edges) {
