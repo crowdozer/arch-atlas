@@ -569,6 +569,32 @@ function closeInspectModal(): void {
 	if (modal) modal.open = false;
 }
 
+function openExactNotImplementedModal(detail?: string): void {
+	const modal = $('atlas-exact-modal') as (HTMLElement & { open?: boolean }) | null;
+	const body = $('atlas-exact-body');
+	if (body) {
+		body.textContent =
+			detail?.trim() ||
+			EXACT_NOT_IMPLEMENTED_MESSAGE +
+				' Charts stay on estimate (whole-file) weights.';
+	}
+	if (modal) modal.open = true;
+}
+
+function closeExactNotImplementedModal(): void {
+	const modal = $('atlas-exact-modal') as (HTMLElement & { open?: boolean }) | null;
+	if (modal) modal.open = false;
+}
+
+/** Revert precision UI + state to estimate (exact is not selectable). */
+function revertPrecisionToEstimate(
+	precisionDropdown: HTMLElement & { value?: string },
+): void {
+	locPrecision = 'estimate';
+	precisionDropdown.value = 'estimate';
+	precisionDropdown.setAttribute('value', 'estimate');
+}
+
 function appendCodeBlock(
 	parent: HTMLElement,
 	pathHtml: string,
@@ -1478,21 +1504,24 @@ function wireUi() {
 				(typeof precisionDropdown.value === 'string'
 					? precisionDropdown.value
 					: 'estimate');
-			locPrecision = parseLocPrecision(next);
-			if (locPrecision === 'exact' && weightAxis === 'target-loc') {
-				setStatus(EXACT_NOT_IMPLEMENTED_MESSAGE);
-				// Do not remount with estimate numbers labeled as exact
+			const parsed = parseLocPrecision(next);
+			if (parsed === 'exact') {
+				// Exact imported surface is not implemented — block with modal, stay on estimate
+				revertPrecisionToEstimate(precisionDropdown);
+				openExactNotImplementedModal(
+					EXACT_NOT_IMPLEMENTED_MESSAGE +
+						' Charts stay on estimate (whole-file) weights.',
+				);
 				return;
 			}
-			if (locPrecision === 'estimate') {
-				remountCurrentView();
-			} else {
-				// exact + non-target-loc: chart still valid; status notes mode
-				setStatus('Exact mode — imported surface analysis not implemented (LSP)');
-				remountCurrentView();
-			}
+			locPrecision = 'estimate';
+			remountCurrentView();
 		}) as EventListener);
 	}
+
+	$('atlas-exact-close')?.addEventListener('click', () => {
+		closeExactNotImplementedModal();
+	});
 
 	const modeSwitch = $('atlas-interaction-mode') as (HTMLElement & { value?: string }) | null;
 	if (modeSwitch) {

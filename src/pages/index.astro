@@ -324,6 +324,32 @@ import Tag from '../components/ui/Tag.astro';
 		</ModalFooter>
 	</Modal>
 
+	<!-- Blocking notice: Exact LOC / imported surface not implemented -->
+	<Modal
+		id="atlas-exact-modal"
+		class="atlas-exact-modal"
+		size="sm"
+		alert
+		aria-label="Exact precision not available"
+	>
+		<ModalHeader>
+			<ModalCloseButton />
+			<ModalLabel>Precision</ModalLabel>
+			<ModalHeading id="atlas-exact-heading">Exact mode not available</ModalHeading>
+		</ModalHeader>
+		<ModalBody>
+			<p id="atlas-exact-body" class="atlas-exact-modal__body-text">
+				Exact imported LOC requires a language server and is not implemented at Level-1.
+				Charts stay on estimate (whole-file) weights.
+			</p>
+		</ModalBody>
+		<ModalFooter>
+			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-exact-close">
+				OK
+			</ModalFooterButton>
+		</ModalFooter>
+	</Modal>
+
 	<script>
 		import '../client/app.ts';
 	</script>

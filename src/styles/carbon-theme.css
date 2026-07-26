@@ -881,6 +881,14 @@ cds-dropdown.atlas-stage__precision {
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
+/* Exact-not-implemented alert (blocking) */
+.atlas-exact-modal__body-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #e4e4e7;
+}
+
 .atlas-inspect-modal cds-modal-header,
 .atlas-inspect-modal__header {
   display: block;
