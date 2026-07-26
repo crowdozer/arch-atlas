@@ -855,19 +855,43 @@ cds-search.atlas-tree-search {
   /* Clip both axes so a tall Carbon SVG cannot push past the viewport */
   overflow: hidden;
   background: #09090b;
+  /* Stage width drives label collapse (drawer steals viewport width) */
+  container-type: inline-size;
+  container-name: atlas-stage;
 }
 
+/*
+ * Stacked stage bar: title/caption band full width, tools band below.
+ * Tools never share a row with title → no text/control collision.
+ */
 .atlas-stage__bar {
   display: flex;
+  flex-direction: column;
   flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.5rem;
   flex-shrink: 0;
   min-width: 0;
   max-width: 100%;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid #27272a;
+}
+
+.atlas-stage__title-band {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.atlas-stage__title-cluster {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .atlas-stage__title {
@@ -888,20 +912,21 @@ cds-search.atlas-tree-search {
 }
 
 /*
- * Weight + Precision + Drill|Inspect: single horizontal strip, same height (sm = 2rem).
+ * Tools band: full width, right-aligned, wrap under pressure.
  * External label + hide-label dropdown avoids Carbon form-item stacking
- * the label above the field (which pushed the select under the switcher).
+ * the label above the field.
  */
 .atlas-stage__controls {
   display: flex;
   flex: 0 0 auto;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.45rem 0.65rem;
   min-width: 0;
-  height: 2rem;
+  width: 100%;
+  min-height: 2rem;
 }
 
 .atlas-stage__control-group {
@@ -909,16 +934,15 @@ cds-search.atlas-tree-search {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   flex: 0 0 auto;
   height: 2rem;
   min-width: 0;
 }
 
-/* Depth is a no-op on import-surface / package / module views */
+/* Depth/Dupes leave layout when disabled (package/module views free ~16rem) */
 .atlas-stage__control-group.is-depth-disabled {
-  opacity: 0.45;
-  pointer-events: none;
+  display: none;
 }
 
 .atlas-stage__control-label {
@@ -932,19 +956,26 @@ cds-search.atlas-tree-search {
   user-select: none;
 }
 
+/* Mid stage widths: rely on titleText / aria; free ~12rem of strip */
+@container atlas-stage (max-width: 52rem) {
+  .atlas-stage__control-label {
+    display: none;
+  }
+}
+
 /*
  * Carbon form-items default to flex: 1 1 auto + column layout.
- * Force a fixed field width and single-row host.
+ * Force a fixed field width and single-row host (modestly tighter than prior).
  */
 /* Package-leaf mode — room for "Pin far · overdraw" */
 cds-dropdown.atlas-stage__pkg-mode,
 .atlas-stage__pkg-mode {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 11.5rem !important;
+  flex: 0 0 10rem !important;
   flex-direction: row !important;
-  width: 11.5rem !important;
-  max-width: 11.5rem !important;
+  width: 10rem !important;
+  max-width: 10rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -954,10 +985,10 @@ cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 11.5rem !important;
+  flex: 0 0 10rem !important;
   flex-direction: row !important;
-  width: 11.5rem !important;
-  max-width: 11.5rem !important;
+  width: 10rem !important;
+  max-width: 10rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -967,10 +998,10 @@ cds-dropdown.atlas-stage__depth,
 .atlas-stage__depth {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 4.5rem !important;
+  flex: 0 0 4.25rem !important;
   flex-direction: row !important;
-  width: 4.5rem !important;
-  max-width: 4.5rem !important;
+  width: 4.25rem !important;
+  max-width: 4.25rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -980,29 +1011,91 @@ cds-dropdown.atlas-stage__precision,
 .atlas-stage__precision {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 8.5rem !important;
+  flex: 0 0 7.5rem !important;
   flex-direction: row !important;
-  width: 8.5rem !important;
-  max-width: 8.5rem !important;
+  width: 7.5rem !important;
+  max-width: 7.5rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
 }
 
+/* Compact segmented Drill|Inspect — native <button> so aria-pressed is on the focusable control */
 .atlas-stage__mode {
+  display: inline-flex;
   flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   align-self: center;
   height: 2rem;
-  /* Open menus should paint above neighboring controls */
+  border: 1px solid #3f3f46; /* zinc-700 */
+  border-radius: 0.25rem;
+  overflow: hidden;
+  background: #18181b; /* zinc-900 */
   position: relative;
   z-index: 1;
 }
 
+button.atlas-stage__mode-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 0;
+  height: 2rem;
+  max-block-size: 2rem;
+  margin: 0;
+  padding: 0 0.65rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #a1a1aa; /* zinc-400 */
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+}
+
+button.atlas-stage__mode-btn + button.atlas-stage__mode-btn {
+  border-inline-start: 1px solid #3f3f46; /* zinc-700 */
+}
+
+button.atlas-stage__mode-btn:hover {
+  background: rgba(141, 141, 141, 0.12);
+  color: #e4e4e7; /* zinc-200 */
+}
+
+button.atlas-stage__mode-btn:focus {
+  outline: none;
+}
+
+button.atlas-stage__mode-btn:focus-visible {
+  outline: 2px solid #2dd4bf; /* teal focus */
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Active selection — purple (house selection accent, not brand teal) */
+button.atlas-stage__mode-btn.is-active {
+  background: rgba(167, 139, 250, 0.18);
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+button.atlas-stage__mode-btn.is-active:hover {
+  background: rgba(167, 139, 250, 0.26);
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
 cds-dropdown.atlas-stage__weight,
 cds-dropdown.atlas-stage__depth,
-cds-dropdown.atlas-stage__precision {
+cds-dropdown.atlas-stage__precision,
+cds-dropdown.atlas-stage__pkg-mode {
   position: relative;
-  z-index: 2; /* open list above content-switcher */
+  z-index: 2; /* open list above mode segment */
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
