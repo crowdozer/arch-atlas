@@ -117,6 +117,19 @@ function parseInteractionMode(raw: string): InteractionMode {
 	return raw === 'inspect' ? 'inspect' : 'drill';
 }
 
+/** Sync Drill|Inspect segmented buttons (aria-pressed + is-active). */
+function syncInteractionModeUi(): void {
+	const host = $('atlas-interaction-mode');
+	if (!host) return;
+	const buttons = host.querySelectorAll<HTMLElement>('[data-mode]');
+	for (const btn of buttons) {
+		const mode = parseInteractionMode(btn.getAttribute('data-mode') ?? 'drill');
+		const active = mode === interactionMode;
+		btn.classList.toggle('is-active', active);
+		btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+	}
+}
+
 function weightOpts(): { weightAxis: WeightAxis } {
 	return { weightAxis };
 }
@@ -1799,23 +1812,24 @@ function wireUi() {
 		closeUnavailableModal();
 	});
 
-	const modeSwitch = $('atlas-interaction-mode') as (HTMLElement & { value?: string }) | null;
-	if (modeSwitch) {
-		modeSwitch.value = interactionMode;
-		modeSwitch.addEventListener('cds-content-switcher-selected', ((e: Event) => {
-			const detail = (e as CustomEvent).detail as {
-				item?: { value?: string };
-			} | null;
-			const next =
-				detail?.item?.value ??
-				(typeof modeSwitch.value === 'string' ? modeSwitch.value : 'drill');
-			interactionMode = parseInteractionMode(next);
+	const modeHost = $('atlas-interaction-mode');
+	if (modeHost) {
+		syncInteractionModeUi();
+		modeHost.addEventListener('click', (e: Event) => {
+			const target = (e.target as Element | null)?.closest?.('[data-mode]') as
+				| HTMLElement
+				| null;
+			if (!target || !modeHost.contains(target)) return;
+			const next = parseInteractionMode(target.getAttribute('data-mode') ?? 'drill');
+			if (next === interactionMode) return;
+			interactionMode = next;
+			syncInteractionModeUi();
 			setStatus(
 				interactionMode === 'inspect'
 					? 'Inspect mode — click for import evidence'
 					: 'Drill mode',
 			);
-		}) as EventListener);
+		});
 	}
 
 	$('atlas-inspect-close')?.addEventListener('click', () => {

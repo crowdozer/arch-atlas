@@ -7,8 +7,6 @@ import Accordion from '../components/ui/Accordion.astro';
 import AccordionItem from '../components/ui/AccordionItem.astro';
 import Dropdown from '../components/ui/Dropdown.astro';
 import DropdownItem from '../components/ui/DropdownItem.astro';
-import ContentSwitcher from '../components/ui/ContentSwitcher.astro';
-import ContentSwitcherItem from '../components/ui/ContentSwitcherItem.astro';
 import Modal from '../components/ui/Modal.astro';
 import ModalHeader from '../components/ui/ModalHeader.astro';
 import ModalCloseButton from '../components/ui/ModalCloseButton.astro';
@@ -204,7 +202,8 @@ import Tag from '../components/ui/Tag.astro';
 
 			<section class="atlas-stage" aria-label="Alluvial projection">
 				<div class="atlas-stage__bar">
-					<div class="min-w-0 flex flex-1 items-center gap-3">
+					<!-- Band A: title/back/caption full width (never shares a row with tools) -->
+					<div class="atlas-stage__title-band">
 						<Button
 							id="atlas-alluvial-back"
 							variant="ghost"
@@ -215,7 +214,7 @@ import Tag from '../components/ui/Tag.astro';
 						>
 							← Back
 						</Button>
-						<div class="min-w-0">
+						<div class="atlas-stage__title-cluster">
 							<div class="ui-tile__label mb-0 atlas-stage__title">
 								Alluvial projection
 								<span id="atlas-view-type" class="atlas-stage__view-type" hidden></span>
@@ -225,6 +224,7 @@ import Tag from '../components/ui/Tag.astro';
 							</p>
 						</div>
 					</div>
+					<!-- Band B: projection tools (wrap under pressure; right-aligned) -->
 					<div class="atlas-stage__controls">
 						<div class="atlas-stage__control-group">
 							<span class="atlas-stage__control-label" id="atlas-depth-label">Depth</span>
@@ -305,16 +305,35 @@ import Tag from '../components/ui/Tag.astro';
 								<DropdownItem value="exact">Exact (LSP)</DropdownItem>
 							</Dropdown>
 						</div>
-						<ContentSwitcher
+						<div
 							id="atlas-interaction-mode"
 							class="atlas-stage__mode"
-							size="sm"
-							value="drill"
+							role="group"
 							aria-label="Click mode"
 						>
-							<ContentSwitcherItem value="drill" name="atlas-mode">Drill</ContentSwitcherItem>
-							<ContentSwitcherItem value="inspect" name="atlas-mode">Inspect</ContentSwitcherItem>
-						</ContentSwitcher>
+							<Button
+								id="atlas-mode-drill"
+								variant="ghost"
+								size="sm"
+								type="button"
+								class="atlas-stage__mode-btn is-active"
+								data-mode="drill"
+								aria-pressed="true"
+							>
+								Drill
+							</Button>
+							<Button
+								id="atlas-mode-inspect"
+								variant="ghost"
+								size="sm"
+								type="button"
+								class="atlas-stage__mode-btn"
+								data-mode="inspect"
+								aria-pressed="false"
+							>
+								Inspect
+							</Button>
+						</div>
 					</div>
 				</div>
 				<div
