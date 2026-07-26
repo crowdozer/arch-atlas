@@ -159,7 +159,7 @@ import Tag from '../components/ui/Tag.astro';
 							>
 								<p class="atlas-catalog-hint">
 									Heaviest outbound trees — all downwind import edges (files +
-									packages). start→page→pkg counts as 2. Opens multi-stage hop map.
+									packages). start→page→pkg counts as 2. Opens file-hub at that start.
 								</p>
 								<div id="atlas-complex"></div>
 							</AccordionItem>
@@ -169,8 +169,8 @@ import Tag from '../components/ui/Tag.astro';
 								title="Tree depth"
 							>
 								<p class="atlas-catalog-hint">
-									Deepest outbound chains (most hops) — multi-stage map of the
-									longest file→file path into packages.
+									Deepest outbound chains (most hops) — picks a start for file-hub
+									traversal (longest file→file path into packages).
 								</p>
 								<div id="atlas-deepest"></div>
 							</AccordionItem>

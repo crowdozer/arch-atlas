@@ -72,8 +72,11 @@ export const HUB_DEFAULT_MAX_DEPTH = 3;
 export const NORMAL_DEFAULT_MAX_DEPTH = 7;
 
 /**
- * Prefer dual hub when the file has both inbound and outbound edge activity.
- * Pure sinks → reverse importers; pure sources → forward package map.
+ * True when the file has both inbound and outbound edge activity.
+ *
+ * Client open policy no longer routes with this helper — every file open uses
+ * {@link projectFileHub} (one-sided columns when only in or only out). Kept for
+ * metrics/tests and callers that want an explicit “both sides” check.
  */
 export function preferFileHubView(graph: CodeGraph, fileId: string): boolean {
 	const out = fileOutDegree(graph, fileId);

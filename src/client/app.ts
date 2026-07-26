@@ -7,19 +7,13 @@ import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	HUB_DEFAULT_MAX_DEPTH,
-	NORMAL_DEFAULT_MAX_DEPTH,
-	alluvialForStart,
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
 	indexFiles,
 	ingestZip,
-	preferFileHubView,
-	preferFileImportersView,
 	projectFileHub,
-	projectFileImporters,
 	projectModuleFocus,
-	projectMultiHopAlluvial,
 	projectPackageImporters,
 	resolveWeightRequest,
 	type AlluvialNodeRef,
@@ -57,14 +51,12 @@ type Session = {
 	expanded: Set<string>;
 };
 
-/** Nested alluvial focus (top of stack = current view). */
+/**
+ * Nested alluvial focus (top of stack = current view).
+ * File opens are always file-hub traversal; package/module are drill-only.
+ */
 type AtlasView =
-	| { type: 'file'; fileId: string }
-	/** Multi-stage tree map (Tree depth / Tree complexity catalog). */
-	| { type: 'file-multihop'; fileId: string }
-	/** Reverse fan-in: file → its importers (high-in, no-out hubs). */
-	| { type: 'file-importers'; fileId: string }
-	/** Dual hub: importers → file → exporters (high-edges / barrels). */
+	/** Dual hub: importers → file → exporters (sole file projector). */
 	| { type: 'file-hub'; fileId: string }
 	| { type: 'package'; packageId: string; label: string }
 	| { type: 'module'; moduleId: string };
@@ -80,10 +72,10 @@ let weightAxis: WeightAxis = 'import-edges';
 /** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
 let locPrecision: LocPrecision = 'estimate';
 /**
- * Viz-only hop/folder expansion depth (does not bound graph scan).
- * Barrel/hub defaults to 3; other views default to 7 when not user-set.
+ * Viz-only dual BFS hop radius for file-hub (does not bound graph scan).
+ * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); package/module ignore depth.
  */
-let vizMaxDepth = NORMAL_DEFAULT_MAX_DEPTH;
+let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 /** True after the user picks Depth manually (stops auto mode defaults). */
 let depthUserSet = false;
 /** Click behavior: drill navigates; inspect opens import evidence. */
@@ -114,23 +106,18 @@ function weightOpts(): { weightAxis: WeightAxis } {
 
 function parseVizMaxDepth(raw: string): number {
 	const n = Number.parseInt(raw, 10);
-	if (!Number.isFinite(n) || n < 1) return NORMAL_DEFAULT_MAX_DEPTH;
+	if (!Number.isFinite(n) || n < 1) return HUB_DEFAULT_MAX_DEPTH;
 	return Math.min(32, Math.floor(n));
 }
 
-/** Default viz depth for a view type (barrel hub = 3, else 7). */
-function defaultDepthForView(view: AtlasView): number {
-	return view.type === 'file-hub' ? HUB_DEFAULT_MAX_DEPTH : NORMAL_DEFAULT_MAX_DEPTH;
+/** Default viz depth for file-hub (package/module ignore depth). */
+function defaultDepthForView(_view: AtlasView): number {
+	return HUB_DEFAULT_MAX_DEPTH;
 }
 
-/** Depth control is meaningful only for multi-hop / hub / reverse projections. */
+/** Depth control is meaningful only for file-hub dual BFS radius. */
 function viewUsesDepth(view: AtlasView | null): boolean {
-	if (!view) return false;
-	return (
-		view.type === 'file-multihop' ||
-		view.type === 'file-hub' ||
-		view.type === 'file-importers'
-	);
+	return view?.type === 'file-hub';
 }
 
 function syncDepthDropdown(): void {
@@ -260,18 +247,6 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 	const opts = weightOpts();
 	const depth = vizDepthOpts();
 	switch (view.type) {
-		case 'file':
-			return alluvialForStart(session.graph, view.fileId, opts);
-		case 'file-multihop':
-			return projectMultiHopAlluvial(session.graph, view.fileId, {
-				...opts,
-				...depth,
-			});
-		case 'file-importers':
-			return projectFileImporters(session.graph, view.fileId, {
-				...opts,
-				maxDepth: depth.maxDepth,
-			});
 		case 'file-hub':
 			return projectFileHub(session.graph, view.fileId, {
 				...opts,
@@ -286,12 +261,6 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 
 function captionForView(view: AtlasView): string {
 	switch (view.type) {
-		case 'file':
-			return `Imports → ${view.fileId}`;
-		case 'file-multihop':
-			return `Dependency tree · ${view.fileId}`;
-		case 'file-importers':
-			return `File · ${view.fileId} → imports`;
 		case 'file-hub':
 			return vizMaxDepth > 1
 				? `Imports×${vizMaxDepth} → ${view.fileId} → Exports×${vizMaxDepth}`
@@ -303,28 +272,13 @@ function captionForView(view: AtlasView): string {
 	}
 }
 
-/**
- * Choose projection for a file open:
- * dual hub (both in+out) → reverse importers (fan-in) → forward package map.
- */
+/** Sole file open policy: always file-hub traversal (startId only; one projector). */
 function viewForFileOpen(fileId: string): AtlasView {
-	if (session && preferFileHubView(session.graph, fileId)) {
-		return { type: 'file-hub', fileId };
-	}
-	if (session && preferFileImportersView(session.graph, fileId)) {
-		return { type: 'file-importers', fileId };
-	}
-	return { type: 'file', fileId };
+	return { type: 'file-hub', fileId };
 }
 
 function statusForView(view: AtlasView): string {
 	switch (view.type) {
-		case 'file':
-			return `Start: ${view.fileId}`;
-		case 'file-multihop':
-			return `Tree map: ${view.fileId}`;
-		case 'file-importers':
-			return `Imports of ${view.fileId}`;
 		case 'file-hub':
 			return `Imports · Exports · ${view.fileId}`;
 		case 'package':
@@ -484,13 +438,6 @@ function refForName(name: string): AlluvialNodeRef | null {
 
 function sameView(a: AtlasView, b: AtlasView): boolean {
 	if (a.type !== b.type) return false;
-	if (a.type === 'file' && b.type === 'file') return a.fileId === b.fileId;
-	if (a.type === 'file-multihop' && b.type === 'file-multihop') {
-		return a.fileId === b.fileId;
-	}
-	if (a.type === 'file-importers' && b.type === 'file-importers') {
-		return a.fileId === b.fileId;
-	}
 	if (a.type === 'file-hub' && b.type === 'file-hub') {
 		return a.fileId === b.fileId;
 	}
@@ -508,7 +455,7 @@ function pushView(view: AtlasView): void {
 	const top = currentView();
 	if (top && sameView(top, view)) return;
 
-	// Mode default depth (3 hub / 7 normal) unless user set Depth manually
+	// Mode default depth (hub 3) unless user set Depth manually
 	const prevType = top?.type;
 	if (prevType !== view.type) applyDepthDefaultForView(view);
 
@@ -519,13 +466,7 @@ function pushView(view: AtlasView): void {
 				? `No importers for ${view.label}`
 				: view.type === 'module'
 					? `No package edges in ${view.moduleId}`
-					: view.type === 'file-importers'
-						? `No imports for ${view.fileId}`
-						: view.type === 'file-hub'
-							? `No hub edges for ${view.fileId}`
-							: view.type === 'file-multihop'
-								? `No multi-hop surface for ${view.fileId}`
-								: `No import flow for ${view.fileId}`,
+					: `No hub edges for ${view.fileId}`,
 		);
 		return;
 	}
@@ -558,7 +499,6 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'file') {
-		// Fan-in hubs open reverse; others open outbound deps map
 		pushView(viewForFileOpen(ref.id));
 		return;
 	}
@@ -1080,7 +1020,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${edgeBadge(h.outDegree, h.inDegree)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			btn.addEventListener('click', () => selectHotspot(h.id));
+			btn.addEventListener('click', () => selectStart(h.id));
 			hotspotsHost.appendChild(btn);
 		}
 		if (!list.length) {
@@ -1106,8 +1046,8 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badgeTagHtml(edgesLabel, detail)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			// Complexity trees open multi-hop when depth allows (same projector)
-			btn.addEventListener('click', () => selectTreeStart(c.id));
+			// Catalog only picks start; all file opens use file-hub
+			btn.addEventListener('click', () => selectStart(c.id));
 			complexHost.appendChild(btn);
 		}
 		if (!list.length) {
@@ -1132,11 +1072,11 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badgeTagHtml(hopsLabel, detail)}
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
-			btn.addEventListener('click', () => selectTreeStart(d.id));
+			btn.addEventListener('click', () => selectStart(d.id));
 			deepestHost.appendChild(btn);
 		}
 		if (!list.length) {
-			deepestHost.innerHTML = `<p class="text-xs text-zinc-600">No multi-hop import chains.</p>`;
+			deepestHost.innerHTML = `<p class="text-xs text-zinc-600">No deep import chains.</p>`;
 		}
 	}
 
@@ -1179,18 +1119,8 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 					${badge}
 				</span>
 				<span class="meta">${escapeHtml(v.description)}</span>`;
-			// Tree bins open multi-stage map; high-edges use dual hub; else default
-			btn.addEventListener('click', () => {
-				if (
-					v.id.startsWith('tree-depth:') ||
-					v.id.startsWith('tree-complex:') ||
-					v.id.startsWith('most-hops:')
-				) {
-					selectTreeStart(v.startId);
-				} else if (v.id.startsWith('high-edges:')) {
-					selectHotspot(v.startId);
-				} else selectStart(v.startId);
-			});
+			// Catalog bins only choose startId; projector is always file-hub
+			btn.addEventListener('click', () => selectStart(v.startId));
 			viewsHost.appendChild(btn);
 		}
 		if (!catalog.views.length) {
@@ -1296,25 +1226,10 @@ function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: b
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 }
 
+/** Catalog / tree / restore / drill: always open file-hub at startId. */
 function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
-	// Tree / starts: dual hub, reverse fan-in, or forward package map
 	openFileView(viewForFileOpen(startId), startId, opts);
-}
-
-/**
- * High-edges catalog: prefer dual hub so in+out edge count is visible.
- * Falls back to reverse / forward when only one side has edges.
- */
-function selectHotspot(startId: string, opts?: { skipPersist?: boolean }) {
-	if (!session) return;
-	openFileView(viewForFileOpen(startId), startId, opts);
-}
-
-/** Tree depth / complexity catalog: multi-stage hop alluvial. */
-function selectTreeStart(startId: string, opts?: { skipPersist?: boolean }) {
-	if (!session) return;
-	openFileView({ type: 'file-multihop', fileId: startId }, startId, opts);
 }
 
 function openFromFiles(
@@ -1417,9 +1332,9 @@ function resetSession() {
 	session = null;
 	viewStack = [];
 	currentPayload = null;
-	// Fresh session gets mode defaults again (hub 3 / normal 7)
+	// Fresh session gets hub depth default again
 	depthUserSet = false;
-	vizMaxDepth = NORMAL_DEFAULT_MAX_DEPTH;
+	vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 	clearPersistedSession();
 	destroyChart();
 	const alluvial = $('atlas-alluvial');

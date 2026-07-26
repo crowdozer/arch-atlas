@@ -301,12 +301,11 @@ export function fileInDegree(graph: CodeGraph, fileId: string): number {
 }
 
 /**
- * Prefer pure reverse-importers when the file is a sink (or fan-in dominant).
+ * True when reverse importers would be a reasonable fan-in projection:
+ * pure sink (out=0, in>0) or inn>out.
  *
- * File-open precedence (client): dual hub first whenever both in and out > 0,
- * then this helper, then forward import-surface. So in practice this selects
- * pure sinks (out=0, in>0). The inn>out branch remains for callers that do
- * not apply hub preference first.
+ * Client file opens no longer route with this helper — every file uses
+ * projectFileHub (Imports-only when pure sink). Kept for tests / pure API.
  */
 export function preferFileImportersView(graph: CodeGraph, fileId: string): boolean {
 	const out = fileOutDegree(graph, fileId);

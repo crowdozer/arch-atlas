@@ -10,8 +10,9 @@ JavaScript (Level-1: files, imports, packages).
 ## Status
 
 **MVP vertical slice (Level-1).** Upload a TS/JS ZIP → file tree + map catalog
-(starts/ends) → import-surface alluvial. Stack: **Astro + TypeScript**, pure
-core under `src/core/`, client index in `src/client/`.
+(starts/ends) → file-hub traversal alluvial (catalog only picks the start file).
+Stack: **Astro + TypeScript**, pure core under `src/core/`, client index in
+`src/client/`.
 
 UI design language tracks **Sentinel** grammar (Carbon, zinc shell) with
 **teal** interactive brand — not emerald.
