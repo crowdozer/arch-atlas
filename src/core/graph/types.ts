@@ -118,12 +118,17 @@ export type CatalogDeep = {
 
 /**
  * Source file ranked by outbound tree complexity:
- * distinct downwind package/unresolved ends in the reachable set.
+ * all downwind import edges (file→file + file→package) from the start.
  */
 export type CatalogComplex = {
 	id: string;
 	path: string;
-	/** Distinct packages/unresolved reachable downwind (primary score). */
+	/**
+	 * Primary score: edges with `from` in the outbound reachable set
+	 * (file imports + package imports). start→page→pkg = 2.
+	 */
+	downwindEdges: number;
+	/** Distinct packages/unresolved reachable downwind (secondary). */
 	packageEnds: number;
 	reachableFiles: number;
 	maxHops: number;
@@ -148,7 +153,7 @@ export type MapCatalog = {
 	ends: CatalogEnd[];
 	/** High-edge files for one-click exploration. */
 	hotspots: CatalogHotspot[];
-	/** Broadest outbound package surface (tree complexity). */
+	/** Heaviest outbound trees by downwind edge mass (tree complexity). */
 	complex: CatalogComplex[];
 	/** Deepest outbound import graphs (tree depth / most hops). */
 	deepest: CatalogDeep[];

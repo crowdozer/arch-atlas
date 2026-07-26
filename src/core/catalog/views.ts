@@ -60,9 +60,9 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		views.push({
 			id: `tree-complex:${c.id}`,
 			title: `Tree complexity · ${basename(c.path)}`,
-			description: `${c.packageEnds} pkgs · ${c.reachableFiles} files · ${c.maxHops} hops`,
+			description: `${c.downwindEdges} downwind edges · ${c.packageEnds} pkgs · ${c.maxHops} hops`,
 			startId: c.id,
-			edgeCount: c.edgeCount,
+			edgeCount: c.downwindEdges,
 			epistemic: 'observed',
 		});
 		listed.add(c.id);

@@ -121,7 +121,6 @@ import Layout from '../layouts/Layout.astro';
 								id="atlas-acc-hotspots"
 								class="atlas-catalog-acc-item"
 								title="High edges"
-								open
 							>
 								<p class="atlas-catalog-hint">
 									Most connected files (in + out import edges).
@@ -132,11 +131,10 @@ import Layout from '../layouts/Layout.astro';
 								id="atlas-acc-complex"
 								class="atlas-catalog-acc-item"
 								title="Tree complexity"
-								open
 							>
 								<p class="atlas-catalog-hint">
-									Broadest downwind package surface — how many external ends this
-									tree reaches. Opens multi-stage hop map when deep enough.
+									Heaviest outbound trees — all downwind import edges (files +
+									packages). start→page→pkg counts as 2. Opens multi-stage hop map.
 								</p>
 								<div id="atlas-complex"></div>
 							</cds-accordion-item>
@@ -144,7 +142,6 @@ import Layout from '../layouts/Layout.astro';
 								id="atlas-acc-views"
 								class="atlas-catalog-acc-item"
 								title="Suggested views"
-								open
 							>
 								<div id="atlas-views"></div>
 							</cds-accordion-item>

@@ -636,12 +636,13 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === c.id) btn.classList.add('is-selected');
-			const pkgsLabel = c.packageEnds === 1 ? '1 pkg' : `${c.packageEnds} pkgs`;
-			const detail = `${c.reachableFiles} files · ${c.maxHops} hops · out ${c.outDegree}`;
+			const edgesLabel =
+				c.downwindEdges === 1 ? '1 edge' : `${c.downwindEdges} edges`;
+			const detail = `${c.downwindEdges} downwind · ${c.packageEnds} pkgs · ${c.maxHops} hops · ${c.reachableFiles} files`;
 			btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(c.path)}</span>
-					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${pkgsLabel}</span>
+					<span class="atlas-edge-badge" title="${escapeHtml(detail)}">${edgesLabel}</span>
 				</span>
 				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
 			// Complexity trees open multi-hop when depth allows (same projector)
@@ -649,7 +650,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			complexHost.appendChild(btn);
 		}
 		if (!list.length) {
-			complexHost.innerHTML = `<p class="text-xs text-zinc-600">No package surfaces yet.</p>`;
+			complexHost.innerHTML = `<p class="text-xs text-zinc-600">No downwind edges yet.</p>`;
 		}
 	}
 

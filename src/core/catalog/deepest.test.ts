@@ -62,34 +62,41 @@ describe('catalogDeepest / importDepthStats', () => {
 });
 
 describe('catalogComplex', () => {
-	it('ranks by packageEnds descending', () => {
+	it('ranks by downwindEdges descending', () => {
 		const { graph, catalog } = indexFiles(
 			walk(path.join(fixturesRoot, 'demo-next-complex')),
 		);
 		const complex = catalogComplex(graph);
 		expect(complex.length).toBeGreaterThan(3);
 		for (let i = 1; i < complex.length; i++) {
-			expect(complex[i - 1]!.packageEnds).toBeGreaterThanOrEqual(
-				complex[i]!.packageEnds,
+			expect(complex[i - 1]!.downwindEdges).toBeGreaterThanOrEqual(
+				complex[i]!.downwindEdges,
 			);
 		}
-		expect(complex[0]!.packageEnds).toBeGreaterThan(0);
+		expect(complex[0]!.downwindEdges).toBeGreaterThan(0);
 		expect(catalog.complex[0]!.path).toBe(complex[0]!.path);
 	});
 
-	it('uses packageEnds as primary rank (not maxHops)', () => {
+	it('counts file + package edges (start→page→pkg style mass)', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		// stripe webhook: many file hops + packages; downwindEdges > packageEnds
+		const stripe = catalogComplex(graph).find(
+			(c) => c.path === 'app/api/webhooks/stripe/route.ts',
+		);
+		expect(stripe).toBeTruthy();
+		expect(stripe!.downwindEdges).toBeGreaterThan(stripe!.packageEnds);
+		// downwindEdges is at least package ends + some file edges in the tree
+		expect(stripe!.downwindEdges).toBeGreaterThanOrEqual(
+			stripe!.packageEnds + (stripe!.reachableFiles - 1 > 0 ? 1 : 0),
+		);
+	});
+
+	it('uses downwindEdges as primary rank (not maxHops alone)', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const complex = catalogComplex(graph);
-		// Ensure we are not accidentally sorting by depth alone
-		const byHops = [...complex].sort(
-			(a, b) => b.maxHops - a.maxHops || a.path.localeCompare(b.path),
+		expect(complex[0]!.downwindEdges).toBe(
+			Math.max(...complex.map((c) => c.downwindEdges)),
 		);
-		// Top complexity entry is maximal on packageEnds among the list
-		expect(complex[0]!.packageEnds).toBe(
-			Math.max(...complex.map((c) => c.packageEnds)),
-		);
-		// Depth ranking can differ from complexity ranking on this fixture
-		void byHops;
-		expect(complex.every((c) => c.packageEnds >= 1)).toBe(true);
+		expect(complex.every((c) => c.downwindEdges >= 1)).toBe(true);
 	});
 });

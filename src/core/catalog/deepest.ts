@@ -59,18 +59,26 @@ export function fileDistances(
 
 /**
  * BFS from start along file imports.
- * Returns max hop depth, reachable file count (incl. start), and distinct package ends.
+ * Returns depth stats plus downwind edge mass (all edges whose from is reachable).
  */
 export function importDepthStats(
 	graph: CodeGraph,
 	startId: string,
 	adj?: Map<string, string[]>,
-): { maxHops: number; reachableFiles: number; packageEnds: number } {
+): {
+	maxHops: number;
+	reachableFiles: number;
+	packageEnds: number;
+	/** File→file + file→package edges with from in the outbound reachable set. */
+	downwindEdges: number;
+} {
 	const { dist, maxHops } = fileDistances(graph, startId, adj);
 
 	const packageEnds = new Set<string>();
+	let downwindEdges = 0;
 	for (const e of graph.edges) {
 		if (!dist.has(e.from)) continue;
+		downwindEdges += 1;
 		if (e.toKind === 'package' || e.toKind === 'unresolved') {
 			packageEnds.add(e.to);
 		}
@@ -80,6 +88,7 @@ export function importDepthStats(
 		maxHops,
 		reachableFiles: dist.size,
 		packageEnds: packageEnds.size,
+		downwindEdges,
 	};
 }
 
@@ -137,9 +146,10 @@ export function catalogDeepest(graph: CodeGraph, limit = 15): CatalogDeep[] {
 }
 
 /**
- * Tree complexity: broadest downwind package surface.
- * Ranked by distinct package/unresolved ends in the outbound reachable set.
- * Skips starts with no package ends.
+ * Tree complexity: downwind edge mass (file + package imports in the
+ * outbound reachable set). start→page→pkg contributes 2, not 1.
+ * Tie-break: packageEnds, reachableFiles, maxHops.
+ * Skips starts with no downwind edges.
  */
 export function catalogComplex(graph: CodeGraph, limit = 15): CatalogComplex[] {
 	const adj = fileImportAdj(graph);
@@ -149,12 +159,13 @@ export function catalogComplex(graph: CodeGraph, limit = 15): CatalogComplex[] {
 	for (const [path, node] of graph.files) {
 		if (!node.isSource) continue;
 		const stats = importDepthStats(graph, path, adj);
-		if (stats.packageEnds < 1) continue;
+		if (stats.downwindEdges < 1) continue;
 		const out = outDeg.get(path) ?? 0;
 		const inn = inDeg.get(path) ?? 0;
 		complex.push({
 			id: path,
 			path,
+			downwindEdges: stats.downwindEdges,
 			packageEnds: stats.packageEnds,
 			reachableFiles: stats.reachableFiles,
 			maxHops: stats.maxHops,
@@ -167,6 +178,7 @@ export function catalogComplex(graph: CodeGraph, limit = 15): CatalogComplex[] {
 
 	complex.sort(
 		(a, b) =>
+			b.downwindEdges - a.downwindEdges ||
 			b.packageEnds - a.packageEnds ||
 			b.reachableFiles - a.reachableFiles ||
 			b.maxHops - a.maxHops ||

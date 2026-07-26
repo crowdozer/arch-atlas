@@ -125,9 +125,10 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		}
 	});
 
-	it('every tree-complexity entry: multi-hop open conserves; packageEnds ≥ 1', () => {
+	it('every tree-complexity entry: multi-hop open conserves; downwindEdges ≥ 1', () => {
 		for (const c of catalog.complex) {
-			expect(c.packageEnds).toBeGreaterThanOrEqual(1);
+			expect(c.downwindEdges).toBeGreaterThanOrEqual(1);
+			expect(c.downwindEdges).toBeGreaterThanOrEqual(c.packageEnds);
 			const payload = projectMultiHopAlluvial(graph, c.id);
 			expect(payload, `complex ${c.path}`).not.toBeNull();
 			assertColumnConservation(payload!, `complex ${c.path}`);
