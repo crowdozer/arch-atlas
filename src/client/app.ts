@@ -931,8 +931,6 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		for (const lang of catalog.summary.languages) {
 			tags.appendChild(makeSummaryTag(lang, 'teal'));
 		}
-		tags.appendChild(makeSummaryTag('Observed imports', 'gray'));
-		tags.appendChild(makeSummaryTag('Inferred starts', 'gray'));
 	}
 
 	const hotspotsHost = $('atlas-hotspots');

@@ -460,14 +460,6 @@ cds-button.atlas-reset {
   margin-inline-start: auto;
 }
 
-.atlas-header__tagline {
-  margin-inline-start: 0.75rem;
-}
-
-.atlas-header__note {
-  margin-inline-start: auto;
-}
-
 /* Carbon header-name: prefix "Arch" (zinc) + product slot "Atlas" (teal) */
 .ui-header-name,
 cds-header-name.ui-header-name {
