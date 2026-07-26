@@ -6,6 +6,7 @@ declare namespace astroHTML.JSX {
 		'cds-button': Record<string, unknown>;
 		'cds-tag': Record<string, unknown>;
 		'cds-tile': Record<string, unknown>;
+		'cds-clickable-tile': Record<string, unknown>;
 		'cds-accordion': Record<string, unknown>;
 		'cds-accordion-item': Record<string, unknown>;
 		'cds-dropdown': Record<string, unknown>;
@@ -27,6 +28,15 @@ declare namespace astroHTML.JSX {
 		'cds-header-nav-item': Record<string, unknown>;
 		'cds-skip-to-content': Record<string, unknown>;
 		'cds-inline-notification': Record<string, unknown>;
+		'cds-search': Record<string, unknown>;
+		'cds-checkbox': Record<string, unknown>;
+		'cds-file-uploader': Record<string, unknown>;
+		'cds-file-uploader-button': Record<string, unknown>;
+		'cds-file-uploader-drop-container': Record<string, unknown>;
+		'cds-file-uploader-item': Record<string, unknown>;
+		'cds-code-snippet': Record<string, unknown>;
+		'cds-contained-list': Record<string, unknown>;
+		'cds-contained-list-item': Record<string, unknown>;
 	}
 }
 

@@ -5,6 +5,7 @@
 import '@carbon/web-components/es/components/button/index.js';
 import '@carbon/web-components/es/components/tag/index.js';
 import '@carbon/web-components/es/components/tile/tile.js';
+import '@carbon/web-components/es/components/tile/clickable-tile.js';
 import '@carbon/web-components/es/components/accordion/index.js';
 import '@carbon/web-components/es/components/dropdown/index.js';
 import '@carbon/web-components/es/components/content-switcher/index.js';
@@ -15,3 +16,8 @@ import '@carbon/web-components/es/components/ui-shell/header-nav.js';
 import '@carbon/web-components/es/components/ui-shell/header-nav-item.js';
 import '@carbon/web-components/es/components/skip-to-content/index.js';
 import '@carbon/web-components/es/components/notification/inline-notification.js';
+import '@carbon/web-components/es/components/search/index.js';
+import '@carbon/web-components/es/components/checkbox/index.js';
+import '@carbon/web-components/es/components/file-uploader/index.js';
+import '@carbon/web-components/es/components/code-snippet/index.js';
+import '@carbon/web-components/es/components/contained-list/index.js';
