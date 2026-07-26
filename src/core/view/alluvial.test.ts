@@ -205,7 +205,7 @@ describe('projectFileImporters', () => {
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
 		const rev = projectFileImporters(graph, fileId)!;
 		const forward = projectAlluvial(graph, fileId)!;
-		const revTotal = rev.data.reduce((s, l) => s + l.value, 0);
+		const revTotal = flowTotals(rev.data).out.get('redis.ts') ?? 0;
 		const fwdTotal = forward.data.reduce((s, l) => s + l.value, 0);
 		expect(revTotal).toBeGreaterThan(fwdTotal);
 		expect(revTotal).toBe(12);
@@ -231,15 +231,20 @@ describe('projectFileImporters', () => {
 			id: fileId,
 			label: 'logger.ts',
 		});
-		// File on the left, importers on the right
-		expect(
-			rev!.data.every((l) => l.source === 'logger.ts' || l.source === fileId),
-		).toBe(true);
+		// File left; with many importers, Modules hop then call-site files
+		const cats = new Set(rev!.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('File')).toBe(true);
+		expect(cats.has('Importers')).toBe(true);
 		const { out, inn } = flowTotals(rev!.data);
 		const fileOut = out.get('logger.ts') ?? out.get(fileId) ?? 0;
-		const importerIn = [...inn.entries()]
-			.filter(([k]) => k !== 'logger.ts' && k !== fileId)
-			.reduce((s, [, v]) => s + v, 0);
+		// Intermediate modules conserve; terminal Importers receive full mass
+		for (const n of rev!.options.alluvial.nodes) {
+			if (n.category !== 'Modules') continue;
+			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
+		}
+		const importerIn = rev!.options.alluvial.nodes
+			.filter((n) => n.category === 'Importers')
+			.reduce((s, n) => s + (inn.get(n.name) ?? 0), 0);
 		expect(fileOut).toBe(importerIn);
 		expect(fileOut).toBeGreaterThan(5); // many demo modules import logger
 	});
@@ -255,8 +260,9 @@ describe('projectFileImporters', () => {
 		expect(loc).toBeGreaterThan(1);
 
 		const rev = projectFileImporters(graph, fileId, { weightAxis: 'target-loc' })!;
-		const total = rev.data.reduce((s, l) => s + l.value, 0);
-		expect(total).toBe(inDegree * loc);
+		const { out } = flowTotals(rev.data);
+		const focusOut = out.get('redis.ts') ?? 0;
+		expect(focusOut).toBe(inDegree * loc);
 	});
 });
 

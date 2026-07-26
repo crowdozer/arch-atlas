@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { VirtualFile } from '@core/graph/types.ts';
+import type { AlluvialPayload, VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import { ingestZip } from '@core/ingest/zip.ts';
 import { topFolder } from '@core/view/alluvial.ts';
@@ -29,6 +29,22 @@ function walk(dir: string, base = dir): VirtualFile[] {
 		}
 	}
 	return out;
+}
+
+function flowTotals(data: { source: string; target: string; value: number }[]) {
+	const out = new Map<string, number>();
+	const inn = new Map<string, number>();
+	for (const l of data) {
+		out.set(l.source, (out.get(l.source) ?? 0) + l.value);
+		inn.set(l.target, (inn.get(l.target) ?? 0) + l.value);
+	}
+	return { out, inn };
+}
+
+/** Conserved mass for reverse views: focus file outflow. */
+function focusMass(payload: AlluvialPayload, focusLabel: string): number {
+	const { out } = flowTotals(payload.data);
+	return out.get(focusLabel) ?? 0;
 }
 
 describe('topFolder', () => {
@@ -65,7 +81,7 @@ describe('importerGroupKey', () => {
 });
 
 describe('projectFileImporters artillery config.ts', () => {
-	it('does not collapse 186 importers into a single client band', () => {
+	it('hops through modules and terminates at call-site files', () => {
 		let buf: Buffer;
 		try {
 			buf = readFileSync(path.join(process.cwd(), '.grok/artillery.zip'));
@@ -79,17 +95,45 @@ describe('projectFileImporters artillery config.ts', () => {
 		expect(preferFileImportersView(graph, fileId)).toBe(true);
 
 		const rev = projectFileImporters(graph, fileId)!;
-		const importerNodes = [
-			...new Set(
-				rev.data.flatMap((l) => [l.source, l.target]).filter((n) => n !== 'config.ts'),
-			),
-		];
-		expect(importerNodes.length).toBeGreaterThan(1);
-		expect(importerNodes).not.toEqual(['client']);
-		expect(importerNodes.some((n) => n.includes('/'))).toBe(true);
+		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('File')).toBe(true);
+		expect(cats.has('Modules')).toBe(true);
+		expect(cats.has('Importers')).toBe(true);
 
-		const total = rev.data.reduce((s, l) => s + l.value, 0);
-		expect(total).toBe(186);
+		// Intermediate hop — folder is not the terminal column
+		const moduleNodes = rev.options.alluvial.nodes.filter((n) => n.category === 'Modules');
+		expect(moduleNodes.some((n) => n.name === 'client/sim')).toBe(true);
+
+		// Right column is call-site files (or overflow), not module folders
+		const importerNodes = rev.options.alluvial.nodes.filter(
+			(n) => n.category === 'Importers',
+		);
+		expect(importerNodes.length).toBeGreaterThan(0);
+		for (const n of importerNodes) {
+			if (n.name.startsWith('(')) continue;
+			const ref = rev.meta.nodeRef[n.name];
+			expect(ref?.kind, n.name).toBe('file');
+		}
+		// Must not list client/sim as a terminal importer
+		expect(importerNodes.map((n) => n.name)).not.toContain('client/sim');
+
+		// Fat band client/sim must land on at least one named call-site file
+		const simOut = rev.data.filter((l) => l.source === 'client/sim');
+		const simNamed = simOut.filter((l) => l.target !== '(other importers)');
+		expect(simNamed.length, 'client/sim should hop to named files').toBeGreaterThan(0);
+		for (const l of simNamed) {
+			expect(rev.meta.nodeRef[l.target]?.kind).toBe('file');
+		}
+
+		// Conserved mass = inbound edges
+		expect(focusMass(rev, 'config.ts')).toBe(186);
+		const { out, inn } = flowTotals(rev.data);
+		for (const n of moduleNodes) {
+			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
+		}
+		// Terminal importers receive full mass
+		const importerIn = importerNodes.reduce((s, n) => s + (inn.get(n.name) ?? 0), 0);
+		expect(importerIn).toBe(186);
 	});
 });
 
@@ -97,7 +141,42 @@ describe('projectFileImporters demo fixtures', () => {
 	it('redis fan-in still conserves on demo-next-complex', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const rev = projectFileImporters(graph, 'src/lib/redis.ts')!;
-		const total = rev.data.reduce((s, l) => s + l.value, 0);
-		expect(total).toBe(12);
+		// ≤12 importers → flat File → files
+		expect(rev.options.alluvial.nodes.some((n) => n.category === 'Modules')).toBe(
+			false,
+		);
+		expect(focusMass(rev, 'redis.ts')).toBe(12);
+	});
+
+	it('logger multi-hop ends at files, not folders', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const fileId = 'src/lib/logger.ts';
+		const rev = projectFileImporters(graph, fileId)!;
+		expect(preferFileImportersView(graph, fileId)).toBe(true);
+
+		const cats = new Set(rev.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('Modules')).toBe(true);
+		expect(cats.has('Importers')).toBe(true);
+
+		const { out, inn } = flowTotals(rev.data);
+		expect(out.get('logger.ts')).toBe(fileInMass(graph, fileId));
+		for (const n of rev.options.alluvial.nodes) {
+			if (n.category !== 'Modules') continue;
+			expect(inn.get(n.name) ?? 0, n.name).toBe(out.get(n.name) ?? 0);
+		}
+		const importerNodes = rev.options.alluvial.nodes.filter(
+			(n) => n.category === 'Importers',
+		);
+		for (const n of importerNodes) {
+			if (n.name.startsWith('(')) continue;
+			expect(rev.meta.nodeRef[n.name]?.kind).toBe('file');
+		}
 	});
 });
+
+function fileInMass(
+	graph: ReturnType<typeof indexFiles>['graph'],
+	fileId: string,
+): number {
+	return graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId).length;
+}

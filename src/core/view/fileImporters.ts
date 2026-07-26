@@ -1,9 +1,18 @@
 /**
  * File reverse projection: who imports this file?
- * Columns (L→R): File → Importers
  *
- * Used for fan-in hubs (e.g. logger.ts) that show high edge counts from
- * inbound edges but have little/no outbound import surface.
+ * Columns when ≤ FILE_PROMOTE_THRESHOLD importers:
+ *   File → Importers (call-site files)
+ *
+ * Columns when many importers:
+ *   File → Modules → Importers (call-site files)
+ *
+ * Intermediate folder groups are hops, not terminals. The rightmost column is
+ * always the actual importer files (or an overflow bucket), so bands do not
+ * stop at `client/sim` for hubs like config.ts.
+ *
+ * Used for fan-in hubs (e.g. logger.ts, config.ts) that show high edge counts
+ * from inbound edges but have little/no outbound import surface.
  */
 
 import type {
@@ -27,6 +36,9 @@ import {
 } from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
+const DEFAULT_MAX_MODULES = 12;
+/** Cap call-site files promoted under each module hop (rest → overflow). */
+const DEFAULT_MAX_FILES_PER_MODULE = 6;
 
 /**
  * Pick a grouping function for many importers.
@@ -74,12 +86,20 @@ export function importerGroupKey(
 export function projectFileImporters(
 	graph: CodeGraph,
 	fileId: string,
-	opts?: { heightPx?: number; maxImporters?: number; weightAxis?: WeightAxis },
+	opts?: {
+		heightPx?: number;
+		maxImporters?: number;
+		maxModules?: number;
+		maxFilesPerModule?: number;
+		weightAxis?: WeightAxis;
+	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
 
 	const heightPx = opts?.heightPx ?? 360;
 	const maxImporters = opts?.maxImporters ?? 16;
+	const maxModules = opts?.maxModules ?? DEFAULT_MAX_MODULES;
+	const maxFilesPerModule = opts?.maxFilesPerModule ?? DEFAULT_MAX_FILES_PER_MODULE;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
 	const units = unitsForAxis(weightAxis, 'import-edges');
 
@@ -97,30 +117,77 @@ export function projectFileImporters(
 	const fileLabel = labelsForFocus.get(fileId) ?? basename(fileId);
 
 	const importerPaths = [...new Set(edges.map((e) => e.from))];
-	const useFiles = importerPaths.length <= FILE_PROMOTE_THRESHOLD;
+	const useFilesOnly = importerPaths.length <= FILE_PROMOTE_THRESHOLD;
 
+	if (useFilesOnly) {
+		return projectFileImportersFlat({
+			graph,
+			fileId,
+			fileLabel,
+			focus,
+			edges,
+			importerPaths,
+			heightPx,
+			maxImporters,
+			weightAxis,
+			units,
+		});
+	}
+
+	return projectFileImportersMultiHop({
+		graph,
+		fileId,
+		fileLabel,
+		focus,
+		edges,
+		importerPaths,
+		heightPx,
+		maxImporters,
+		maxModules,
+		maxFilesPerModule,
+		weightAxis,
+		units,
+	});
+}
+
+type EdgeSlice = {
+	graph: CodeGraph;
+	fileId: string;
+	fileLabel: string;
+	focus: AlluvialFocus;
+	edges: CodeGraph['edges'];
+	importerPaths: string[];
+	heightPx: number;
+	maxImporters: number;
+	weightAxis: WeightAxis;
+	units: string;
+};
+
+/** Two-column reverse: File → call-site files. */
+function projectFileImportersFlat(
+	args: EdgeSlice,
+): AlluvialPayload | null {
+	const {
+		graph,
+		fileId,
+		fileLabel,
+		focus,
+		edges,
+		importerPaths,
+		heightPx,
+		maxImporters,
+		weightAxis,
+		units,
+	} = args;
+
+	const labels = uniqueFileLabels(importerPaths);
 	const weights = new Map<string, number>();
 	const importerRef = new Map<string, AlluvialNodeRef>();
 
-	if (useFiles) {
-		const labels = uniqueFileLabels(importerPaths);
-		for (const e of edges) {
-			const label = labels.get(e.from) ?? basename(e.from);
-			weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
-			importerRef.set(label, { kind: 'file', id: e.from });
-		}
-	} else {
-		// Group by module folder (two-level keys via topFolder). If that still
-		// collapses to a single bucket (legacy one-segment monorepos), fall back
-		// to a deeper key so the chart is not "file ↔ one folder".
-		const groupKey = importerGroupKey(importerPaths);
-		for (const e of edges) {
-			const mod = groupKey(e.from);
-			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
-			if (!importerRef.has(mod)) {
-				importerRef.set(mod, { kind: 'module', id: mod });
-			}
-		}
+	for (const e of edges) {
+		const label = labels.get(e.from) ?? basename(e.from);
+		weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
+		importerRef.set(label, { kind: 'file', id: e.from });
 	}
 
 	const ranked = [...weights.entries()].sort(
@@ -130,6 +197,12 @@ export function projectFileImporters(
 	const hasOther = ranked.some(([k]) => !kept.has(k));
 
 	const linkMap = new Map<string, number>();
+	const addLink = (source: string, target: string, value: number) => {
+		if (value <= 0) return;
+		const k = `${source}\0${target}`;
+		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
+	};
+
 	const nodeRef: Record<string, AlluvialNodeRef> = {
 		[fileLabel]: { kind: 'file', id: fileId },
 	};
@@ -139,16 +212,11 @@ export function projectFileImporters(
 	const otherLabel = '(other importers)';
 	for (const [key, n] of weights) {
 		const target = kept.has(key) ? key : otherLabel;
-		const k = `${fileLabel}\0${target}`;
-		linkMap.set(k, (linkMap.get(k) ?? 0) + n);
-
+		addLink(fileLabel, target, n);
 		if (target === otherLabel) continue;
 		const ref = importerRef.get(key);
 		if (ref) nodeRef[target] = ref;
-		nodeMeta.set(target, {
-			category: 'Importers',
-			color: useFiles ? TEAL.module : TEAL.module,
-		});
+		nodeMeta.set(target, { category: 'Importers', color: TEAL.module });
 	}
 	if (hasOther) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: otherLabel };
@@ -165,6 +233,147 @@ export function projectFileImporters(
 		links,
 		nodeMeta,
 		categoryOrder: ['File', 'Importers'],
+		focus,
+		nodeRef,
+		startId: fileId,
+		units,
+		ariaLabel: `Importers of ${fileId}`,
+	});
+}
+
+/**
+ * Three-column reverse: File → Modules → call-site files.
+ * Folders are intermediate hops; the right column is the call site.
+ *
+ * File promotion is **per module** so a fat band (client/sim × 80) still lands
+ * on real call sites instead of draining entirely into a global overflow.
+ */
+function projectFileImportersMultiHop(
+	args: EdgeSlice & { maxModules: number; maxFilesPerModule: number },
+): AlluvialPayload | null {
+	const {
+		graph,
+		fileId,
+		fileLabel,
+		focus,
+		edges,
+		importerPaths,
+		heightPx,
+		maxModules,
+		maxFilesPerModule,
+		weightAxis,
+		units,
+	} = args;
+
+	const groupKey = importerGroupKey(importerPaths);
+
+	// Per-file and per-module mass; files grouped under their module key
+	const fileWeights = new Map<string, number>();
+	const moduleWeights = new Map<string, number>();
+	const filesByMod = new Map<string, string[]>();
+	for (const e of edges) {
+		const w = edgeWeight(e, graph, weightAxis);
+		fileWeights.set(e.from, (fileWeights.get(e.from) ?? 0) + w);
+		const mod = groupKey(e.from);
+		moduleWeights.set(mod, (moduleWeights.get(mod) ?? 0) + w);
+	}
+	for (const path of fileWeights.keys()) {
+		const mod = groupKey(path);
+		const list = filesByMod.get(mod) ?? [];
+		list.push(path);
+		filesByMod.set(mod, list);
+	}
+
+	const rankedMods = [...moduleWeights.entries()].sort(
+		(a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+	);
+	const keptMods = new Set(rankedMods.slice(0, maxModules).map(([k]) => k));
+	const hasOtherMods = rankedMods.some(([k]) => !keptMods.has(k));
+
+	// Promote call sites under each kept module (all if small, else top N)
+	const keptFilePaths = new Set<string>();
+	for (const mod of keptMods) {
+		const local = (filesByMod.get(mod) ?? []).sort(
+			(a, b) =>
+				(fileWeights.get(b) ?? 0) - (fileWeights.get(a) ?? 0) ||
+				a.localeCompare(b),
+		);
+		const cap =
+			local.length <= FILE_PROMOTE_THRESHOLD
+				? local.length
+				: Math.min(maxFilesPerModule, local.length);
+		for (const p of local.slice(0, cap)) keptFilePaths.add(p);
+	}
+	const hasOtherFiles = [...fileWeights.keys()].some((p) => !keptFilePaths.has(p));
+	const fileLabels = uniqueFileLabels([...keptFilePaths]);
+
+	const otherFiles = '(other importers)';
+	const otherMods = '(other modules)';
+
+	const linkMap = new Map<string, number>();
+	const addLink = (source: string, target: string, value: number) => {
+		if (value <= 0) return;
+		const k = `${source}\0${target}`;
+		linkMap.set(k, (linkMap.get(k) ?? 0) + value);
+	};
+
+	const nodeRef: Record<string, AlluvialNodeRef> = {
+		[fileLabel]: { kind: 'file', id: fileId },
+	};
+	const nodeMeta = new Map<string, { category: string; color: string }>();
+	nodeMeta.set(fileLabel, { category: 'File', color: TEAL.start });
+
+	for (const e of edges) {
+		const w = edgeWeight(e, graph, weightAxis);
+		const modRaw = groupKey(e.from);
+		const mod = keptMods.has(modRaw) ? modRaw : otherMods;
+		const importerLabel = keptFilePaths.has(e.from)
+			? (fileLabels.get(e.from) ?? basename(e.from))
+			: otherFiles;
+
+		addLink(fileLabel, mod, w);
+		addLink(mod, importerLabel, w);
+
+		if (mod !== otherMods) {
+			nodeRef[mod] = { kind: 'module', id: modRaw };
+			nodeMeta.set(mod, { category: 'Modules', color: TEAL.module });
+		}
+		if (importerLabel !== otherFiles) {
+			nodeRef[importerLabel] = { kind: 'file', id: e.from };
+			nodeMeta.set(importerLabel, { category: 'Importers', color: TEAL.start });
+		}
+	}
+
+	if (hasOtherMods) {
+		nodeRef[otherMods] = { kind: 'bucket', id: otherMods };
+		nodeMeta.set(otherMods, { category: 'Modules', color: TEAL.other });
+	}
+	if (hasOtherFiles) {
+		nodeRef[otherFiles] = { kind: 'bucket', id: otherFiles };
+		nodeMeta.set(otherFiles, { category: 'Importers', color: TEAL.other });
+	}
+
+	// Drop nodes with no residual links (defensive)
+	const used = new Set<string>();
+	for (const k of linkMap.keys()) {
+		const [s, t] = k.split('\0') as [string, string];
+		used.add(s);
+		used.add(t);
+	}
+	for (const name of [...nodeMeta.keys()]) {
+		if (!used.has(name)) nodeMeta.delete(name);
+	}
+
+	const links = [...linkMap.entries()].map(([k, value]) => {
+		const [source, target] = k.split('\0') as [string, string];
+		return { source, target, value };
+	});
+
+	return buildAlluvialPayload({
+		heightPx,
+		links,
+		nodeMeta,
+		categoryOrder: ['File', 'Modules', 'Importers'],
 		focus,
 		nodeRef,
 		startId: fileId,

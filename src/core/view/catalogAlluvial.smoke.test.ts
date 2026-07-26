@@ -52,6 +52,30 @@ function totalValue(payload: AlluvialPayload): number {
 	return payload.data.reduce((s, l) => s + l.value, 0);
 }
 
+/**
+ * Conserved mass for a reverse / subject-on-left view: outflow from the focus
+ * node (not sum of all hop links — multi-hop double-counts in totalValue).
+ */
+function focusOutflow(payload: AlluvialPayload): number {
+	const focusName = payload.meta.focus.label;
+	// Prefer focus label; fall back to startId basename-style match on File/Package
+	const { out } = flowTotals(payload.data);
+	if (out.has(focusName)) return out.get(focusName)!;
+	const startId = payload.meta.startId;
+	if (startId) {
+		const base = startId.includes('/') ? startId.slice(startId.lastIndexOf('/') + 1) : startId;
+		if (out.has(base)) return out.get(base)!;
+		if (out.has(startId)) return out.get(startId)!;
+	}
+	// Subject category nodes (File / Package / Module)
+	const subjectCats = new Set(['File', 'Package', 'Module', 'Code']);
+	let sum = 0;
+	for (const n of payload.options.alluvial.nodes) {
+		if (subjectCats.has(n.category)) sum += out.get(n.name) ?? 0;
+	}
+	return sum;
+}
+
 /** Intermediate columns: sum(in) === sum(out) for every non-source non-sink? */
 function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	const { out, inn } = flowTotals(payload.data);
@@ -148,14 +172,14 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			assertColumnConservation(payload!, `hotspot ${h.path}`);
 			assertNodeRefCoversNamedNodes(payload!, `hotspot ${h.path}`);
 
-			const total = totalValue(payload!);
 			if (preferFileImportersView(graph, h.id)) {
-				// Reverse: unit count === inbound file edges
-				expect(total, `${h.path} reverse total`).toBe(h.inDegree);
+				// Reverse: focus outflow === inbound file edges (multi-hop conserves)
+				expect(focusOutflow(payload!), `${h.path} reverse mass`).toBe(h.inDegree);
 				expect(payload!.meta.focus.kind).toBe('file');
 			} else {
 				// Forward: package-edge units in reachable set (may be < outDegree
 				// because file→file edges are not package units)
+				const total = totalValue(payload!);
 				const packageOut = graph.edges.filter(
 					(e) =>
 						e.from === h.id &&
@@ -180,7 +204,7 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const out = fileOutDegree(graph, id);
 		expect(inn).toBeGreaterThan(out);
 		const payload = projectFileImporters(graph, id)!;
-		expect(totalValue(payload)).toBe(inn);
+		expect(focusOutflow(payload)).toBe(inn);
 		// Forward under-represents catalog edge count
 		const forward = projectAlluvial(graph, id)!;
 		expect(totalValue(forward)).toBeLessThan(inn);
@@ -190,7 +214,11 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const id = 'src/lib/logger.ts';
 		expect(preferFileImportersView(graph, id)).toBe(true);
 		const payload = projectFileImporters(graph, id)!;
-		expect(totalValue(payload)).toBe(fileInDegree(graph, id));
+		expect(focusOutflow(payload)).toBe(fileInDegree(graph, id));
+		// Many importers → Modules hop, terminals are files
+		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
+		expect(cats.has('Modules')).toBe(true);
+		expect(cats.has('Importers')).toBe(true);
 	});
 
 	it('every catalog end: package reverse total === inDegree', () => {
@@ -222,9 +250,10 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			}
 			assertColumnConservation(payload, `start ${s.path}`);
 			assertNodeRefCoversNamedNodes(payload, `start ${s.path}`);
-			expect(totalValue(payload)).toBeGreaterThan(0);
 			if (preferFileImportersView(graph, s.id)) {
-				expect(totalValue(payload)).toBe(s.inDegree);
+				expect(focusOutflow(payload)).toBe(s.inDegree);
+			} else {
+				expect(totalValue(payload)).toBeGreaterThan(0);
 			}
 		}
 	});
