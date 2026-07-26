@@ -152,8 +152,8 @@ product fork, not a polish tweak.
 | --- | --- |
 | Into File | Reverse importer edges only |
 | Out of File | Focus → file seeds + focus → packages |
-| Through import tree | Seed mass split along kept file→file edges to children at `displayDist + 1` |
-| Packages of deep files | Extra mass parent → External (need not Kirchhoff-balance through File) |
+| Through import tree | Seed mass equal-split along kept file→file edges to children at `displayDist + 1` (package-bearing children preferred for scarce integer remainder) |
+| Packages of deep files | **Residual** hub mass at parent after file→file routing, capped by raw package-edge weight — never invent free-source `types→zod` islands thicker than `users→types` |
 
 Full Kirchhoff conservation is **not** product law; smoke tests may exempt
 laterals / package emits.

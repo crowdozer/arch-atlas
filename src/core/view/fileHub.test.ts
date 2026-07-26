@@ -388,9 +388,10 @@ describe('projectFileHub demo-next-complex', () => {
 
 	it('stripe route: next + tree packages on External; no packages on Export*', () => {
 		const id = 'app/api/webhooks/stripe/route.ts';
+		// importer-loc (UI default): residual package mass reaches types/* leaves
 		const payload = projectFileHub(graph, id, {
 			maxDepth: 3,
-			weightAxis: 'import-edges',
+			weightAxis: 'importer-loc',
 			maxImporters: 48,
 			maxDeps: 48,
 		})!;
@@ -454,12 +455,20 @@ describe('projectFileHub demo-next-complex', () => {
 			),
 		).toBe(true);
 
-		// File mass law: tree packages do not inflate File in-mass
-		const { depMass, importerMass } = hubIncidentMass(payload, focus);
-		expect(importerMass).toBe(fileInDegree(graph, id));
-		expect(depMass).toBe(
-			fileOutFileDegree(graph, id) + fileOutPackageDegree(graph, id),
+		// types/* → zod parents must not be free sources (residual law)
+		const zodNames = new Set(
+			packageNodesOnCategory(payload, 'zod', 'External').map((n) => n.name),
 		);
+		const targets = new Set(payload.data.map((l) => l.target));
+		for (const l of payload.data) {
+			if (!zodNames.has(l.target)) continue;
+			const ref = payload.meta.nodeRef[l.source];
+			if (ref?.kind !== 'file') continue;
+			expect(
+				targets.has(l.source),
+				`${l.source}→zod must have inbound hub mass`,
+			).toBe(true);
+		}
 	});
 });
 

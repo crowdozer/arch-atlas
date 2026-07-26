@@ -323,6 +323,8 @@ export function projectFileHub(
 		addExportTreePackageImports({
 			graph,
 			importTree: importTreeResult.tree,
+			/** Hub mass still at each parent after file→file routing (Kirchhoff). */
+			residualMass: importTreeResult.residualMass,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
 			externalDist,
@@ -582,11 +584,18 @@ function addFocusPackageImports(
 /**
  * Packages of kept import-tree files → **External** sinks
  * (**parent → [rails] → package**). Never free sources; never Export*.
+ *
+ * Band widths use **residual hub mass** at each parent after file→file routing
+ * (proportional to raw edge weights). Using raw importer-loc of the parent as
+ * package mass invented flow at leaves (types/user→zod thicker than
+ * users→types/user) so the pair looked like a floating island near File.
  */
 function addExportTreePackageImports(
 	args: LinkBuilder & {
 		/** path → { label, dist } for kept non-bucket import-tree files */
 		importTree: Map<string, { lab: string; dist: number }>;
+		/** path → hub mass left after file→file routing */
+		residualMass: Map<string, number>;
 		maxPerHop: number;
 		/** Hub dist for package nodes (File = 0). */
 		externalDist: number;
@@ -602,6 +611,7 @@ function addExportTreePackageImports(
 	const {
 		graph,
 		importTree,
+		residualMass,
 		maxPerHop,
 		weightAxis,
 		externalDist,
@@ -617,7 +627,7 @@ function addExportTreePackageImports(
 		ref: AlluvialNodeRef;
 		color: string;
 		rank: number;
-		/** parent file path → weight */
+		/** parent file path → raw edge weight (for rank + proportional split) */
 		parents: Map<string, number>;
 	};
 	const recs = new Map<string, PkgRec>();
@@ -680,6 +690,39 @@ function addExportTreePackageImports(
 	);
 	const keptFresh = fresh.slice(0, maxPerHop);
 	const overflowFresh = fresh.slice(maxPerHop);
+	const activeRecs = [...already, ...keptFresh];
+
+	// parent path → list of { rec, raw } for residual allocation (kept only)
+	const byParent = new Map<string, { rec: PkgRec; raw: number }[]>();
+	for (const rec of activeRecs) {
+		for (const [fPath, raw] of rec.parents) {
+			const list = byParent.get(fPath) ?? [];
+			list.push({ rec, raw });
+			byParent.set(fPath, list);
+		}
+	}
+	// Allocated parent → pkgKey → display weight
+	const allocated = new Map<string, Map<string, number>>();
+	for (const [fPath, items] of byParent) {
+		const residual = residualMass.get(fPath) ?? 0;
+		// Only spend mass that actually reached this parent. Inventing unit
+		// weights when residual is 0 creates free-source islands
+		// (types/user→zod with no users→types/user under integer split).
+		if (residual <= 0) continue;
+		const rawTotal = items.reduce((s, it) => s + it.raw, 0);
+		if (rawTotal <= 0) continue;
+		// Cap at residual and at raw package-edge total (no inflate past either)
+		const budget = Math.min(residual, rawTotal);
+		if (budget <= 0) continue;
+		const shares = allocateProportional(
+			budget,
+			items.map((it) => ({ key: it.rec.key, raw: it.raw })),
+		);
+		const m = allocated.get(fPath) ?? new Map<string, number>();
+		for (const [pkgKey, w] of shares) m.set(pkgKey, w);
+		allocated.set(fPath, m);
+	}
+	// Overflow: skipped (structure via re-hub); residual already spent on kept.
 
 	const ensurePkgNode = (rec: PkgRec): string => {
 		const existing = findExistingExternalPkg(rec.ref.kind, rec.ref.id);
@@ -693,22 +736,20 @@ function addExportTreePackageImports(
 		return name;
 	};
 
-	const linkParents = (pkgName: string, parents: Map<string, number>) => {
-		for (const [fPath, w] of parents) {
+	const linkParentAlloc = (pkgName: string, rec: PkgRec) => {
+		for (const fPath of rec.parents.keys()) {
+			const w = allocated.get(fPath)?.get(rec.key) ?? 0;
+			if (w <= 0) continue;
 			const parent = importTree.get(fPath);
 			if (!parent || nodeRef[parent.lab]?.kind === 'bucket') continue;
-			// Parent at file hop d → package at externalDist (pad if gap)
 			const fromDist = parent.dist;
 			const toDist = Math.max(externalDist, fromDist + 1);
 			padBetween(parent.lab, fromDist, pkgName, toDist, w);
 		}
 	};
 
-	for (const rec of already) {
-		linkParents(ensurePkgNode(rec), rec.parents);
-	}
-	for (const rec of keptFresh) {
-		linkParents(ensurePkgNode(rec), rec.parents);
+	for (const rec of activeRecs) {
+		linkParentAlloc(ensurePkgNode(rec), rec);
 	}
 	if (overflowFresh.length) {
 		const otherName = claimName(
@@ -722,9 +763,44 @@ function addExportTreePackageImports(
 			color: TEAL.other,
 		});
 		for (const rec of overflowFresh) {
-			linkParents(otherName, rec.parents);
+			linkParentAlloc(otherName, rec);
 		}
 	}
+}
+
+/**
+ * Integer proportional split of `budget` by raw weights (largest remainder).
+ * Keys with raw≤0 are skipped; if all raw≤0, split budget evenly.
+ */
+function allocateProportional(
+	budget: number,
+	items: { key: string; raw: number }[],
+): Map<string, number> {
+	const out = new Map<string, number>();
+	if (budget <= 0 || !items.length) return out;
+	const positive = items.filter((it) => it.raw > 0);
+	const use = positive.length ? positive : items.map((it) => ({ ...it, raw: 1 }));
+	const totalRaw = use.reduce((s, it) => s + it.raw, 0);
+	if (totalRaw <= 0) return out;
+	let assigned = 0;
+	const frac: { key: string; floor: number; rem: number }[] = [];
+	for (const it of use) {
+		const exact = (budget * it.raw) / totalRaw;
+		const floor = Math.floor(exact);
+		frac.push({ key: it.key, floor, rem: exact - floor });
+		assigned += floor;
+	}
+	frac.sort((a, b) => b.rem - a.rem || a.key.localeCompare(b.key));
+	let left = budget - assigned;
+	for (const f of frac) {
+		let w = f.floor;
+		if (left > 0) {
+			w += 1;
+			left -= 1;
+		}
+		if (w > 0) out.set(f.key, (out.get(f.key) ?? 0) + w);
+	}
+	return out;
 }
 
 /**
@@ -981,6 +1057,11 @@ type ImportTreePadResult = {
 	/** path → label + longest-path dist for kept non-bucket import-tree files */
 	tree: Map<string, { lab: string; dist: number }>;
 	maxFileDist: number;
+	/**
+	 * Hub mass still sitting on each kept file after File→file routing.
+	 * Tree package sinks spend this residual (not raw importer-loc of the leaf).
+	 */
+	residualMass: Map<string, number>;
 	padFromFile: (targetLab: string, toDist: number, w: number) => void;
 	padBetween: (
 		fromLab: string,
@@ -1079,6 +1160,7 @@ function addExportRings(
 		return {
 			tree: new Map(),
 			maxFileDist: 0,
+			residualMass: new Map(),
 			padFromFile,
 			padBetween,
 		};
@@ -1196,7 +1278,16 @@ function addExportRings(
 		}
 	}
 
-	// --- Route outward mass file→file only along display hops ---
+	// --- Route outward mass file→file only along display hops (equal-split) ---
+	// Prefer package-bearing children when allocating scarce integer remainder so
+	// External sinks still get residual when possible under unit import-edges.
+	const fileHasPackageOut = (path: string): boolean => {
+		for (const e of graph.edges) {
+			if (e.from !== path) continue;
+			if (e.toKind === 'package' || e.toKind === 'unresolved') return true;
+		}
+		return false;
+	};
 	for (let d = 1; d <= radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -1210,13 +1301,19 @@ function addExportRings(
 			const targets: { lab: string; path: string }[] = [];
 			if (d < radiusR) {
 				for (const c of fwdAdj.get(f) ?? []) {
-					// Match display columns (not raw longest) so seed→non-seed works
 					if (displayDist.get(c) !== d + 1 || !display.has(c)) continue;
 					targets.push({ lab: display.get(c)!, path: c });
 				}
 			}
-			// Leaf files keep mass (packages attach as External sinks separately)
 			if (!targets.length) continue;
+
+			// Package-bearing leaves first, then alpha (stable remainder priority)
+			targets.sort(
+				(a, b) =>
+					Number(fileHasPackageOut(b.path)) -
+						Number(fileHasPackageOut(a.path)) ||
+					a.path.localeCompare(b.path),
+			);
 
 			const base = Math.floor(m / targets.length);
 			let rem = m - base * targets.length;
@@ -1233,18 +1330,22 @@ function addExportRings(
 
 	// Kept non-bucket import-tree files + display dist for External packages
 	const tree = new Map<string, { lab: string; dist: number }>();
+	const residualMass = new Map<string, number>();
 	let maxFileDist = 0;
 	for (const [d, paths] of keptByDist) {
 		for (const f of paths) {
 			const lab = display.get(f);
 			if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
 			tree.set(f, { lab, dist: d });
+			const rem = mass.get(f) ?? 0;
+			if (rem > 0) residualMass.set(f, rem);
 			if (d > maxFileDist) maxFileDist = d;
 		}
 	}
 	return {
 		tree,
 		maxFileDist,
+		residualMass,
 		padFromFile,
 		padBetween,
 	};

@@ -267,8 +267,15 @@ describe('hub orientation hard law (golden catalog)', () => {
 		});
 
 		it('zod never on Export* (lives on External via import-tree)', () => {
-			const payload = hub(graph, focusId);
+			// importer-loc so residual mass reaches types/* → zod
+			const payload = projectFileHub(graph, focusId, {
+				maxDepth: 3,
+				maxImporters: 48,
+				maxDeps: 48,
+				weightAxis: 'importer-loc',
+			})!;
 			const zodLabs = labelsForPackage(payload, 'zod');
+			expect(zodLabs.length).toBeGreaterThan(0);
 			for (const lab of zodLabs) {
 				const cat = categoryOf(payload, lab);
 				expect(isExportCategory(cat), `zod on ${cat}`).toBe(false);
@@ -374,6 +381,60 @@ describe('hub orientation hard law — demo-react-simple UserCard', () => {
  * at each x0. Topology tests catch free-source packages and dual-path seeds
  * that only connect via undrawn scaffolds.
  */
+describe('hub tree-package residual mass (oauth island fix)', () => {
+	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+	const focusId = 'src/lib/auth/oauth.ts';
+
+	it('types/user→zod uses residual hub mass (importer-loc UI default); no free-source island', () => {
+		// UI default weight axis is importer-loc (not import-edges unit split).
+		const payload = projectFileHub(graph, focusId, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'importer-loc',
+		})!;
+		const usersLabs = labelsForFile(payload, 'src/lib/db/users.ts');
+		const typeLabs = labelsForFile(payload, 'src/types/user.ts');
+		const zodLabs = labelsForPackage(payload, 'zod');
+		expect(usersLabs.length).toBeGreaterThan(0);
+		expect(typeLabs.length).toBeGreaterThan(0);
+		expect(zodLabs.length).toBeGreaterThan(0);
+
+		const usersToTypes = payload.data
+			.filter(
+				(l) =>
+					usersLabs.includes(l.source) && typeLabs.includes(l.target),
+			)
+			.reduce((s, l) => s + l.value, 0);
+		const typesToZod = payload.data
+			.filter(
+				(l) =>
+					typeLabs.includes(l.source) && zodLabs.includes(l.target),
+			)
+			.reduce((s, l) => s + l.value, 0);
+
+		expect(usersToTypes).toBeGreaterThan(0);
+		expect(typesToZod).toBeGreaterThan(0);
+		// Residual law: package sink ≤ mass that reached the parent file
+		expect(typesToZod).toBeLessThanOrEqual(usersToTypes);
+
+		// Still connected into the hub (not an isolated pair)
+		const focus = payload.meta.focus.label;
+		expect(
+			payload.data.some(
+				(l) => l.source === focus && usersLabs.includes(l.target),
+			),
+		).toBe(true);
+		// types/user is not a free source
+		const targets = new Set(payload.data.map((l) => l.target));
+		for (const lab of typeLabs) {
+			expect(targets.has(lab), `${lab} must have inbound`).toBe(true);
+		}
+		expect(isExternalCategory(categoryOf(payload, zodLabs[0]!))).toBe(true);
+		expect(categoryOf(payload, typeLabs[0]!)).toMatch(/^Import/);
+	});
+});
+
 describe('hub Carbon topology tooling', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 
