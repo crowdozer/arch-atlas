@@ -10,6 +10,7 @@ import {
 	centerHubFileSpine,
 	hideAlluvialRails,
 	isExportSideCategory,
+	isExternalStraightPairLink,
 	isFileCategory,
 	isHubFileSpine,
 	isImportRailLabel,
@@ -801,6 +802,208 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 			hideAlluvialRails(holder as unknown as HTMLElement);
 			straightenExternalPackageBands(holder as unknown as HTMLElement);
 		}).not.toThrow();
+	});
+
+	it('main.tsx react: 4 pairs; undraw direct deepest attach; straighten 4 once', () => {
+		// Default weight axis expands full import tree (import-edges starves branches).
+		const { graph } = indexFiles(
+			walkFixtures(path.join(fixturesRoot, 'demo-react-simple')),
+		);
+		const payload = projectFileHub(graph, 'src/main.tsx', {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		expect(pairs.length, 'construction pairs present').toBeGreaterThan(0);
+
+		const labelFor = (fileId: string) =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'file' && r.id === fileId,
+			)?.[0];
+		const pkgLabel = (pkgId: string) =>
+			Object.entries(payload.meta.nodeRef).find(
+				([, r]) => r.kind === 'package' && r.id === pkgId,
+			)?.[0];
+
+		const react = pkgLabel('react')!;
+		const useUser = labelFor('src/hooks/useUser.ts')!;
+		const main = labelFor('src/main.tsx')!;
+		const layout = labelFor('src/components/Layout.tsx')!;
+		const home = labelFor('src/pages/Home.tsx')!;
+		expect(react && useUser && main && layout && home).toBeTruthy();
+
+		const reactPairs = pairs.filter((p) => p.packageName === react);
+		// True importers of react under main hub: main, Layout, Home, useUser
+		expect(reactPairs).toHaveLength(4);
+		const parents = new Set(reactPairs.map((p) => p.parent));
+		expect(parents.has(main)).toBe(true);
+		expect(parents.has(layout)).toBe(true);
+		expect(parents.has(home)).toBe(true);
+		expect(parents.has(useUser)).toBe(true);
+
+		// Payload topology: deepest useUser→react is direct (no rail pad)
+		const directUseUser = payload.data.find(
+			(l) => l.source === useUser && l.target === react,
+		);
+		expect(directUseUser, 'useUser→react is direct Carbon link').toBeTruthy();
+		expect(isExternalStraightPairLink(useUser, react, pairs)).toBe(true);
+
+		// Undraw: with pairs, direct attach is pad-band; without pairs, not
+		const mkHolder = () => {
+			const holder = new MiniEl('div', ['ui-carbon-chart']);
+			const svg = new MiniEl('svg', []);
+			holder.appendChild(svg);
+			const path = new MiniEl('path', ['link']);
+			path.__data__ = {
+				source: { name: useUser, category: 'Import hop 3' },
+				target: { name: react, category: 'External' },
+				width: 1,
+			};
+			svg.appendChild(path);
+			// Scaffold control: parent→in-rail still undrawn without pairs
+			const railPath = new MiniEl('path', ['link']);
+			railPath.__data__ = {
+				source: { name: home },
+				target: { name: '\u200b·in-rail·h3' },
+				width: 1,
+			};
+			svg.appendChild(railPath);
+			return holder;
+		};
+
+		const bare = mkHolder();
+		hideAlluvialRails(bare as unknown as HTMLElement);
+		const bareDirect = bare.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return d?.source?.name === useUser && d?.target?.name === react;
+		});
+		expect(bareDirect?.classList.contains('atlas-alluvial-pad-band')).toBe(
+			false,
+		);
+
+		const withPairs = mkHolder();
+		hideAlluvialRails(withPairs as unknown as HTMLElement, { pairs });
+		const undrawnDirect = withPairs.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return d?.source?.name === useUser && d?.target?.name === react;
+		});
+		expect(undrawnDirect?.classList.contains('atlas-alluvial-pad-band')).toBe(
+			true,
+		);
+		expect(
+			undrawnDirect?.classList.contains('atlas-alluvial-external-pad'),
+		).toBe(true);
+		// Pairless scaffold undraw still works when pairs present
+		const railUndraw = withPairs.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				d?.source?.name === home &&
+				String(d?.target?.name ?? '').includes('in-rail')
+			);
+		});
+		expect(railUndraw?.classList.contains('atlas-alluvial-pad-band')).toBe(
+			true,
+		);
+
+		// Straighten plans: one band per true parent (not Carbon+straighten double)
+		const nodes = payload.options.alluvial.nodes.map((n, i) => ({
+			name: n.name,
+			category: n.category,
+			x0: n.category === 'External' ? 300 : isAlluvialRailName(n.name) ? 200 : 100,
+			x1: n.category === 'External' ? 304 : isAlluvialRailName(n.name) ? 204 : 104,
+			y0: i * 20,
+			y1: i * 20 + 12,
+		}));
+		const links = payload.data.map((l) => ({
+			source: l.source,
+			target: l.target,
+			width: l.value,
+		}));
+		const planned = planExternalStraightBands(nodes, links, pairs);
+		const reactPlans = planned.filter((p) => p.packageName === react);
+		expect(reactPlans).toHaveLength(4);
+		const planParents = new Set(reactPlans.map((p) => p.parent));
+		expect(planParents.has(useUser)).toBe(true);
+		expect(planParents.has(main)).toBe(true);
+		expect(planParents.has(layout)).toBe(true);
+		expect(planParents.has(home)).toBe(true);
+		// Unique parents only — undrawn direct + straighten = 4, not 5 visual sources
+		expect(planParents.size).toBe(4);
+	});
+
+	it('types.ts→zod: pairs-only direct File→pkg still straightens (no rail gate)', () => {
+		// After pair undraw, packages with only direct attaches must still get
+		// a straighten plan — otherwise External vanishes (types.ts hub).
+		const { graph } = indexFiles(
+			walkFixtures(path.join(fixturesRoot, 'demo-react-simple')),
+		);
+		const payload = projectFileHub(graph, 'src/types.ts', {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		const zodPair = pairs.find((p) => p.packageName === 'zod');
+		expect(zodPair, 'types→zod construction pair').toBeTruthy();
+		expect(zodPair!.parent).toBe('src/types.ts');
+
+		const direct = payload.data.find(
+			(l) => l.source === 'src/types.ts' && l.target === 'zod',
+		);
+		expect(direct, 'payload File→zod').toBeTruthy();
+		// No in-rail into zod on pure focus-package chart
+		const railIntoZod = payload.data.some(
+			(l) =>
+				l.target === 'zod' &&
+				String(l.source).includes('in-rail'),
+		);
+		expect(railIntoZod, 'no pad rails required').toBe(false);
+
+		const nodes = payload.options.alluvial.nodes.map((n, i) => ({
+			name: n.name,
+			category: n.category,
+			x0: n.category === 'External' ? 300 : 100,
+			x1: n.category === 'External' ? 304 : 104,
+			y0: i * 16,
+			y1: i * 16 + 10,
+		}));
+		const links = payload.data.map((l) => ({
+			source: l.source,
+			target: l.target,
+			width: l.value,
+		}));
+		// Without pairs: rail-gated planner must not invent straighten
+		expect(planExternalStraightBands(nodes, links)).toHaveLength(0);
+		// With pairs: one straight types→zod band
+		const planned = planExternalStraightBands(nodes, links, pairs);
+		const zodPlans = planned.filter((p) => p.packageName === 'zod');
+		expect(zodPlans).toHaveLength(1);
+		expect(zodPlans[0]!.parent).toBe('src/types.ts');
+
+		// Undraw File→zod when pairs present
+		const holder = new MiniEl('div', ['ui-carbon-chart']);
+		const svg = new MiniEl('svg', []);
+		holder.appendChild(svg);
+		const linkEl = new MiniEl('path', ['link']);
+		linkEl.__data__ = {
+			source: { name: 'src/types.ts', category: 'File' },
+			target: { name: 'zod', category: 'External' },
+			width: 1,
+		};
+		svg.appendChild(linkEl);
+		hideAlluvialRails(holder as unknown as HTMLElement, { pairs });
+		expect(linkEl.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 	});
 
 	it('marks terminators with contrast classes; polish wires both', () => {

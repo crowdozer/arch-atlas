@@ -138,11 +138,37 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Landed:** construction-time `meta.externalStraightPairs`; polish prefers pairs; BFS fallback only when meta absent (simple fixtures).
 - **Tests:** multi-parent shared-rail unit (BFS 9 vs pairs 3); userService meta denies false mesh.
 
+### E13 — Direct deepest package attach double-paint + pure-direct vanish
+
+- **Symptom A:** main.tsx → react shows 4 parents but **5 bands** (useUser thin+thick).
+- **Cause A:** deepest file hop short-circuits `padBetween` to direct `file→pkg`;
+  Carbon paints it; straighten also paints because package has rail inbound from
+  shallower parents.
+- **Fix A:** undraw **pair-covered** parent→package links (incl. direct), then
+  straighten once from `externalStraightPairs`.
+- **Symptom B:** types.ts → zod **missing** after A.
+- **Cause B:** pure-direct packages have no in-rail inbound; straighten still
+  required rail gate → undraw without redraw.
+- **Fix B:** when pairs present, straighten **all** pair packages (no rail gate);
+  rail gate remains for pairless BFS fallback.
+- **Symptom C:** External straight bands ignore hover highlight / drill.
+- **Cause C:** injected SVG not in Carbon alluvial-line events.
+- **Fix C:** `pointer-events: stroke` + native mouseenter/leave/click wired to
+  same label-focus + `handleLineClick` as Carbon bands.
+
 ### E12 — Single-hop reverse terminator missing cyan (AdminFlags)
 
 - **Symptom:** `app/dashboard/page.tsx` on Exports is the only reverse free source; no cyan.
 - **Cause:** terminator collection gated on `radiusL >= 2` (multi-hop pad only). With max reverse BFS hops = 1, `radiusL = 1` → empty terminators.
 - **Landed:** terminators = **all** reverse free sources (no kept outer parent): single-column Exports, multi-hop padded free sources, outer rim. Pads still only when multi-hop.
+
+### E13 — Deepest-hop direct package double paint (main.tsx → react / useUser)
+
+- **Symptom:** demo-react-simple hub `src/main.tsx`: External **react** has 4 true parents but draws **5** bands; package ribbon thin+thick at once on deepest parent (`useUser`).
+- **Cause:** `padBetween` short-circuits when `toDist === fromDist + 1` → direct `useUser → react`. That link is not an import pad scaffold → Carbon keeps painting it. Package still has in-rail inbound from shallow parents → straighten draws **all** `externalStraightPairs` including useUser → second ribbon (`Math.max(1, plan.width)` over residual stroke).
+- **Rejected:** always force ≥1 rail hop for packages (topology/mass churn); drop direct parents from pairs (leaves Carbon residual width inconsistent with straighten); multi-instance rewrite (useUser not duplicated).
+- **Landed:** when `externalStraightPairs` present, undraw **any** Carbon link matching a pair `(parent, packageName)` (including direct attaches), then straighten once. Scaffold undraw unchanged for pairless / BFS fallback charts.
+- **Tests:** main.tsx react pairs length 4; direct useUser→react undrawn only with pairs; straighten plans for react length 4.
 
 ---
 
@@ -157,6 +183,7 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 7. **Do not** trust payload-only goldens for column **headers** after Carbon changes.
 8. **Do not** gate reverse terminator chrome on multi-hop pads only.
 9. **Do not** retcon the matrix document to match an accidental cascade.
+10. **Do not** leave pair-covered direct parent→package Carbon links painted when straighten will redraw them.
 10. **Do not** duplicate External package nodes for dual-path (files may multi-instance; packages collapse).
 
 ---

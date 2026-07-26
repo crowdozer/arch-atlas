@@ -7,13 +7,16 @@ pad/paint helpers in `src/core/view/alluvial.ts`, polish in
 `src/client/alluvialTopPack.ts`  
 **Tests that lock membership:** `src/core/view/hubOrientation.golden.test.ts`,
 parts of `fileHub.test.ts` / `alluvial.test.ts` / `alluvialTopPack.test.ts`  
-**Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
+**Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)  
+**Hover focus / highlight (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) —
+LogicalFocusGraph FocusPlan; do **not** retcon this geometry matrix to fix hover.
 
 This document is the **working behavioral contract** for dual-side file hub
 layout and mass pull-in. It is not a redesign brief. Update it only when product
 intent for hub columns deliberately changes — not when a bug fix drifts behavior.
 For "why did we try X and reject Y?", use the field notes — do not grow this
-matrix into a changelog.
+matrix into a changelog. **Focus/highlight law lives in hub-focus-behavior.md**
+(pairs + non-rail file edges); it must not rewrite pad/rail membership.
 
 ---
 
@@ -129,15 +132,19 @@ right of the deepest file Imports hop**. Without this, `File → logger` and
 **External** over the Imports column.
 
 Paint law: pure rail↔rail undrawn; **External package hop** bands
-(`parent → in-rail → External`) are undrawn and **redrawn as a straight**
-`parent → package` ribbon in polish (`straightenExternalPackageBands`) so the
-Imports column does not show a package kink. Straighten identity comes from
+(`parent → in-rail → External` **and** direct pair-covered `parent → package`)
+are undrawn and **redrawn as a straight** `parent → package` ribbon in polish
+(`straightenExternalPackageBands`) so the Imports column does not show a package
+kink and deepest-hop attaches do not double-paint. Straighten identity comes from
 construction-time `meta.externalStraightPairs` (true residual parent→package
 widths), **not** from BFS ancestry on shared `·in-rail·hN` (shared rails merge
 multi-commodity pads; rail recovery invents parent×package cross-products).
-BFS remains a fallback only when meta pairs are absent. **Out-rail free-source
-pads** (reverse column alignment into Exports free sources) are undrawn
-past/into terminators. Rail **nodes** stay hidden. Packages remain sinks.
+When pairs are present, straighten **all** pair packages even with no in-rail
+(pure File→pkg focus charts such as types.ts→zod). BFS + rail gate remain only
+when meta pairs are absent. Straighten ribbons are interactive (hover/click)
+like Carbon bands. **Out-rail free-source pads** (reverse column alignment into
+Exports free sources) are undrawn past/into terminators. Rail **nodes** stay
+hidden. Packages remain sinks.
 
 **Terminator chrome (contrast with column family):**
 
@@ -184,7 +191,7 @@ laterals / package emits.
 | Rail id | Side | Category | Role | Painted? |
 | --- | --- | --- | --- | --- |
 | `·out-rail·hN` | Export (left) | `Export hop N` | Free-source scaffold for short reverse paths when `radiusL ≥ 2` | Out-rail free-source pad bands undrawn; rail nodes hidden |
-| `·in-rail·hN` | Import (right) | Import-side hop categories | External hop depth pads (shared stage rails); **seed path must not reintroduce** File→seed via rails | Parent→in-rail→External undrawn (straighten via pairs); pure in-rail↔in-rail undrawn |
+| `·in-rail·hN` | Import (right) | Import-side hop categories | External hop depth pads (shared stage rails); **seed path must not reintroduce** File→seed via rails | Parent→in-rail→External undrawn (straighten via pairs); pair-covered **direct** parent→package undrawn when pairs present; pure in-rail↔in-rail undrawn |
 
 Client polish marks reverse free sources as **terminators** (cyan) even when
 `radiusL === 1` (no out-rail pads) — chrome is not gated on multi-hop.
@@ -223,6 +230,7 @@ category alone.
 | fileHub mass helpers | File in = reverse; File out = files + focus packages |
 | Paint law tests | Pure in-rail scaffold undrawn; File↔rail carriers paint |
 | External straighten pairs | Multi-parent shared-rail: pairs deny cross-product; BFS fallback only without meta |
+| Deepest-hop direct undraw | main.tsx react: 4 pairs; direct useUser→react undrawn with pairs; straighten 4 |
 | AdminFlags single reverse hop | `meta.terminators` includes Exports free source without out-rails |
 
 **If a change flips membership (Imports ↔ Exports ↔ External) or seed placement
