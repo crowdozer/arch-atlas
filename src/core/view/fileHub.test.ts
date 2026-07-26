@@ -503,11 +503,11 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		const order = payload.options.alluvial.nodes
 			.map((n) => n.category)
 			.filter((c, i, arr) => arr.indexOf(c) === i);
-		// Category order: Import hops → Imports → File → Exports → Export hops
-		expect(order.indexOf('Import hop 2')).toBeLessThan(order.indexOf('Imports'));
-		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('File'));
-		expect(order.indexOf('File')).toBeLessThan(order.indexOf('Exports'));
-		expect(order.indexOf('Exports')).toBeLessThan(order.indexOf('Export hop 2'));
+		// L→R: Export hop … → Exports → File → Imports → Import hop …
+		expect(order.indexOf('Export hop 2')).toBeLessThan(order.indexOf('Exports'));
+		expect(order.indexOf('Exports')).toBeLessThan(order.indexOf('File'));
+		expect(order.indexOf('File')).toBeLessThan(order.indexOf('Imports'));
+		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('Import hop 2'));
 
 		const focus = payload.meta.focus.label;
 		const { depMass, importerMass, total } = hubIncidentMass(payload, focus);
@@ -961,9 +961,18 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		const order = payload.options.alluvial.nodes
 			.map((n) => n.category)
 			.filter((c, i, a) => a.indexOf(c) === i);
-		expect(order[0], 'External is outermost import column').toBe('External');
-		expect(order.indexOf('External')).toBeLessThan(order.indexOf('Imports'));
-		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('File'));
+		// Far right: Imports cascade then External
+		expect(order.indexOf('File')).toBeLessThan(order.indexOf('Imports'));
+		expect(order.indexOf('Imports')).toBeLessThan(order.indexOf('Import hop 2'));
+		expect(order.indexOf('Import hop 2')).toBeLessThan(
+			order.indexOf('Import hop 3'),
+		);
+		expect(order.indexOf('Import hop 3')).toBeLessThan(order.indexOf('External'));
+		expect(order[order.length - 1], 'External is far-right column').toBe(
+			'External',
+		);
+		// Consumers left of File
+		expect(order.indexOf('Exports')).toBeLessThan(order.indexOf('File'));
 
 		const externalPkgs = payload.options.alluvial.nodes.filter(
 			(n) => n.category === 'External',

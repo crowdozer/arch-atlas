@@ -3,18 +3,20 @@
  *
  * Columns (L→R), category names fixed:
  *
- *   External → Import hop N … → Imports → File → Exports → Export hop N
+ *   Export hop N … → Exports → File → Imports → Import hop N → External
+ *
+ * Visual: **consumers left**, **deps right**, **external packages far right**
+ * (one hop past the deepest file import hop).
  *
  * **Hard product law** (membership of each side; cascades pure):
  *
- * - **External:** pure package/unresolved leaves from node_modules (and
- *   unresolved specs) — one extra outer import-rail depth beyond file hops.
- *   Display: package → parent file (or File for focus packages).
- * - **Imports / Import hop k:** outbound **file** deps only (what the focus
- *   imports along the forward longest-path tree). Never reverse consumers;
- *   never package leaves (those are External).
- * - **Exports / Export hop k:** only what **imports from** the focus (inbound
- *   reverse BFS). Never outbound deps of the focus.
+ * - **Exports / Export hop k (left of File):** only what **imports from** the
+ *   focus (inbound reverse BFS). Never outbound deps.
+ * - **Imports / Import hop k (right of File):** outbound **file** deps only.
+ *   Never reverse consumers; never package leaves.
+ * - **External (far right):** pure package/unresolved leaves (node_modules /
+ *   unresolved) — one extra import-rail depth past file hops. Display:
+ *   package → parent file (or File for focus packages).
  *
  * **Edge orientation** remains A → B means A imports B. Carbon columns are
  * driven by **category**.
@@ -340,37 +342,36 @@ export function projectFileHub(
 	}
 
 	const present = new Set([...nodeMeta.values()].map((m) => m.category));
-	// Left: External (packages) → outer Import hop N … → Imports
+	// L→R: Export hop N … → Exports → File → Imports → Import hop N → External
 	let maxImportHop = hubRadius;
-	for (const cat of present) {
-		const m = /^Import hop (\d+)$/.exec(cat);
-		if (m) maxImportHop = Math.max(maxImportHop, Number(m[1]));
-	}
-	const importHops: string[] = [];
-	for (let d = maxImportHop; d >= 2; d--) {
-		const cat = importHopCategory(d);
-		if (present.has(cat)) importHops.push(cat);
-	}
-	// Right: Exports → … → outer Export hop (may overdraw past hubRadius)
 	let maxExportHop = hubRadius;
 	for (const cat of present) {
-		const m = /^Export hop (\d+)$/.exec(cat);
-		if (m) maxExportHop = Math.max(maxExportHop, Number(m[1]));
+		const mi = /^Import hop (\d+)$/.exec(cat);
+		if (mi) maxImportHop = Math.max(maxImportHop, Number(mi[1]));
+		const me = /^Export hop (\d+)$/.exec(cat);
+		if (me) maxExportHop = Math.max(maxExportHop, Number(me[1]));
 	}
-	const exportHops: string[] = [];
-	for (let d = 2; d <= maxExportHop; d++) {
+	// Consumers left of File: deeper reverse hops further left
+	const exportHopsLeft: string[] = [];
+	for (let d = maxExportHop; d >= 2; d--) {
 		const cat = exportHopCategory(d);
-		if (present.has(cat)) exportHops.push(cat);
+		if (present.has(cat)) exportHopsLeft.push(cat);
+	}
+	// Deps right of File: deeper import hops further right, then External
+	const importHopsRight: string[] = [];
+	for (let d = 2; d <= maxImportHop; d++) {
+		const cat = importHopCategory(d);
+		if (present.has(cat)) importHopsRight.push(cat);
 	}
 	const categoryOrder = [
+		...exportHopsLeft,
+		...(present.has('Exports') ? ['Exports'] : []),
+		'File',
+		...(present.has('Imports') ? ['Imports'] : []),
+		...importHopsRight,
 		...(present.has(EXTERNAL_IMPORT_CATEGORY)
 			? [EXTERNAL_IMPORT_CATEGORY]
 			: []),
-		...importHops,
-		...(present.has('Imports') ? ['Imports'] : []),
-		'File',
-		...(present.has('Exports') ? ['Exports'] : []),
-		...exportHops,
 	].filter((c) => present.has(c) || c === 'File');
 
 	return buildAlluvialPayload({
