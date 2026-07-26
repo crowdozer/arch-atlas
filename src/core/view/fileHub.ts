@@ -1,14 +1,22 @@
 /**
  * Dual-side file hub alluvial — high-edge / barrel projection.
  *
- * Columns (L→R): Import hop N … → Imports → File → Exports → … Export hop N
+ * Columns (L→R), **import-edge direction** (A → B means A imports B):
+ *
+ *   Importer hop N … → Importers → File → Imports → Import hop N
+ *
+ * - **Left (Importers):** who imports the focus (reverse BFS).
+ * - **Right (Imports):** what the focus imports (forward / longest-path deps).
+ *
+ * Display names use Importers / Imports (not the ambiguous Imports / Exports
+ * pair that read as inverted).
  *
  * **Depth (viz-only)** is a dual-direction BFS hop **radius** around the focus:
  *
  * | Depth | Layout |
  * | ----- | ------ |
- * | 1     | Imports → File → Exports (1 hop each way; parity with classic hub) |
- * | N     | Up to N reverse hops (imports) and N forward hops (exports) |
+ * | 1     | Importers → File → Imports |
+ * | N     | Up to N hops each way |
  *
  * Radius = depth (not multiHop’s depth−1). Asymmetric sides omit empty hop columns.
  * Indexing/scan stays unbounded.
@@ -31,22 +39,18 @@
  * path). Outer fan-out may therefore under-draw structure under unit edge
  * weights; accepted product default for conserving File incident mass.
  *
- * dist-1 categories stay `Imports` / `Exports`; outer rings `Import hop k` /
- * `Export hop k` (k≥2). Folder collapse (importerGroupKey) only at depth=1.
+ * Display categories: dist-1 `Importers` / `Imports`; outer rings
+ * `Importer hop k` / `Import hop k` (k≥2). Folder collapse only at depth=1.
  *
- * **Export distances use longest simple path** so focus→format→types expands
- * even when types is also a direct import of focus (shortest BFS would pin
- * types at dist 1 and hide the chain). Imports still use shortest reverse BFS.
+ * **Dependency distances use longest simple path** so focus→format→types
+ * expands even when types is also a direct import of focus. Importer side
+ * still uses shortest reverse BFS.
  *
- * **Layer-consistent import topology:** d3-sankey columns = longest path from
- * sources. Dist-1 files with no outer importers would share a column with hop-2
- * sources (duplicate “Imports” headers). Shared zero-width import rails pad
- * short reverse paths so every BFS dist sits on one column (multiHop-style).
- * Export side pads short File→deep-file paths with out-rails when a direct
- * dep’s longest-path dist is &gt; 1.
+ * **Layer-consistent topology:** d3-sankey columns = path length from sources.
+ * Shared zero-width rails pad short paths so each hop sits on one column.
  *
- * Imports (left) teal; Exports (right) yellow. Carbon colors bands by source,
- * so File→Export strokes are recolored in the client polish step.
+ * Importers (left) teal; Imports/deps (right) yellow. Carbon paints bands by
+ * source — dep-side strokes are recolored in the client polish step.
  */
 
 import {
@@ -291,29 +295,38 @@ export function projectFileHub(
 	});
 	if (!links.length) return null;
 
+	// Remap internal tags → display names (Importers left, Imports/deps right).
+	for (const [name, meta] of nodeMeta) {
+		nodeMeta.set(name, {
+			...meta,
+			category: displayHubCategory(meta.category),
+		});
+	}
+
 	const present = new Set([...nodeMeta.values()].map((m) => m.category));
-	const importHops: string[] = [];
+	// Left: outer importers → … → Importers
+	const importerHops: string[] = [];
 	for (let d = hubRadius; d >= 2; d--) {
-		const cat = importHopCategory(d);
-		if (present.has(cat)) importHops.push(cat);
+		const cat = `Importer hop ${d}`;
+		if (present.has(cat)) importerHops.push(cat);
 	}
-	// Export hops may overdraw past hubRadius when packageLeafMode is pin-overdraw.
-	let maxExportHop = hubRadius;
+	// Right: Imports → … → outer Import hop (may overdraw past hubRadius)
+	let maxDepHop = hubRadius;
 	for (const cat of present) {
-		const m = /^Export hop (\d+)$/.exec(cat);
-		if (m) maxExportHop = Math.max(maxExportHop, Number(m[1]));
+		const m = /^Import hop (\d+)$/.exec(cat);
+		if (m) maxDepHop = Math.max(maxDepHop, Number(m[1]));
 	}
-	const exportHops: string[] = [];
-	for (let d = 2; d <= maxExportHop; d++) {
-		const cat = exportHopCategory(d);
-		if (present.has(cat)) exportHops.push(cat);
+	const depHops: string[] = [];
+	for (let d = 2; d <= maxDepHop; d++) {
+		const cat = `Import hop ${d}`;
+		if (present.has(cat)) depHops.push(cat);
 	}
 	const categoryOrder = [
-		...importHops,
-		...(present.has('Imports') ? ['Imports'] : []),
+		...importerHops,
+		...(present.has('Importers') ? ['Importers'] : []),
 		'File',
-		...(present.has('Exports') ? ['Exports'] : []),
-		...exportHops,
+		...(present.has('Imports') ? ['Imports'] : []),
+		...depHops,
 	].filter((c) => present.has(c) || c === 'File');
 
 	return buildAlluvialPayload({
@@ -325,8 +338,24 @@ export function projectFileHub(
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
+		ariaLabel: `Hub importers and imports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
 	});
+}
+
+/**
+ * Internal build tags reverse-BFS as Imports/Import hop and forward deps as
+ * Exports/Export hop. Display: Importers… (left) / Imports… (right deps).
+ */
+export function displayHubCategory(category: string): string {
+	if (category === 'Exports' || category === 'Exporters') return 'Imports';
+	if (category.startsWith('Export hop ')) {
+		return category.replace(/^Export hop /, 'Import hop ');
+	}
+	if (category === 'Imports') return 'Importers';
+	if (category.startsWith('Import hop ')) {
+		return category.replace(/^Import hop /, 'Importer hop ');
+	}
+	return category;
 }
 
 type LinkBuilder = {

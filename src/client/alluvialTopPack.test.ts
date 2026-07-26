@@ -116,13 +116,14 @@ describe('centerHubFileSpine', () => {
 });
 
 describe('isExportSideCategory', () => {
-	it('matches Exports, legacy Exporters, and Export hop rings', () => {
+	it('matches dep-side categories (Imports / Import hop after hub flip)', () => {
 		expect(isExportSideCategory('Exports')).toBe(true);
 		expect(isExportSideCategory('Exporters')).toBe(true);
 		expect(isExportSideCategory('Export hop 2')).toBe(true);
-		expect(isExportSideCategory('Export hop 3')).toBe(true);
-		expect(isExportSideCategory('Imports')).toBe(false);
-		expect(isExportSideCategory('Import hop 2')).toBe(false);
+		expect(isExportSideCategory('Import hop 2')).toBe(true);
+		expect(isExportSideCategory('Imports')).toBe(true);
+		expect(isExportSideCategory('Importers')).toBe(false);
+		expect(isExportSideCategory('Importer hop 2')).toBe(false);
 		expect(isExportSideCategory('File')).toBe(false);
 		expect(isExportSideCategory('Hop 1')).toBe(false);
 	});
