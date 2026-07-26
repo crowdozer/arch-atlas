@@ -583,8 +583,8 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === h.id) btn.classList.add('is-selected');
 			const hub =
-				h.outDegree === 0 && h.inDegree > 0
-					? ' · fan-in hub'
+				h.inDegree > h.outDegree
+					? ' · fan-in'
 					: h.packageOut
 						? ` · ${h.packageOut} pkg`
 						: '';

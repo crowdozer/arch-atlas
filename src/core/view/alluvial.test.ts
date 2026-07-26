@@ -159,6 +159,18 @@ describe('projectPackageImporters', () => {
 });
 
 describe('projectFileImporters', () => {
+	it('redis.ts fan-in dominant opens reverse (not thin ioredis band)', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const fileId = 'src/lib/redis.ts';
+		expect(preferFileImportersView(graph, fileId)).toBe(true);
+		const rev = projectFileImporters(graph, fileId)!;
+		const forward = projectAlluvial(graph, fileId)!;
+		const revTotal = rev.data.reduce((s, l) => s + l.value, 0);
+		const fwdTotal = forward.data.reduce((s, l) => s + l.value, 0);
+		expect(revTotal).toBeGreaterThan(fwdTotal);
+		expect(revTotal).toBe(12);
+	});
+
 	it('logger.ts is a fan-in hub: reverse view lists importers', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const fileId = 'src/lib/logger.ts';

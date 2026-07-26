@@ -141,9 +141,17 @@ export function fileInDegree(graph: CodeGraph, fileId: string): number {
 }
 
 /**
- * Prefer reverse importers when the file is a pure fan-in hub
- * (no outbound edges, but others import it).
+ * Prefer reverse importers when fan-in dominates the file's edge activity.
+ *
+ * - Pure sinks (out=0, in>0): always reverse (logger.ts).
+ * - Fan-in hubs (in > out): reverse so catalog "N edges" matches the chart
+ *   (redis.ts has 12 importers + 2 outs — forward only shows ioredis→self).
+ * - Outbound-heavy files: keep deps map (modules → code).
  */
 export function preferFileImportersView(graph: CodeGraph, fileId: string): boolean {
-	return fileOutDegree(graph, fileId) === 0 && fileInDegree(graph, fileId) > 0;
+	const out = fileOutDegree(graph, fileId);
+	const inn = fileInDegree(graph, fileId);
+	if (inn === 0) return false;
+	if (out === 0) return true;
+	return inn > out;
 }
