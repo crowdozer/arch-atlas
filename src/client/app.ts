@@ -450,6 +450,28 @@ function sameView(a: AtlasView, b: AtlasView): boolean {
 	return false;
 }
 
+/** File id when the view is a file-hub focus; null for package/module drills. */
+function fileIdFromView(view: AtlasView | null): string | null {
+	if (!view || view.type !== 'file-hub') return null;
+	return view.fileId;
+}
+
+/**
+ * Keep tree + catalog selection in sync with the focused file (alluvial drill,
+ * back, or catalog open). Expands ancestors so the active path is visible.
+ */
+function syncFileSelection(
+	fileId: string,
+	opts?: { skipPersist?: boolean },
+): void {
+	if (!session) return;
+	session.startId = fileId;
+	expandToPath(fileId);
+	renderTree();
+	renderCatalog(session.catalog, fileId);
+	if (!opts?.skipPersist) persistSessionIfEnabled();
+}
+
 function pushView(view: AtlasView): void {
 	if (!session) return;
 	const top = currentView();
@@ -477,6 +499,9 @@ function pushView(view: AtlasView): void {
 	if (mountAlluvialGated(payload)) {
 		setStatus(statusForView(view));
 	}
+	// Alluvial file drill → tree selection + expand path
+	const fid = fileIdFromView(view);
+	if (fid) syncFileSelection(fid);
 }
 
 function popView(): void {
@@ -491,6 +516,9 @@ function popView(): void {
 	if (mountAlluvialGated(payloadForView(view))) {
 		setStatus(statusForView(view));
 	}
+	// Restore tree selection to the file focus under the stack
+	const fid = fileIdFromView(view);
+	if (fid) syncFileSelection(fid);
 }
 
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
@@ -1222,12 +1250,10 @@ function expandToPath(startId: string): void {
 
 function openFileView(view: AtlasView, startId: string, opts?: { skipPersist?: boolean }) {
 	if (!session) return;
-	session.startId = startId;
-	expandToPath(startId);
 	viewStack = [view];
 	applyDepthDefaultForView(view);
-	renderTree();
-	renderCatalog(session.catalog, startId);
+	// Tree + catalog selection (also used by alluvial drill via pushView)
+	syncFileSelection(startId, { skipPersist: true });
 	updateCaption(view);
 	updateBackButton();
 	syncDepthDropdown();
