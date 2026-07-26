@@ -130,10 +130,14 @@ describe('isExportSideCategory', () => {
 });
 
 describe('isFileCategory / isImportRailLabel', () => {
-	it('identifies File category and import rails', () => {
+	it('identifies File category and pad rails (incl. stripped tooltip forms)', () => {
 		expect(isFileCategory('File')).toBe(true);
 		expect(isFileCategory('Imports')).toBe(false);
 		expect(isImportRailLabel('\u200b·in-rail·h2')).toBe(true);
+		expect(isImportRailLabel('\u200b·out-rail·h1')).toBe(true);
+		expect(isImportRailLabel('·in-rail·h2')).toBe(true);
+		expect(isImportRailLabel('·in-rail·h2 (302)')).toBe(true);
 		expect(isImportRailLabel('src/lib/x.ts')).toBe(false);
+		expect(isImportRailLabel('src/lib/in-rail-utils.ts')).toBe(false);
 	});
 });
