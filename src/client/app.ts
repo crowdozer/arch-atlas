@@ -2,7 +2,7 @@
  * Client controller: ZIP upload → index → catalog / tree / alluvial.
  * Analysis is local-only; optional localStorage remember (upload checkbox).
  */
-import { AlluvialChart } from '@carbon/charts';
+import { AlluvialChart, ChartEvent } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
@@ -351,6 +351,10 @@ function alluvialHeightPx(root: HTMLElement): number {
  * Mount (or remount) alluvial. Always replaces the holder DOM node —
  * Carbon Charts leave residual SVG/state if you only clear innerHTML.
  * Binds node/line click handlers after construct.
+ *
+ * Post-process (File spine purple + document icon, label truncate, export
+ * recolor) must run after every Carbon paint: the chart's ResizeObserver
+ * re-renders on first layout settle (workspace unhide) and wipes SVG.
  */
 function mountAlluvial(payload: AlluvialPayload | null) {
 	const root = $('atlas-alluvial');
@@ -382,16 +386,35 @@ function mountAlluvial(payload: AlluvialPayload | null) {
 			data: payload.data,
 			options,
 		});
-		// Top-pack columns; recolor File→Exports bands (Carbon uses source color).
-		polishAlluvialHolder(holder, {
-			colorScale: payload.options.color.scale,
-		});
+		const colorScale = payload.options.color.scale;
+		const applyPolish = () => {
+			// Chart may have been destroyed between schedule and fire.
+			if (!chart) return;
+			polishAlluvialHolder(holder, { colorScale });
+		};
+		// Immediate pass for the constructor paint; re-apply on every later paint.
+		applyPolish();
+		bindAlluvialRenderPolish(chart, applyPolish);
 		bindAlluvialClicks(chart);
 	} catch (err) {
 		console.error('[atlas] alluvial mount failed', err);
 		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
 		chart = null;
 	}
+}
+
+/** Re-polish after Carbon repaints (resize / model update wipe our DOM classes). */
+function bindAlluvialRenderPolish(
+	instance: InstanceType<typeof AlluvialChart>,
+	applyPolish: () => void,
+): void {
+	const events = (
+		instance as unknown as {
+			services?: { events?: EventTarget };
+		}
+	).services?.events;
+	if (!events?.addEventListener) return;
+	events.addEventListener(ChartEvent.RENDER_FINISHED, applyPolish);
 }
 
 /** Extract node display name from Carbon alluvial event datum. */
