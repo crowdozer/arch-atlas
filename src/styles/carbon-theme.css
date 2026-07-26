@@ -496,46 +496,228 @@ cds-header {
   font-weight: 500;
 }
 
-/* File tree */
-.atlas-tree {
-  font-size: 0.8125rem;
-  line-height: 1.35;
-  overflow: auto;
-  max-height: min(70vh, 640px);
+/* —— Workspace shell: left drawer + full-bleed stage —— */
+.atlas-workspace {
+  display: none;
+  min-height: 0;
+  flex: 1;
+  flex-direction: row;
+  overflow: hidden;
 }
 
-.atlas-tree button {
+.atlas-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, 100%);
+  min-width: 16rem;
+  max-width: 26rem;
+  flex-shrink: 0;
+  border-inline-end: 1px solid #27272a; /* zinc-800 */
+  background: #0c0c0e;
+  min-height: 0;
+}
+
+.atlas-drawer__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.atlas-drawer__panel--tree {
+  flex: 1 1 48%;
+  border-block-end: 1px solid #27272a;
+  min-height: 12rem;
+}
+
+.atlas-drawer__panel--catalog {
+  flex: 1 1 52%;
+  min-height: 12rem;
+}
+
+.atlas-drawer__head {
+  padding: 0.65rem 0.75rem 0.35rem;
+  flex-shrink: 0;
+}
+
+.atlas-drawer__tools {
+  padding: 0 0.75rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.atlas-drawer__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.atlas-input {
+  width: 100%;
+  border-radius: 0.25rem;
+  border: 1px solid #3f3f46;
+  background: #09090b;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  color: #e4e4e7;
+}
+
+.atlas-input::placeholder {
+  color: #52525b;
+}
+
+.atlas-input:focus {
+  outline: none;
+  border-color: #14b8a6;
+}
+
+.atlas-section-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+}
+
+.atlas-section-label__hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #52525b;
+}
+
+.atlas-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: #09090b;
+}
+
+.atlas-stage__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-block-end: 1px solid #27272a;
+}
+
+.atlas-stage__chart {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.atlas-stage__holder {
+  flex: 1;
+  min-height: 280px;
+  width: 100%;
+}
+
+/* Hierarchical file tree */
+.atlas-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  padding: 0 0.35rem 0.5rem;
+}
+
+.atlas-tree__row {
   display: flex;
   width: 100%;
+  align-items: center;
+  gap: 0.3rem;
   text-align: left;
   background: transparent;
   border: 0;
   color: #d4d4d8;
-  padding: 0.2rem 0.4rem;
+  padding: 0.22rem 0.35rem;
   border-radius: 0.2rem;
   cursor: pointer;
   font: inherit;
-  gap: 0.35rem;
-  align-items: center;
+  min-height: 1.5rem;
 }
 
-.atlas-tree button:hover {
-  background: rgb(39 39 42 / 0.8);
+.atlas-tree__row:hover {
+  background: rgb(39 39 42 / 0.85);
   color: #fafafa;
 }
 
-.atlas-tree button.is-source {
+.atlas-tree__row--dir {
+  color: #a1a1aa;
+  font-weight: 500;
+}
+
+.atlas-tree__row--dir:hover {
   color: #e4e4e7;
 }
 
-.atlas-tree button.is-selected {
-  background: rgb(13 148 136 / 0.2);
+.atlas-tree__row--file.is-source {
+  color: #e4e4e7;
+}
+
+.atlas-tree__row--file.is-selected {
+  background: rgb(13 148 136 / 0.22);
   color: #5eead4;
   outline: 1px solid rgb(45 212 191 / 0.35);
 }
 
-.atlas-tree .indent {
-  display: inline-block;
+.atlas-tree__chevron {
+  flex-shrink: 0;
+  width: 0.85rem;
+  font-size: 0.65rem;
+  color: #71717a;
+  text-align: center;
+}
+
+.atlas-tree__chevron--spacer {
+  visibility: hidden;
+}
+
+.atlas-tree__icon {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.1rem;
+  opacity: 0.9;
+}
+
+.atlas-tree__icon--folder {
+  background: rgb(45 212 191 / 0.15);
+  border: 1px solid rgb(45 212 191 / 0.35);
+  border-radius: 0.15rem;
+}
+
+.atlas-tree__icon--file {
+  background: #3f3f46;
+  border-radius: 1px;
+  width: 0.55rem;
+  height: 0.7rem;
+  margin-inline: 0.15rem;
+}
+
+.atlas-tree__icon--source {
+  background: #52525b;
+  box-shadow: inset 0 0 0 1px #71717a;
+}
+
+.atlas-tree__name {
+  min-width: 0;
+  flex: 1;
+}
+
+.atlas-tree__badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: #52525b;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Catalog list buttons */
@@ -546,11 +728,11 @@ cds-header {
   background: #18181b;
   border: 1px solid #27272a;
   color: #e4e4e7;
-  padding: 0.6rem 0.75rem;
+  padding: 0.5rem 0.65rem;
   border-radius: 0.25rem;
   cursor: pointer;
   font: inherit;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .atlas-list-btn:hover {
@@ -564,9 +746,25 @@ cds-header {
 
 .atlas-list-btn .meta {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #a1a1aa;
-  margin-top: 0.2rem;
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 900px) {
+  .atlas-workspace {
+    flex-direction: column;
+  }
+  .atlas-drawer {
+    width: 100%;
+    max-width: none;
+    max-height: 45vh;
+    border-inline-end: 0;
+    border-block-end: 1px solid #27272a;
+  }
+  .atlas-stage__holder {
+    min-height: 240px;
+  }
 }
 
 /* Drop zone */

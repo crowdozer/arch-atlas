@@ -13,7 +13,7 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" class="cds--g100">
+<html lang="en" class="cds--g100 h-full">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -23,7 +23,7 @@ const {
 		<meta name="description" content={description} />
 		<title>{title}</title>
 	</head>
-	<body class="cds--g100 min-h-screen bg-zinc-950 text-zinc-50">
+	<body class="cds--g100 flex h-full min-h-screen flex-col bg-zinc-950 text-zinc-50">
 		<a
 			href="#main-content"
 			class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-zinc-900 focus:px-3 focus:py-2 focus:text-teal-300"
@@ -31,7 +31,7 @@ const {
 			Skip to content
 		</a>
 		<header
-			class="sticky top-0 z-40 flex h-12 items-center border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur"
+			class="flex h-12 shrink-0 items-center border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur"
 		>
 			<a href="/" class="ui-header-name text-sm tracking-wide text-zinc-50 no-underline">
 				Arch <span>Atlas</span>
@@ -41,7 +41,23 @@ const {
 			</span>
 			<span class="ml-auto text-xs text-zinc-600">source stays on-device</span>
 		</header>
-		<main id="main-content" class="mx-auto w-full max-w-[100rem] px-4 py-6 sm:px-6">
+		<!-- Workspace sub-bar (filled when a session is active) -->
+		<div
+			id="atlas-subbar"
+			class="hidden shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2"
+		>
+			<p class="atlas-eyebrow m-0">Workspace</p>
+			<div id="atlas-summary-tags" class="flex min-w-0 flex-1 flex-wrap items-center gap-2"></div>
+			<p id="atlas-status" class="hidden max-w-md truncate text-xs text-zinc-500 sm:block" role="status"></p>
+			<button
+				type="button"
+				id="atlas-reset"
+				class="shrink-0 rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:border-teal-500 hover:text-teal-300"
+			>
+				Clear session
+			</button>
+		</div>
+		<main id="main-content" class="flex min-h-0 flex-1 flex-col">
 			<slot />
 		</main>
 		<script>

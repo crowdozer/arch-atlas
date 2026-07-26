@@ -13,24 +13,36 @@ import {
 	type CodeGraph,
 	type MapCatalog,
 } from '@core/index.ts';
+import {
+	buildFileTree,
+	expandPathsForFilter,
+	nodeMatchesFilter,
+	type FileTreeNode,
+} from '@core/tree/fileTree.ts';
 
 type Session = {
 	graph: CodeGraph;
 	catalog: MapCatalog;
 	startId: string | null;
 	warnings: string[];
+	/** Dir paths currently expanded in the tree. */
+	expanded: Set<string>;
 };
 
 let session: Session | null = null;
-let chart: AlluvialChart | null = null;
+let chart: InstanceType<typeof AlluvialChart> | null = null;
 
 function $(id: string): HTMLElement | null {
 	return document.getElementById(id);
 }
 
 function setStatus(msg: string) {
-	const el = $('atlas-status');
-	if (el) el.textContent = msg;
+	const workspaceStatus = $('atlas-status');
+	const uploadStatus = $('atlas-upload-status');
+	if (workspaceStatus) workspaceStatus.textContent = msg;
+	if (uploadStatus && !$('atlas-upload')?.classList.contains('hidden')) {
+		uploadStatus.textContent = msg;
+	}
 }
 
 function showWarnings(warnings: string[]) {
@@ -45,42 +57,6 @@ function showWarnings(warnings: string[]) {
 	}
 }
 
-function basename(path: string): string {
-	const i = path.lastIndexOf('/');
-	return i >= 0 ? path.slice(i + 1) : path;
-}
-
-/** Build a simple expandable path list (flat sorted paths with indent). */
-function renderTree(graph: CodeGraph, filter: string, selected: string | null) {
-	const host = $('atlas-tree');
-	if (!host) return;
-	host.innerHTML = '';
-	const q = filter.trim().toLowerCase();
-	const paths = [...graph.files.keys()]
-		.filter((p) => !q || p.toLowerCase().includes(q))
-		.sort((a, b) => a.localeCompare(b));
-
-	for (const path of paths) {
-		const depth = path.split('/').length - 1;
-		const btn = document.createElement('button');
-		btn.type = 'button';
-		btn.dataset.path = path;
-		const source = isSourceFile(path);
-		if (source) btn.classList.add('is-source');
-		if (selected === path) btn.classList.add('is-selected');
-		btn.innerHTML = `<span class="indent" style="width:${depth * 0.75}rem"></span><span class="truncate">${escapeHtml(basename(path))}</span>`;
-		btn.title = path;
-		btn.addEventListener('click', () => {
-			if (source) selectStart(path);
-			else setStatus(`Not a source file: ${path}`);
-		});
-		host.appendChild(btn);
-	}
-	if (!paths.length) {
-		host.innerHTML = `<p class="px-1 text-xs text-zinc-600">No files match.</p>`;
-	}
-}
-
 function escapeHtml(s: string): string {
 	return s
 		.replace(/&/g, '&amp;')
@@ -89,11 +65,162 @@ function escapeHtml(s: string): string {
 		.replace(/"/g, '&quot;');
 }
 
+function destroyChart(): void {
+	if (!chart) return;
+	try {
+		chart.destroy();
+	} catch {
+		/* Carbon can throw if holder already gone */
+	}
+	chart = null;
+}
+
+/**
+ * Mount (or remount) alluvial. Always replaces the holder DOM node —
+ * Carbon Charts leave residual SVG/state if you only clear innerHTML.
+ */
+function mountAlluvial(payload: AlluvialPayload | null) {
+	const root = $('atlas-alluvial');
+	if (!root) return;
+
+	destroyChart();
+	root.replaceChildren();
+
+	const holder = document.createElement('div');
+	holder.className = 'ui-carbon-chart__holder atlas-stage__holder';
+	holder.setAttribute('data-carbon-chart-holder', '');
+	root.appendChild(holder);
+
+	if (!payload) {
+		holder.innerHTML = `<p class="ui-carbon-chart__loading">No import flow for this start.</p>`;
+		return;
+	}
+
+	// Prefer model update path when possible; full remount is the reliable fallback.
+	try {
+		const heightPx = Math.max(
+			320,
+			Math.floor(root.getBoundingClientRect().height || 480),
+		);
+		const options = {
+			...payload.options,
+			height: `${heightPx}px`,
+			animations: false,
+		};
+		chart = new AlluvialChart(holder, {
+			data: payload.data,
+			options,
+		});
+	} catch (err) {
+		console.error('[atlas] alluvial mount failed', err);
+		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
+		chart = null;
+	}
+}
+
+function renderTree() {
+	const host = $('atlas-tree');
+	if (!host || !session) return;
+	host.replaceChildren();
+
+	const filter =
+		($('atlas-tree-filter') as HTMLInputElement | null)?.value ?? '';
+	const paths = [...session.graph.files.keys()];
+	const tree = buildFileTree(paths);
+	const q = filter.trim();
+
+	// When filtering, force-open matching ancestors (merge with user expand state)
+	if (q) {
+		for (const p of expandPathsForFilter(paths, q)) {
+			session.expanded.add(p);
+		}
+	}
+
+	const frag = document.createDocumentFragment();
+	for (const child of tree.children) {
+		if (!nodeMatchesFilter(child, q)) continue;
+		frag.appendChild(renderTreeNode(child, 0, q));
+	}
+	host.appendChild(frag);
+
+	if (!host.childElementCount) {
+		host.innerHTML = `<p class="px-2 py-1 text-xs text-zinc-600">No files match.</p>`;
+	}
+}
+
+function renderTreeNode(
+	node: FileTreeNode,
+	depth: number,
+	filter: string,
+): HTMLElement {
+	if (node.kind === 'dir') {
+		const wrap = document.createElement('div');
+		wrap.className = 'atlas-tree__dir';
+		wrap.setAttribute('role', 'group');
+
+		const open = session!.expanded.has(node.path);
+		const row = document.createElement('button');
+		row.type = 'button';
+		row.className = 'atlas-tree__row atlas-tree__row--dir';
+		row.style.paddingLeft = `${0.4 + depth * 0.85}rem`;
+		row.setAttribute('aria-expanded', open ? 'true' : 'false');
+		row.dataset.path = node.path;
+		row.innerHTML = `
+			<span class="atlas-tree__chevron" aria-hidden="true">${open ? '▾' : '▸'}</span>
+			<span class="atlas-tree__icon atlas-tree__icon--folder" aria-hidden="true"></span>
+			<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
+			<span class="atlas-tree__badge">${node.children.length}</span>
+		`;
+		row.title = node.path;
+		row.addEventListener('click', (e) => {
+			e.preventDefault();
+			if (!session) return;
+			if (session.expanded.has(node.path)) session.expanded.delete(node.path);
+			else session.expanded.add(node.path);
+			renderTree();
+		});
+		wrap.appendChild(row);
+
+		if (open) {
+			const kids = document.createElement('div');
+			kids.className = 'atlas-tree__children';
+			for (const c of node.children) {
+				if (!nodeMatchesFilter(c, filter)) continue;
+				kids.appendChild(renderTreeNode(c, depth + 1, filter));
+			}
+			wrap.appendChild(kids);
+		}
+		return wrap;
+	}
+
+	// file
+	const isSrc = isSourceFile(node.path);
+	const btn = document.createElement('button');
+	btn.type = 'button';
+	btn.className = 'atlas-tree__row atlas-tree__row--file';
+	if (isSrc) btn.classList.add('is-source');
+	if (session?.startId === node.path) btn.classList.add('is-selected');
+	btn.style.paddingLeft = `${0.4 + depth * 0.85}rem`;
+	btn.dataset.path = node.path;
+	btn.title = node.path; // full path on hover — disambiguates index.tsx siblings
+
+	btn.innerHTML = `
+		<span class="atlas-tree__chevron atlas-tree__chevron--spacer" aria-hidden="true"></span>
+		<span class="atlas-tree__icon atlas-tree__icon--file${isSrc ? ' atlas-tree__icon--source' : ''}" aria-hidden="true"></span>
+		<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
+	`;
+	btn.addEventListener('click', () => {
+		if (isSrc) selectStart(node.path);
+		else setStatus(`Not a source file: ${node.path}`);
+	});
+	return btn;
+}
+
 function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 	const summary = $('atlas-catalog-summary');
 	if (summary) {
 		const langs = catalog.summary.languages.join(' · ') || 'JS/TS';
-		summary.textContent = `${langs} · ${catalog.summary.sourceCount} sources · ${catalog.summary.edgeCount} import edges · ${catalog.summary.packageCount} packages · ${catalog.summary.unresolvedCount} unresolved`;
+		summary.textContent = `${langs} · ${catalog.summary.sourceCount} src · ${catalog.summary.edgeCount} edges · ${catalog.summary.packageCount} pkgs`;
 	}
 
 	const tags = $('atlas-summary-tags');
@@ -143,7 +270,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			btn.type = 'button';
 			btn.className = 'atlas-list-btn';
 			if (selectedStart === s.id) btn.classList.add('is-selected');
-			btn.innerHTML = `<span class="text-sm font-medium text-zinc-100">${escapeHtml(s.path)}</span><span class="meta">inferred · ${escapeHtml(s.reason)}</span>`;
+			btn.innerHTML = `<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(s.path)}</span><span class="meta">inferred · ${escapeHtml(s.reason)}</span>`;
 			btn.addEventListener('click', () => selectStart(s.id));
 			startsHost.appendChild(btn);
 		}
@@ -171,46 +298,18 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 function selectStart(startId: string) {
 	if (!session) return;
 	session.startId = startId;
-	const filter = ($('atlas-tree-filter') as HTMLInputElement | null)?.value ?? '';
-	renderTree(session.graph, filter, startId);
+	// ensure parents of selected file are expanded
+	const parts = startId.split('/');
+	for (let i = 1; i < parts.length; i++) {
+		session.expanded.add(parts.slice(0, i).join('/'));
+	}
+	renderTree();
 	renderCatalog(session.catalog, startId);
 	const caption = $('atlas-alluvial-caption');
 	if (caption) caption.textContent = `Import surface from ${startId}`;
 	const payload = alluvialForStart(session.graph, startId);
 	mountAlluvial(payload);
 	setStatus(`Start: ${startId}`);
-}
-
-function mountAlluvial(payload: AlluvialPayload | null) {
-	const root = $('atlas-alluvial');
-	const holder = root?.querySelector('[data-carbon-chart-holder]') as HTMLDivElement | null;
-	if (!holder) return;
-
-	if (chart) {
-		try {
-			// @ts-expect-error carbon charts destroy is optional across versions
-			chart.destroy?.();
-		} catch {
-			/* ignore */
-		}
-		chart = null;
-	}
-	holder.innerHTML = '';
-
-	if (!payload) {
-		holder.innerHTML = `<p class="ui-carbon-chart__loading">No import flow for this start.</p>`;
-		return;
-	}
-
-	try {
-		chart = new AlluvialChart(holder, {
-			data: payload.data,
-			options: payload.options,
-		});
-	} catch (err) {
-		console.error(err);
-		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
-	}
 }
 
 async function handleZip(file: File) {
@@ -226,6 +325,7 @@ async function handleZip(file: File) {
 		}
 		setStatus(`Indexing ${files.length} files…`);
 		const { graph, catalog } = indexFiles(files);
+		const paths = [...graph.files.keys()];
 		session = {
 			graph,
 			catalog,
@@ -234,15 +334,20 @@ async function handleZip(file: File) {
 				...warnings,
 				skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
 			].filter(Boolean),
+			expanded: expandPathsForFilter(paths, ''),
 		};
 		showWarnings(session.warnings);
 		$('atlas-upload')?.classList.add('hidden');
 		$('atlas-workspace')?.classList.remove('hidden');
-		const filter = ($('atlas-tree-filter') as HTMLInputElement | null)?.value ?? '';
-		renderTree(graph, filter, session.startId);
+		$('atlas-workspace')?.classList.add('flex');
+		$('atlas-subbar')?.classList.remove('hidden');
+		$('atlas-subbar')?.classList.add('flex');
 		renderCatalog(catalog, session.startId);
 		if (session.startId) selectStart(session.startId);
-		else setStatus('Indexed — no source starts found.');
+		else {
+			renderTree();
+			setStatus('Indexed — no source starts found.');
+		}
 		setStatus(
 			`Indexed ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges`,
 		);
@@ -254,18 +359,18 @@ async function handleZip(file: File) {
 
 function resetSession() {
 	session = null;
-	if (chart) {
-		try {
-			// @ts-expect-error optional
-			chart.destroy?.();
-		} catch {
-			/* ignore */
-		}
-		chart = null;
-	}
+	destroyChart();
+	const alluvial = $('atlas-alluvial');
+	if (alluvial) alluvial.replaceChildren();
+
 	$('atlas-workspace')?.classList.add('hidden');
+	$('atlas-workspace')?.classList.remove('flex');
+	$('atlas-subbar')?.classList.add('hidden');
+	$('atlas-subbar')?.classList.remove('flex');
 	$('atlas-upload')?.classList.remove('hidden');
 	setStatus('');
+	const uploadStatus = $('atlas-upload-status');
+	if (uploadStatus) uploadStatus.textContent = '';
 	showWarnings([]);
 	const file = $('atlas-file') as HTMLInputElement | null;
 	if (file) file.value = '';
@@ -296,10 +401,20 @@ function wireUi() {
 
 	$('atlas-reset')?.addEventListener('click', resetSession);
 
-	$('atlas-tree-filter')?.addEventListener('input', (e) => {
+	$('atlas-tree-filter')?.addEventListener('input', () => {
 		if (!session) return;
-		const v = (e.target as HTMLInputElement).value;
-		renderTree(session.graph, v, session.startId);
+		renderTree();
+	});
+
+	// Remount chart on resize so height tracks stage
+	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+	window.addEventListener('resize', () => {
+		if (!session?.startId) return;
+		if (resizeTimer) clearTimeout(resizeTimer);
+		resizeTimer = setTimeout(() => {
+			if (!session?.startId) return;
+			mountAlluvial(alluvialForStart(session.graph, session.startId));
+		}, 150);
 	});
 }
 

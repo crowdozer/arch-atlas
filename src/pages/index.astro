@@ -3,8 +3,9 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout title="Arch Atlas">
-	<div id="atlas-app" class="space-y-6">
-		<section id="atlas-upload" class="mx-auto max-w-2xl">
+	<div id="atlas-app" class="flex min-h-0 flex-1 flex-col">
+		<!-- Upload (centered, only before session) -->
+		<section id="atlas-upload" class="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
 			<p class="atlas-eyebrow mb-2">Level-1 index</p>
 			<h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
 				Upload a repository
@@ -25,96 +26,80 @@ import Layout from '../layouts/Layout.astro';
 					<input id="atlas-file" type="file" accept=".zip,application/zip" />
 				</label>
 			</div>
-			<p id="atlas-status" class="mt-3 text-sm text-zinc-500" role="status"></p>
+			<p id="atlas-upload-status" class="mt-3 text-sm text-zinc-500" role="status"></p>
 			<div id="atlas-warnings" class="mt-2 space-y-2"></div>
 		</section>
 
-		<section id="atlas-workspace" class="hidden">
-			<div class="mb-4 flex flex-wrap items-center gap-3">
-				<p class="atlas-eyebrow">Workspace</p>
-				<div id="atlas-summary-tags" class="flex flex-wrap gap-2"></div>
-				<button
-					type="button"
-					id="atlas-reset"
-					class="ml-auto rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:border-teal-500 hover:text-teal-300"
-				>
-					Clear session
-				</button>
-			</div>
-
-			<div class="grid gap-4 lg:grid-cols-12">
-				<!-- File tree -->
-				<aside class="ui-tile ui-tile--padding-md lg:col-span-3">
-					<div class="ui-tile__label">Repository tree</div>
-					<p class="mb-2 text-xs text-zinc-500">
-						Click a source file to use it as an alluvial start.
-					</p>
-					<input
-						id="atlas-tree-filter"
-						type="search"
-						placeholder="Filter paths…"
-						class="mb-2 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-teal-500 focus:outline-none"
-					/>
-					<div id="atlas-tree" class="atlas-tree"></div>
-				</aside>
-
-				<!-- Catalog -->
-				<section class="ui-tile ui-tile--padding-md lg:col-span-4">
-					<div class="ui-tile__label">Map catalog</div>
-					<p id="atlas-catalog-summary" class="mb-3 text-sm text-zinc-400"></p>
-
-					<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-						Suggested views
-					</h2>
-					<div id="atlas-views" class="mb-4"></div>
-
-					<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-						Starts
-						<span class="font-normal normal-case tracking-normal text-zinc-600">
-							· inferred
-						</span>
-					</h2>
-					<div id="atlas-starts" class="mb-4 max-h-48 overflow-auto"></div>
-
-					<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-						Ends
-						<span class="font-normal normal-case tracking-normal text-zinc-600">
-							· packages & sinks
-						</span>
-					</h2>
-					<div id="atlas-ends" class="max-h-48 overflow-auto"></div>
-				</section>
-
-				<!-- Alluvial -->
-				<section class="ui-tile ui-tile--padding-md lg:col-span-5">
-					<div class="flex items-start justify-between gap-2">
-						<div>
-							<div class="ui-tile__label">Alluvial projection</div>
-							<p id="atlas-alluvial-caption" class="text-sm text-zinc-400">
-								Select a start to project import flow.
-							</p>
-						</div>
-						<span
-							id="atlas-epistemic"
-							class="shrink-0 rounded bg-zinc-800 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-zinc-400"
-						>
-							Observed edges
-						</span>
+		<!-- Workspace: left drawer + full-bleed alluvial -->
+		<section id="atlas-workspace" class="atlas-workspace hidden min-h-0 flex-1">
+			<aside id="atlas-drawer" class="atlas-drawer" aria-label="Repository explorer">
+				<!-- Tree panel -->
+				<div class="atlas-drawer__panel atlas-drawer__panel--tree">
+					<div class="atlas-drawer__head">
+						<div class="ui-tile__label mb-0">Repository tree</div>
+						<p class="mt-1 text-[0.7rem] leading-snug text-zinc-500">
+							Folders expand · click a source file as start
+						</p>
 					</div>
-					<div
-						id="atlas-alluvial"
-						class="ui-carbon-chart mt-3"
-						data-carbon-chart="alluvial"
+					<div class="atlas-drawer__tools">
+						<input
+							id="atlas-tree-filter"
+							type="search"
+							placeholder="Filter paths…"
+							class="atlas-input"
+						/>
+					</div>
+					<div id="atlas-tree" class="atlas-tree" role="tree"></div>
+				</div>
+
+				<!-- Catalog panel -->
+				<div class="atlas-drawer__panel atlas-drawer__panel--catalog">
+					<div class="atlas-drawer__head">
+						<div class="ui-tile__label mb-0">Map catalog</div>
+						<p id="atlas-catalog-summary" class="mt-1 text-[0.7rem] leading-snug text-zinc-500"></p>
+					</div>
+					<div class="atlas-drawer__scroll">
+						<h2 class="atlas-section-label">Suggested views</h2>
+						<div id="atlas-views" class="mb-3"></div>
+
+						<h2 class="atlas-section-label">
+							Starts
+							<span class="atlas-section-label__hint">· inferred</span>
+						</h2>
+						<div id="atlas-starts" class="mb-3"></div>
+
+						<h2 class="atlas-section-label">
+							Ends
+							<span class="atlas-section-label__hint">· packages & sinks</span>
+						</h2>
+						<div id="atlas-ends"></div>
+					</div>
+				</div>
+			</aside>
+
+			<section class="atlas-stage" aria-label="Alluvial projection">
+				<div class="atlas-stage__bar">
+					<div class="min-w-0">
+						<div class="ui-tile__label mb-0">Alluvial projection</div>
+						<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
+							Select a start to project import flow.
+						</p>
+					</div>
+					<span
+						id="atlas-epistemic"
+						class="shrink-0 rounded bg-zinc-800 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-zinc-400"
 					>
-						<div
-							class="ui-carbon-chart__holder"
-							data-carbon-chart-holder
-						>
-							<p class="ui-carbon-chart__loading">No projection yet.</p>
-						</div>
-					</div>
-				</section>
-			</div>
+						Observed edges
+					</span>
+				</div>
+				<div
+					id="atlas-alluvial"
+					class="ui-carbon-chart atlas-stage__chart"
+					data-carbon-chart="alluvial"
+				>
+					<!-- holder recreated on each mount (Carbon Charts destroy/reuse safety) -->
+				</div>
+			</section>
 		</section>
 	</div>
 
