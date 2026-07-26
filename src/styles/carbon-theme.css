@@ -671,8 +671,10 @@ cds-tag.ui-tag--yellow {
 }
 
 /*
- * Hub terminators: reverse-hop free-source pad targets (not File spine).
- * Yellow wrap (export family) so chain ends read at a glance.
+ * Hub terminators — contrast with column family (not same-family fill):
+ * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
+ * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
+ * - .atlas-alluvial-export-terminator = **cyan** wrap → Exports* free sources (yellow side)
  */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node {
   stroke: #eab308 !important;
@@ -684,9 +686,42 @@ cds-tag.ui-tag--yellow {
   font-weight: 600 !important;
   fill: #fde68a !important;
 }
-/* Outline chip behind label for stronger wrap */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node-text-bg {
   stroke: #ca8a04 !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Cyan wrap on yellow export columns (reverse free sources) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node {
+  stroke: #22d3ee !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: #a5f3fc !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node-text-bg {
+  stroke: #06b6d4 !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Purple wrap for package / node_modules terminators (External leaves) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: var(--atlas-select, #c4b5fd) !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node-text-bg {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }

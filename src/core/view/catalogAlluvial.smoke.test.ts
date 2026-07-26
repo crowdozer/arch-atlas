@@ -14,6 +14,7 @@ import {
 	fileInDegree,
 	fileOutDegree,
 } from '@core/view/fileImporters.ts';
+import { isAlluvialRailName } from '@core/view/alluvial.ts';
 import {
 	preferFileHubView,
 	projectFileHub,
@@ -104,6 +105,9 @@ function focusOutflow(payload: AlluvialPayload): number {
 /**
  * Intermediate columns: sum(in) === sum(out) for nodes that both receive and emit.
  * Dual-hub focus is exempt — left in-mass and right out-mass are independent.
+ * Import-tree files that emit structural package mass (file → External package)
+ * may have out > in; External packages themselves are sinks.
+ * Rails and overflow buckets skip balance.
  */
 function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	const { out, inn } = flowTotals(payload.data);
@@ -124,11 +128,49 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 			focusNames.add(n.name);
 		}
 	}
+	const isPackageLike = (name: string): boolean => {
+		const ref = payload.meta.nodeRef[name];
+		if (!ref) return false;
+		if (ref.kind === 'package' || ref.kind === 'unresolved') return true;
+		if (
+			ref.kind === 'bucket' &&
+			(ref.id.includes('pkg') || ref.id.includes('external'))
+		) {
+			return true;
+		}
+		return categories.get(name) === 'External';
+	};
+	/**
+	 * File/rail that fans structural mass into External packages (out may
+	 * exceed in). Includes File → in-rail → package pads (Carbon External hop).
+	 */
+	const emitsPackageStructural = (name: string): boolean => {
+		const seen = new Set<string>();
+		const q = [name];
+		seen.add(name);
+		while (q.length) {
+			const cur = q.shift()!;
+			for (const l of payload.data) {
+				if (l.source !== cur) continue;
+				if (isPackageLike(l.target)) return true;
+				// Follow pad rails only (do not walk real file→file mass)
+				if (isAlluvialRailName(l.target) && !seen.has(l.target)) {
+					seen.add(l.target);
+					q.push(l.target);
+				}
+			}
+		}
+		return false;
+	};
+
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
 		if (focusNames.has(name)) continue;
 		// Overflow / aggregate buckets may under-draw under integer multi-parent
 		// split (accepted hub default) — skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
+		if (isPackageLike(name)) continue;
+		if (isAlluvialRailName(name)) continue; // pad scaffolding
+		if (emitsPackageStructural(name)) continue;
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {
@@ -195,11 +237,12 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			);
 			// Optional hop columns when both sides and depth allows (default radius 3)
 			const cats = new Set(payload!.options.alluvial.nodes.map((n) => n.category));
-			// Imports: reverse importers and/or focus packages
+			// Imports: outbound file deps and/or focus packages
 			const hasImportSide =
-				fileInDegree(graph, d.id) > 0 || fileOutPackageDegree(graph, d.id) > 0;
-			// Exports: file→file outs only (packages live on Imports)
-			const hasExportSide = fileOutFileDegree(graph, d.id) > 0;
+				fileOutFileDegree(graph, d.id) > 0 ||
+				fileOutPackageDegree(graph, d.id) > 0;
+			// Exports: reverse importers only
+			const hasExportSide = fileInDegree(graph, d.id) > 0;
 			if (hasImportSide) expect(cats.has('Imports')).toBe(true);
 			if (hasExportSide) expect(cats.has('Exports')).toBe(true);
 		}
@@ -237,10 +280,11 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			const cats = new Set(
 				payload!.options.alluvial.nodes.map((n) => n.category),
 			);
-			if (h.inDegree > 0 || fileOutPackageDegree(graph, h.id) > 0) {
+			// Imports = outbound deps/packages; Exports = reverse importers
+			if (fileOutFileDegree(graph, h.id) > 0 || fileOutPackageDegree(graph, h.id) > 0) {
 				expect(cats.has('Imports')).toBe(true);
 			}
-			if (fileOutFileDegree(graph, h.id) > 0) {
+			if (h.inDegree > 0) {
 				expect(cats.has('Exports')).toBe(true);
 			}
 			expect(cats.has('Import folders')).toBe(false);
@@ -261,7 +305,7 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(cats.has('Exports')).toBe(true);
 	});
 
-	it('logger.ts pure sink opens hub Imports-only with full importer count', () => {
+	it('logger.ts pure sink opens hub Exports-only with full importer count', () => {
 		const id = 'src/lib/logger.ts';
 		// preferFileHubView is false (no out) but UI still opens hub
 		expect(preferFileHubView(graph, id)).toBe(false);
@@ -270,8 +314,9 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		const payload = payloadForFileClick(graph, id)!;
 		expect(focusIncidentMass(payload)).toBe(inn);
 		const cats = new Set(payload.options.alluvial.nodes.map((n) => n.category));
-		expect(cats.has('Imports')).toBe(true);
-		expect(cats.has('Exports')).toBe(false);
+		// Hard law: reverse importers live on Exports
+		expect(cats.has('Exports')).toBe(true);
+		expect(cats.has('Imports')).toBe(false);
 		expect(cats.has('Import folders')).toBe(false);
 	});
 

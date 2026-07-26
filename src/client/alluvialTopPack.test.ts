@@ -6,10 +6,13 @@ import {
 	isFileCategory,
 	isHubFileSpine,
 	isImportRailLabel,
+	markAlluvialExportTerminators,
 	markAlluvialTerminators,
 	polishAlluvialHolder,
 	recomputeLinkBreadths,
 	rightTruncateLabel,
+	planExternalStraightBands,
+	straightenExternalPackageBands,
 } from './alluvialTopPack.ts';
 
 type N = {
@@ -303,16 +306,98 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		outRail.appendChild(outText);
 		svg.appendChild(outRail);
 
-		// Import pad band: in-rail → file (invisible scaffold)
+		// in-rail → non-External file (legacy dual-path style; still paints)
 		const padPath = new MiniEl('path', ['link']);
 		padPath.__data__ = {
-			source: { name: '\u200b·in-rail·h2' },
-			target: { name: 'app/layout.tsx' },
+			source: { name: '\u200b·in-rail·h2', category: 'Import hop 2' },
+			target: { name: 'app/layout.tsx', category: 'Exports' },
 			y0: 10,
 			y1: 10,
 			width: 3,
 		};
 		svg.appendChild(padPath);
+
+		// External package hop: File → in-rail → package (undraw + straighten)
+		const fileToRail = new MiniEl('path', ['link']);
+		fileToRail.__data__ = {
+			source: {
+				name: 'src/lib/redis.ts',
+				category: 'File',
+				x0: 100,
+				x1: 104,
+				y0: 40,
+				y1: 60,
+			},
+			target: {
+				name: '\u200b·in-rail·h1',
+				category: 'Imports',
+				x0: 200,
+				x1: 204,
+				y0: 40,
+				y1: 50,
+			},
+			y0: 50,
+			y1: 45,
+			width: 12,
+			value: 12,
+		};
+		svg.appendChild(fileToRail);
+		const railToPkg = new MiniEl('path', ['link']);
+		railToPkg.__data__ = {
+			source: {
+				name: '\u200b·in-rail·h1',
+				category: 'Imports',
+				x0: 200,
+				x1: 204,
+				y0: 40,
+				y1: 50,
+			},
+			target: {
+				name: 'ioredis',
+				category: 'External',
+				x0: 300,
+				x1: 304,
+				y0: 40,
+				y1: 52,
+			},
+			y0: 45,
+			y1: 46,
+			width: 12,
+			value: 12,
+		};
+		svg.appendChild(railToPkg);
+
+		// Nodes for straighten (File + External)
+		const fileNode = new MiniEl('g', ['node-group']);
+		fileNode.__data__ = {
+			name: 'src/lib/redis.ts',
+			category: 'File',
+			x0: 100,
+			x1: 104,
+			y0: 40,
+			y1: 60,
+		};
+		svg.appendChild(fileNode);
+		const pkgNode = new MiniEl('g', ['node-group']);
+		pkgNode.__data__ = {
+			name: 'ioredis',
+			category: 'External', // package terminator → purple
+			x0: 300,
+			x1: 304,
+			y0: 40,
+			y1: 52,
+		};
+		svg.appendChild(pkgNode);
+		const inRail1 = new MiniEl('g', ['node-group']);
+		inRail1.__data__ = {
+			name: '\u200b·in-rail·h1',
+			category: 'Imports',
+			x0: 200,
+			x1: 204,
+			y0: 40,
+			y1: 50,
+		};
+		svg.appendChild(inRail1);
 
 		// Export mass: File → out-rail (must stay painted)
 		const fileToOut = new MiniEl('path', ['link']);
@@ -365,14 +450,36 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		// Out-rail **nodes** still hide chrome
 		expect(outRailG?.classList.contains('atlas-alluvial-rail')).toBe(true);
 
-		const pad = holder.querySelectorAll('path.link').find((p) => {
-			const d = p.__data__ as { source?: { name?: string } };
-			return d?.source?.name?.includes('in-rail');
+		// in-rail → non-External file is not a package hop (still paint)
+		const inToFile = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				d?.target?.name === 'app/layout.tsx'
+			);
 		});
-		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
-		expect(pad?.getAttribute('pointer-events')).toBe('none');
+		expect(inToFile?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
 
-		// Law: export out-rail mass carriers must NOT be pad-band
+		// Pure in-rail → in-rail still scaffold if present
+		const railToRail = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				String(d?.target?.name ?? '').includes('in-rail')
+			);
+		});
+		// fixture may not have rail→rail; only assert when present
+		if (railToRail) {
+			expect(railToRail.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		}
+
+		// Out-rail free-source pads undrawn (reverse terminator cutoff)
 		const fileToOut = holder.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as {
 				source?: { name?: string };
@@ -383,8 +490,7 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 				String(d?.target?.name ?? '').includes('out-rail')
 			);
 		});
-		expect(fileToOut?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
-		expect(fileToOut?.getAttribute('pointer-events')).toBeNull();
+		expect(fileToOut?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 
 		const outToDeep = holder.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as {
@@ -396,27 +502,158 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 				d?.target?.name === 'src/types.ts'
 			);
 		});
-		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
-		expect(outToDeep?.getAttribute('pointer-events')).toBeNull();
+		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 
 		const real = holder.querySelectorAll('path.link').find((p) => {
 			const d = p.__data__ as { source?: { name?: string } };
 			return d?.source?.name === 'app/layout.tsx';
 		});
 		expect(real?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+
+		// External package hop undrawn
+		const fileToRail = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				d?.source?.name === 'src/lib/redis.ts' &&
+				String(d?.target?.name ?? '').includes('in-rail')
+			);
+		});
+		expect(fileToRail?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		const railToPkg = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('in-rail') &&
+				d?.target?.name === 'ioredis'
+			);
+		});
+		expect(railToPkg?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 	});
 
-	it('marks terminators from meta names; polish wires both', () => {
+	it('plans straight External bands for File→in-rail→package topology', () => {
+		const plans = planExternalStraightBands(
+			[
+				{
+					name: 'src/lib/redis.ts',
+					category: 'File',
+					x0: 100,
+					x1: 104,
+					y0: 40,
+					y1: 60,
+				},
+				{
+					name: '\u200b·in-rail·h1',
+					category: 'Imports',
+					x0: 200,
+					x1: 204,
+					y0: 40,
+					y1: 50,
+				},
+				{
+					name: 'ioredis',
+					category: 'External',
+					x0: 300,
+					x1: 304,
+					y0: 40,
+					y1: 52,
+				},
+			],
+			[
+				{
+					source: 'src/lib/redis.ts',
+					target: '\u200b·in-rail·h1',
+					width: 12,
+					stroke: '#14b8a6',
+				},
+				{
+					source: '\u200b·in-rail·h1',
+					target: 'ioredis',
+					width: 12,
+					stroke: '#14b8a6',
+				},
+			],
+		);
+		expect(plans).toHaveLength(1);
+		expect(plans[0]!.parent).toBe('src/lib/redis.ts');
+		expect(plans[0]!.packageName).toBe('ioredis');
+		expect(plans[0]!.width).toBe(12);
+		// Spans File x1 → package x0 (skips Imports rail x)
+		expect(plans[0]!.x0).toBe(104);
+		expect(plans[0]!.x1).toBe(300);
+	});
+
+	it('does not plan straighten for direct File→package (no pad)', () => {
+		const plans = planExternalStraightBands(
+			[
+				{
+					name: 'src/lib/redis.ts',
+					category: 'File',
+					x0: 100,
+					x1: 104,
+					y0: 40,
+					y1: 60,
+				},
+				{
+					name: 'ioredis',
+					category: 'External',
+					x0: 200,
+					x1: 204,
+					y0: 40,
+					y1: 52,
+				},
+			],
+			[
+				{
+					source: 'src/lib/redis.ts',
+					target: 'ioredis',
+					width: 12,
+				},
+			],
+		);
+		expect(plans).toHaveLength(0);
+	});
+
+	it('hide + straighten is safe on MiniEl fixture (no throw)', () => {
 		const holder = fixtureHolder();
-		markAlluvialTerminators(holder as unknown as HTMLElement, ['app/layout.tsx']);
+		expect(() => {
+			hideAlluvialRails(holder as unknown as HTMLElement);
+			straightenExternalPackageBands(holder as unknown as HTMLElement);
+		}).not.toThrow();
+	});
+
+	it('marks terminators with contrast classes; polish wires both', () => {
+		const holder = fixtureHolder();
+		// Reverse free sources → cyan class
+		markAlluvialTerminators(holder as unknown as HTMLElement, [
+			'app/layout.tsx',
+		]);
 		const term = holder.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
 		);
-		expect(term?.classList.contains('atlas-alluvial-terminator')).toBe(true);
+		expect(
+			term?.classList.contains('atlas-alluvial-export-terminator'),
+		).toBe(true);
+
+		// Package leaves → purple class
+		markAlluvialExportTerminators(holder as unknown as HTMLElement, [
+			'ioredis',
+		]);
+		const pkg = holder.querySelectorAll('g.node-group').find(
+			(g) => (g.__data__ as { name?: string })?.name === 'ioredis',
+		);
+		expect(
+			pkg?.classList.contains('atlas-alluvial-package-terminator'),
+		).toBe(true);
 
 		const holder2 = fixtureHolder();
 		polishAlluvialHolder(holder2 as unknown as HTMLElement, {
 			terminators: ['app/layout.tsx'],
+			exportTerminators: ['ioredis'],
 		});
 		const railG = holder2.querySelectorAll('g.node-group').find((g) =>
 			String((g.__data__ as { name?: string })?.name ?? '').includes('in-rail'),
@@ -424,17 +661,27 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		const term2 = holder2.querySelectorAll('g.node-group').find(
 			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
 		);
-		const pad = holder2.querySelectorAll('path.link').find((p) => {
-			const d = p.__data__ as { source?: { name?: string } };
-			return d?.source?.name?.includes('in-rail');
-		});
-		const outLink = holder2.querySelectorAll('path.link').find((p) => {
-			const d = p.__data__ as { target?: { name?: string } };
-			return String(d?.target?.name ?? '').includes('out-rail');
+		const pkg2 = holder2.querySelectorAll('g.node-group').find(
+			(g) => (g.__data__ as { name?: string })?.name === 'ioredis',
+		);
+		const outToDeep = holder2.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('out-rail') &&
+				d?.target?.name === 'src/types.ts'
+			);
 		});
 		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
-		expect(term2?.classList.contains('atlas-alluvial-terminator')).toBe(true);
-		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
-		expect(outLink?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+		expect(
+			term2?.classList.contains('atlas-alluvial-export-terminator'),
+		).toBe(true);
+		expect(
+			pkg2?.classList.contains('atlas-alluvial-package-terminator'),
+		).toBe(true);
+		// Out-rail free-source pads undrawn (terminator band cutoff)
+		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 	});
 });

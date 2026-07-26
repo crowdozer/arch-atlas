@@ -111,8 +111,10 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
-	/** Hub pad free-source display names (see AlluvialPayload.meta.terminators). */
+	/** Reverse free-source pad targets (meta.terminators). */
 	terminators?: string[];
+	/** Forward true leaves on Imports / External (meta.exportTerminators). */
+	exportTerminators?: string[];
 }): AlluvialPayload | null {
 	const {
 		heightPx,
@@ -125,6 +127,7 @@ export function buildAlluvialPayload(args: {
 		units = 'package imports',
 		ariaLabel,
 		terminators,
+		exportTerminators,
 	} = args;
 	if (!links.length) return null;
 
@@ -162,7 +165,10 @@ export function buildAlluvialPayload(args: {
 			alluvial: {
 				units,
 				nodes,
-				nodeAlignment: 'center',
+				// Carbon: only left|right override; default is justify which pushes
+				// leaf nodes (e.g. logger with no hub outs) to the rightmost column
+				// under External. left keeps depth = column (hub law).
+				nodeAlignment: 'left',
 			},
 			color: { scale: colorScale },
 			tooltip: {
@@ -177,6 +183,9 @@ export function buildAlluvialPayload(args: {
 			nodeRef,
 			nodeRank,
 			...(terminators?.length ? { terminators: [...terminators] } : {}),
+			...(exportTerminators?.length
+				? { exportTerminators: [...exportTerminators] }
+				: {}),
 		},
 	};
 }
@@ -224,13 +233,44 @@ export function isOutRailName(name: string): boolean {
 }
 
 /**
- * Import free-source scaffolding link — either end is an **in-rail**.
- * These bands are undrawn (ghost columns). Export File→out-rail→target
- * ribbons carry real File mass and must **not** match.
+ * Pad bands that should be undrawn (ghost columns).
+ *
+ * - Pure rail↔rail (in or out)
+ * - **External package hop pads**: parent → in-rail → External (topology only;
+ *   polish redraws a straight parent→package band)
+ * - **Reverse free-source pads**: any **out-rail** endpoint (hub only uses
+ *   out-rails for reverse free-source column alignment → undraw past/into
+ *   export-side terminators)
+ *
+ * Real file↔file / File→seed bands stay painted.
  */
-export function isImportPadScaffoldLink(source: string, target: string): boolean {
-	return isInRailName(source) || isInRailName(target);
+export function isImportPadScaffoldLink(
+	source: string,
+	target: string,
+	meta?: { sourceCategory?: string; targetCategory?: string },
+): boolean {
+	// Pure rail↔rail (either rail family)
+	if (isAlluvialRailName(source) && isAlluvialRailName(target)) return true;
+	// Reverse free-source scaffold (out-rail only role on tip)
+	if (isOutRailName(source) || isOutRailName(target)) return true;
+	// parent → in-rail (package External hop)
+	if (isInRailName(target)) return true;
+	// in-rail → External package/bucket
+	if (
+		isInRailName(source) &&
+		(meta?.targetCategory === 'External' ||
+			meta?.targetCategory === EXTERNAL_IMPORT_CATEGORY_SAFE)
+	) {
+		return true;
+	}
+	return false;
 }
+
+/**
+ * Local alias so alluvial.ts does not import fileHub (cycle risk).
+ * Must match {@link EXTERNAL_IMPORT_CATEGORY} in fileHub (`External`).
+ */
+const EXTERNAL_IMPORT_CATEGORY_SAFE = 'External';
 
 function linkEndsFromUnknown(
 	raw: unknown,

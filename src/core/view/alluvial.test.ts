@@ -13,6 +13,12 @@ import {
 	projectAlluvial,
 } from '@core/view/alluvial.ts';
 import {
+	carbonColumnHeader,
+	carbonSameColumn,
+	layoutAlluvialLikeCarbon,
+} from '@core/view/alluvialCarbonLayout.ts';
+import type { AlluvialPayload } from '@core/graph/types.ts';
+import {
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
@@ -345,6 +351,97 @@ describe('projectModuleFocus', () => {
 	});
 });
 
+describe('layoutAlluvialLikeCarbon (post-Carbon geometry)', () => {
+	function syntheticPayload(
+		nodes: { name: string; category: string }[],
+		links: { source: string; target: string; value: number }[],
+	): AlluvialPayload {
+		return {
+			data: links,
+			options: {
+				title: '',
+				theme: 'g100',
+				height: '400px',
+				animations: false,
+				toolbar: { enabled: false },
+				legend: { enabled: false, clickable: false },
+				accessibility: { svgAriaLabel: 'test' },
+				alluvial: {
+					units: 'edges',
+					nodes: nodes.map((n, rank) => ({ ...n, rank })),
+					nodeAlignment: 'left',
+				},
+				color: { scale: {} },
+				tooltip: { enabled: false },
+			},
+			meta: {
+				focus: { kind: 'file', id: 'f', label: 'f' },
+				nodeRef: {},
+				nodeRank: {},
+			},
+		};
+	}
+
+	function withAlign(
+		payload: AlluvialPayload,
+		nodeAlignment: 'left' | 'right' | 'center',
+	): AlluvialPayload {
+		return {
+			...payload,
+			options: {
+				...payload.options,
+				alluvial: { ...payload.options.alluvial, nodeAlignment },
+			},
+		};
+	}
+
+	it('justify (Carbon default): leaf logger snaps under External with ioredis', () => {
+		// Pad on package only; logger is a sink → justify pushes it rightmost
+		const base = syntheticPayload(
+			[
+				{ name: 'free', category: 'Exports' },
+				{ name: 'File', category: 'File' },
+				{ name: 'logger', category: 'Imports' },
+				{ name: 'rail', category: 'Imports' },
+				{ name: 'ioredis', category: 'External' },
+			],
+			[
+				{ source: 'free', target: 'File', value: 10 },
+				{ source: 'File', target: 'logger', value: 5 },
+				{ source: 'File', target: 'rail', value: 5 },
+				{ source: 'rail', target: 'ioredis', value: 5 },
+			],
+		);
+		// Carbon treats unknown/center as justify
+		const layout = layoutAlluvialLikeCarbon(withAlign(base, 'center'));
+		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(true);
+		expect(carbonColumnHeader(layout, 'logger')).toBe('External');
+		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
+	});
+
+	it('left align: logger stays Imports; ioredis External after pad', () => {
+		const base = syntheticPayload(
+			[
+				{ name: 'free', category: 'Exports' },
+				{ name: 'File', category: 'File' },
+				{ name: 'logger', category: 'Imports' },
+				{ name: 'rail', category: 'Imports' },
+				{ name: 'ioredis', category: 'External' },
+			],
+			[
+				{ source: 'free', target: 'File', value: 10 },
+				{ source: 'File', target: 'logger', value: 5 },
+				{ source: 'File', target: 'rail', value: 5 },
+				{ source: 'rail', target: 'ioredis', value: 5 },
+			],
+		);
+		const layout = layoutAlluvialLikeCarbon(withAlign(base, 'left'));
+		expect(carbonSameColumn(layout, 'logger', 'ioredis')).toBe(false);
+		expect(carbonColumnHeader(layout, 'logger')).toBe('Imports');
+		expect(carbonColumnHeader(layout, 'ioredis')).toBe('External');
+	});
+});
+
 describe('alluvial pad-rail tooltip hygiene', () => {
 	it('detects and classifies rail ids (in vs out)', () => {
 		expect(isAlluvialRailName('\u200b·in-rail·h2')).toBe(true);
@@ -358,21 +455,27 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 	});
 
 	/**
-	 * Paint law: only import free-source scaffolding is invisible pad-band.
-	 * Export File→out-rail→deep-target carries real File mass — not scaffold.
+	 * Paint law: pure rail↔rail + External package hop pads + out-rail free-source
+	 * pads undrawn. in-rail→non-External still paints. Real file edges paint.
 	 */
-	it('import pad scaffold vs export out-rail mass carriers', () => {
+	it('import pad scaffold vs forward mass carriers', () => {
 		const inRail = '\u200b·in-rail·h2';
 		const outRail = '\u200b·out-rail·h1';
 		const file = 'src/types.ts';
 		const focus = 'UserCard.tsx';
-		// Import free-source pads → scaffold
-		expect(isImportPadScaffoldLink(inRail, file)).toBe(true);
+		// Pure rail↔rail
 		expect(isImportPadScaffoldLink(inRail, '\u200b·in-rail·h1')).toBe(true);
-		// Export intermediate pads → paint-eligible (NOT scaffold)
-		expect(isImportPadScaffoldLink(focus, outRail)).toBe(false);
-		expect(isImportPadScaffoldLink(outRail, file)).toBe(false);
-		expect(isImportPadScaffoldLink(outRail, '\u200b·out-rail·h2')).toBe(false);
+		expect(isImportPadScaffoldLink(outRail, '\u200b·out-rail·h2')).toBe(true);
+		// External package hop pads (hub topology)
+		expect(isImportPadScaffoldLink(focus, inRail)).toBe(true);
+		expect(
+			isImportPadScaffoldLink(inRail, 'ioredis', { targetCategory: 'External' }),
+		).toBe(true);
+		// Reverse free-source out-rail pads undrawn (terminator cutoff)
+		expect(isImportPadScaffoldLink(outRail, file)).toBe(true);
+		expect(isImportPadScaffoldLink(focus, outRail)).toBe(true);
+		// in-rail → non-External file still paints (not package hop)
+		expect(isImportPadScaffoldLink(inRail, file)).toBe(false);
 		// Real edges
 		expect(isImportPadScaffoldLink(file, focus)).toBe(false);
 	});

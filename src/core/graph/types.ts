@@ -256,7 +256,12 @@ export type AlluvialPayload = {
 		alluvial: {
 			units: string;
 			nodes: AlluvialNode[];
-			nodeAlignment: 'center';
+			/**
+			 * Carbon only honors `left` | `right`; anything else falls through to
+			 * d3-sankey **justify** (leaves without outbound links snap to the
+			 * rightmost column). We send `left` so hub depth matches category columns.
+			 */
+			nodeAlignment: 'left' | 'right' | 'center';
 		};
 		color: { scale: Record<string, string> };
 		tooltip: { enabled: boolean };
@@ -269,10 +274,16 @@ export type AlluvialPayload = {
 		nodeRef: Record<string, AlluvialNodeRef>;
 		nodeRank: Record<string, number>;
 		/**
-		 * Hub reverse-hop display names that were **padded** (no outer reverse
-		 * parent / free-source for pad rails). Polish marks these as terminators;
-		 * never includes rail ids.
+		 * Reverse free-source pad targets (Exports* free sources, left).
+		 * Polish: **cyan** wrap (contrast on yellow export columns).
+		 * Never includes rail ids.
 		 */
 		terminators?: string[];
+		/**
+		 * Forward true leaves (Imports* / External, right) with no non-rail
+		 * out-edge. Polish: **yellow** wrap (contrast on cyan import columns).
+		 * Never includes rail ids. Field name is historical (`exportTerminators`).
+		 */
+		exportTerminators?: string[];
 	};
 };
