@@ -111,6 +111,8 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
+	/** Hub pad free-source display names (see AlluvialPayload.meta.terminators). */
+	terminators?: string[];
 }): AlluvialPayload | null {
 	const {
 		heightPx,
@@ -122,6 +124,7 @@ export function buildAlluvialPayload(args: {
 		startId,
 		units = 'package imports',
 		ariaLabel,
+		terminators,
 	} = args;
 	if (!links.length) return null;
 
@@ -173,24 +176,60 @@ export function buildAlluvialPayload(args: {
 			focus,
 			nodeRef,
 			nodeRank,
+			...(terminators?.length ? { terminators: [...terminators] } : {}),
 		},
 	};
 }
 
+/** Pad-rail side: import free-source scaffolding vs export intermediate mass. */
+export type AlluvialRailKind = 'in' | 'out';
+
 /**
- * Pad-rail node ids used for sankey layer alignment (not real importers).
- * Matches ZWSP names and value-suffixed tooltip forms.
+ * Normalize rail-ish labels (ZWSP prefix, Carbon "name (value)" suffix).
  */
-export function isAlluvialRailName(name: string): boolean {
-	const n = name
+export function normalizeAlluvialRailLabel(name: string): string {
+	return name
 		.replace(/^\u200b+/u, '')
 		.replace(/\s+\([\d,.]+[kKmM]?\)$/u, '')
 		.trim();
-	if (!n) return false;
-	if (n.includes('·in-rail') || n.includes('·out-rail')) return true;
-	if (n.startsWith('in-rail') || n.startsWith('out-rail')) return true;
-	// ·in-rail·h2
-	return /^(?:·)?(?:in|out)-rail(?:·h\d+)?$/iu.test(n);
+}
+
+/**
+ * Classify pad-rail node ids used for sankey layer alignment.
+ * - `in`  — import free-source scaffolding (ghost bars/bands hide)
+ * - `out` — export intermediate mass carriers (bands stay painted)
+ * Matches ZWSP names and value-suffixed tooltip forms.
+ */
+export function alluvialRailKind(name: string): AlluvialRailKind | null {
+	const n = normalizeAlluvialRailLabel(name);
+	if (!n) return null;
+	if (n.includes('·in-rail') || n.startsWith('in-rail')) return 'in';
+	if (n.includes('·out-rail') || n.startsWith('out-rail')) return 'out';
+	if (/^(?:·)?in-rail(?:·h\d+)?$/iu.test(n)) return 'in';
+	if (/^(?:·)?out-rail(?:·h\d+)?$/iu.test(n)) return 'out';
+	return null;
+}
+
+/** True for either in-rail or out-rail pad ids. */
+export function isAlluvialRailName(name: string): boolean {
+	return alluvialRailKind(name) !== null;
+}
+
+export function isInRailName(name: string): boolean {
+	return alluvialRailKind(name) === 'in';
+}
+
+export function isOutRailName(name: string): boolean {
+	return alluvialRailKind(name) === 'out';
+}
+
+/**
+ * Import free-source scaffolding link — either end is an **in-rail**.
+ * These bands are undrawn (ghost columns). Export File→out-rail→target
+ * ribbons carry real File mass and must **not** match.
+ */
+export function isImportPadScaffoldLink(source: string, target: string): boolean {
+	return isInRailName(source) || isInRailName(target);
 }
 
 function linkEndsFromUnknown(
@@ -224,8 +263,53 @@ function linkEndsFromUnknown(
 }
 
 /**
+ * Scrub pad-rail tokens from Carbon's default tooltip HTML when datum parse
+ * fails but the string still mentions in-rail / out-rail.
+ */
+function scrubRailTokensFromDefaultHTML(defaultHTML: string): string {
+	if (!defaultHTML || !/(?:in|out)-rail/i.test(defaultHTML)) return defaultHTML;
+	// Prefer the Carbon value cell text; else strip tags and scan.
+	const valueCell = defaultHTML.match(
+		/class=["']value["'][^>]*>([^<]+)</i,
+	);
+	const plain = (valueCell?.[1] ?? defaultHTML.replace(/<[^>]+>/g, ' '))
+		.replace(/\s+/g, ' ')
+		.trim();
+	// "·in-rail·h2 → file (57)" / "file → ·out-rail·h2 (3)"
+	const arrow = plain.match(
+		/^(.+?)\s*→\s*(.+?)(?:\s*\(([^)]*)\))?\s*$/,
+	);
+	if (arrow) {
+		const left = arrow[1]!.trim();
+		const right = arrow[2]!.trim();
+		const val = (arrow[3] ?? '').trim();
+		const leftRail = isAlluvialRailName(left);
+		const rightRail = isAlluvialRailName(right);
+		if (leftRail && rightRail) return '';
+		if (leftRail) {
+			const label = `→ ${escapeTooltipText(right)}${val ? ` (${escapeTooltipText(val)})` : ''}`;
+			return `<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">${label}</p></div></li></ul>`;
+		}
+		if (rightRail) {
+			const label = `${escapeTooltipText(left)} →${val ? ` (${escapeTooltipText(val)})` : ''}`;
+			return `<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">${label}</p></div></li></ul>`;
+		}
+	}
+	// Last resort: strip rail token substrings from the HTML text
+	const cleaned = defaultHTML
+		.replace(/\u200b?·?(?:in|out)-rail(?:·h\d+)?/giu, '')
+		.replace(/\s{2,}/g, ' ')
+		.replace(/\s*→\s*→/g, ' →')
+		.replace(/>\s*→/g, '>')
+		.replace(/→\s*</g, '<');
+	if (!cleaned.trim() || /^(?:<[^>]+>\s*)*$/.test(cleaned)) return '';
+	return cleaned;
+}
+
+/**
  * Carbon alluvial tooltip: strip pad-rail endpoints so bands never show
  * `·in-rail·h2 → app/…`. Rail→rail: empty (no tooltip).
+ * When datum parse fails, scrub rail tokens from defaultHTML as a fallback.
  */
 export function alluvialTooltipCustomHTML(
 	data: unknown,
@@ -235,7 +319,7 @@ export function alluvialTooltipCustomHTML(
 	const ends =
 		linkEndsFromUnknown(datum) ??
 		linkEndsFromUnknown(data);
-	if (!ends) return defaultHTML;
+	if (!ends) return scrubRailTokensFromDefaultHTML(defaultHTML);
 
 	const sRail = isAlluvialRailName(ends.source);
 	const tRail = isAlluvialRailName(ends.target);

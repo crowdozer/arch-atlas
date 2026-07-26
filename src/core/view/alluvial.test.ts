@@ -7,6 +7,9 @@ import { indexFiles } from '@core/index.ts';
 import {
 	alluvialTooltipCustomHTML,
 	isAlluvialRailName,
+	isImportPadScaffoldLink,
+	isInRailName,
+	isOutRailName,
 	projectAlluvial,
 } from '@core/view/alluvial.ts';
 import {
@@ -343,10 +346,35 @@ describe('projectModuleFocus', () => {
 });
 
 describe('alluvial pad-rail tooltip hygiene', () => {
-	it('detects rail ids', () => {
+	it('detects and classifies rail ids (in vs out)', () => {
 		expect(isAlluvialRailName('\u200b·in-rail·h2')).toBe(true);
 		expect(isAlluvialRailName('·in-rail·h2 (57)')).toBe(true);
+		expect(isAlluvialRailName('\u200b·out-rail·h1')).toBe(true);
 		expect(isAlluvialRailName('app/dashboard/page.tsx')).toBe(false);
+		expect(isInRailName('\u200b·in-rail·h2')).toBe(true);
+		expect(isInRailName('\u200b·out-rail·h1')).toBe(false);
+		expect(isOutRailName('\u200b·out-rail·h1')).toBe(true);
+		expect(isOutRailName('\u200b·in-rail·h2')).toBe(false);
+	});
+
+	/**
+	 * Paint law: only import free-source scaffolding is invisible pad-band.
+	 * Export File→out-rail→deep-target carries real File mass — not scaffold.
+	 */
+	it('import pad scaffold vs export out-rail mass carriers', () => {
+		const inRail = '\u200b·in-rail·h2';
+		const outRail = '\u200b·out-rail·h1';
+		const file = 'src/types.ts';
+		const focus = 'UserCard.tsx';
+		// Import free-source pads → scaffold
+		expect(isImportPadScaffoldLink(inRail, file)).toBe(true);
+		expect(isImportPadScaffoldLink(inRail, '\u200b·in-rail·h1')).toBe(true);
+		// Export intermediate pads → paint-eligible (NOT scaffold)
+		expect(isImportPadScaffoldLink(focus, outRail)).toBe(false);
+		expect(isImportPadScaffoldLink(outRail, file)).toBe(false);
+		expect(isImportPadScaffoldLink(outRail, '\u200b·out-rail·h2')).toBe(false);
+		// Real edges
+		expect(isImportPadScaffoldLink(file, focus)).toBe(false);
 	});
 
 	it('strips rail endpoint from band tooltip', () => {
@@ -375,5 +403,17 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 			},
 		);
 		expect(html).toBe('');
+	});
+
+	it('scrubs rail from defaultHTML when datum parse fails', () => {
+		// Carbon sometimes omits parseable datum; belt-and-suspenders on default HTML
+		const html = alluvialTooltipCustomHTML(
+			null,
+			'<ul class="multi-tooltip"><li><div class="datapoint-tooltip"><p class="value">·in-rail·h2 → app/dashboard/page.tsx (57)</p></div></li></ul>',
+			null,
+		);
+		expect(html).toContain('app/dashboard/page.tsx');
+		expect(html).toContain('57');
+		expect(html).not.toMatch(/in-rail/i);
 	});
 });

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
 	centerHubFileSpine,
+	hideAlluvialRails,
 	isExportSideCategory,
 	isFileCategory,
 	isHubFileSpine,
 	isImportRailLabel,
+	markAlluvialTerminators,
+	polishAlluvialHolder,
 	recomputeLinkBreadths,
 	rightTruncateLabel,
 } from './alluvialTopPack.ts';
@@ -129,10 +132,309 @@ describe('isExportSideCategory', () => {
 });
 
 describe('isFileCategory / isImportRailLabel', () => {
-	it('identifies File category and import rails', () => {
+	it('identifies File category and import (in-rail) labels only', () => {
 		expect(isFileCategory('File')).toBe(true);
 		expect(isFileCategory('Imports')).toBe(false);
 		expect(isImportRailLabel('\u200b·in-rail·h2')).toBe(true);
+		expect(isImportRailLabel('\u200b·out-rail·h1')).toBe(false);
 		expect(isImportRailLabel('src/lib/x.ts')).toBe(false);
+	});
+});
+
+/**
+ * Minimal DOM tree for polish unit tests — **no Carbon mount**, no jsdom.
+ * Implements the subset of Element APIs used by hide/mark/polish.
+ */
+class MiniClassList {
+	private set = new Set<string>();
+	constructor(initial: string[] = []) {
+		for (const c of initial) this.set.add(c);
+	}
+	add(...tokens: string[]): void {
+		for (const t of tokens) if (t) this.set.add(t);
+	}
+	contains(token: string): boolean {
+		return this.set.has(token);
+	}
+	toString(): string {
+		return [...this.set].join(' ');
+	}
+}
+
+class MiniEl {
+	tagName: string;
+	classList: MiniClassList;
+	children: MiniEl[] = [];
+	parentElement: MiniEl | null = null;
+	textContent = '';
+	style: { display?: string; overflow?: string; fill?: string; stroke?: string } = {};
+	attrs = new Map<string, string>();
+	__data__?: unknown;
+	id = '';
+
+	constructor(tag: string, classNames: string[] = []) {
+		this.tagName = tag.toUpperCase();
+		this.classList = new MiniClassList(classNames);
+	}
+
+	appendChild(child: MiniEl): MiniEl {
+		child.parentElement = this;
+		this.children.push(child);
+		return child;
+	}
+
+	setAttribute(name: string, value: string): void {
+		this.attrs.set(name, value);
+		if (name === 'id') this.id = value;
+		if (name === 'class') {
+			this.classList = new MiniClassList(value.split(/\s+/).filter(Boolean));
+		}
+	}
+
+	getAttribute(name: string): string | null {
+		return this.attrs.has(name) ? this.attrs.get(name)! : null;
+	}
+
+	removeAttribute(name: string): void {
+		this.attrs.delete(name);
+	}
+
+	querySelectorAll(sel: string): MiniEl[] {
+		return this.collect().filter((el) => el.matches(sel));
+	}
+
+	querySelector(sel: string): MiniEl | null {
+		return this.querySelectorAll(sel)[0] ?? null;
+	}
+
+	private collect(): MiniEl[] {
+		const out: MiniEl[] = [];
+		const walk = (el: MiniEl) => {
+			for (const c of el.children) {
+				out.push(c);
+				walk(c);
+			}
+		};
+		walk(this);
+		return out;
+	}
+
+	/** Very small selector subset: tag, .class, tag.class, [id*='x'], compound space. */
+	matches(sel: string): boolean {
+		const parts = sel.trim().split(/\s+/);
+		if (parts.length > 1) {
+			// descendant: not used from query root of self for compound in our code
+			return false;
+		}
+		const s = parts[0]!;
+		// attribute contains: g[id*="alluvial-node-title"] or g[id*='alluvial-node-title']
+		const attr = s.match(/^(\w+)?\[id\*=['"]([^'"]+)['"]\]$/);
+		if (attr) {
+			const tag = attr[1];
+			const needle = attr[2]!;
+			if (tag && this.tagName !== tag.toUpperCase()) return false;
+			return this.id.includes(needle) || (this.getAttribute('id') ?? '').includes(needle);
+		}
+		const m = s.match(/^(\w+)?(?:\.([\w-]+))?$/);
+		if (!m) return false;
+		const tag = m[1];
+		const cls = m[2];
+		if (tag && this.tagName !== tag.toUpperCase()) return false;
+		if (cls && !this.classList.contains(cls)) return false;
+		return true;
+	}
+}
+
+/**
+ * DOM fixture for pad-rail / terminator polish — **no Carbon mount**.
+ * Gates class contract: rail hide, in-rail pad-band, out-rail paint, terminator wrap.
+ */
+describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () => {
+	function fixtureHolder(): MiniEl {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+
+		// Real importer (terminator)
+		const term = new MiniEl('g', ['node-group']);
+		term.__data__ = {
+			name: 'app/layout.tsx',
+			category: 'Imports',
+			x0: 0,
+			x1: 10,
+			y0: 0,
+			y1: 20,
+		};
+		term.appendChild(new MiniEl('rect', ['node']));
+		const termText = new MiniEl('text', ['node-text']);
+		termText.textContent = 'app/layout.tsx (3)';
+		term.appendChild(termText);
+		svg.appendChild(term);
+
+		// Import pad rail node
+		const rail = new MiniEl('g', ['node-group']);
+		rail.__data__ = {
+			name: '\u200b·in-rail·h2',
+			category: 'Import hop 2',
+			x0: 0,
+			x1: 10,
+			y0: 30,
+			y1: 50,
+		};
+		rail.appendChild(new MiniEl('rect', ['node']));
+		const railText = new MiniEl('text', ['node-text']);
+		railText.textContent = '\u200b·in-rail·h2 (57)';
+		rail.appendChild(railText);
+		svg.appendChild(rail);
+
+		// Export out-rail node (bar hidden; bands stay painted)
+		const outRail = new MiniEl('g', ['node-group']);
+		outRail.__data__ = {
+			name: '\u200b·out-rail·h1',
+			category: 'Exports',
+			x0: 100,
+			x1: 110,
+			y0: 0,
+			y1: 20,
+		};
+		outRail.appendChild(new MiniEl('rect', ['node']));
+		const outText = new MiniEl('text', ['node-text']);
+		outText.textContent = '\u200b·out-rail·h1 (11)';
+		outRail.appendChild(outText);
+		svg.appendChild(outRail);
+
+		// Import pad band: in-rail → file (invisible scaffold)
+		const padPath = new MiniEl('path', ['link']);
+		padPath.__data__ = {
+			source: { name: '\u200b·in-rail·h2' },
+			target: { name: 'app/layout.tsx' },
+			y0: 10,
+			y1: 10,
+			width: 3,
+		};
+		svg.appendChild(padPath);
+
+		// Export mass: File → out-rail (must stay painted)
+		const fileToOut = new MiniEl('path', ['link']);
+		fileToOut.__data__ = {
+			source: { name: 'UserCard.tsx' },
+			target: { name: '\u200b·out-rail·h1' },
+			y0: 10,
+			y1: 10,
+			width: 11,
+		};
+		svg.appendChild(fileToOut);
+
+		// Export mass: out-rail → deep target (must stay painted)
+		const outToDeep = new MiniEl('path', ['link']);
+		outToDeep.__data__ = {
+			source: { name: '\u200b·out-rail·h1' },
+			target: { name: 'src/types.ts' },
+			y0: 10,
+			y1: 10,
+			width: 11,
+		};
+		svg.appendChild(outToDeep);
+
+		// Real band: importer → File
+		const realPath = new MiniEl('path', ['link']);
+		realPath.__data__ = {
+			source: { name: 'app/layout.tsx' },
+			target: { name: 'src/lib/redis.ts' },
+			y0: 10,
+			y1: 10,
+			width: 3,
+		};
+		svg.appendChild(realPath);
+
+		return holder;
+	}
+
+	it('hides rail nodes; in-rail pad-band; out-rail links stay paint-eligible', () => {
+		const holder = fixtureHolder();
+		hideAlluvialRails(holder as unknown as HTMLElement);
+
+		const railG = holder.querySelectorAll('g.node-group').find((g) =>
+			String((g.__data__ as { name?: string })?.name ?? '').includes('in-rail'),
+		);
+		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
+
+		const outRailG = holder.querySelectorAll('g.node-group').find((g) =>
+			String((g.__data__ as { name?: string })?.name ?? '').includes('out-rail'),
+		);
+		// Out-rail **nodes** still hide chrome
+		expect(outRailG?.classList.contains('atlas-alluvial-rail')).toBe(true);
+
+		const pad = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as { source?: { name?: string } };
+			return d?.source?.name?.includes('in-rail');
+		});
+		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		expect(pad?.getAttribute('pointer-events')).toBe('none');
+
+		// Law: export out-rail mass carriers must NOT be pad-band
+		const fileToOut = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				d?.source?.name === 'UserCard.tsx' &&
+				String(d?.target?.name ?? '').includes('out-rail')
+			);
+		});
+		expect(fileToOut?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+		expect(fileToOut?.getAttribute('pointer-events')).toBeNull();
+
+		const outToDeep = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as {
+				source?: { name?: string };
+				target?: { name?: string };
+			};
+			return (
+				String(d?.source?.name ?? '').includes('out-rail') &&
+				d?.target?.name === 'src/types.ts'
+			);
+		});
+		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+		expect(outToDeep?.getAttribute('pointer-events')).toBeNull();
+
+		const real = holder.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as { source?: { name?: string } };
+			return d?.source?.name === 'app/layout.tsx';
+		});
+		expect(real?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
+	});
+
+	it('marks terminators from meta names; polish wires both', () => {
+		const holder = fixtureHolder();
+		markAlluvialTerminators(holder as unknown as HTMLElement, ['app/layout.tsx']);
+		const term = holder.querySelectorAll('g.node-group').find(
+			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
+		);
+		expect(term?.classList.contains('atlas-alluvial-terminator')).toBe(true);
+
+		const holder2 = fixtureHolder();
+		polishAlluvialHolder(holder2 as unknown as HTMLElement, {
+			terminators: ['app/layout.tsx'],
+		});
+		const railG = holder2.querySelectorAll('g.node-group').find((g) =>
+			String((g.__data__ as { name?: string })?.name ?? '').includes('in-rail'),
+		);
+		const term2 = holder2.querySelectorAll('g.node-group').find(
+			(g) => (g.__data__ as { name?: string })?.name === 'app/layout.tsx',
+		);
+		const pad = holder2.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as { source?: { name?: string } };
+			return d?.source?.name?.includes('in-rail');
+		});
+		const outLink = holder2.querySelectorAll('path.link').find((p) => {
+			const d = p.__data__ as { target?: { name?: string } };
+			return String(d?.target?.name ?? '').includes('out-rail');
+		});
+		expect(railG?.classList.contains('atlas-alluvial-rail')).toBe(true);
+		expect(term2?.classList.contains('atlas-alluvial-terminator')).toBe(true);
+		expect(pad?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
+		expect(outLink?.classList.contains('atlas-alluvial-pad-band')).toBe(false);
 	});
 });

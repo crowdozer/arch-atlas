@@ -214,6 +214,8 @@ export function projectFileHub(
 
 	// Shared display-name registry so import/export sides never collide
 	const usedNames = new Set<string>([fileLabel]);
+	/** Reverse-hop display names that received free-source pad rails. */
+	const terminators: string[] = [];
 
 	// --- left: reverse BFS (importers) ---
 	if (inEdges.length) {
@@ -235,7 +237,7 @@ export function projectFileHub(
 				usedNames,
 			});
 		} else {
-			addImportRings({
+			const importTerminators = addImportRings({
 				graph,
 				fileId,
 				fileLabel,
@@ -251,6 +253,7 @@ export function projectFileHub(
 				usedNames,
 				classicLabels,
 			});
+			terminators.push(...importTerminators);
 		}
 	}
 
@@ -333,6 +336,7 @@ export function projectFileHub(
 		startId: fileId,
 		units,
 		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
+		terminators: terminators.length ? terminators : undefined,
 	});
 }
 
@@ -421,6 +425,9 @@ function edgeWeightIntoSet(
  * Reverse multi-hop: outer importers → … → Imports (dist-1) → File.
  * Mass = focus-incident reverse edges, routed outward for structure.
  * Outer hops ranked by connectivity into the kept inner ring.
+ *
+ * Returns display names of reverse-hop files that were **padded** (no outer
+ * reverse parent) — hub terminators for polish chrome.
  */
 function addImportRings(
 	args: LinkBuilder & {
@@ -432,7 +439,7 @@ function addImportRings(
 		plainHopLabels?: boolean;
 		classicLabels?: Map<string, string>;
 	},
-): void {
+): string[] {
 	const {
 		graph,
 		fileId,
@@ -452,7 +459,7 @@ function addImportRings(
 	const revAdj = fileImportedByAdj(graph); // file → who imports it
 	const { dist, maxHops } = fileDistances(graph, fileId, revAdj);
 	const radiusL = Math.min(hubRadius, maxHops);
-	if (radiusL < 1) return;
+	if (radiusL < 1) return [];
 
 	// Focus-incident mass on dist-1 importers
 	const seedMass = new Map<string, number>();
@@ -579,6 +586,7 @@ function addImportRings(
 
 	// Pad short reverse paths so every BFS dist shares one sankey column.
 	// Without this, dist-1 sources sit beside hop-2 sources → dual "Imports" headers.
+	const terminators: string[] = [];
 	if (radiusL >= 2) {
 		ensureImportRails(nodeMeta, nodeRef, radiusL);
 		// Display names that already receive a real outer→inner reverse edge
@@ -598,6 +606,7 @@ function addImportRings(
 			}
 		}
 
+		const terminatorSet = new Set<string>();
 		for (let d = 1; d <= radiusL; d++) {
 			for (const f of filesAt.get(d) ?? []) {
 				const m = mass.get(f) ?? 0;
@@ -605,10 +614,23 @@ function addImportRings(
 				const lab = display.get(f);
 				if (!lab) continue;
 				if (receivesOuter.has(lab)) continue;
-				padImportRailsInto(addLink, lab, d, radiusL, m);
+				// Free-source: pad short paths to radius (no-op when d >= radiusL).
+				if (d < radiusL) {
+					padImportRailsInto(addLink, lab, d, radiusL, m);
+					// Only real file leaves (not rails / overflow buckets).
+					if (
+						nodeRef[lab]?.kind === 'file' &&
+						!lab.includes('·in-rail') &&
+						!lab.includes('·out-rail')
+					) {
+						terminatorSet.add(lab);
+					}
+				}
 			}
 		}
+		terminators.push(...terminatorSet);
 	}
+	return terminators;
 }
 
 /** Register shared import rails (hidden labels) for stages 2..radius. */

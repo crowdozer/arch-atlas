@@ -11,7 +11,11 @@
 
 import { toString } from '@carbon/icon-helpers';
 import Document16 from '@carbon/icons/es/document/16.js';
-import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import {
+	isAlluvialRailName,
+	isImportPadScaffoldLink,
+	isInRailName,
+} from '@core/view/alluvial.ts';
 
 /** Max visible characters for node name (value suffix kept). Right end wins. */
 export const ALLUVIAL_LABEL_MAX_CHARS = 36;
@@ -181,14 +185,16 @@ export function rightTruncateLabel(text: string, maxChars: number): string {
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
  * Full original string goes on title + aria-label for hover/a11y.
  */
-/** Prefer {@link isAlluvialRailName} — same predicate (pad-rail ids). */
+/** Prefer {@link isInRailName} — import free-source pad labels. */
 export function isImportRailLabel(name: string): boolean {
-	return isAlluvialRailName(name);
+	return isInRailName(name);
 }
 
 /**
- * Hide pad-rail **nodes** (unlabeled bars on outer hops) and mute rail→rail
- * bands. Link tooltips for rail→file are cleaned via {@link alluvialTooltipCustomHTML}.
+ * Hide pad-rail **nodes** (in-rail and out-rail bars/chips).
+ * Undraw **import free-source scaffolding bands only** (either end is in-rail).
+ * Export File→out-rail→deep-target ribbons stay painted (real File mass).
+ * Tooltips still scrub rail names via {@link alluvialTooltipCustomHTML}.
  */
 export function hideAlluvialRails(holder: HTMLElement): void {
 	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
@@ -228,7 +234,7 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 		}
 	}
 
-	// Rail→rail ribbons are pure scaffolding — no hover/tooltip
+	// Import free-source scaffolding only — NOT export out-rail mass carriers
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<{
 			source?: { name?: string } | string;
@@ -242,10 +248,35 @@ export function hideAlluvialRails(holder: HTMLElement): void {
 			typeof link?.target === 'string'
 				? link.target
 				: (link?.target?.name ?? '');
-		if (isAlluvialRailName(sn) && isAlluvialRailName(tn)) {
+		if (!isImportPadScaffoldLink(sn, tn)) continue;
+		path.classList.add('atlas-alluvial-pad-band');
+		path.setAttribute('pointer-events', 'none');
+		// in-rail → in-rail pure scaffolding
+		if (isInRailName(sn) && isInRailName(tn)) {
 			path.classList.add('atlas-alluvial-rail-link');
-			path.setAttribute('pointer-events', 'none');
 		}
+	}
+}
+
+/**
+ * Mark reverse-hop free-source files that were pad targets (hub terminators).
+ * CSS applies yellow stroke wrap; does not override File purple spine.
+ */
+export function markAlluvialTerminators(
+	holder: HTMLElement,
+	terminators: readonly string[] | undefined,
+): void {
+	if (!terminators?.length) return;
+	const set = new Set(terminators);
+	for (const el of holder.querySelectorAll<SVGGElement>('g.node-group')) {
+		const d = readData<{ name?: string }>(el);
+		const name = typeof d?.name === 'string' ? d.name : '';
+		if (!name || !set.has(name)) continue;
+		// Never treat rails as terminators; never fight File spine
+		if (isAlluvialRailName(name)) continue;
+		const cat = (d as { category?: string }).category;
+		if (cat === 'File') continue;
+		el.classList.add('atlas-alluvial-terminator');
 	}
 }
 
@@ -426,6 +457,7 @@ export function injectFileHeaderIcon(textEl: SVGTextElement): void {
 
 /**
  * Center hub File spine, highlight File column, right-truncate labels, recolor exports.
+ * Hides pad rails / pad bands; marks hub terminators from meta.
  */
 export function polishAlluvialHolder(
 	holder: HTMLElement,
@@ -435,11 +467,14 @@ export function polishAlluvialHolder(
 		centerHubFile?: boolean;
 		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
 		labelMaxChars?: number;
+		/** Hub meta.terminators — reverse-hop free-source pad targets. */
+		terminators?: readonly string[];
 	},
 ): void {
 	topPackAlluvialHolder(holder, { centerHubFile: opts?.centerHubFile });
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	hideAlluvialRails(holder);
+	markAlluvialTerminators(holder, opts?.terminators);
 	highlightFileSpine(holder);
 	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
 	const svg = holder.querySelector('svg');

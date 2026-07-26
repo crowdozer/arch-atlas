@@ -12,6 +12,11 @@ import {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 import {
+	isAlluvialRailName,
+	isImportPadScaffoldLink,
+	isOutRailName,
+} from '@core/view/alluvial.ts';
+import {
 	exportHopCategory,
 	importHopCategory,
 	preferFileHubView,
@@ -208,6 +213,45 @@ describe('projectFileHub demo-next-complex', () => {
 	it('returns null for missing file', () => {
 		expect(projectFileHub(graph, 'nope/missing.ts')).toBeNull();
 	});
+
+	/**
+	 * Observability for ghost pad-rail chrome (redis Import hop 2/3).
+	 * No Carbon mount — gates payload contract only: rails exist for layout;
+	 * terminators list padded free-source files (not rail ids).
+	 */
+	it('redis depth 3: pad rails exist; terminators are non-rail files in nodeRef', () => {
+		const id = 'src/lib/redis.ts';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			weightAxis: 'import-edges',
+			maxImporters: 48,
+			maxDeps: 48,
+		})!;
+		expect(payload).not.toBeNull();
+
+		const nodeNames = payload.options.alluvial.nodes.map((n) => n.name);
+		const linkNames = payload.data.flatMap((l) => [l.source, l.target]);
+		const allNames = [...nodeNames, ...linkNames];
+		const rails = allNames.filter((n) => isAlluvialRailName(n));
+		expect(rails.length, 'expected import pad rails at depth 3').toBeGreaterThan(0);
+		expect(
+			rails.some((r) => r.includes('in-rail')),
+			'import-side rails',
+		).toBe(true);
+
+		const terminators = payload.meta.terminators ?? [];
+		expect(terminators.length, 'terminators non-empty for redis pads').toBeGreaterThan(
+			0,
+		);
+		for (const t of terminators) {
+			expect(isAlluvialRailName(t), `terminator must not be rail: ${t}`).toBe(
+				false,
+			);
+			const ref = payload.meta.nodeRef[t];
+			expect(ref, `terminator ${t} in nodeRef`).toBeTruthy();
+			expect(ref!.kind, `terminator ${t} is a file`).toBe('file');
+		}
+	});
 });
 
 describe('projectFileHub dual-hop radius (synthetic chain)', () => {
@@ -379,6 +423,22 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		const focus = payload.meta.focus.label;
 		const { depMass } = hubIncidentMass(payload, focus);
 		expect(depMass).toBe(fileOutDegree(simpleGraph, id));
+
+		// Paint law: export File→out-rail→deep-target links exist and are NOT
+		// import free-source scaffold (must remain paint-eligible under polish).
+		const outRailLinks = payload.data.filter(
+			(l) => isOutRailName(l.source) || isOutRailName(l.target),
+		);
+		expect(
+			outRailLinks.length,
+			'UserCard depth 3 should pad export mass through out-rails',
+		).toBeGreaterThan(0);
+		for (const l of outRailLinks) {
+			expect(
+				isImportPadScaffoldLink(l.source, l.target),
+				`export pad must not be import scaffold: ${l.source}→${l.target}`,
+			).toBe(false);
+		}
 	});
 
 	function packageNodes(
