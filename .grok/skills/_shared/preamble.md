@@ -16,7 +16,7 @@ stay pure; ship only stitches them.
 ## Workspace
 
 - Repo: **arch-atlas**
-- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); alluvial stage in `src/stage/` (`@stage` — Carbon mount/polish/focus); web host in `src/client/` (composition root + paint modules); agent CLI host in `src/cli/` (`npm run atlas` / bin `arch-atlas` — dir|zip → Estimate JSON, no raw source). Later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`extension/` not landed** (dual-host partial — shell + stage web-in-process + CLI injector; VS Code still open)
+- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); alluvial stage in `src/stage/` (`@stage` — Carbon mount/polish/focus); web host in `src/client/` (composition root + paint modules); agent CLI host in `src/cli/` (`npm run atlas` / bin `arch-atlas` — dir|zip → agent JSON, no raw source; **digest defaults Exact** mass, topology Estimate). Later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`extension/` not landed** (dual-host partial — shell + stage web-in-process + CLI injector; VS Code still open)
 - Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → catalog/heuristics → suggested alluvial atlas views (source stays on-device)
 - Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
 - Mode: local `npm run dev` (Astro static + client index); no remote source upload
@@ -116,7 +116,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- digest\|tree\|file\|impact …` | Agent CLI lens (dir/ZIP or two git refs → Estimate JSON; see README) |
+| `npm run atlas -- digest\|tree\|file\|impact …` | Agent CLI lens (dir/ZIP or two git refs → agent JSON; digest Exact-default; see README) |
 | `npm run atlas -- impact . --base <ref> --head <ref>` | Import-topology impact; cheatsheet [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 

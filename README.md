@@ -41,17 +41,19 @@ npm run build
 
 ## Agent CLI (local lens)
 
-Third host over pure core: directory or ZIP → JSON (no raw source). Same
-Level-1 **Estimate** honesty as the web app (static JS/TS + Python + Astro
-script-island import graph; not
-LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
-`arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`,
-`arch-atlas.agent-impact.v1` (two git refs → topology delta).
+Third host over pure core: directory or ZIP → JSON (no raw source). Level-1
+static import graph (JS/TS + Python + Astro script islands); not LSP / not
+tree-shake. **`digest` defaults Exact (export-surface mass)** when the engine
+loads; topology bins stay Estimate either way. Schemas:
+`arch-atlas.agent-digest.v1`, `arch-atlas.agent-tree.v1`,
+`arch-atlas.agent-file.v1`, `arch-atlas.agent-impact.v1` (two git refs →
+topology delta). Full honesty:
+[.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md).
 
 ```bash
 # via npm script (recommended in-repo)
-npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
-npm run atlas -- tree   <dir|zip> [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--estimate|--exact|--exact-local] [--out file.json]
+npm run atlas -- tree   <dir|zip> [--max-depth N] [--omit GLOB]… [--tree-full] [--out file.json]
 npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 npm run atlas -- impact <git-repo> --base <ref> --head <ref> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
@@ -65,6 +67,13 @@ npm run atlas -- digest . --omit fixtures --out product.json
 npm run atlas -- digest . --omit=**/fixtures --omit=**/fixtures/**
 npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
 
+# estimate-only digest (opt out of default Exact mass)
+npm run atlas -- digest . --omit fixtures --estimate --out runtime.json
+
+# tree: default is summary directory rolls; full leaves on request
+npm run atlas -- tree . --out /tmp/tree-summary.json
+npm run atlas -- tree . --tree-full --out /tmp/tree-full.json
+
 # import-topology impact of a commit / branch (git archive both sides; no dirty tree)
 npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
 npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/impact.json
@@ -74,44 +83,75 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 | ---- | ------- |
 | `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples. Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
-| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. |
+| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. Omitted targets that other files still import stamp `toKind: 'omitted'` (not `unresolved`). |
 | `--base <ref>` / `--head <ref>` | **Required** for `impact`: git refs to compare (materialized via `git archive`). |
-| `--exact` | **Exact (export surface)** for digest mass lens (see below). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. **Ignored** for `impact` (topology-only). |
-| `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only). |
+| `--estimate` | **Digest only:** skip Exact mass (estimate-only `fileLoc` / empty publicMass & icebergs). |
+| `--exact` | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/impact: no mass overlay (warn if passed). |
+| `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only); also fail-closed. |
+| `--tree-full` | **Tree only:** full verbose file leaves. Default tree mode is **summary** (directory rolls with `fileCount` / `sourceCount`; leaves only for small folders or deep paths). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
 | `-h`, `--help` | Usage. |
+
+### Digest Exact default
+
+- **Default** for `digest`: try Exact export-surface mass. Soft-fallback if the
+  engine cannot load → warning + estimate digest (exit **0**).
+- **`--estimate`**: opt out (estimate-only mass).
+- **`--exact` / `--exact-local`**: fail-closed (exit **1** on engine failure).
+- **tree / file / impact**: topology-only (Exact mass never applied). Passing
+  `--exact` only warns that Exact is digest mass.
+
+Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
+**`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile`
+under `node_modules/`), not a vendored `typescript.js`; else CDN (jsDelivr /
+unpkg) unless `--exact-local`.
+
+**Honesty:** Exact does **not** re-index the graph. `surfaceLoc` is
+export-declaration **span** coverage, not public-API member surface. Web UI
+Exact remains estimate-first / opt-in (CLI default does not flip web).
 
 **Impact** (`arch-atlas.agent-impact.v1`): delta-first topology report (summary
 delta, files/packages added/removed, edges added/removed, degree/blast movers).
 No raw source; no dual digests. Large output → read order and recipes in
 [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md).
 
-Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
-**`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile` under
-`node_modules/`), not a vendored `typescript.js`; else CDN (jsDelivr / unpkg) unless
-`--exact-local`.
+### Agent digest fields (high level)
+
+Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
+
+| Field | Meaning |
+| ----- | ------- |
+| `scope` | Stamp: `omit`, `includeTests`, `exactRequested` / `exactApplied`, `feedKind` (`directory` \| `zip`). Also on `file` reports. |
+| `catalog.entrypoints` / `catalog.roots` | Starts split: declared-ish entrypoints vs orphan roots. `catalog.starts` remains the merged list (entrypoints then roots). |
+| `summary.externalPackageCount` | Alias of external `packageCount` (npm/external leaves — not monorepo package tally). |
+| Graph edges `typeOnly` | Present when `import type` / `export type … from` (best-effort; `import { type X }` may still be value form). Ranking prefers runtime edges. |
+| Edge `toKind: 'omitted'` | Target missing because feed `--omit`, not true unresolved. |
+| Hotspot `rankScore` | Sort key after role adjustments (e.g. barrel demotion). Prefer over raw `edgeCount`. Dual degrees: edge-record `inDegree`/`outDegree` + unique `uniqueIn`/`uniqueOut`. |
+| Catalog `roles` | **Inferred** only (`test` / `debug` / `barrel` / `entrypoint` / `module`) — never observed topology. |
+| File report neighbors | Arrays kept + `importsTotal` / `importersTotal` / `truncated` when capped by `--limit`. |
 
 ### Agent digest catalog bins
 
-`digest` JSON (`arch-atlas.agent-digest.v1`) includes the map-catalog ranking
-bins. Estimate is the default; `--exact` is an export-surface **overlay** (not a
-graph re-index).
+`digest` JSON includes the map-catalog ranking bins. Default CLI digest applies
+Exact mass when available; `--estimate` keeps estimate mass. Exact is always an
+export-surface **overlay** (not a graph re-index).
 
-| Field | Estimate | With `--exact` |
-| ----- | -------- | -------------- |
+| Field | Estimate (`--estimate` or soft-fallback) | Exact applied (default digest) |
+| ----- | ---------------------------------------- | ------------------------------ |
 | `catalog.fileLoc` | Whole-file LOC ranking | Re-ranked by **export-surface** LOC (`analysis.locMetric: export-surface`) |
 | `catalogEstimateFileLoc` | omitted | Whole-file File LOC retained for comparison |
-| `catalog.publicMass` | `[]` | High surface/whole ratio (export-surface honesty) |
-| `catalog.icebergs` | `[]` | Large private body under smaller surface |
+| `catalog.publicMass` | `[]` | High surface/whole ratio (JS/TS only; zero-surface / debug paths gated) |
+| `catalog.icebergs` | `[]` | Large private body under smaller surface (same gates) |
 | `catalog.spines` | Topology ranking (+ `analysis.spineFormula`) | Same topology (formula stamp unchanged by Exact) |
-| Other bins (starts, hotspots, blast, …) | Estimate graph | Unchanged topology |
+| Other bins (starts, hotspots, blast, …) | Estimate graph + ranking honesty | Topology unchanged; ranking uses unique/runtime preference |
 
 Spines answer cross-cutting fan-in / module diversity (formula chooser on web;
 default `modules-then-in` in digest). Public mass and icebergs need Exact; File
 LOC on the **web map catalog** stays whole-file even when Exact is on (Exact
 splits “big surface” vs “private body” into the mass bins instead of rewriting
-File LOC). Full honesty ladder:
+File LOC). When Exact is on, analysis may include `surfaceMetricNote`
+(surfaceLoc ≠ public API). Full honesty ladder:
 [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md).
 
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and

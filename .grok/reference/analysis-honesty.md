@@ -11,7 +11,8 @@ tree-shake** for the current in-tab Exact path.
 | Tier | Contract |
 | ---- | -------- |
 | **Estimate** | Observed static import graph for **JS/TS + Python + Astro script islands (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
-| **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python and Astro stay estimate mass (no island Exact surface yet). |
+| **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python and Astro stay estimate mass (no island Exact surface yet). Web remains estimate-first / opt-in. |
+| **Exact (CLI digest)** | Same export-surface overlay as web. **`digest` defaults Exact-on** (soft-fallback → estimate + warning on engine miss). `--estimate` opts out; `--exact` / `--exact-local` are fail-closed. Tree/file/impact stay topology-only. |
 | **VS Code host (future)** | Same `ImportedSurfaceProvider` port; host may use workspace language features / multi-LSP — still not automatic tree-shake. |
 
 ## Capability scorecard
@@ -25,15 +26,15 @@ tree-shake** for the current in-tab Exact path.
 | **Misrepresents if…** | User expects resolved monorepo paths, dynamic imports, site-packages, or full multi-lang Exact. |
 | **Missing** | Symbols, calls, type-aware resolve; C/PHP/Lua extractors; Python Exact / pyright; Astro Exact island surface. |
 
-### Exact (in-tab “export surface”)
+### Exact (export surface — web + CLI digest)
 
 | | |
 | - | - |
-| **Shows** | Same graph; band mass from **matched export spans**; inspect imported code = those spans; callsites = word-boundary name scan in importer. |
-| **Gets right** | Named/default import drops unused sibling exports; fail-closed without provider; side-effect does not dump whole module. |
+| **Shows** | Same graph; band / catalog mass from **matched export spans**; inspect imported code = those spans; callsites = word-boundary name scan in importer. Agent digest: re-ranked `fileLoc` + `publicMass` / `icebergs` when Exact applied. |
+| **Gets right** | Named/default import drops unused sibling exports; fail-closed without provider (web always; CLI when `--exact` / `--exact-local`); side-effect does not dump whole module. CLI default Exact soft-falls back to estimate. |
 | **Close** | “Shaken” label ≈ export surface, not bundler shake; “Program” notes ≈ per-file AST. |
-| **Misrepresents if…** | Labeled **LSP** / full typecheck / true tree-shake; package mass “1” read as real package size; unresolved forward mass “1” read as tiny real surface. |
-| **Missing** | `createProgram` project, re-export follow, usage-based trim, type-only honesty, multi-lang engines, graph re-index. |
+| **Misrepresents if…** | Labeled **LSP** / full typecheck / true tree-shake; package mass “1” read as real package size; unresolved forward mass “1” read as tiny real surface; **`surfaceLoc` read as public-API member surface** (it is export-declaration **span** coverage only). |
+| **Missing** | `createProgram` project / Program Exact, re-export follow, usage-based trim, full `import { type X }` classification, multi-lang engines, **graph re-index**. |
 
 ### VS Code extension (not landed as Exact backend)
 
@@ -52,25 +53,48 @@ export-surface LOC when a surface map is available.
 | Bin | Tier | What it measures | Honesty |
 | --- | ---- | ---------------- | ------- |
 | **File LOC** | Estimate (always) | Whole-file line count of indexed source | Baseline “big files.” **Not** replaced by Exact on the web map catalog. |
-| **Public mass** | Exact overlay only | Large files where `surfaceLoc / wholeLoc` is high (defaults: whole ≥ 80, ratio ≥ 0.90); ranked by surface LOC | Export-declaration surface ratio — **not** LSP, **not** bundler tree-shake. Empty under Estimate. |
-| **Icebergs** | Exact overlay only | Large files with substantial private body under a smaller surface (defaults: whole ≥ 80, ratio ≤ 0.70, private ≥ 40); ranked by private LOC | Same surface map honesty as public mass. Empty under Estimate. |
+| **Public mass** | Exact overlay only | Large files where `surfaceLoc / wholeLoc` is high (defaults: whole ≥ 80, ratio ≥ 0.90); ranked by surface LOC | Export-declaration **span** ratio — **not** public-API member surface, **not** LSP, **not** bundler tree-shake. Empty under Estimate. JS/TS (`js-ts-import`) only; debug/scripts paths gated. |
+| **Icebergs** | Exact overlay only | Large files with substantial private body under a smaller surface (defaults: whole ≥ 80, ratio ≤ 0.70, private ≥ 40); ranked by private LOC; skip `surfaceLoc === 0` | Same surface map honesty as public mass. Empty under Estimate. |
 | **Spines** | Estimate topology | Cross-cutting dependency-plane files: direct fan-in + importer module diversity (`topFolder`); optional formula chooser | Observed import graph + path folders. Not a basename/config classifier; not multi-hop blast alone; not LSP. |
 
 **File LOC stays whole-file** on the map catalog and in estimate digests. Agent
-digest `--exact` may **re-rank** `catalog.fileLoc` by export-surface LOC for
+digest with Exact applied (CLI **default**, or explicit `--exact` /
+`--exact-local`) may **re-rank** `catalog.fileLoc` by export-surface LOC for
 comparison while retaining whole-file rows in `catalogEstimateFileLoc` — that
 is a digest lens, not a claim that UI File LOC became surface mass.
 
 **Public mass / icebergs** use the Exact export-surface ratio only
 (`buildMassBins` + surface map). UI needs Exact ready (provider + precision);
-CLI needs `--exact` / `--exact-local`. Empty arrays under estimate keep a stable
-catalog shape.
+CLI digest applies Exact by default (soft-fallback) or fail-closed when
+`--exact` / `--exact-local` is explicit; `--estimate` forces empty mass bins.
+Empty arrays under estimate keep a stable catalog shape.
 
 **Spines** are ranked from estimate-graph topology (`spineMetrics` /
 `rankSpineRows`). Formula options: `modules-then-in` (default), `fan-in`,
 `composite`, `share`. Soft floor: `importerModuleCount ≥ 2` except pure
 `fan-in`. Formula help lives in the Spines accordion (not a separate honesty
 tier).
+
+## Agent CLI ranking honesty
+
+Agent JSON is a lens over the same Level-1 graph. Prefer these stamps over
+re-deriving meaning from bare counts:
+
+| Signal | Honesty |
+| ------ | ------- |
+| **`scope`** | `omit`, `includeTests`, `exactRequested` / `exactApplied`, `feedKind` — what the host actually fed and whether Exact mass applied. |
+| **`surfaceLoc` / `surfaceMetricNote`** | Export-declaration **span coverage**, not public-API surface area. Wire field stays `surfaceLoc`. |
+| **`toKind: 'omitted'`** | Target missing because feed `--omit`, **not** true unresolved. Ends ranking should not treat omitted as architecture ends the same as unresolved. |
+| **`typeOnly` edges** | From `import type` / `export type … from`. Ranking (hotspots / complex / blast degrees) prefers **runtime** edges when the flag is present. Best-effort: `import { type X }` may still be classified as value form. Full graph retains both. |
+| **`rankScore` (hotspots)** | Sort key after role adjustments (e.g. barrel demotion). Dual-publish edge-record degrees + unique neighbor degrees; agents should order by `rankScore`, not raw `edgeCount`. |
+| **`roles`** | Always **inferred** (`test` / `debug` / `barrel` / `entrypoint` / `module`) — never present as observed topology. |
+| **`entrypoints` / `roots`** | Starts split; scripts/debug demoted from entrypoints. `starts` = entrypoints then roots for compat. |
+| **Neighbor truncation** | File report: arrays + `importsTotal` / `importersTotal` / `truncated`. |
+| **`summary.externalPackageCount`** | Alias of external package leaf count — not monorepo package inventory. |
+
+CLI Exact default does **not** flip web Precision. Program Exact (alias rewrite,
+`createProgram`, graph re-index) and full SCC / boundary / mermaid lenses remain
+catalog futures — not claimed by this ladder.
 
 ## UI copy rules
 
@@ -81,11 +105,13 @@ tier).
 5. Status: **export-surface mode** + engine source (`local` / `cdn` / `inject`).
 6. Mixed-language: keep warning that only JS/TS Exact applies (Python and other langs stay estimate / missing engine).
 7. Catalog: **File LOC** = whole-file; **Public mass** / **Icebergs** = need Exact (export surface); **Spines** = topology + formula (not mass Exact).
+8. Agents/docs: never equate **`surfaceLoc`** with public API; never treat inferred **`roles`** as observed.
 
 ## Related
 
 - [scope.md](./scope.md) — product contracts  
 - [multilang-roadmap.md](./multilang-roadmap.md) — phased multi-lang Estimate/Exact after Python L1  
 - [hub-alluvial-behavior.md](./hub-alluvial-behavior.md) — reverse mass dual-side  
+- [impact-cheatsheet.md](./impact-cheatsheet.md) — agent impact read order  
 - Catalog futures: [exact-surface-mode-futures](../catalog/entries/exact-surface-mode-futures.md)  
 

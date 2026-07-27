@@ -14,7 +14,7 @@ Agents: start here, then load playbooks from the preamble.
 5. **Hub alluvial work:** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) — column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
 6. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) — try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
 7. **Hub focus / highlight:** [.grok/reference/hub-focus-behavior.md](.grok/reference/hub-focus-behavior.md) — LogicalFocusGraph FocusPlan (band-only, file reverse∪forward, package reverse-path); orthogonal to geometry matrix
-8. **Analysis honesty (Estimate / Exact / VS Code):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake for in-tab Exact
+8. **Analysis honesty (Estimate / Exact / VS Code):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
 9. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
 
 ## Role skills
@@ -49,7 +49,7 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README) |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README). **Digest defaults Exact** export-surface mass (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). |
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
