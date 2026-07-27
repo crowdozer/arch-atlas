@@ -176,6 +176,91 @@ function hasRule(family: LanguageFamilyId | null, rule: PathRuleFamily): boolean
 	return familyHasRule(family, rule);
 }
 
+/**
+ * Probe `mod.py` then `mod/__init__.py` (never invents paths outside fileSet).
+ */
+function tryPythonModule(files: Set<string>, modulePath: string): string | null {
+	const normalized = modulePath.replace(/^\//, '').replace(/\/$/, '');
+	if (!normalized) return null;
+	const py = `${normalized}.py`;
+	if (files.has(py)) return py;
+	const init = joinPosix(normalized, '__init__.py');
+	if (files.has(init)) return init;
+	return null;
+}
+
+/** Top-level package segment (`a.b.c` → `a`, `requests` → `requests`). */
+function pythonTopLevel(specifier: string): string {
+	const stripped = specifier.replace(/^\.+/, '');
+	return stripped.split('.')[0] || specifier;
+}
+
+/**
+ * Python Level-1 resolve: dotted modules, leading-dot relatives, bare → package.
+ */
+function resolvePythonSpecifier(
+	fromPath: string,
+	specifier: string,
+	fileSet: Set<string>,
+): ResolveResult {
+	// Leading-dot relative: `.`, `..`, `.foo`, `..pkg.sub`
+	if (specifier.startsWith('.')) {
+		let level = 0;
+		while (level < specifier.length && specifier[level] === '.') level++;
+		const rest = specifier.slice(level); // may be empty or "foo.bar"
+
+		let dir = dirnamePosix(fromPath);
+		// level=1 → current package dir; level=2 → parent; …
+		for (let u = 0; u < level - 1; u++) {
+			dir = dirnamePosix(dir);
+		}
+
+		if (!rest) {
+			// Bare dots → package __init__.py when present
+			const init = dir ? joinPosix(dir, '__init__.py') : '__init__.py';
+			if (fileSet.has(init)) return { kind: 'file', path: init };
+			return { kind: 'unresolved', specifier };
+		}
+
+		const parts = rest.split('.').filter(Boolean);
+		let joined = dir;
+		for (const p of parts) {
+			joined = joinPosix(joined, p);
+		}
+		const hit = tryPythonModule(fileSet, joined);
+		if (hit) return { kind: 'file', path: hit };
+		// Relative miss stays unresolved (do not invent external from `.foo`)
+		return { kind: 'unresolved', specifier };
+	}
+
+	// Absolute / bare dotted: try repo-root layout, then package node
+	const parts = specifier.split('.').filter(Boolean);
+	if (parts.length === 0) {
+		return { kind: 'unresolved', specifier };
+	}
+	const asPath = parts.join('/');
+	const hit = tryPythonModule(fileSet, asPath);
+	if (hit) return { kind: 'file', path: hit };
+
+	// Also try under the importer's ancestral package roots (implicit namespace)
+	let dir = dirnamePosix(fromPath);
+	while (dir) {
+		const candidate = joinPosix(dir, asPath);
+		const nested = tryPythonModule(fileSet, candidate);
+		if (nested) return { kind: 'file', path: nested };
+		const parent = dirnamePosix(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+
+	// Unresolved bare → external package leaf (stdlib / third-party honesty)
+	return {
+		kind: 'package',
+		name: pythonTopLevel(specifier),
+		builtin: false,
+	};
+}
+
 export function resolveSpecifier(
 	fromPath: string,
 	specifier: string,
@@ -186,9 +271,13 @@ export function resolveSpecifier(
 		return { kind: 'unresolved', specifier };
 	}
 
-	// Importers are always js-ts today (only import-parseable family). Default
-	// to js-ts when path is unknown so unit tests with synthetic paths still work.
+	// Family from importer path. Default js-ts for synthetic paths in unit tests.
 	const family: LanguageFamilyId = familyForPath(fromPath) ?? 'js-ts';
+
+	if (family === 'python') {
+		return resolvePythonSpecifier(fromPath, specifier, fileSet);
+	}
+
 	const rewriteExt = hasRule(family, 'specifier-ext-rewrite');
 	const tryOpts = { rewriteExt };
 

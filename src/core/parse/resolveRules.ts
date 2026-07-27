@@ -2,16 +2,16 @@
  * Language-scoped path-resolution rule registry (estimate / Level-1 only).
  *
  * Not a LanguageFrontend plugin system and not Exact/LSP. Rules name the
- * ordered behaviors in `resolve.ts` so js-ts stays the sole enabled family
- * until extractors ship for others. `CANDIDATE_LANGUAGE_NOTES` is a docs seam
- * (not executed) for later transfer flagging.
+ * ordered behaviors in `resolve.ts`. Enabled families: `js-ts`, `python`.
+ * `CANDIDATE_LANGUAGE_NOTES` is a docs seam (not executed) for later transfer
+ * flagging.
  *
  * Follow-ups (not in this module's runtime): baseUrl-only bare (R10), package
  * `"imports"`, multi-tsconfig nearest, Vite/webpack alias readers.
  */
 
-/** Estimate resolve language families. Only `js-ts` is enabled today. */
-export type LanguageFamilyId = 'js-ts';
+/** Estimate resolve language families with extractors + resolve policy. */
+export type LanguageFamilyId = 'js-ts' | 'python';
 
 /**
  * Named path-rule families applied by `resolveSpecifier`.
@@ -26,7 +26,7 @@ export type PathRuleFamily =
 	| 'tilde-prefix'
 	| 'specifier-ext-rewrite';
 
-/** Rules enabled for estimate resolve today (js-ts only). */
+/** Rules enabled for estimate resolve (family-scoped apply in resolve.ts). */
 export const RULES_BY_FAMILY: Record<LanguageFamilyId, readonly PathRuleFamily[]> = {
 	'js-ts': [
 		'dot-relative',
@@ -37,6 +37,8 @@ export const RULES_BY_FAMILY: Record<LanguageFamilyId, readonly PathRuleFamily[]
 		'specifier-ext-rewrite',
 		'bare-external',
 	],
+	/** Package-relative dots + `.py`/`__init__.py` probe; bare → external package. */
+	python: ['dot-relative', 'ext-index-probe', 'bare-external'],
 };
 
 export type CandidateLanguageNote = {
@@ -86,9 +88,13 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 	},
 	{
 		family: 'python',
-		rules: ['bare-external'],
-		confidence: 'low-medium',
-		blockers: ['import extract', 'package-relative layout', '__init__.py probe'],
+		rules: ['dot-relative', 'ext-index-probe', 'bare-external'],
+		confidence: 'high',
+		blockers: [
+			'no site-packages / pyproject path maps',
+			'no importlib / dynamic',
+			'stdlib builtin tagging optional',
+		],
 	},
 	{
 		family: 'go',
@@ -113,12 +119,16 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 /** JS/TS source extensions used for family detection (mirrors isSourceFile). */
 const JS_TS_SOURCE_EXT = /\.(m?[jt]sx?|cjs|mjs)$/i;
 
+/** Python source extension (mirrors isPythonSourceFile). */
+const PYTHON_SOURCE_EXT = /\.py$/i;
+
 /**
  * Derive language family from importer path. Returns null when no estimate
  * resolve family is registered (unsupported languages never reach resolve today).
  */
 export function familyForPath(path: string): LanguageFamilyId | null {
 	if (JS_TS_SOURCE_EXT.test(path)) return 'js-ts';
+	if (PYTHON_SOURCE_EXT.test(path)) return 'python';
 	return null;
 }
 

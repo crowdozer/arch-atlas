@@ -161,10 +161,67 @@ describe('RULES_BY_FAMILY registry', () => {
 		}
 	});
 
-	it('familyForPath maps JS/TS sources', () => {
+	it('familyForPath maps JS/TS and Python sources', () => {
 		expect(familyForPath('src/a.ts')).toBe('js-ts');
 		expect(familyForPath('x.tsx')).toBe('js-ts');
 		expect(familyForPath('x.mjs')).toBe('js-ts');
-		expect(familyForPath('x.py')).toBeNull();
+		expect(familyForPath('x.py')).toBe('python');
+		expect(familyForPath('pkg/a.py')).toBe('python');
+		expect(familyForPath('x.go')).toBeNull();
+	});
+
+	it('includes python rule families', () => {
+		expect(RULES_BY_FAMILY.python).toContain('dot-relative');
+		expect(RULES_BY_FAMILY.python).toContain('ext-index-probe');
+		expect(RULES_BY_FAMILY.python).toContain('bare-external');
+	});
+});
+
+describe('resolveSpecifier python family', () => {
+	it('resolves absolute dotted module to .py file', () => {
+		const files = new Set(['pkg/a.py', 'pkg/b.py', 'pkg/__init__.py']);
+		const r = resolveSpecifier('pkg/a.py', 'pkg.b', files, null);
+		expect(r).toEqual({ kind: 'file', path: 'pkg/b.py' });
+	});
+
+	it('resolves package to __init__.py', () => {
+		const files = new Set(['pkg/a.py', 'pkg/__init__.py']);
+		const r = resolveSpecifier('main.py', 'pkg', files, null);
+		expect(r).toEqual({ kind: 'file', path: 'pkg/__init__.py' });
+	});
+
+	it('resolves relative .sibling from package module', () => {
+		const files = new Set(['pkg/a.py', 'pkg/b.py', 'pkg/__init__.py']);
+		const r = resolveSpecifier('pkg/a.py', '.b', files, null);
+		expect(r).toEqual({ kind: 'file', path: 'pkg/b.py' });
+	});
+
+	it('resolves relative ..other to parent package module', () => {
+		const files = new Set([
+			'pkg/sub/a.py',
+			'pkg/sub/__init__.py',
+			'pkg/other.py',
+			'pkg/__init__.py',
+		]);
+		const r = resolveSpecifier('pkg/sub/a.py', '..other', files, null);
+		expect(r).toEqual({ kind: 'file', path: 'pkg/other.py' });
+	});
+
+	it('maps unresolved bare import to package node', () => {
+		const files = new Set(['pkg/a.py']);
+		const r = resolveSpecifier('pkg/a.py', 'requests', files, null);
+		expect(r).toEqual({ kind: 'package', name: 'requests', builtin: false });
+	});
+
+	it('maps unresolved dotted absolute to top-level package', () => {
+		const files = new Set(['main.py']);
+		const r = resolveSpecifier('main.py', 'urllib.request', files, null);
+		expect(r).toEqual({ kind: 'package', name: 'urllib', builtin: false });
+	});
+
+	it('does not invent missing relative modules as packages', () => {
+		const files = new Set(['pkg/a.py']);
+		const r = resolveSpecifier('pkg/a.py', '.missing', files, null);
+		expect(r).toEqual({ kind: 'unresolved', specifier: '.missing' });
 	});
 });

@@ -23,11 +23,18 @@ describe('classifyFileParse', () => {
 		expect(classifyFileParse('styles.css').kind).toBe('text');
 	});
 
-	it('marks unsupported languages with a clear note', () => {
+	it('marks Python as import-parseable (python-import)', () => {
 		const py = classifyFileParse('app/main.py');
-		expect(py.importParseable).toBe(false);
-		expect(py.kind).toBe('unsupported-language');
-		expect(py.note).toMatch(/not supported/i);
+		expect(py.importParseable).toBe(true);
+		expect(py.kind).toBe('python-import');
+		expect(py.note).toMatch(/Python/i);
+	});
+
+	it('marks unsupported languages with a clear note', () => {
+		const go = classifyFileParse('svc/main.go');
+		expect(go.importParseable).toBe(false);
+		expect(go.kind).toBe('unsupported-language');
+		expect(go.note).toMatch(/not supported/i);
 	});
 });
 
@@ -51,9 +58,11 @@ describe('buildGraph parseMap', () => {
 		expect(graph.parseMap.size).toBe(graph.files.size);
 		expect(graph.parseMap.get('src/a.ts')?.importParseable).toBe(true);
 		expect(graph.parseMap.get('README.md')?.importParseable).toBe(false);
-		expect(graph.parseMap.get('app.py')?.kind).toBe('unsupported-language');
-		expect(graph.stats.parseableCount).toBe(1);
-		expect(graph.stats.unparseableCount).toBe(3);
+		expect(graph.parseMap.get('app.py')?.kind).toBe('python-import');
+		expect(graph.parseMap.get('app.py')?.importParseable).toBe(true);
+		expect(graph.files.get('app.py')?.isSource).toBe(true);
+		expect(graph.stats.parseableCount).toBe(2);
+		expect(graph.stats.unparseableCount).toBe(2);
 		expect(graph.files.get('README.md')?.parseNote).toBeTruthy();
 	});
 

@@ -37,6 +37,11 @@ export type CatalogPaintOpts = {
 	 * Distinguishes “Needs Exact” empty from “no files under floors.”
 	 */
 	massExactReady?: boolean;
+	/**
+	 * Sticky package open intent (Export Roots / package drill). When set,
+	 * matching Export Roots row gets is-selected. Not a startId.
+	 */
+	selectedPackage?: string | null;
 };
 
 /**
@@ -456,10 +461,17 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		const endsHost = $('atlas-ends');
 		if (endsHost) {
 			endsHost.innerHTML = '';
+			const selectedPackage = opts?.selectedPackage ?? null;
 			for (const e of catalog.ends.slice(0, 30)) {
 				const row = document.createElement('button');
 				row.type = 'button';
 				row.className = 'atlas-list-btn atlas-list-btn--end';
+				if (
+					selectedPackage &&
+					(selectedPackage === e.label || selectedPackage === e.id)
+				) {
+					row.classList.add('is-selected');
+				}
 				const kindColor =
 					e.kind === 'unresolved'
 						? 'text-amber-400'
