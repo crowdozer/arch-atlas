@@ -12,6 +12,7 @@ import {
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
+	fileLineCount,
 	indexFiles,
 	ingestZip,
 	projectFileHub,
@@ -1092,10 +1093,12 @@ function renderTreeNode(
 	btn.title = note ? `${node.path}\n${note}` : node.path;
 	btn.setAttribute('aria-disabled', isSrc ? 'false' : 'true');
 
+	const loc = session ? fileLineCount(session.graph, node.path) : 0;
 	btn.innerHTML = `
 		<span class="atlas-tree__chevron atlas-tree__chevron--spacer" aria-hidden="true"></span>
 		<span class="atlas-tree__icon${isSrc ? ' atlas-tree__icon--source' : ' atlas-tree__icon--muted'}" aria-hidden="true">${treeIconSvg('file', node.path)}</span>
 		<span class="atlas-tree__name truncate">${escapeHtml(node.name)}</span>
+		<span class="atlas-tree__loc" title="${loc} lines of code">${loc} LOC</span>
 	`;
 	btn.addEventListener('click', () => {
 		if (isSrc) {
@@ -1162,6 +1165,7 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 	const hotspotN = catalog.hotspots?.length ?? 0;
 	const complexN = catalog.complex?.length ?? 0;
 	const deepN = catalog.deepest?.length ?? 0;
+	const fileLocN = catalog.fileLoc?.length ?? 0;
 	const viewsN = catalog.views.length;
 	const startsN = Math.min(catalog.starts.length, 25);
 	const endsN = Math.min(catalog.ends.length, 30);
@@ -1173,13 +1177,17 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		'atlas-acc-complex',
 		`Tree complexity${complexN ? ` (${complexN})` : ''}`,
 	);
-	setAccordionTitle('atlas-acc-views', `Suggested views${viewsN ? ` (${viewsN})` : ''}`);
-	setAccordionTitle('atlas-acc-starts', `Starts${startsN ? ` (${startsN})` : ''}`);
-	setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
 	setAccordionTitle(
 		'atlas-acc-deepest',
 		`Tree depth${deepN ? ` (${deepN})` : ''}`,
 	);
+	setAccordionTitle(
+		'atlas-acc-file-loc',
+		`File LOC${fileLocN ? ` (${fileLocN})` : ''}`,
+	);
+	setAccordionTitle('atlas-acc-views', `Suggested views${viewsN ? ` (${viewsN})` : ''}`);
+	setAccordionTitle('atlas-acc-starts', `Starts${startsN ? ` (${startsN})` : ''}`);
+	setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
 
 	const tags = $('atlas-summary-tags');
 	if (tags) {
@@ -1271,6 +1279,31 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 		}
 	}
 
+	const fileLocHost = $('atlas-file-loc');
+	if (fileLocHost) {
+		fileLocHost.innerHTML = '';
+		const list = catalog.fileLoc ?? [];
+		for (const f of list.slice(0, 15)) {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'atlas-list-btn';
+			if (selectedStart === f.id) btn.classList.add('is-selected');
+			const locLabel = `${f.loc} LOC`;
+			const detail = `out ${f.outDegree} · in ${f.inDegree}`;
+			btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(f.path)}</span>
+					${badgeTagHtml(locLabel, `${f.loc} lines of code · ${detail}`)}
+				</span>
+				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
+			btn.addEventListener('click', () => selectStart(f.id));
+			fileLocHost.appendChild(btn);
+		}
+		if (!list.length) {
+			fileLocHost.innerHTML = `<p class="text-xs text-zinc-600">No source LOC yet.</p>`;
+		}
+	}
+
 	const viewsHost = $('atlas-views');
 	if (viewsHost) {
 		viewsHost.innerHTML = '';
@@ -1283,11 +1316,13 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 			const hotMeta = catalog.hotspots?.find((h) => h.id === v.startId);
 			const deepMeta = catalog.deepest?.find((d) => d.id === v.startId);
 			const complexMeta = catalog.complex?.find((c) => c.id === v.startId);
+			const fileLocMeta = catalog.fileLoc?.find((f) => f.id === v.startId);
 			const outD =
 				startMeta?.outDegree ??
 				hotMeta?.outDegree ??
 				complexMeta?.outDegree ??
 				deepMeta?.outDegree ??
+				fileLocMeta?.outDegree ??
 				v.edgeCount ??
 				0;
 			const inD =
@@ -1295,13 +1330,15 @@ function renderCatalog(catalog: MapCatalog, selectedStart: string | null) {
 				hotMeta?.inDegree ??
 				complexMeta?.inDegree ??
 				deepMeta?.inDegree ??
+				fileLocMeta?.inDegree ??
 				0;
 			const badge =
 				typeof v.edgeCount === 'number' ||
 				startMeta ||
 				hotMeta ||
 				complexMeta ||
-				deepMeta
+				deepMeta ||
+				fileLocMeta
 					? edgeBadge(outD, inD)
 					: '';
 			btn.innerHTML = `

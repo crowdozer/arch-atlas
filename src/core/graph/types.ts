@@ -185,6 +185,20 @@ export type CatalogComplex = {
 	epistemic: 'observed';
 };
 
+/**
+ * Source file ranked by whole-file LOC (newline count of graph.contents).
+ * Same estimate surface as tree LOC captions / weight target-loc.
+ */
+export type CatalogFileLoc = {
+	id: string;
+	path: string;
+	/** Whole-file line count from indexed source text. */
+	loc: number;
+	outDegree: number;
+	inDegree: number;
+	epistemic: 'observed';
+};
+
 export type SuggestedView = {
 	id: string;
 	title: string;
@@ -204,6 +218,8 @@ export type MapCatalog = {
 	complex: CatalogComplex[];
 	/** Deepest outbound import graphs (tree depth / most hops). */
 	deepest: CatalogDeep[];
+	/** Largest source files by whole-file LOC (high → low). */
+	fileLoc: CatalogFileLoc[];
 	views: SuggestedView[];
 	summary: {
 		sourceCount: number;

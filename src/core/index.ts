@@ -12,6 +12,7 @@ export type {
 	CatalogComplex,
 	CatalogDeep,
 	CatalogEnd,
+	CatalogFileLoc,
 	CatalogHotspot,
 	CatalogStart,
 	CodeGraph,
@@ -32,6 +33,7 @@ export { buildMapCatalog } from '@core/catalog/views.ts';
 export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
+export { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 export {
 	catalogComplex,
 	catalogDeepest,

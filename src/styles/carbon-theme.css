@@ -1538,6 +1538,30 @@ cds-inline-notification.atlas-inspect__banner {
   flex: 1;
 }
 
+/* File LOC caption after name — cyan, caption size, readable (not greyed out) */
+.atlas-tree__loc {
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  font-size: 0.6875rem; /* ~11px — slightly under tree 13px body */
+  line-height: 1.2;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--atlas-drill, #67e8f9); /* cyan-300 */
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.atlas-tree__row--file.is-unparseable .atlas-tree__loc {
+  opacity: 0.55;
+}
+
+.atlas-tree__row--file.is-selected .atlas-tree__loc {
+  /* Keep cyan caption (meta), not purple selection paint */
+  color: var(--atlas-drill, #67e8f9);
+  opacity: 0.85;
+}
+
 .atlas-tree__badge {
   flex-shrink: 0;
   font-size: 0.65rem;

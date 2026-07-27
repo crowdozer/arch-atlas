@@ -4,6 +4,7 @@
 
 import { catalogComplex, catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
+import { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
 import type { CodeGraph, MapCatalog, SuggestedView } from '@core/graph/types.ts';
@@ -26,6 +27,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 	const hotspots = catalogHotspots(graph);
 	const complex = catalogComplex(graph);
 	const deepest = catalogDeepest(graph);
+	const fileLoc = catalogFileLoc(graph);
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
@@ -98,6 +100,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		hotspots,
 		complex,
 		deepest,
+		fileLoc,
 		views,
 		summary: {
 			sourceCount: graph.stats.sourceCount,
