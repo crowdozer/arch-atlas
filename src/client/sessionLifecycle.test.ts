@@ -46,6 +46,7 @@ type CallLog = {
 	rehydrateExactForGraph: number;
 	tryAutoExactWhenLocalAvailable: number;
 	syncExactChrome: number;
+	clearStage: number;
 	/** App-layer spine wipe rides only on full resetExactState. */
 	spineWiped: number;
 };
@@ -60,6 +61,7 @@ function mockDeps(opts: {
 	setLocPrecision: (p: LocPrecision) => void;
 	setIncludeTests: (on: boolean) => void;
 	getLocPrecision: () => LocPrecision;
+	setRehydrateFails: (v: boolean) => void;
 } {
 	const log: CallLog = {
 		resetExactState: 0,
@@ -67,11 +69,13 @@ function mockDeps(opts: {
 		rehydrateExactForGraph: 0,
 		tryAutoExactWhenLocalAvailable: 0,
 		syncExactChrome: 0,
+		clearStage: 0,
 		spineWiped: 0,
 	};
 	let session: Session | null = null;
 	let locPrecision: LocPrecision = opts.locPrecision ?? 'estimate';
 	let includeTests = opts.includeTests ?? true;
+	let rehydrateFails = false;
 
 	const deps: SessionLifecycleDeps = {
 		getSession: () => session,
@@ -93,6 +97,11 @@ function mockDeps(opts: {
 		},
 		rehydrateExactForGraph: async () => {
 			log.rehydrateExactForGraph += 1;
+			if (rehydrateFails) {
+				// Mirrors real rehydrate fail: Estimate fallback without full reset
+				locPrecision = 'estimate';
+				return;
+			}
 			locPrecision = 'exact';
 		},
 		syncExactChrome: () => {
@@ -101,7 +110,9 @@ function mockDeps(opts: {
 		tryAutoExactWhenLocalAvailable: async () => {
 			log.tryAutoExactWhenLocalAvailable += 1;
 		},
-		clearStage: vi.fn(),
+		clearStage: () => {
+			log.clearStage += 1;
+		},
 		renderCatalog: vi.fn(),
 		renderTree: vi.fn(),
 		navigateReplace: () => true,
@@ -126,6 +137,9 @@ function mockDeps(opts: {
 			includeTests = on;
 		},
 		getLocPrecision: () => locPrecision,
+		setRehydrateFails: (v: boolean) => {
+			rehydrateFails = v;
+		},
 	};
 }
 
@@ -171,7 +185,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(deps.getLocPrecision()).toBe('estimate');
 	});
 
-	it('reindex with Exact preserves chrome: invalidate + rehydrate, no full reset', async () => {
+	it('reindex with Exact preserves chrome: invalidate + clearStage + rehydrate, no full reset', async () => {
 		const ctx = mockDeps({ locPrecision: 'estimate', includeTests: true });
 		const life = createSessionLifecycle(ctx.deps);
 		await seedSessionFromFeed(ctx.deps, true);
@@ -184,6 +198,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		log.rehydrateExactForGraph = 0;
 		log.tryAutoExactWhenLocalAvailable = 0;
 		log.syncExactChrome = 0;
+		log.clearStage = 0;
 		log.spineWiped = 0;
 
 		ctx.setIncludeTests(false);
@@ -192,6 +207,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(log.resetExactState).toBe(0);
 		expect(log.spineWiped).toBe(0);
 		expect(log.invalidateExactProvider).toBe(1);
+		expect(log.clearStage).toBe(1);
 		expect(log.rehydrateExactForGraph).toBe(1);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(log.syncExactChrome).toBe(1);
@@ -203,7 +219,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(s?.files.some((f) => f.path === 'src/a.test.ts')).toBe(true);
 	});
 
-	it('reindex with Estimate skips auto-Exact and does not rehydrate', async () => {
+	it('reindex with Estimate skips auto-Exact and does not rehydrate or clearStage', async () => {
 		const ctx = mockDeps({ locPrecision: 'estimate', includeTests: true });
 		const life = createSessionLifecycle(ctx.deps);
 		await seedSessionFromFeed(ctx.deps, true);
@@ -213,6 +229,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		log.rehydrateExactForGraph = 0;
 		log.tryAutoExactWhenLocalAvailable = 0;
 		log.syncExactChrome = 0;
+		log.clearStage = 0;
 		log.spineWiped = 0;
 
 		ctx.setIncludeTests(false);
@@ -221,9 +238,39 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(log.resetExactState).toBe(0);
 		expect(log.spineWiped).toBe(0);
 		expect(log.invalidateExactProvider).toBe(1);
+		expect(log.clearStage).toBe(0);
 		expect(log.rehydrateExactForGraph).toBe(0);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(log.syncExactChrome).toBe(1);
+		expect(ctx.getLocPrecision()).toBe('estimate');
+	});
+
+	it('reindex + Exact with failing rehydrate does not full-reset or auto-Exact', async () => {
+		const ctx = mockDeps({ locPrecision: 'estimate', includeTests: true });
+		const life = createSessionLifecycle(ctx.deps);
+		await seedSessionFromFeed(ctx.deps, true);
+		ctx.setLocPrecision('exact');
+		ctx.setRehydrateFails(true);
+		const log = ctx.log;
+		log.resetExactState = 0;
+		log.invalidateExactProvider = 0;
+		log.rehydrateExactForGraph = 0;
+		log.tryAutoExactWhenLocalAvailable = 0;
+		log.syncExactChrome = 0;
+		log.clearStage = 0;
+		log.spineWiped = 0;
+
+		ctx.setIncludeTests(false);
+		life.reindexWithTestInclusion();
+		// rehydrate is void async; microtask applies failure fallback
+		await Promise.resolve();
+
+		expect(log.resetExactState).toBe(0);
+		expect(log.spineWiped).toBe(0);
+		expect(log.invalidateExactProvider).toBe(1);
+		expect(log.clearStage).toBe(1);
+		expect(log.rehydrateExactForGraph).toBe(1);
+		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(ctx.getLocPrecision()).toBe('estimate');
 	});
 });

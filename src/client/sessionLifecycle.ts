@@ -132,6 +132,12 @@ export function createSessionLifecycle(
 		if (kind === 'reindex') {
 			// Same project, new file set — drop stale provider/mass; keep precision chrome
 			deps.invalidateExactProvider();
+			if (wasExact) {
+				// Gate fails closed without mount when Exact + no provider, and would
+				// leave the *previous* alluvial on screen. Clear so tree/catalog can
+				// update without a stale chart under Precision=Exact until rehydrate.
+				deps.clearStage();
+			}
 		} else {
 			// New ZIP/demo/restore open — full Exact + spine chrome reset
 			deps.resetExactState();
@@ -146,14 +152,18 @@ export function createSessionLifecycle(
 			deps.renderTree();
 			deps.setStatus(statusLine);
 		}
-		deps.setStatus(statusLine);
+		// Reassert status after navigate (gate may have written a fail-closed line)
+		deps.setStatus(
+			wasExact ? `${statusLine} · rebuilding Exact…` : statusLine,
+		);
 		if (!opts?.skipPersist) deps.persistSessionIfEnabled();
 
 		if (kind === 'reindex') {
 			// Carbon dropdowns must match preserved JS state (not forced Estimate)
 			deps.syncExactChrome();
 			if (wasExact) {
-				// Rebuild provider for new graph; on fail falls back to Estimate honestly
+				// Rebuild provider for new graph; on fail falls back to Estimate honestly.
+				// Generation token inside rehydrate discards stale rapid-toggle races.
 				void deps.rehydrateExactForGraph();
 			}
 			// Estimate stays Estimate — do not tryAutoExact (avoids surprise flip)
