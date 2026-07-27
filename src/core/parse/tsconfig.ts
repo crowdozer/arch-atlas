@@ -2,6 +2,8 @@
  * Best-effort tsconfig/jsconfig paths for Level-1 module resolution.
  */
 
+import { stripComments } from '@core/parse/imports.ts';
+
 export type PathAliasConfig = {
 	baseUrl: string; // directory containing tsconfig, or baseUrl relative to it
 	/** alias pattern → target patterns (relative to baseUrl) */
@@ -14,11 +16,9 @@ export function parseTsconfigPaths(
 ): PathAliasConfig | null {
 	let data: unknown;
 	try {
-		// strip trailing commas / comments roughly for user tsconfigs
-		const cleaned = jsonText
-			.replace(/\/\*[\s\S]*?\*\//g, '')
-			.replace(/^\s*\/\/.*$/gm, '')
-			.replace(/,\s*([\]}])/g, '$1');
+		// String-safe comment strip (preserves "@/*" path keys and "**/*" globs),
+		// then tolerate trailing commas common in user tsconfigs.
+		const cleaned = stripComments(jsonText).replace(/,\s*([\]}])/g, '$1');
 		data = JSON.parse(cleaned);
 	} catch {
 		return null;

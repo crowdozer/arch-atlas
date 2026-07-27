@@ -137,6 +137,12 @@ export function resolveSpecifier(
 		return { kind: 'package', name: specifier.startsWith('node:') ? specifier : bare, builtin: true };
 	}
 
+	// Path-like @/… is never a real npm scope (scopes are @name/pkg). When alias
+	// expand failed, do not invent a fake package node such as "@/app".
+	if (specifier.startsWith('@/')) {
+		return { kind: 'unresolved', specifier };
+	}
+
 	// bare package
 	if (!specifier.startsWith('.')) {
 		return { kind: 'package', name: bare, builtin: false };
