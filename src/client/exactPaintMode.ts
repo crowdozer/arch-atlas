@@ -43,6 +43,11 @@ export type ExactPaintModeDeps = {
 	setWeightAxis: (a: WeightAxis) => void;
 	getExactEnableInFlight: () => boolean;
 	setExactEnableInFlight: (v: boolean) => void;
+	/**
+	 * Language-chip fail indication (Exact/Program enable demotion).
+	 * Cleared on success / full reset / user Estimate.
+	 */
+	setEngineFailed: (v: boolean) => void;
 	getExactMixedWarningShown: () => boolean;
 	setExactMixedWarningShown: (v: boolean) => void;
 	/**
@@ -58,6 +63,11 @@ export type ExactPaintModeDeps = {
 	/** Drop session.programMeta (soft-fail / new graph without applied Program). */
 	clearProgramMeta: () => void;
 	remountCurrentView: () => void;
+	/**
+	 * Re-paint catalog / language chips without remounting the alluvial
+	 * (e.g. Program entered flight → incomplete glyph before enrich settles).
+	 */
+	refreshCatalogChrome?: () => void;
 	/**
 	 * Clear the alluvial and show a stage loading status while Program enrich
 	 * runs (avoids stale prior chart). Wired to {@link AlluvialStage.showLoading}.
@@ -209,6 +219,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		const precEl = precisionDropdown();
 		const weightEl = weightDropdown();
 		deps.setLocPrecision('estimate');
+		deps.setEngineFailed(true);
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 		if (weightEl) {
 			deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
@@ -220,6 +231,15 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		});
 		deps.remountCurrentView();
 		deps.setStatus(opts.msg);
+	}
+
+	/**
+	 * Settled remount: drop exclusive-flight **before** paint so language chips
+	 * do not stick on Program "Loading…" (programLoading uses flight flag).
+	 */
+	function remountSettled(): void {
+		deps.setExactEnableInFlight(false);
+		deps.remountCurrentView();
 	}
 
 	/**
@@ -251,6 +271,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 		deps.setSurfaceProvider(result.provider);
 		deps.setLocPrecision('exact');
+		deps.setEngineFailed(false);
 
 		const precEl = precisionDropdown();
 		const weightEl = weightDropdown();
@@ -375,6 +396,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		cancelProgramEnrichment();
 		deps.setLocPrecision('estimate');
 		deps.setProgramExactMass(false);
+		// User demotion is not an engine fail
+		deps.setEngineFailed(false);
 		const sess = deps.getSession();
 		if (sess) recordPrecisionPreference(sess.graph, 'estimate');
 		const precEl = precisionDropdown();
@@ -421,6 +444,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 			deps.setSurfaceProvider(result.provider);
 			deps.setLocPrecision('exact');
+			deps.setEngineFailed(false);
 			deps.setWeightAxis('target-loc');
 			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
 			if (weightEl) deps.syncWeightDropdown(weightEl, 'target-loc');
@@ -444,6 +468,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setSurfaceProvider(null);
 		deps.setLocPrecision('estimate');
 		deps.setProgramExactMass(false);
+		deps.setEngineFailed(false);
 		deps.setExactMixedWarningShown(false);
 		deps.setExactEnableInFlight(false);
 		const precEl = precisionDropdown();
@@ -492,6 +517,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setStatus('Program: loading TypeScript engine in worker…');
 		// Clear prior alluvial immediately — do not leave stale chart during enrich.
 		deps.showStageLoading('Building Program topology…');
+		// Language chips: incomplete glyph while flight is true (no full remount).
+		deps.refreshCatalogChrome?.();
 
 		try {
 			const result = await runProgramEnrichment(session.graph, {
@@ -513,16 +540,18 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 					// the user is not stuck on the loading placeholder. New open clears
 					// session then remounts on its own path — skip if session gone.
 					if (deps.getSession()) {
-						deps.remountCurrentView();
+						remountSettled();
 					}
 					return;
 				}
 				// Soft-fail: prior graph unchanged; restore prior precision chrome
 				restorePrecisionAfterProgramFail(priorPrecision);
+				// Fail chip only when demoted to Estimate (restored Exact still honest Exact)
+				deps.setEngineFailed(deps.getLocPrecision() === 'estimate');
 				deps.setStatus(
 					`Program unavailable — ${result.error} · graph left at L1 (not LSP)`,
 				);
-				deps.remountCurrentView();
+				remountSettled();
 				return;
 			}
 
@@ -538,6 +567,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			deps.applyProgramGraph(result.graph, meta);
 			// Sticky Program after successful enrich (topology applied)
 			recordPrecisionPreference(result.graph, 'program');
+			deps.setEngineFailed(false);
 
 			// Product: if was Exact (or reindex preferExactMass), rehydrate Exact mass
 			if (wasExactMass) {
@@ -550,30 +580,33 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 				if (exactResult.ok) {
 					deps.setSurfaceProvider(exactResult.provider);
 					deps.setProgramExactMass(true);
-					deps.remountCurrentView();
+					// Flight clear before remount so chips paint lifecycle stable, not Loading
+					remountSettled();
 					deps.setStatus(
 						`${programStatusHonesty(meta)} · Exact mass rehydrated`,
 					);
 				} else {
 					deps.setProgramExactMass(false);
-					deps.remountCurrentView();
+					remountSettled();
 					deps.setStatus(
 						`${programStatusHonesty(meta)} · Exact mass unavailable (${exactResult.error}) · estimate mass`,
 					);
 				}
 			} else {
 				deps.setProgramExactMass(false);
-				deps.remountCurrentView();
+				remountSettled();
 				deps.setStatus(programStatusHonesty(meta));
 			}
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			restorePrecisionAfterProgramFail(priorPrecision);
+			deps.setEngineFailed(deps.getLocPrecision() === 'estimate');
 			deps.setStatus(
 				`Program failed soft: ${msg} · graph left at L1 (not LSP)`,
 			);
-			deps.remountCurrentView();
+			remountSettled();
 		} finally {
+			// Safety net if a path returned without remountSettled
 			deps.setExactEnableInFlight(false);
 		}
 	}

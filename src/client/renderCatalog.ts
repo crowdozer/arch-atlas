@@ -49,6 +49,8 @@ export type CatalogPaintOpts = {
 	locPrecision?: LocPrecision;
 	/** Program worker in flight (lifecycle incomplete on JS/TS chips). */
 	programLoading?: boolean;
+	/** Exact/Program enable failed → indication failed on loadable languages. */
+	engineFailed?: boolean;
 };
 
 /**
@@ -226,12 +228,14 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			tags.replaceChildren();
 			const precision = opts?.locPrecision ?? 'estimate';
 			const programLoading = Boolean(opts?.programLoading);
+			const engineFailed = Boolean(opts?.engineFailed);
 			for (const lang of catalog.summary.languages) {
 				const wrap = document.createElement('span');
 				wrap.className = 'atlas-lang-chip';
 				const status = languageChipStatus(lang, {
 					locPrecision: precision,
 					programLoading,
+					engineFailed,
 				});
 				wrap.appendChild(
 					createStatusIndicatorEl(status, {

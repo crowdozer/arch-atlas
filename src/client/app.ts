@@ -106,6 +106,11 @@ let locPrecision: LocPrecision = 'estimate';
 let surfaceProvider: ImportedSurfaceProvider | null = null;
 /** True while ensureExact is in flight (ignore re-entrant control events). */
 let exactEnableInFlight = false;
+/**
+ * Last Exact/Program enable failed/demoted — language chip fail indication.
+ * Cleared on success, user Estimate, or full Exact reset.
+ */
+let engineFailed = false;
 /** Once per enable: mixed-language warning already shown. */
 let exactMixedWarningShown = false;
 /**
@@ -264,6 +269,7 @@ function paintCatalog(selectedStart?: string | null): void {
 		selectedPackage: pendingPackageFocusLabel,
 		locPrecision,
 		programLoading: exactEnableInFlight && locPrecision === 'program',
+		engineFailed,
 	});
 }
 
@@ -335,6 +341,9 @@ const exact = createExactPaintMode({
 	setExactEnableInFlight: (v) => {
 		exactEnableInFlight = v;
 	},
+	setEngineFailed: (v) => {
+		engineFailed = v;
+	},
 	getExactMixedWarningShown: () => exactMixedWarningShown,
 	setExactMixedWarningShown: (v) => {
 		exactMixedWarningShown = v;
@@ -346,6 +355,7 @@ const exact = createExactPaintMode({
 	applyProgramGraph,
 	clearProgramMeta,
 	remountCurrentView: () => remountCurrentView(),
+	refreshCatalogChrome: () => paintCatalog(),
 	showStageLoading: (msg) => {
 		stage.showLoading(msg);
 	},
@@ -736,6 +746,7 @@ lifecycle = createSessionLifecycle({
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
 		programExactMass = false;
+		// engineFailed cleared inside exact.resetExactState via setEngineFailed
 		// New open/reset: spine formula is session chrome for a fresh project
 		spineFormula = DEFAULT_SPINE_FORMULA;
 	},
@@ -758,11 +769,12 @@ lifecycle = createSessionLifecycle({
 		);
 		if (action === 'program') {
 			await exact.enableProgramMode();
-			return 'applied';
+			// Soft-fail demotes chrome — don't claim applied / block auto-local
+			return locPrecision === 'program' ? 'applied' : 'none';
 		}
 		if (action === 'exact') {
 			await exact.enableExactSurfaceMode('precision');
-			return 'applied';
+			return locPrecision === 'exact' ? 'applied' : 'none';
 		}
 		if (action === 'stay-estimate') return 'stay-estimate';
 		return 'none';

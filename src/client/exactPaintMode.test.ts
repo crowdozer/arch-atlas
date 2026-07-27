@@ -91,14 +91,18 @@ function mockPaintDeps(session: Session): {
 		exactMixedWarningShown: boolean;
 		programExactMass: boolean;
 		programMetaCleared: number;
+		engineFailed: boolean;
 	};
 	calls: {
 		remount: number;
+		/** Flight flag sampled at each remount (settled paint must be false). */
+		flightAtRemount: boolean[];
 		modals: { label: string; heading: string; body: string }[];
 		statuses: string[];
 		precisionSyncs: LocPrecision[];
 		programApplies: number;
 		stageLoading: string[];
+		catalogChrome: number;
 	};
 } {
 	const state = {
@@ -109,14 +113,17 @@ function mockPaintDeps(session: Session): {
 		exactMixedWarningShown: false,
 		programExactMass: false,
 		programMetaCleared: 0,
+		engineFailed: false,
 	};
 	const calls = {
 		remount: 0,
+		flightAtRemount: [] as boolean[],
 		modals: [] as { label: string; heading: string; body: string }[],
 		statuses: [] as string[],
 		precisionSyncs: [] as LocPrecision[],
 		programApplies: 0,
 		stageLoading: [] as string[],
+		catalogChrome: 0,
 	};
 
 	const deps: ExactPaintModeDeps = {
@@ -137,6 +144,9 @@ function mockPaintDeps(session: Session): {
 		setExactEnableInFlight: (v) => {
 			state.exactEnableInFlight = v;
 		},
+		setEngineFailed: (v) => {
+			state.engineFailed = v;
+		},
 		getExactMixedWarningShown: () => state.exactMixedWarningShown,
 		setExactMixedWarningShown: (v) => {
 			state.exactMixedWarningShown = v;
@@ -153,6 +163,10 @@ function mockPaintDeps(session: Session): {
 		},
 		remountCurrentView: () => {
 			calls.remount += 1;
+			calls.flightAtRemount.push(state.exactEnableInFlight);
+		},
+		refreshCatalogChrome: () => {
+			calls.catalogChrome += 1;
 		},
 		showStageLoading: (msg) => {
 			calls.stageLoading.push(msg);
@@ -227,6 +241,7 @@ describe('exactPaintMode rehydrate honesty', () => {
 		);
 		expect(calls.statuses.some((s) => s.includes('engine unavailable'))).toBe(true);
 		expect(state.exactEnableInFlight).toBe(false);
+		expect(state.engineFailed).toBe(true);
 	});
 
 	it('rehydrate throw path falls back to Estimate with failed modal', async () => {
@@ -312,6 +327,26 @@ describe('exactPaintMode rehydrate honesty', () => {
 		expect(state.surfaceProvider).toBe(provider);
 		expect(calls.remount).toBe(1);
 		expect(calls.statuses.at(-1)).toMatch(/Export-surface Exact on/);
+		expect(state.engineFailed).toBe(false);
+	});
+
+	it('Exact enable failure sets engineFailed for chip fail indication', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		ensureExactForGraph.mockResolvedValue({
+			ok: false,
+			error: 'CDN blocked',
+			engines: { loadable: [], missing: [] },
+		});
+
+		await paint.enableExactSurfaceMode('precision');
+
+		expect(state.locPrecision).toBe('estimate');
+		expect(state.engineFailed).toBe(true);
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
 	});
 });
 
@@ -375,6 +410,8 @@ describe('enableProgramMode orchestration', () => {
 		expect(calls.statuses.at(-1)).toMatch(/graph left at L1/);
 		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
 		expect(state.exactEnableInFlight).toBe(false);
+		expect(calls.flightAtRemount.at(-1)).toBe(false);
+		expect(state.engineFailed).toBe(true);
 		expect(ensureExactForGraph).not.toHaveBeenCalled();
 	});
 
@@ -422,6 +459,35 @@ describe('enableProgramMode orchestration', () => {
 		expect(calls.statuses.at(-1)).toMatch(/L2 re-resolve/);
 		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
 		expect(state.exactEnableInFlight).toBe(false);
+		// Settled remount must clear flight first so chips paint lifecycle stable
+		expect(calls.flightAtRemount.at(-1)).toBe(false);
+		expect(state.engineFailed).toBe(false);
+		// Loading glyph path: catalog chrome refresh while in flight
+		expect(calls.catalogChrome).toBeGreaterThanOrEqual(1);
+	});
+
+	it('Program success remount paints with flight cleared (not Loading chips)', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+
+		await paint.enableProgramMode();
+
+		// Host derives programLoading = flight && precision===program
+		const flightAtSettled = calls.flightAtRemount.at(-1);
+		expect(flightAtSettled).toBe(false);
+		expect(state.locPrecision).toBe('program');
+		// Equivalent chip status: languageChipStatus would be lifecycle stable
+		const { languageChipStatus } = await import('@shell/statusIndicator.ts');
+		const chip = languageChipStatus('TypeScript', {
+			locPrecision: state.locPrecision,
+			programLoading: Boolean(flightAtSettled) && state.locPrecision === 'program',
+		});
+		expect(chip.axis).toBe('lifecycle');
+		expect(chip.kind).toBe('stable');
+		expect(chip.shape).toBe('circle');
 	});
 
 	it('success from Exact applies + rehydrates Exact mass (programExactMass)', async () => {
