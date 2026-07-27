@@ -16,7 +16,7 @@ stay pure; ship only stitches them.
 ## Workspace
 
 - Repo: **arch-atlas**
-- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); alluvial stage in `src/stage/` (`@stage` — Carbon mount/polish/focus); web host in `src/client/` (composition root + paint modules). Later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`extension/` not landed** (dual-host partial — shell + stage web-in-process only)
+- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); alluvial stage in `src/stage/` (`@stage` — Carbon mount/polish/focus); web host in `src/client/` (composition root + paint modules); agent CLI host in `src/cli/` (`npm run atlas` / bin `arch-atlas` — dir|zip → Estimate JSON, no raw source). Later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`extension/` not landed** (dual-host partial — shell + stage web-in-process + CLI injector; VS Code still open)
 - Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → catalog/heuristics → suggested alluvial atlas views (source stays on-device)
 - Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
 - Mode: local `npm run dev` (Astro static + client index); no remote source upload
@@ -58,8 +58,8 @@ Underlying structure is a **directed graph** (shared helpers merge bands); roote
 route views may look tree-like but must not assume a true tree.
 
 **Layout (current):** `src/core` (engine) · `src/shell` (pure session/nav) ·
-`src/stage` (DOM alluvial, landed web-in-process) · `src/client` (web injector).
-`extension/` (VS Code host) still **not landed**.
+`src/stage` (DOM alluvial, landed web-in-process) · `src/client` (web injector) ·
+`src/cli` (agent CLI injector). `extension/` (VS Code host) still **not landed**.
 
 ## Conventions
 
@@ -96,10 +96,11 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | Area | Path / focus |
 | ---- | ------------ |
 | Astro app shell | `src/pages/`, `src/layouts/` |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent digest builders in `export/agentDigest.ts` |
 | Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
 | Alluvial stage | `src/stage/` (`@stage`) — `createAlluvialStage`, `polish/`, `focus/`, drill/carbonEvents/height; owns `@carbon/charts` |
 | Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no Carbon/chart |
+| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `digest` / `tree` / `file` → JSON schemas `arch-atlas.agent-*.v1` |
 | VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
 | UI / Carbon wrappers | `src/components/ui/`, `src/styles/` |
@@ -113,6 +114,8 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
+| `npm run atlas -- digest\|tree\|file …` | Agent CLI lens (dir or ZIP → Estimate JSON; see README) |
+| `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 
 If a command is not in `package.json`, do not invent CI that depends on it —
 implement or skip with an explicit note.

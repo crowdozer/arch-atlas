@@ -37,6 +37,37 @@ npm test    # pure core unit tests
 npm run build
 ```
 
+## Agent CLI (local lens)
+
+Third host over pure core: directory or ZIP → JSON (no raw source). Same
+Level-1 **Estimate** honesty as the web app (static JS/TS import graph; not
+LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
+`arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`.
+
+```bash
+# via npm script (recommended in-repo)
+npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--out file.json]
+npm run atlas -- tree   <dir|zip> [--max-depth N] [--out file.json]
+npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--out file.json]
+
+# after npm install: package bin (src/cli/bin.mjs → tsx main.ts)
+npx arch-atlas digest .
+npx arch-atlas --help
+```
+
+| Flag | Meaning |
+| ---- | ------- |
+| `--limit N` | Top-N catalog ranking bins (digest/file). Default **40**. |
+| `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
+| `--file <rel>` | Relative path inside the project (**required** for `file`). |
+| `--out <path>` | Write JSON to file instead of stdout. |
+| `-h`, `--help` | Usage. |
+
+Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
+non-text paths (`isTextPath`); depth overruns emit warnings. Path alone without a
+subcommand defaults to `digest`. Implementation: `src/cli/` + pure builders in
+`src/core/export/agentDigest.ts`.
+
 ## Product sketch
 
 ```text
@@ -81,6 +112,7 @@ inject). Non-JS languages stay estimate-honest.
 | Area | Path |
 | ---- | ---- |
 | Graph / parse / catalog / views | `src/core/` |
+| Agent CLI host | `src/cli/` (`npm run atlas` / bin `arch-atlas`) |
 | Client workspace controller | `src/client/app.ts` |
 | Carbon wrappers | `src/components/ui/` |
 | Shell + theme (zinc/teal) | `src/layouts/`, `src/styles/` |

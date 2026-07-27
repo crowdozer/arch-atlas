@@ -13,6 +13,7 @@ scope:
   - core-engine
   - alluvial-viz
   - web-host
+  - cli-host
   - injectors
 applies_when:
   - dual-host architecture
@@ -25,6 +26,7 @@ applies_when:
   - map catalog TreeView
   - browser vs extension packaging
   - host ports SourcePort CatalogPort StagePort
+  - agent CLI digest / tree / file lens
 touches:
   - src/core
   - src/shell
@@ -34,6 +36,7 @@ touches:
   - src/client/renderTree.ts
   - src/client/renderCatalog.ts
   - src/client/inspectModal.ts
+  - src/cli/
   - extension/
   - hosts as injectors
   - AlluvialChart mount
@@ -81,9 +84,15 @@ TS export-surface `ImportedSurfaceProvider`; core `requiredEngines` + exact
 `edgeWeight`; Precision/Shaken dual entry. Extension inject of the same provider
 seam remains unrealized (see `exact-surface-mode-futures`).
 
+**Landed — agent CLI injector:** `src/cli/` (`npm run atlas` / bin `arch-atlas`)
+feeds dir|ZIP through pure core → agent JSON (`digest` / `tree` / `file`;
+schemas `arch-atlas.agent-*.v1`). Estimate honesty only; no raw source. Does
+**not** complete dual-host — extension path still open; catalog state stays
+**partial**.
+
 **Still unrealized:** VS Code `extension/` adapter; webview message loop;
 dual-host packaging. Do not treat dual-host as complete — stage is landed for
-**web in-process only**.
+**web in-process only**; CLI is a third injector over the same pure core.
 Source research/plan: conversation dual-host research; ship plan dual-host
 minimal rewrite.
 
@@ -146,10 +155,12 @@ src/core/     pure engine
 src/shell/    pure session/nav/project/messages
 src/stage/    DOM alluvial (browser + webview)
 src/client/   web host adapter (ZIP, tree, catalog paint, persist)
-extension/    VS Code host adapter (workspace, commands, webview)
+src/cli/      agent CLI injector (dir|zip → digest/tree/file JSON) — landed
+extension/    VS Code host adapter (workspace, commands, webview) — not landed
 ```
 
 Web: shell + stage **in-process**.  
+CLI: core only (no shell/stage DOM) — agent lens.  
 VS Code: shell on extension host; stage via **postMessage** (`messages.ts`).
 
 ## Implementation slice

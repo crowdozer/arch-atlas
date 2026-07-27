@@ -32,7 +32,7 @@ from becoming merely a prettier dependency graph.
 
 ## Core contracts (draft)
 
-1. **Local-first** — parsing and graph build run in-browser/local; no source upload to remote servers by default. Optional export of a **sanitized graph** only.
+1. **Local-first** — parsing and graph build run in-browser/local (web) or on-device CLI; no source upload to remote servers by default. Optional export of a **sanitized graph** only (agent CLI: Estimate JSON schemas, no raw source).
 2. **Graph is SoR** — durable model is nodes + edges; views are projections.
 3. **Epistemic honesty** — Observed vs Inferred vs Declared stay distinct; user category corrections propagate.
 4. **Suggested views** — adapters propose toolkits (API architecture, DB access, externals, god-files, layer violations, blast radius, …).

@@ -48,19 +48,25 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file`; see README) |
+| `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
 ## Code areas (current layout)
 
 | Area | Path / focus |
 | ---- | ------------ |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent JSON builders in `export/agentDigest.ts` |
+| Agent CLI host | `src/cli/` — dir/ZIP feed + `digest`/`tree`/`file` JSON lens (Estimate only; no raw source) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
 | Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
 | Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint modules `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no `@carbon/charts` |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | UI / Carbon | `src/components/ui/`, `src/styles/` |
 
-**Not yet landed:** `extension/` (VS Code host). Dual-host plan is **partial** — shell + stage web-in-process landed; extension / webview message loop not. See [dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
+**Hosts:** web (`src/client/`) + agent CLI (`src/cli/`) landed. **Not yet landed:**
+`extension/` (VS Code host). Dual-host plan remains **partial** — shell + stage
+web-in-process + CLI injector; extension / webview message loop not. See
+[dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
 
 ## How to treat this repo
 
