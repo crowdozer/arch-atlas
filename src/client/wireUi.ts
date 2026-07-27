@@ -84,7 +84,7 @@ function wirePersistCheckbox(deps: WireUiDeps): void {
 function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 	const box = deps.includeTestsCheckbox();
 	if (!box) return;
-	// Reflect module state (default true — matches CLI include-all)
+	// Reflect module state (web default: tests off)
 	box.checked = deps.getIncludeTests();
 	box.addEventListener('cds-checkbox-changed', () => {
 		const on = Boolean(box.checked);

@@ -109,9 +109,9 @@ let depthUserSet = false;
 let interactionMode: InteractionMode = 'drill';
 /**
  * When false, drop test-like paths from the index (`isTestPath`).
- * Default true so web matches CLI (no implicit --omit of tests).
+ * Default false (web only) — CLI still includes tests unless --omit.
  */
-let includeTests = true;
+let includeTests = false;
 /** Spine ranking formula (session-local; not persisted). */
 let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
 /**
