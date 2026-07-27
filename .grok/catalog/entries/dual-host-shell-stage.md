@@ -37,6 +37,7 @@ touches:
   - src/client/renderCatalog.ts
   - src/client/inspectModal.ts
   - src/cli/
+  - src/exact
   - extension/
   - hosts as injectors
   - AlluvialChart mount
@@ -79,9 +80,18 @@ Approved ship plan (Gate A, run `3e810aae`) — **partially realized**.
 injects `createAlluvialStage` callbacks; no `@carbon/charts` in client. Polish
 and focus live under stage (not client).
 
-**Landed — Exact web on-ramp (ship lazy-exact-engine):** client engine loader +
-TS export-surface `ImportedSurfaceProvider`; core `requiredEngines` + exact
-`edgeWeight`; Precision/Shaken dual entry. Extension inject of the same provider
+
+**Landed — host-shared Exact (`src/exact/` / `@exact`):** export-surface
+engine load + provider moved out of `src/client/exact/`. Web composition root
+and CLI both import `@exact`; CLI no longer depends on `src/client/`. CDN
+loader stays out of pure `src/core`. Thin app extracts: `exactPaintMode.ts`,
+`wireUi.ts`.
+
+
+**Landed — Exact on-ramp (ship lazy-exact-engine; relocated to `src/exact/`):**
+host-shared engine loader + TS export-surface `ImportedSurfaceProvider`; core
+`requiredEngines` + exact `edgeWeight`; Precision/Shaken dual entry. Extension
+inject of the same provider
 seam remains unrealized (see `exact-surface-mode-futures`).
 
 **Landed — agent CLI injector:** `src/cli/` (`npm run atlas` / bin `arch-atlas`)

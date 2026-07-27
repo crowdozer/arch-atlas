@@ -1,5 +1,5 @@
 /**
- * Lazy TypeScript engine loader (web host only).
+ * Lazy TypeScript engine loader (host-shared: web + CLI).
  *
  * Resolution order:
  * 1. Injected module via `globalThis.__ARCH_ATLAS_TS__` or opts.inject
@@ -12,7 +12,8 @@
  * classic `createSourceFile` (local alias or CDN UMD). Text export-surface is
  * fallback only when the classic API is unavailable.
  *
- * Never imported from `src/core`. VS Code hosts inject ImportedSurfaceProvider.
+ * Lives in `src/exact/` (host-shared). Never imported from pure `src/core`
+ * (CDN fetch / dynamic import). VS Code hosts inject ImportedSurfaceProvider.
  */
 
 import {

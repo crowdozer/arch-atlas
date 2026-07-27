@@ -1,6 +1,6 @@
 /**
  * ImportedSurfaceProvider backed by classic TypeScript (`createSourceFile`)
- * over graph.contents (virtual VFS). Host-only — never imported from core.
+ * over graph.contents (virtual VFS). Host-shared (`src/exact/`) — never imported from pure core.
  *
  * Mass policy (v1, honest + coarse):
  * 1. Prefer classic TS AST export spans when `ts.createSourceFile` is available

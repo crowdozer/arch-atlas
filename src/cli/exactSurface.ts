@@ -1,7 +1,7 @@
 /**
  * CLI Exact (export-surface) engine load for agent digests.
  *
- * Reuses the web host loader order: inject → local classic
+ * Reuses the host-shared Exact loader order (`src/exact/`): inject → local classic
  * (`typescript-classic` / classic `createSourceFile`) → jsDelivr → unpkg.
  * There is no vendored typescript.js in-repo; the local copy is the npm
  * package at node_modules/typescript-classic (devDependency).
@@ -12,14 +12,12 @@
 
 import {
 	collectExportSpansFromText,
-	type ExportSpan,
-} from '../client/exact/exportSurface.ts';
-import { loadTypescript } from '../client/exact/loadTypescript.ts';
-import {
 	collectExportSpansFromTs,
 	isClassicTypescriptModule,
+	loadTypescript,
+	type ExportSpan,
 	type TypescriptModule,
-} from '../client/exact/tsProgramProvider.ts';
+} from '@exact/index.ts';
 import { requiredEngines, type CodeGraph } from '@core/index.ts';
 import { fileLineCount, lineCount } from '@core/view/weight.ts';
 

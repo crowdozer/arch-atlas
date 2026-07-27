@@ -1,9 +1,10 @@
 /**
- * Orchestrate Exact surface mode for the web host:
+ * Orchestrate Exact surface mode for host injectors (web + future hosts):
  * language→engine map → load TypeScript if needed → build provider.
  *
  * Does **not** re-index the graph. Provider is projection/inspect only.
  * Inject path: `globalThis.__ARCH_ATLAS_SURFACE__` skips engine load entirely.
+ * Host-shared package (`src/exact/`); not pure core (loader may fetch CDN).
  */
 
 import {
@@ -43,7 +44,7 @@ export function isLocalExactSource(source: EnsureExactSource): boolean {
 }
 
 export type EnsureExactOpts = {
-	/** Already-built provider (client cache / host inject). */
+	/** Already-built provider (host cache / host inject). */
 	cachedProvider?: ImportedSurfaceProvider | null;
 	/** Loader opts (tests, pin version). */
 	load?: LoadTypescriptOpts;
