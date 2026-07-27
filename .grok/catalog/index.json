@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-27T02:21:11Z",
+  "generated_at": "2026-07-27T02:57:59Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 4,
   "entries": [
@@ -55,7 +55,7 @@
     {
       "id": "dual-host-shell-stage",
       "kind": "plan",
-      "state": "active",
+      "state": "partial",
       "authority": "advisory",
       "provenance": "mixed",
       "path": ".grok/catalog/entries/dual-host-shell-stage.md",
@@ -86,6 +86,10 @@
         "src/shell",
         "src/stage",
         "src/client/app.ts",
+        "src/client/dom.ts",
+        "src/client/renderTree.ts",
+        "src/client/renderCatalog.ts",
+        "src/client/inspectModal.ts",
         "extension/",
         "hosts as injectors",
         "AlluvialChart mount",
@@ -101,7 +105,7 @@
     {
       "id": "geometric-vs-knot-architecture",
       "kind": "idea",
-      "state": "active",
+      "state": "partial",
       "authority": "exploratory",
       "provenance": "mixed",
       "path": ".grok/catalog/entries/geometric-vs-knot-architecture.md",
@@ -126,7 +130,8 @@
         "architectural loss function alongside tests",
         "connection validity vs system topology",
         "incidental complexity vs architectural complexity",
-        "boundaries that prohibit invalid connections"
+        "boundaries that prohibit invalid connections",
+        "Level-1 map catalog topology findings (godfiles, blast radius)"
       ],
       "touches": [
         "hub alluvial import graph",
@@ -134,7 +139,10 @@
         "semantic buckets / domains",
         "agent findings projection",
         "topology diff after edit",
-        ".grok agent personality formulations"
+        ".grok agent personality formulations",
+        "src/core/catalog/godfiles.ts",
+        "src/core/catalog/blastRadius.ts",
+        "fixtures/demo-spaghetti-godfile"
       ],
       "related": [
         "dual-host-shell-stage"

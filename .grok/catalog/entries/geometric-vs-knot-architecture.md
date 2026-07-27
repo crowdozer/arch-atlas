@@ -1,7 +1,7 @@
 ---
 id: geometric-vs-knot-architecture
 kind: idea
-state: active
+state: partial
 authority: exploratory
 provenance: mixed
 
@@ -26,6 +26,7 @@ applies_when:
   - connection validity vs system topology
   - incidental complexity vs architectural complexity
   - boundaries that prohibit invalid connections
+  - Level-1 map catalog topology findings (godfiles, blast radius)
 touches:
   - hub alluvial import graph
   - weighted dependency edges
@@ -33,6 +34,9 @@ touches:
   - agent findings projection
   - topology diff after edit
   - .grok agent personality formulations
+  - src/core/catalog/godfiles.ts
+  - src/core/catalog/blastRadius.ts
+  - fixtures/demo-spaghetti-godfile
 invariants: []
 open_questions:
   - Which topology metrics are stable enough to drive agent decisions without false godfile signals?
@@ -42,7 +46,15 @@ open_questions:
   - Where does this live in the pipeline (core analysis only vs agent-facing findings layer)?
 related:
   - dual-host-shell-stage
-realized_by: []
+realized_by:
+  - src/core/catalog/godfiles.ts
+  - src/core/catalog/blastRadius.ts
+  - src/core/catalog/views.ts
+  - src/core/graph/types.ts (CatalogGodfile, CatalogBlast)
+  - src/client/renderCatalog.ts
+  - src/client/demoFixtures.ts (spaghetti-godfile)
+  - fixtures/demo-spaghetti-godfile/
+  - src/pages/index.astro (Godfile candidates + Blast radius + Spaghetti hub demo)
 superseded_by: null
 rationale_quality: full
 ---
@@ -50,6 +62,8 @@ rationale_quality: full
 # Geometric architecture vs AI knots (alluvial as topology feedback)
 
 Conversation direction: why AI-produced systems feel wrong despite solid edges, and why a weighted alluvial import graph can give agents the missing global perception—and eventually an architectural loss function.
+
+**Landed so far (partial, thin catalog only):** Level-1 map catalog surfaces multi-signal **godfile candidates** (`catalogGodfiles`) and reverse **blast radius** ranks (`catalogBlastRadius`), plus a deliberate **Spaghetti hub** demo fixture. This is **not** an agent loss function, topology-diff after edit, betweenness/weighted findings schema, or full geometric thesis productized—exploratory idea still mostly open.
 
 ## Problem
 
@@ -188,11 +202,12 @@ Tests: behavior survived. Graph: shape improved. That attacks low-energy complet
 
 ## Revisit when
 
-- Shipping machine-readable topology / findings for agents.
+- Shipping machine-readable topology / findings for agents (beyond thin catalog rows).
 - Designing agent personality or “architectural review” steps that go beyond tests.
 - Alluvial product work moves from explorer UX to feedback instrument (before/after diff).
 - Concrete false positives on godfile / leakage heuristics appear in real repos.
 - Product decides whether topology metrics are first-class contracts or experimental probes.
+- Extending L1 catalog heuristics (godfiles / blast) toward weighted metrics, role inference, or topology-diff.
 
 ## Source
 
