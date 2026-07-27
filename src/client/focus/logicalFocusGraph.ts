@@ -276,6 +276,38 @@ function bfs(adj: Map<string, string[]>, start: string): Set<string> {
 }
 
 /**
+ * BFS on `adj`, re-expanding file aliases whenever new nodes are discovered.
+ * Multi-instance labels share an id: Buffer→useCodebreaker·hN must continue
+ * through the primary instance's out-edges (reducer/types/utils). A single
+ * expand-after-BFS miss leaves the forward tree truncated at ·hN.
+ */
+function aliasClosedBfs(
+	adj: Map<string, string[]>,
+	start: string,
+	nodeRef: Record<string, FocusNodeRef>,
+): Set<string> {
+	const out = new Set<string>();
+	const q: string[] = [];
+	const enqueue = (n: string) => {
+		if (out.has(n)) return;
+		out.add(n);
+		q.push(n);
+	};
+	for (const s of expandFileAliases(new Set([start]), nodeRef)) {
+		enqueue(s);
+	}
+	while (q.length) {
+		const cur = q.shift()!;
+		for (const n of adj.get(cur) ?? []) {
+			for (const a of expandFileAliases(new Set([n]), nodeRef)) {
+				enqueue(a);
+			}
+		}
+	}
+	return out;
+}
+
+/**
  * Reverse closure from a display name, expanding file aliases as alternate
  * walk entry points (multi-instance instances share reachability by id).
  */
@@ -284,12 +316,7 @@ function reverseClosure(
 	rev: Map<string, string[]>,
 	start: string,
 ): Set<string> {
-	const starts = expandFileAliases(new Set([start]), graph.nodeRef);
-	const out = new Set<string>();
-	for (const s of starts) {
-		for (const n of bfs(rev, s)) out.add(n);
-	}
-	return expandFileAliases(out, graph.nodeRef);
+	return aliasClosedBfs(rev, start, graph.nodeRef);
 }
 
 function forwardClosure(
@@ -297,12 +324,7 @@ function forwardClosure(
 	fwd: Map<string, string[]>,
 	start: string,
 ): Set<string> {
-	const starts = expandFileAliases(new Set([start]), graph.nodeRef);
-	const out = new Set<string>();
-	for (const s of starts) {
-		for (const n of bfs(fwd, s)) out.add(n);
-	}
-	return expandFileAliases(out, graph.nodeRef);
+	return aliasClosedBfs(fwd, start, graph.nodeRef);
 }
 
 /**

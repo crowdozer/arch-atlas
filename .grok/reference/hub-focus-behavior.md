@@ -59,7 +59,9 @@ Straighten key: `ext:parent\0packageName`
 ### 3b. File label (`L-file-*`)
 
 ```text
-descendants = forwardBFS(hovered) on fileEdges   // includes hovered
+descendants = aliasClosedForwardBFS(hovered) on fileEdges   // includes hovered
+// alias-closed: when walk hits useCodebreaker·hN, continue from primary id too
+// so Buffer→hook·hN still reaches reducer/types/utils out-edges of the primary
 targets    = aliasExpand({ hovered })
 if fileSpineName known and some target reachable from spine (forward):
   ancestors = nodes on any shortest path spine → target (forward on fileEdges)
@@ -67,7 +69,7 @@ if fileSpineName known and some target reachable from spine (forward):
               // multi-instance: D = min dist among reached goals; paths to
               // goals with dist==D only; then aliasExpand so ·hN lights
 else:
-  ancestors = reverseBFS(hovered) on fileEdges   // fallback (includes hovered)
+  ancestors = aliasClosedReverseBFS(hovered) on fileEdges   // fallback
 packageParentFiles = aliasExpand(descendants)    // NOT reverse-only ancestors
 activeFiles = ancestors ∪ descendants
 packages = { pkg | pair parent ∈ packageParentFiles }
@@ -78,8 +80,16 @@ focusedBands =
   ∪ every externalEdge whose parent ∈ packageParentFiles
 // NOT full induced on activeFiles — that would light cross-cut edges between
 // the reverse chain and the forward tree (e.g. index→useCodebreaker when
-// seed=Timer, where index is ancestor-only and hook is descendant-only).
+// seed=Buffer/Timer: index is ancestor-only, primary hook is descendant-only).
+// That sibling path (index→hook→deps next to Buffer) is the codebreaker screenshot bug.
 ```
+
+**Expected vs forbidden (codebreaker Buffer hover):**
+- **On:** page→index→Buffer, Buffer→useCodebreaker·hN, useCodebreaker→reducer|types|utils
+  (forward through the hook, alias-closed).
+- **Off:** sibling **index→useCodebreaker** (Imports column next to Buffer) and any
+  band that only exists because both ends sit in ancestors∪descendants without
+  belonging to the same half (path vs forward).
 
 **Why shortest-path (not full reverseBFS):** shared hooks (e.g. `useCodebreaker`
 imported by many game components) must not light every co-importer. Only the
