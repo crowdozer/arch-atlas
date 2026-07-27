@@ -7,6 +7,7 @@ import { indexFiles } from '@core/index.ts';
 import { isAlluvialRailName } from '@core/view/alluvial.ts';
 import { projectFileHub } from '@core/view/fileHub.ts';
 import {
+	carbonAlluvialLabelTitleOffset,
 	centerHubFileSpine,
 	hideAlluvialRails,
 	isExportSideCategory,
@@ -18,6 +19,7 @@ import {
 	markAlluvialTerminators,
 	polishAlluvialHolder,
 	recomputeLinkBreadths,
+	rightTruncateAlluvialLabels,
 	rightTruncateLabel,
 	planExternalStraightBands,
 	straightenExternalPackageBands,
@@ -83,6 +85,103 @@ describe('rightTruncateLabel', () => {
 		expect(out.startsWith('…')).toBe(true);
 		expect(out.endsWith('public.ts')).toBe(true);
 		expect(out.length).toBe(20);
+	});
+});
+
+describe('carbonAlluvialLabelTitleOffset', () => {
+	it('hangs left when node.x1 >= textWidth', () => {
+		const o = carbonAlluvialLabelTitleOffset(
+			{ x0: 100, x1: 110, y0: 0, y1: 40 },
+			50,
+		);
+		// barW=10; hang left: 10 - (50+16) = -56; y = 20 - 9
+		expect(o.x).toBe(-56);
+		expect(o.y).toBe(11);
+	});
+
+	it('places right of bar when node.x1 < textWidth', () => {
+		const o = carbonAlluvialLabelTitleOffset(
+			{ x0: 0, x1: 10, y0: 0, y1: 20 },
+			200,
+		);
+		expect(o.x).toBe(14); // barW + 4
+		expect(o.y).toBe(1);
+	});
+
+	it('keeps left-hang right edge snug to bar after truncate', () => {
+		const node = { x0: 200, x1: 210, y0: 0, y1: 30 };
+		const fullT = 180;
+		const truncT = 100;
+		const full = carbonAlluvialLabelTitleOffset(node, fullT);
+		const trunc = carbonAlluvialLabelTitleOffset(node, truncT);
+		// Without re-anchor, chip would stay at full.x and end far left of bar
+		expect(trunc.x).toBeGreaterThan(full.x);
+		// With re-anchor, text right edge stays barW - 16 from node origin
+		expect(full.x + fullT).toBe(10 - 16);
+		expect(trunc.x + truncT).toBe(10 - 16);
+	});
+});
+
+describe('rightTruncateAlluvialLabels re-anchors Carbon title chips', () => {
+	it('shrinks bg and rewrites title transform for truncated hang-left labels', () => {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+
+		const nodeG = new MiniEl('g', ['node-group']);
+		nodeG.__data__ = {
+			name: 'client/sim/very/deep/nested/module/public.ts',
+			category: 'Exports',
+			x0: 200,
+			x1: 210,
+			y0: 10,
+			y1: 40,
+		};
+		const titleG = new MiniEl('g');
+		titleG.setAttribute('id', 'alluvial-node-title-0');
+		// Carbon full-string hang (text ~180px): barW - (180+16)
+		titleG.setAttribute('transform', 'translate(-186, 6)');
+
+		const text = new MiniEl('text', ['node-text']);
+		const full =
+			'client/sim/very/deep/nested/module/public.ts (12)';
+		text.textContent = full;
+		// ~6.5px/char stand-in; after truncate length drives measure
+		text.getComputedTextLength = function (this: MiniEl) {
+			return (this.textContent?.length ?? 0) * 6.5;
+		};
+
+		const bg = new MiniEl('rect', ['node-text-bg']);
+		bg.setAttribute('width', '200');
+		bg.setAttribute('height', '18');
+
+		titleG.appendChild(text);
+		titleG.appendChild(bg);
+		nodeG.appendChild(titleG);
+		svg.appendChild(nodeG);
+
+		rightTruncateAlluvialLabels(holder as unknown as HTMLElement, 20);
+
+		const painted = text.textContent ?? '';
+		expect(painted.startsWith('…')).toBe(true);
+		expect(painted).toContain('(12)');
+
+		const textW = (painted.length) * 6.5;
+		const expected = carbonAlluvialLabelTitleOffset(
+			nodeG.__data__ as {
+				x0: number;
+				x1: number;
+				y0: number;
+				y1: number;
+			},
+			textW,
+		);
+		expect(titleG.getAttribute('transform')).toBe(
+			`translate(${expected.x}, ${expected.y})`,
+		);
+		expect(Number(bg.getAttribute('width'))).toBe(Math.ceil(textW + 8));
+		// Must not leave the full-string hang offset
+		expect(titleG.getAttribute('transform')).not.toBe('translate(-186, 6)');
 	});
 });
 
