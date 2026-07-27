@@ -1137,6 +1137,7 @@ cds-dropdown.atlas-stage__precision {
 .atlas-unavailable-modal::part(dialog) {
   max-inline-size: 18rem; /* ~288px; Carbon xs is still wide on some builds */
   inline-size: min(18rem, calc(100vw - 2rem));
+  overflow: hidden; /* clip any footer/button edge overflow */
 }
 
 /* Light-DOM children (header/body/footer) sit inside the dialog */
@@ -1160,9 +1161,27 @@ cds-dropdown.atlas-stage__precision {
   padding: 0.85rem 1.35rem 1.35rem !important;
 }
 
+/*
+ * Carbon modal footers are a fixed 4rem row with edge-to-edge 4rem buttons.
+ * Padding on the footer host (or shrinking the dialog) made the OK button
+ * overflow the dialog bounds. Keep the footer flush; air lives in header/body.
+ */
 .atlas-unavailable-modal cds-modal-footer {
-  padding: 0.85rem 1.35rem 1.25rem !important;
-  gap: 0.5rem;
+  box-sizing: border-box;
+  block-size: 4rem !important;
+  padding: 0 !important;
+  gap: 0;
+  overflow: hidden;
+}
+
+.atlas-unavailable-modal cds-modal-footer-button {
+  /* Single primary action: still half-width (Carbon alert pattern), never wider than the dialog */
+  flex: 0 1 50%;
+  box-sizing: border-box;
+  block-size: 4rem !important;
+  inline-size: 50% !important;
+  max-inline-size: 50%;
+  min-inline-size: 0;
 }
 
 .atlas-unavailable-modal__body-text {
