@@ -402,29 +402,37 @@ describe('enableProgramMode orchestration', () => {
 		expect(calls.statuses.at(-1)).toMatch(/Program unavailable/);
 	});
 
-	it('success from estimate applies once, remounts, no Exact rehydrate', async () => {
+	it('success from estimate applies + loads Exact mass (public mass path)', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'estimate';
 		const paint = createExactPaintMode(deps);
 
 		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+		const provider = { targetSurfaceMass: () => 5 };
+		ensureExactForGraph.mockResolvedValue({
+			ok: true,
+			provider,
+			engines: { loadable: ['typescript'], missing: [] },
+			source: 'local',
+		});
 
 		await paint.enableProgramMode();
 
 		expect(calls.stageLoading).toEqual(['Building Program topology…']);
 		expect(calls.programApplies).toBe(1);
 		expect(state.locPrecision).toBe('program');
-		expect(state.programExactMass).toBe(false);
-		expect(ensureExactForGraph).not.toHaveBeenCalled();
+		expect(state.programExactMass).toBe(true);
+		expect(state.surfaceProvider).toBe(provider);
+		expect(ensureExactForGraph).toHaveBeenCalledTimes(1);
 		expect(calls.remount).toBeGreaterThanOrEqual(1);
 		expect(calls.statuses.at(-1)).toMatch(/Program: resolved 2/);
-		expect(calls.statuses.at(-1)).toMatch(/L2 re-resolve/);
+		expect(calls.statuses.at(-1)).toMatch(/Exact mass ready/);
 		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
 		expect(state.exactEnableInFlight).toBe(false);
 	});
 
-	it('success from Exact applies + rehydrates Exact mass (programExactMass)', async () => {
+	it('success from Exact applies + reloads Exact mass (programExactMass)', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'exact';
@@ -447,10 +455,10 @@ describe('enableProgramMode orchestration', () => {
 		expect(state.programExactMass).toBe(true);
 		expect(state.surfaceProvider).toBe(newProvider);
 		expect(ensureExactForGraph).toHaveBeenCalledTimes(1);
-		expect(calls.statuses.at(-1)).toMatch(/Exact mass rehydrated/);
+		expect(calls.statuses.at(-1)).toMatch(/Exact mass ready/);
 	});
 
-	it('preferExactMass rehydrates Exact even when chrome already program', async () => {
+	it('re-run Program (chrome already program) still loads Exact mass', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'program';
@@ -472,6 +480,27 @@ describe('enableProgramMode orchestration', () => {
 		expect(state.programExactMass).toBe(true);
 		expect(state.surfaceProvider).toBe(provider);
 		expect(ensureExactForGraph).toHaveBeenCalled();
+	});
+
+	it('Exact mass failure under Program leaves estimate mass honestly', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+		ensureExactForGraph.mockResolvedValue({
+			ok: false,
+			error: 'engine missing',
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(1);
+		expect(state.locPrecision).toBe('program');
+		expect(state.programExactMass).toBe(false);
+		expect(calls.statuses.at(-1)).toMatch(/Exact mass unavailable/);
+		expect(calls.statuses.at(-1)).toMatch(/estimate mass/);
 	});
 
 	it('cancelled with live session remounts prior graph (no soft-fail toast)', async () => {

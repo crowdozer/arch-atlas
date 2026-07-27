@@ -105,8 +105,8 @@ let exactEnableInFlight = false;
 /** Once per enable: mixed-language warning already shown. */
 let exactMixedWarningShown = false;
 /**
- * Program mode entered from Exact: use rehydrated Exact mass while precision
- * chrome stays `program`. Cleared on estimate / new open.
+ * Program chrome with live Exact mass (export-surface public mass / icebergs).
+ * Set after Program enrich loads Exact; cleared on estimate / new open.
  */
 let programExactMass = false;
 /**
@@ -341,6 +341,7 @@ const exact = createExactPaintMode({
 	setProgramExactMass: (v) => {
 		programExactMass = v;
 	},
+	persistSessionIfEnabled: () => persistSessionIfEnabled(),
 	applyProgramGraph,
 	clearProgramMeta,
 	remountCurrentView: () => remountCurrentView(),
@@ -441,7 +442,10 @@ function isPersistEnabled(): boolean {
 /** Write session when the remember checkbox is on; no-op otherwise. */
 function persistSessionIfEnabled(): void {
 	if (!session || !isPersistEnabled()) return;
-	const result = savePersistedSession(session);
+	const result = savePersistedSession({
+		...session,
+		locPrecision,
+	});
 	if (!result.ok) setStatus(result.reason);
 }
 

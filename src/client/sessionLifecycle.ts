@@ -163,7 +163,15 @@ export function createSessionLifecycle(
 	function activateSession(
 		next: Session,
 		statusLine: string,
-		opts?: { skipPersist?: boolean; kind?: ActivateSessionKind },
+		opts?: {
+			skipPersist?: boolean;
+			kind?: ActivateSessionKind;
+			/**
+			 * Remembered precision from localStorage (boot restore only).
+			 * New ZIP/demo omit → auto Exact when local engine exists.
+			 */
+			restorePrecision?: LocPrecision;
+		},
 	): void {
 		const kind: ActivateSessionKind = opts?.kind ?? 'open';
 		// Snapshot before any Exact invalidate/reset / Program cancel
@@ -171,8 +179,6 @@ export function createSessionLifecycle(
 			kind === 'reindex' && deps.getLocPrecision() === 'exact';
 		const wasProgram =
 			kind === 'reindex' && deps.getLocPrecision() === 'program';
-		const programHadExactMass =
-			wasProgram && Boolean(deps.getProgramExactMass?.());
 
 		// Drop in-flight Program enrich (stale graph after open/reindex)
 		deps.cancelProgramEnrichment?.();
@@ -210,11 +216,16 @@ export function createSessionLifecycle(
 			deps.setStatus(statusLine);
 		}
 		// Reassert status after navigate (gate may have written a fail-closed line)
+		const restorePrecision = opts?.restorePrecision;
 		const rebuildNote = wasProgram
 			? ' · rebuilding Program…'
 			: wasExact
 				? ' · rebuilding Exact…'
-				: '';
+				: restorePrecision === 'program'
+					? ' · restoring Program…'
+					: restorePrecision === 'exact'
+						? ' · restoring Exact…'
+						: '';
 		deps.setStatus(`${statusLine}${rebuildNote}`);
 		if (!opts?.skipPersist) deps.persistSessionIfEnabled();
 
@@ -222,16 +233,24 @@ export function createSessionLifecycle(
 			// Carbon dropdowns must match preserved JS state (not forced Estimate)
 			deps.syncExactChrome();
 			if (wasProgram && deps.enableProgramMode) {
-				// Exact parity: re-apply createProgram topology on the new L1 graph
-				void deps.enableProgramMode({
-					preferExactMass: programHadExactMass,
-				});
+				// Re-apply createProgram + Exact mass on the new L1 graph
+				void deps.enableProgramMode();
 			} else if (wasExact) {
 				// Rebuild provider for new graph; on fail falls back to Estimate honestly.
 				// Generation token inside rehydrate discards stale rapid-toggle races.
 				void deps.rehydrateExactForGraph();
 			}
 			// Estimate stays Estimate — do not tryAutoExact (avoids surprise flip)
+			return;
+		}
+
+		// Boot restore: re-apply remembered Precision (Program includes Exact mass)
+		if (restorePrecision === 'program' && deps.enableProgramMode) {
+			void deps.enableProgramMode();
+			return;
+		}
+		if (restorePrecision === 'exact') {
+			void deps.rehydrateExactForGraph();
 			return;
 		}
 
@@ -406,7 +425,10 @@ export function createSessionLifecycle(
 					files: feed,
 				},
 				`Restored ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges (localStorage)`,
-				{ skipPersist: true },
+				{
+					skipPersist: true,
+					restorePrecision: stored.locPrecision,
+				},
 			);
 			return true;
 		} catch (err) {

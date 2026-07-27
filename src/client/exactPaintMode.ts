@@ -45,11 +45,13 @@ export type ExactPaintModeDeps = {
 	getExactMixedWarningShown: () => boolean;
 	setExactMixedWarningShown: (v: boolean) => void;
 	/**
-	 * When Program was entered from Exact: true so mass can rehydrate Exact
-	 * after graph swap while precision chrome stays `program`.
+	 * Program chrome with live Exact mass (export-surface public mass / icebergs).
+	 * Set after successful Program enrich + Exact load; cleared on estimate / open.
 	 */
 	getProgramExactMass: () => boolean;
 	setProgramExactMass: (v: boolean) => void;
+	/** Optional: persist session after precision chrome settles (remember mode). */
+	persistSessionIfEnabled?: () => void;
 	/**
 	 * Apply enriched graph + catalog rebuild + programMeta (host owns session).
 	 */
@@ -82,8 +84,8 @@ export type ExactPaintModeDeps = {
 /** Options for {@link ExactPaintMode.enableProgramMode}. */
 export type EnableProgramModeOpts = {
 	/**
-	 * Rehydrate Exact mass after successful Program enrich even when chrome is
-	 * already `program` (include-tests reindex re-run; prior programExactMass).
+	 * @deprecated Mass always loads after Program success. Kept for call-site
+	 * compatibility (reindex still passes it).
 	 */
 	preferExactMass?: boolean;
 };
@@ -292,6 +294,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setStatus(
 			`Export-surface Exact on (JS/TS export decls)${srcNote}${suffix}`,
 		);
+		deps.persistSessionIfEnabled?.();
 		return 'ok';
 	}
 
@@ -372,6 +375,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		const precEl = precisionDropdown();
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 		deps.remountCurrentView();
+		deps.persistSessionIfEnabled?.();
 	}
 
 	/**
@@ -458,11 +462,13 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 	/**
 	 * Precision → Program: async createProgram enrich in a Web Worker.
-	 * Soft-fail keeps prior graph + restores prior precision chrome. Topology
-	 * only; Exact mass rehydrates when user was Exact (or preferExactMass).
+	 * Soft-fail keeps prior graph + restores prior precision chrome.
+	 * After topology applies, **always** load export-surface Exact mass so
+	 * public mass / icebergs work from Estimate→Program and boot restore, not
+	 * only Exact→Program.
 	 */
 	async function enableProgramMode(
-		opts: EnableProgramModeOpts = {},
+		_opts: EnableProgramModeOpts = {},
 	): Promise<void> {
 		const session = deps.getSession();
 		if (!session) {
@@ -472,10 +478,6 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		if (deps.getExactEnableInFlight()) return;
 
 		const priorPrecision = deps.getLocPrecision();
-		const wasExactMass =
-			(priorPrecision === 'exact' && Boolean(deps.getSurfaceProvider())) ||
-			Boolean(opts.preferExactMass) ||
-			(priorPrecision === 'program' && deps.getProgramExactMass());
 		const precEl = precisionDropdown();
 
 		deps.setExactEnableInFlight(true);
@@ -529,33 +531,28 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			};
 			deps.applyProgramGraph(result.graph, meta);
 
-			// Product: if was Exact (or reindex preferExactMass), rehydrate Exact mass
-			if (wasExactMass) {
+			// Always load Exact mass under Program (public mass / icebergs)
+			deps.setStatus(
+				'Program topology applied · loading export-surface Exact…',
+			);
+			const exactResult = await ensureExactForGraph(result.graph, {
+				cachedProvider: null,
+			});
+			if (exactResult.ok) {
+				deps.setSurfaceProvider(exactResult.provider);
+				deps.setProgramExactMass(true);
+				deps.remountCurrentView();
 				deps.setStatus(
-					'Program topology applied · rebuilding export-surface Exact…',
+					`${programStatusHonesty(meta)} · Exact mass ready`,
 				);
-				const exactResult = await ensureExactForGraph(result.graph, {
-					cachedProvider: null,
-				});
-				if (exactResult.ok) {
-					deps.setSurfaceProvider(exactResult.provider);
-					deps.setProgramExactMass(true);
-					deps.remountCurrentView();
-					deps.setStatus(
-						`${programStatusHonesty(meta)} · Exact mass rehydrated`,
-					);
-				} else {
-					deps.setProgramExactMass(false);
-					deps.remountCurrentView();
-					deps.setStatus(
-						`${programStatusHonesty(meta)} · Exact mass unavailable (${exactResult.error}) · estimate mass`,
-					);
-				}
 			} else {
 				deps.setProgramExactMass(false);
 				deps.remountCurrentView();
-				deps.setStatus(programStatusHonesty(meta));
+				deps.setStatus(
+					`${programStatusHonesty(meta)} · Exact mass unavailable (${exactResult.error}) · estimate mass`,
+				);
 			}
+			deps.persistSessionIfEnabled?.();
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			restorePrecisionAfterProgramFail(priorPrecision);

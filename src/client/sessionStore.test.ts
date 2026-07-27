@@ -135,4 +135,53 @@ describe('sessionStore encode/parse', () => {
 		expect(parsePersistedSession('not-json')).toBeNull();
 		expect(parsePersistedSession('{"v":1,"files":[]}')).toBeNull();
 	});
+
+	it('round-trips locPrecision for boot restore', () => {
+		const graph = minimalGraph([
+			{ path: 'src/a.ts', content: 'export const a = 1' },
+		]);
+		const encoded = encodeSession({
+			graph,
+			catalog: {
+				starts: [],
+				ends: [],
+				hotspots: [],
+				complex: [],
+				deepest: [],
+				fileLoc: [],
+				blastRadius: [],
+				publicMass: [],
+				icebergs: [],
+				spines: [],
+				summary: {
+					sourceCount: 1,
+					packageCount: 0,
+					edgeCount: 0,
+					unresolvedCount: 0,
+					languages: ['TypeScript'],
+				},
+			},
+			startId: 'src/a.ts',
+			warnings: [],
+			expanded: new Set(['src']),
+			locPrecision: 'program',
+		});
+		expect(encoded.locPrecision).toBe('program');
+		const parsed = parsePersistedSession(JSON.stringify(encoded));
+		expect(parsed?.locPrecision).toBe('program');
+	});
+
+	it('older blobs without locPrecision still parse', () => {
+		const raw = JSON.stringify({
+			v: 1,
+			files: [{ path: 'a.ts', content: 'export {}', byteLength: 10 }],
+			startId: 'a.ts',
+			expanded: [],
+			warnings: [],
+			savedAt: 1,
+		});
+		const parsed = parsePersistedSession(raw);
+		expect(parsed).not.toBeNull();
+		expect(parsed!.locPrecision).toBeUndefined();
+	});
 });

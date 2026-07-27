@@ -315,12 +315,61 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(log.resetExactState).toBe(0);
 		expect(log.invalidateExactProvider).toBe(1);
 		expect(log.enableProgramMode).toBe(1);
-		// Snapshot preferExactMass before invalidate cleared the flag
-		expect(log.enableProgramModePreferExact).toEqual([true]);
+		// Mass always loads inside enableProgramMode; reindex no longer threads preferExactMass
+		expect(log.enableProgramModePreferExact).toEqual([false]);
 		expect(log.rehydrateExactForGraph).toBe(0);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(log.syncExactChrome).toBe(1);
 		expect(ctx.getLocPrecision()).toBe('program');
+	});
+
+	it('restore with stored program precision re-invokes enableProgramMode', async () => {
+		const ctx = mockDeps({ locPrecision: 'estimate' });
+		const life = createSessionLifecycle(ctx.deps);
+		const { SESSION_KEY } = await import('./sessionStore.ts');
+		const files = [
+			{
+				path: 'src/a.ts',
+				content: 'export const a = 1\n',
+				byteLength: 19,
+			},
+		];
+		const store = new Map<string, string>();
+		store.set(
+			SESSION_KEY,
+			JSON.stringify({
+				v: 1,
+				files,
+				startId: 'src/a.ts',
+				expanded: ['src'],
+				warnings: [],
+				savedAt: Date.now(),
+				locPrecision: 'program',
+			}),
+		);
+		vi.stubGlobal('localStorage', {
+			getItem: (k: string) => store.get(k) ?? null,
+			setItem: (k: string, v: string) => {
+				store.set(k, v);
+			},
+			removeItem: (k: string) => {
+				store.delete(k);
+			},
+		});
+		ctx.deps.isPersistEnabled = () => true;
+		ctx.log.enableProgramMode = 0;
+		ctx.log.tryAutoExactWhenLocalAvailable = 0;
+		ctx.log.rehydrateExactForGraph = 0;
+
+		const ok = life.tryRestoreSession();
+		await Promise.resolve();
+
+		expect(ok).toBe(true);
+		expect(ctx.log.enableProgramMode).toBe(1);
+		expect(ctx.log.tryAutoExactWhenLocalAvailable).toBe(0);
+		expect(ctx.log.rehydrateExactForGraph).toBe(0);
+		vi.unstubAllGlobals();
+		installDomStub();
 	});
 });
 

@@ -7,6 +7,24 @@ import type { CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
 export const PERSIST_PREF_KEY = 'arch-atlas:persist';
 export const SESSION_KEY = 'arch-atlas:session:v1';
 
+/** Precision chrome to remember across boot (optional field; older blobs omit). */
+export type PersistedLocPrecision = 'estimate' | 'exact' | 'program';
+
+const LOC_PRECISIONS: readonly PersistedLocPrecision[] = [
+	'estimate',
+	'exact',
+	'program',
+];
+
+export function parsePersistedLocPrecision(
+	raw: unknown,
+): PersistedLocPrecision | undefined {
+	return typeof raw === 'string' &&
+		(LOC_PRECISIONS as string[]).includes(raw)
+		? (raw as PersistedLocPrecision)
+		: undefined;
+}
+
 export type SessionSnapshot = {
 	graph: CodeGraph;
 	catalog: MapCatalog;
@@ -19,6 +37,8 @@ export type SessionSnapshot = {
 	 * re-include can restore test paths.
 	 */
 	files?: VirtualFile[];
+	/** Precision dropdown chrome when known (host app state). */
+	locPrecision?: PersistedLocPrecision;
 };
 
 export type PersistedSessionV1 = {
@@ -28,6 +48,8 @@ export type PersistedSessionV1 = {
 	expanded: string[];
 	warnings: string[];
 	savedAt: number;
+	/** Optional: older sessions omit → restore as estimate (+ auto Exact local). */
+	locPrecision?: PersistedLocPrecision;
 };
 
 /** Preference defaults on when unset. */
@@ -72,7 +94,7 @@ export function encodeSession(session: SessionSnapshot): PersistedSessionV1 {
 	}
 	// Stable order for smaller diffs / easier debugging
 	files.sort((a, b) => a.path.localeCompare(b.path));
-	return {
+	const out: PersistedSessionV1 = {
 		v: 1,
 		files,
 		startId: session.startId,
@@ -80,6 +102,8 @@ export function encodeSession(session: SessionSnapshot): PersistedSessionV1 {
 		warnings: [...session.warnings],
 		savedAt: Date.now(),
 	};
+	if (session.locPrecision) out.locPrecision = session.locPrecision;
+	return out;
 }
 
 export function parsePersistedSession(raw: string): PersistedSessionV1 | null {
@@ -103,6 +127,7 @@ export function parsePersistedSession(raw: string): PersistedSessionV1 | null {
 			});
 		}
 		if (!files.length) return null;
+		const locPrecision = parsePersistedLocPrecision(o.locPrecision);
 		return {
 			v: 1,
 			files,
@@ -114,6 +139,7 @@ export function parsePersistedSession(raw: string): PersistedSessionV1 | null {
 				? o.warnings.filter((x): x is string => typeof x === 'string')
 				: [],
 			savedAt: typeof o.savedAt === 'number' ? o.savedAt : 0,
+			...(locPrecision ? { locPrecision } : {}),
 		};
 	} catch {
 		return null;
