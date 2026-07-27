@@ -20,6 +20,7 @@ semantic analysis (see capability ladder in analysis-protocol).
 | **Estimate** | Observed static import graph for **JS/TS + Python + Astro script islands (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
 | **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python and Astro stay estimate mass (no island Exact surface yet). Web remains estimate-first / opt-in. |
 | **Exact (CLI digest)** | Same export-surface overlay as web. **`digest` defaults Exact-on** (soft-fallback → estimate + warning on engine miss). `--estimate` opts out; `--exact` / `--exact-local` are fail-closed. Tree/file/impact stay topology-only. |
+| **Program (CLI `--program`)** | Optional digest path: TypeScript `createProgram` over feed VFS — may re-resolve in-feed modules and attach thin `exportSymbolCount`. Soft-fail keeps L1 graph. Evidence-gated L2/L3 stamps. **Not** LSP / not full monorepo. Distinct from Exact export-surface spans. |
 | **VS Code host (future)** | Same `ImportedSurfaceProvider` port; host may use workspace language features / multi-LSP — still not automatic tree-shake. |
 
 ## Capability scorecard
@@ -41,7 +42,7 @@ semantic analysis (see capability ladder in analysis-protocol).
 | **Gets right** | Named/default import drops unused sibling exports; fail-closed without provider (web always; CLI when `--exact` / `--exact-local`); side-effect does not dump whole module. CLI default Exact soft-falls back to estimate. |
 | **Close** | “Shaken” label ≈ export surface, not bundler shake; “Program” notes ≈ per-file AST. |
 | **Misrepresents if…** | Labeled **LSP** / full typecheck / true tree-shake; package mass “1” read as real package size; unresolved forward mass “1” read as tiny real surface; **`surfaceLoc` read as public-API member surface** (it is export-declaration **span** coverage only). |
-| **Missing** | `createProgram` project / Program Exact, re-export follow, usage-based trim, full `import { type X }` classification, multi-lang engines, **graph re-index**. |
+| **Missing (export-surface Exact)** | Re-export follow, usage-based trim, full `import { type X }` classification, multi-lang engines. **Graph re-index is not Exact** — use CLI **`--program`** (`createProgram` over feed VFS) for opt-in L2 re-resolve + thin L3 `exportSymbolCount` (soft-fail, evidence-gated stamps; not LSP). |
 
 ### VS Code extension (not landed as Exact backend)
 
