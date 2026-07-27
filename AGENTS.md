@@ -15,6 +15,7 @@ Agents: start here, then load playbooks from the preamble.
 6. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) — try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
 7. **Hub focus / highlight:** [.grok/reference/hub-focus-behavior.md](.grok/reference/hub-focus-behavior.md) — LogicalFocusGraph FocusPlan (band-only, file reverse∪forward, package reverse-path); orthogonal to geometry matrix
 8. **Analysis honesty (Estimate / Exact / VS Code):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake for in-tab Exact
+9. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
 
 ## Role skills
 
@@ -48,16 +49,22 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file`; see README) |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README) |
+| `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
+
+### Impact workflow (architecture-affecting ships)
+
+- **Research:** if comparing git refs, run `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`), then write **5–10 lines** into research.md using the cheatsheet **read order** — do not paste full JSON.
+- **Czar:** after `git diff` stats, optional impact as **supplemental** topology signal; not a merge gate alone; still run tests.
 
 ## Code areas (current layout)
 
 | Area | Path / focus |
 | ---- | ------------ |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent JSON builders in `export/agentDigest.ts` |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent JSON builders in `export/agentDigest.ts`, `export/agentImpact.ts` |
 | Host-shared Exact | `src/exact/` via `@exact` — export-surface engine load + provider (CDN/local OK); **not** pure core; CLI + web share this |
-| Agent CLI host | `src/cli/` — dir/ZIP feed + `digest`/`tree`/`file` JSON lens; Exact via `@exact` (no `src/client/` imports) |
+| Agent CLI host | `src/cli/` — dir/ZIP feed + git-ref archive (`impact`) + `digest`/`tree`/`file`/`impact` JSON lens; Exact via `@exact` (no `src/client/` imports) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
 | Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
 | Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `sessionLifecycle.ts`, `wireUi.ts` — no `@carbon/charts` |

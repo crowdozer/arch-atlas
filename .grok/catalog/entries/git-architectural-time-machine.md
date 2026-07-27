@@ -3,6 +3,7 @@ id: git-architectural-time-machine
 kind: idea
 state: active
 authority: exploratory
+# Partial land: CLI two-ref topology impact (agent-impact.v1) only — not full Evolution
 provenance: mixed
 
 scope:
@@ -46,7 +47,11 @@ related:
   - hierarchical-heatmap-lens
   - dual-host-shell-stage
   - geometric-vs-knot-architecture
-realized_by: []
+realized_by:
+  - src/core/export/agentImpact.ts
+  - src/cli/loadGitRef.ts
+  - src/cli/main.ts (impact command)
+  - .grok/reference/impact-cheatsheet.md
 superseded_by: null
 rationale_quality: full
 ---
@@ -109,10 +114,14 @@ See frontmatter.
 
 ## Revisit when
 
-- CLI or extension plans include git-backed feeds.
-- Implementing architecture diff or PR review projections.
+- ~~CLI or extension plans include git-backed feeds.~~ Thin land: `impact`
+  command + `loadGitRef` (git archive) + pure `buildAgentImpact`. Still no
+  line-age / co-change / playback / Evolution UI.
+- Deepening architecture diff (rename intelligence, forbidden boundaries,
+  Exact mass deltas) or PR review projections.
 - Designing heat switcher extensibility (static vs historical layers).
 
 ## Provenance
 
 Design chat Git expansion + research deferral ranking. Exploratory; not Phase A.
+Partial experiment: two-ref import-topology impact CLI (see `realized_by`).

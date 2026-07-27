@@ -180,6 +180,20 @@ export type {
 	AgentTreeOut,
 	BuildAgentDigestInput,
 } from '@core/export/agentDigest.ts';
+export {
+	AGENT_IMPACT_SCHEMA,
+	ANALYSIS_HONESTY_IMPACT,
+	blastMetricsForGraph,
+	buildAgentImpact,
+	impactEdgeKey,
+} from '@core/export/agentImpact.ts';
+export type {
+	AgentImpact,
+	AgentImpactBlastMover,
+	AgentImpactDegreeMover,
+	AgentImpactSummaryCounts,
+	BuildAgentImpactInput,
+} from '@core/export/agentImpact.ts';
 
 import {
 	indexHostFeed,

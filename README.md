@@ -43,13 +43,15 @@ npm run build
 Third host over pure core: directory or ZIP → JSON (no raw source). Same
 Level-1 **Estimate** honesty as the web app (static JS/TS import graph; not
 LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
-`arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`.
+`arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`,
+`arch-atlas.agent-impact.v1` (two git refs → topology delta).
 
 ```bash
 # via npm script (recommended in-repo)
 npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 npm run atlas -- tree   <dir|zip> [--max-depth N] [--omit GLOB]… [--out file.json]
 npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- impact <git-repo> --base <ref> --head <ref> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
 # after npm install: package bin (src/cli/bin.mjs → tsx main.ts)
 npx arch-atlas digest .
@@ -60,18 +62,28 @@ npm run atlas -- digest . --omit fixtures --out product.json
 # equivalent globs:
 npm run atlas -- digest . --omit=**/fixtures --omit=**/fixtures/**
 npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
+
+# import-topology impact of a commit / branch (git archive both sides; no dirty tree)
+npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
+npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/impact.json
 ```
 
 | Flag | Meaning |
 | ---- | ------- |
-| `--limit N` | Top-N catalog ranking bins (digest/file). Default **40**. |
+| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples. Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
-| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks and ZIP entries. |
-| `--exact` | **Exact (export surface)** for digest mass lens (see below). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. |
+| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. |
+| `--base <ref>` / `--head <ref>` | **Required** for `impact`: git refs to compare (materialized via `git archive`). |
+| `--exact` | **Exact (export surface)** for digest mass lens (see below). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. **Ignored** for `impact` (topology-only). |
 | `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
 | `-h`, `--help` | Usage. |
+
+**Impact** (`arch-atlas.agent-impact.v1`): delta-first topology report (summary
+delta, files/packages added/removed, edges added/removed, degree/blast movers).
+No raw source; no dual digests. Large output → read order and recipes in
+[.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md).
 
 Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
 **`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile` under
@@ -103,7 +115,8 @@ File LOC). Full honesty ladder:
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
 Path alone without a subcommand defaults to `digest`. Implementation: `src/cli/`
-+ pure builders in `src/core/export/agentDigest.ts`.
++ pure builders in `src/core/export/agentDigest.ts` and
+`src/core/export/agentImpact.ts` (impact uses `src/cli/loadGitRef.ts`).
 
 ## Product sketch
 
