@@ -31,7 +31,7 @@ import {
 	edgeWeightIntoSet,
 	type LinkBuilder,
 } from '@core/view/hubLinkUtils.ts';
-import { edgeWeight } from '@core/view/weight.ts';
+import { hubReverseEdgeWeight } from '@core/view/weight.ts';
 
 /**
  * Reverse multi-hop: outer importers → … → Imports (dist-1) → File.
@@ -72,10 +72,12 @@ export function addImportRings(
 	const radiusL = Math.min(hubRadius, maxHops);
 	if (radiusL < 1) return [];
 
-	// Focus-incident mass on dist-1 importers
+	// Focus-incident mass on dist-1 importers.
+	// Use hub reverse mass (not plain target-loc): reverse edges share e.to=focus,
+	// which made every export band identical under Imported LOC.
 	const seedMass = new Map<string, number>();
 	for (const e of inEdges) {
-		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
+		const w = hubReverseEdgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		seedMass.set(e.from, (seedMass.get(e.from) ?? 0) + w);
 	}
 
@@ -295,7 +297,8 @@ export function addImportModules(
 		const mod = groupKey(e.from);
 		moduleWeights.set(
 			mod,
-			(moduleWeights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+			(moduleWeights.get(mod) ?? 0) +
+				hubReverseEdgeWeight(e, graph, weightAxis, edgeWeightOpts),
 		);
 	}
 

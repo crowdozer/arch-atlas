@@ -93,6 +93,10 @@ export function normalizeExactSurfaceMass(mass: number | null | undefined): numb
  * - importer-loc: LOC of e.from (min 1 if empty/missing)
  * - target-loc (estimate): LOC of e.to when file; else 1 (package/unresolved)
  * - target-loc (exact + surface): provider mass; null → 1 (never whole-file)
+ *
+ * For **hub export-side** (reverse edges into the focus file), prefer
+ * {@link hubReverseEdgeWeight}: plain target-loc makes every importer share the
+ * focus file’s LOC (degenerate bands).
  */
 export function edgeWeight(
 	e: ImportEdge,
@@ -135,6 +139,49 @@ export function edgeWeight(
 }
 
 /**
+ * Mass for reverse hub edges (importer → focus) under dual-side honesty.
+ *
+ * Under plain {@link edgeWeight} + `target-loc`, every reverse edge shares
+ * `e.to === focus` so export bands are identical. Instead:
+ * - **exact + surface**: focus export surface for this edge’s bindings
+ *   (unresolved → importer LOC, never whole-focus file)
+ * - **estimate target-loc**: importer file LOC (consumer size)
+ * - other axes: same as {@link edgeWeight}
+ */
+export function hubReverseEdgeWeight(
+	e: ImportEdge,
+	graph: CodeGraph,
+	axis: WeightAxis = DEFAULT_AXIS,
+	opts?: EdgeWeightOpts,
+): number {
+	if (axis !== 'target-loc') {
+		return edgeWeight(e, graph, axis, opts);
+	}
+	const precision = opts?.precision ?? DEFAULT_PRECISION;
+	const surface = opts?.surface;
+	const importerLoc = (() => {
+		const n = fileLineCount(graph, e.from);
+		return n > 0 ? n : 1;
+	})();
+
+	if (precision === 'exact') {
+		if (e.toKind !== 'file') return 1;
+		if (surface) {
+			const mass = surface.targetSurfaceMass(graph, e);
+			// Resolved surface → use it; unresolved → importer size (not focus whole-file, not flat 1)
+			if (mass != null && Number.isFinite(mass) && mass > 0) {
+				return normalizeExactSurfaceMass(mass);
+			}
+			return importerLoc;
+		}
+		return importerLoc;
+	}
+
+	// estimate target-loc on reverse: consumer size, not shared focus file LOC
+	return importerLoc;
+}
+
+/**
  * Carbon `units` string for the axis (honest names — see UI Weight dropdown).
  * Under exact + target-loc, labels surface honesty (not whole-file).
  */
@@ -150,9 +197,9 @@ export function unitsForAxis(
 			return 'importer file LOC';
 		case 'target-loc':
 			if (precision === 'exact') {
-				return 'imported surface LOC (exact; packages = 1)';
+				return 'imported surface LOC (exact; export side: surface or importer LOC)';
 			}
-			return 'imported LOC (whole file; packages = 1)';
+			return 'imported LOC (imports: target file; exports: importer file)';
 		default: {
 			const _exhaustive: never = axis;
 			return _exhaustive;

@@ -4,6 +4,7 @@ import { indexFiles } from '@core/index.ts';
 import {
 	edgeWeight,
 	fileLineCount,
+	hubReverseEdgeWeight,
 	lineCount,
 	normalizeExactSurfaceMass,
 	resolveWeightAxis,
@@ -150,6 +151,52 @@ describe('edgeWeight matrix', () => {
 		).toBe(1);
 	});
 
+	it('hubReverseEdgeWeight differentiates reverse edges under target-loc', () => {
+		// Two importers of the same target (focus) — plain edgeWeight shares target LOC
+		const e1 = edge({
+			from: 'a.ts',
+			to: 'b.ts',
+			toKind: 'file',
+			bindings: [{ kind: 'named', imported: 'x', local: 'x' }],
+		});
+		const e2 = edge({
+			from: 'missing-importer.ts', // no content → importer loc 1
+			to: 'b.ts',
+			toKind: 'file',
+			bindings: [{ kind: 'side-effect' }],
+		});
+		const bLoc = fileLineCount(graph, 'b.ts');
+		expect(edgeWeight(e1, graph, 'target-loc')).toBe(bLoc);
+		expect(edgeWeight(e2, graph, 'target-loc')).toBe(bLoc);
+
+		// estimate reverse: importer LOC (a.ts vs missing)
+		const aLoc = fileLineCount(graph, 'a.ts');
+		expect(hubReverseEdgeWeight(e1, graph, 'target-loc')).toBe(aLoc);
+		expect(hubReverseEdgeWeight(e2, graph, 'target-loc')).toBe(1);
+		expect(hubReverseEdgeWeight(e1, graph, 'target-loc')).not.toBe(
+			hubReverseEdgeWeight(e2, graph, 'target-loc'),
+		);
+
+		// exact reverse: surface when present
+		const surface = {
+			targetSurfaceMass: (_g: typeof graph, e: typeof e1) =>
+				e.from === 'a.ts' ? 7 : null,
+		};
+		expect(
+			hubReverseEdgeWeight(e1, graph, 'target-loc', {
+				precision: 'exact',
+				surface,
+			}),
+		).toBe(7);
+		// null surface → importer LOC, not flat 1 when importer has LOC
+		expect(
+			hubReverseEdgeWeight(e1, graph, 'target-loc', {
+				precision: 'exact',
+				surface: { targetSurfaceMass: () => null },
+			}),
+		).toBe(aLoc);
+	});
+
 	it('estimate still uses whole-file when surface is present', () => {
 		const bLoc = fileLineCount(graph, 'b.ts');
 		const surface = { targetSurfaceMass: () => 99 };
@@ -198,8 +245,9 @@ describe('unitsForAxis', () => {
 	it('LOC units name importer vs imported (target) file size honestly', () => {
 		expect(unitsForAxis('importer-loc')).toMatch(/importer file/i);
 		expect(unitsForAxis('target-loc')).toMatch(/imported LOC/i);
-		expect(unitsForAxis('target-loc')).toMatch(/whole file/i);
-		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
+		// Dual-side: imports use target file; exports use importer file
+		expect(unitsForAxis('target-loc')).toMatch(/target file/i);
+		expect(unitsForAxis('target-loc')).toMatch(/importer file/i);
 	});
 
 	it('exact target-loc units name surface honesty', () => {

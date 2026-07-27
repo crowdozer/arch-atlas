@@ -57,6 +57,7 @@ export {
 	axisNeedsImportedSurface,
 	edgeWeight,
 	fileLineCount,
+	hubReverseEdgeWeight,
 	lineCount,
 	normalizeExactSurfaceMass,
 	pickEdgeWeightOpts,

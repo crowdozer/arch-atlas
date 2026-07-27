@@ -29,7 +29,7 @@ import {
 } from '@core/view/alluvial.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
-	edgeWeight,
+	hubReverseEdgeWeight,
 	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
@@ -225,7 +225,8 @@ function projectImportsColumn(args: {
 			const label = labels.get(e.from) ?? basename(e.from);
 			weights.set(
 				label,
-				(weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+				(weights.get(label) ?? 0) +
+					hubReverseEdgeWeight(e, graph, weightAxis, edgeWeightOpts),
 			);
 			leafRef.set(label, { kind: 'file', id: e.from });
 		}
@@ -236,7 +237,8 @@ function projectImportsColumn(args: {
 			const mod = groupKey(e.from);
 			weights.set(
 				mod,
-				(weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+				(weights.get(mod) ?? 0) +
+					hubReverseEdgeWeight(e, graph, weightAxis, edgeWeightOpts),
 			);
 			if (!leafRef.has(mod)) {
 				leafRef.set(mod, { kind: 'module', id: mod });

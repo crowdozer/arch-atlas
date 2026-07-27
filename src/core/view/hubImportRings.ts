@@ -203,7 +203,7 @@ export function addExportRings(
 		for (const e of graph.edges) {
 			if (e.from !== path) continue;
 			if (e.toKind === 'package' || e.toKind === 'unresolved') {
-				s += edgeWeight(e, graph, weightAxis);
+				s += edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 			}
 		}
 		return s;

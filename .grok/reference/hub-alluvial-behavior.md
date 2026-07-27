@@ -176,8 +176,8 @@ product fork, not a polish tweak.
 
 | Direction | What counts |
 | --- | --- |
-| Into File | Reverse importer edges only |
-| Out of File | Focus → file seeds + focus → packages |
+| Into File | Reverse importer edges only. Under **Imported LOC** (`target-loc`), reverse seed mass is **not** focus whole-file (that made every export band identical). **Estimate:** importer file LOC. **Exact:** focus export surface for that edge’s bindings; unresolved → importer LOC. |
+| Out of File | Focus → file seeds + focus → packages (target-loc / exact surface of each dep) |
 | Through import tree | **Reserve-then-route:** reserve package budget `pkgReserve = min(arrived, rawPkg)` first; equal-split only the remainder (`fileMass = m − pkgReserve`) along kept file→file edges to children at `displayDist + 1` (package-bearing children preferred for scarce integer remainder). Prefer intermediate Kirchhoff when mass can cover both packages and file hops. |
 | Packages of deep files | **Residual** = reserved package share `min(arrived, rawPkg)` — not full arrived double-spend after file routing. Never invent free-source `types→zod` islands thicker than parent file mass when intermediate Kirchhoff holds. |
 | Scarce dual-spend | If reserve would leave `fileMass = 0` with file children present and `m > 0`, route **full** arrived `m` to files **and** keep package residual so unit-weight External edges still appear |
