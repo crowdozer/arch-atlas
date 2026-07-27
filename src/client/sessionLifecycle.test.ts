@@ -51,11 +51,14 @@ type CallLog = {
 	clearStage: number;
 	/** App-layer spine wipe rides only on full resetExactState. */
 	spineWiped: number;
+	applyStickyEnginePref: number;
 };
 
 function mockDeps(opts: {
 	locPrecision?: LocPrecision;
 	includeTests?: boolean;
+	/** Sticky open result; default `none` (auto-local path). */
+	stickyResult?: 'applied' | 'stay-estimate' | 'none';
 }): {
 	deps: SessionLifecycleDeps;
 	log: CallLog;
@@ -76,12 +79,14 @@ function mockDeps(opts: {
 		syncExactChrome: 0,
 		clearStage: 0,
 		spineWiped: 0,
+		applyStickyEnginePref: 0,
 	};
 	let session: Session | null = null;
 	let locPrecision: LocPrecision = opts.locPrecision ?? 'estimate';
 	let includeTests = opts.includeTests ?? true;
 	let rehydrateFails = false;
 	let programExactMass = false;
+	const stickyResult = opts.stickyResult ?? 'none';
 
 	const deps: SessionLifecycleDeps = {
 		getSession: () => session,
@@ -113,10 +118,20 @@ function mockDeps(opts: {
 			}
 			locPrecision = 'exact';
 		},
-		enableProgramMode: async (opts) => {
+		enableProgramMode: async (modeOpts) => {
 			log.enableProgramMode += 1;
-			log.enableProgramModePreferExact.push(Boolean(opts?.preferExactMass));
+			log.enableProgramModePreferExact.push(
+				Boolean(modeOpts?.preferExactMass),
+			);
 			locPrecision = 'program';
+		},
+		applyStickyEnginePref: async () => {
+			log.applyStickyEnginePref += 1;
+			if (stickyResult === 'applied') {
+				// Simulate sticky Exact re-apply
+				locPrecision = 'exact';
+			}
+			return stickyResult;
 		},
 		syncExactChrome: () => {
 			log.syncExactChrome += 1;
@@ -187,18 +202,57 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		installDomStub();
 	});
 
-	it('open (demo) full-resets Exact and tries auto-local Exact', () => {
+	it('open (demo) full-resets Exact and tries auto-local Exact', async () => {
 		const { deps, log } = mockDeps({ locPrecision: 'exact' });
 		const life = createSessionLifecycle(deps);
 
 		life.handleDemo('react-simple');
+		// Sticky + auto-local path is async
+		await vi.waitFor(() => {
+			expect(log.tryAutoExactWhenLocalAvailable).toBe(1);
+		});
 
 		expect(log.resetExactState).toBe(1);
 		expect(log.spineWiped).toBe(1);
 		expect(log.invalidateExactProvider).toBe(0);
 		expect(log.rehydrateExactForGraph).toBe(0);
-		expect(log.tryAutoExactWhenLocalAvailable).toBe(1);
+		expect(log.applyStickyEnginePref).toBe(1);
 		expect(log.syncExactChrome).toBe(0);
+		// reset forces estimate; sticky was none so auto-local only
+		expect(deps.getLocPrecision()).toBe('estimate');
+	});
+
+	it('open with sticky Exact applies sticky and skips auto-local', async () => {
+		const { deps, log } = mockDeps({
+			locPrecision: 'estimate',
+			stickyResult: 'applied',
+		});
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+		await vi.waitFor(() => {
+			expect(log.applyStickyEnginePref).toBe(1);
+		});
+
+		expect(log.resetExactState).toBe(1);
+		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
+		expect(deps.getLocPrecision()).toBe('exact');
+	});
+
+	it('open with sticky demotion (stay-estimate) skips auto-local', async () => {
+		const { deps, log } = mockDeps({
+			locPrecision: 'exact',
+			stickyResult: 'stay-estimate',
+		});
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+		await vi.waitFor(() => {
+			expect(log.applyStickyEnginePref).toBe(1);
+		});
+
+		expect(log.resetExactState).toBe(1);
+		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(deps.getLocPrecision()).toBe('estimate');
 	});
 

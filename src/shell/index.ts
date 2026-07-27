@@ -44,3 +44,23 @@ export type {
 	Session,
 	SessionProgramMeta,
 } from '@shell/types.ts';
+
+export {
+	familyFromLanguageTag,
+	geometryForAxisKind,
+	indication,
+	languageChipStatus,
+	lifecycle,
+	statusColorCssVar,
+} from '@shell/statusIndicator.ts';
+export type {
+	Geometry,
+	LanguageChipFamily,
+	LanguageChipStatusOpts,
+	StatusAxis,
+	StatusColorToken,
+	StatusKind,
+	StatusPresentation,
+	StatusShape,
+	StatusShapeVariant,
+} from '@shell/statusIndicator.ts';

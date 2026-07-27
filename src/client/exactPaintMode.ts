@@ -27,6 +27,7 @@ import {
 	type SessionProgramMeta,
 } from '@shell/index.ts';
 import { $ } from './dom.ts';
+import { recordPrecisionPreference } from './enginePrefs.ts';
 import {
 	cancelProgramEnrichment,
 	runProgramEnrichment,
@@ -288,6 +289,11 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 		const srcNote = engineSrcNote(result.source);
 		const suffix = opts.statusSuffix ?? '';
+		// Sticky Exact for open/demo/restore (skip reindex rehydrate — chrome already sticky)
+		if (opts.weight === 'force-target-loc') {
+			const sess = deps.getSession();
+			if (sess) recordPrecisionPreference(sess.graph, 'exact');
+		}
 		deps.remountCurrentView();
 		deps.setStatus(
 			`Export-surface Exact on (JS/TS export decls)${srcNote}${suffix}`,
@@ -369,6 +375,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		cancelProgramEnrichment();
 		deps.setLocPrecision('estimate');
 		deps.setProgramExactMass(false);
+		const sess = deps.getSession();
+		if (sess) recordPrecisionPreference(sess.graph, 'estimate');
 		const precEl = precisionDropdown();
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 		deps.remountCurrentView();
@@ -528,6 +536,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 				rootFileCount: result.stats.rootFileCount,
 			};
 			deps.applyProgramGraph(result.graph, meta);
+			// Sticky Program after successful enrich (topology applied)
+			recordPrecisionPreference(result.graph, 'program');
 
 			// Product: if was Exact (or reindex preferExactMass), rehydrate Exact mass
 			if (wasExactMass) {

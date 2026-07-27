@@ -64,6 +64,11 @@ import {
 	type SessionLifecycle,
 } from './sessionLifecycle.ts';
 import {
+	readEnginePrefEnabled,
+	readEnginePrefs,
+	stickyOpenAction,
+} from './enginePrefs.ts';
+import {
 	readPersistPreference,
 	savePersistedSession,
 } from './sessionStore.ts';
@@ -257,6 +262,8 @@ function paintCatalog(selectedStart?: string | null): void {
 	catalog.renderCatalog(cat, fileId, {
 		massExactReady,
 		selectedPackage: pendingPackageFocusLabel,
+		locPrecision,
+		programLoading: exactEnableInFlight && locPrecision === 'program',
 	});
 }
 
@@ -423,6 +430,10 @@ function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
 /** Carbon cds-checkbox host (checked is a property, not a native input). */
 function persistCheckbox(): (HTMLElement & { checked?: boolean }) | null {
 	return $('atlas-persist') as (HTMLElement & { checked?: boolean }) | null;
+}
+
+function enginePrefCheckbox(): (HTMLElement & { checked?: boolean }) | null {
+	return $('atlas-engine-pref') as (HTMLElement & { checked?: boolean }) | null;
 }
 
 function includeTestsCheckbox(): (HTMLElement & { checked?: boolean }) | null {
@@ -737,6 +748,25 @@ lifecycle = createSessionLifecycle({
 	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
 	syncExactChrome: () => exact.syncExactChrome(),
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
+	applyStickyEnginePref: async () => {
+		const s = session;
+		if (!s) return 'none';
+		const action = stickyOpenAction(
+			s.graph,
+			readEnginePrefs(),
+			readEnginePrefEnabled(),
+		);
+		if (action === 'program') {
+			await exact.enableProgramMode();
+			return 'applied';
+		}
+		if (action === 'exact') {
+			await exact.enableExactSurfaceMode('precision');
+			return 'applied';
+		}
+		if (action === 'stay-estimate') return 'stay-estimate';
+		return 'none';
+	},
 	clearStage: () => {
 		clearPackageFocusIntent();
 		stage.clear();
@@ -800,6 +830,7 @@ wireUi({
 	},
 	currentView: () => currentView(),
 	persistCheckbox,
+	enginePrefCheckbox,
 	includeTestsCheckbox,
 	getIncludeTests: () => includeTests,
 	setIncludeTests: (on) => {
