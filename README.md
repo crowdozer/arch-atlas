@@ -32,7 +32,14 @@ React (low complexity), Next.js (high complexity), **Spaghetti hub**
 live under `fixtures/demo-react-simple/`, `fixtures/demo-next-complex/`,
 `fixtures/demo-spaghetti-godfile/`, and `fixtures/demo-python-app/` (plus
 `fixtures/sample-ts-project/` and `fixtures/sample-python-project/`). Optional
-localStorage remember keeps the session across refresh; **Clear session** resets.
+localStorage remember keeps the **session** (indexed files) across refresh;
+**Clear session** resets. A separate splash checkbox — **Remember language
+engine preference** — stores only a small **preference map** (Estimate / Exact /
+Program per language family) in localStorage, **not** multi-MB TypeScript engine
+binaries; engines still load local or CDN when higher fidelity is applied.
+Subbar language chips use Sentinel-style **status indicators** for analysis
+fidelity/capability (Estimate / Exact / Program / loading / failed) — indication
+only, not an LSP claim.
 
 ```bash
 npm test    # pure core unit tests
@@ -196,7 +203,9 @@ Full contract: [.grok/reference/analysis-honesty.md](.grok/reference/analysis-ho
 
 Exact may auto-enable when local classic TS is available; otherwise Precision →
 Exact or Weight → export surface loads the engine (local / CDN `@latest` /
-inject). Non-JS languages stay estimate-honest.
+inject). Sticky engine prefs (splash checkbox) remember the tier choice only —
+not the compiler payload. Non-JS languages stay estimate-honest; language chips
+surface that with status indicators (caution/draft when Exact is unavailable).
 
 ### What Level-1 does (and does not)
 
