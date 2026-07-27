@@ -103,7 +103,7 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		views.push({
 			id: `godfile:${g.id}`,
 			title: `Godfile candidate · ${basename(g.path)}`,
-			description: `score ${g.score} · in ${g.inDegree} · out ${g.outDegree} · ${g.domainsTouched} domains`,
+			description: `score ${g.score} · in ${g.inDegree} · out ${g.outDegree} · ${g.loc} LOC · ${g.domainsTouched} domains`,
 			startId: g.id,
 			edgeCount: g.inDegree + g.outDegree,
 			epistemic: 'inferred',

@@ -231,7 +231,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				btn.className = 'atlas-list-btn';
 				if (selectedStart === g.id) btn.classList.add('is-selected');
 				const scoreLabel = `score ${g.score}`;
-				const detail = `in ${g.inDegree} · out ${g.outDegree} · ${g.domainsTouched} domains · pkg ${g.packageOut}`;
+				const detail = `in ${g.inDegree} · out ${g.outDegree} · ${g.loc} LOC · ${g.domainsTouched} domains · pkg ${g.packageOut}`;
 				btn.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(g.path)}</span>
@@ -242,7 +242,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				godfilesHost.appendChild(btn);
 			}
 			if (!list.length) {
-				godfilesHost.innerHTML = `<p class="text-xs text-zinc-600">No godfile candidates (need in≥1 and out≥1).</p>`;
+				godfilesHost.innerHTML = `<p class="text-xs text-zinc-600">No godfile candidates (need edges + LOC).</p>`;
 			}
 		}
 

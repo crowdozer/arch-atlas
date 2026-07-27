@@ -162,7 +162,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="High edges"
 							>
 								<p class="atlas-catalog-hint">
-									Most connected files (in + out import edges).
+									Which files have the most import connections?
 								</p>
 								<div id="atlas-hotspots"></div>
 							</AccordionItem>
@@ -172,8 +172,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="Tree complexity"
 							>
 								<p class="atlas-catalog-hint">
-									Heaviest outbound trees — all downwind import edges (files +
-									packages). start→page→pkg counts as 2. Opens file-hub at that start.
+									How heavy is my outbound import surface?
 								</p>
 								<div id="atlas-complex"></div>
 							</AccordionItem>
@@ -183,8 +182,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="Tree depth"
 							>
 								<p class="atlas-catalog-hint">
-									Deepest outbound chains (most hops) — picks a start for file-hub
-									traversal (longest file→file path into packages).
+									How deep is my dependency tree?
 								</p>
 								<div id="atlas-deepest"></div>
 							</AccordionItem>
@@ -194,8 +192,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="File LOC"
 							>
 								<p class="atlas-catalog-hint">
-									Largest source files by whole-file line count (estimate). Opens
-									file-hub at that start.
+									Which files are the largest by line count?
 								</p>
 								<div id="atlas-file-loc"></div>
 							</AccordionItem>
@@ -205,8 +202,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="Godfile candidates"
 							>
 								<p class="atlas-catalog-hint">
-									Multi-signal concentration (fan-in × fan-out × path-prefix domains).
-									Inferred rank — opens file-hub at that start.
+									Where is responsibility concentrated?
 								</p>
 								<div id="atlas-godfiles"></div>
 							</AccordionItem>
@@ -216,8 +212,7 @@ import Tag from '../components/ui/Tag.astro';
 								title="Blast radius"
 							>
 								<p class="atlas-catalog-hint">
-									Reverse import consumers — who can reach this file via import chains.
-									Opens file-hub at that start.
+									How many files sit above me if I change?
 								</p>
 								<div id="atlas-blast"></div>
 							</AccordionItem>
@@ -233,7 +228,7 @@ import Tag from '../components/ui/Tag.astro';
 								class="atlas-catalog-acc-item"
 								title="Starts"
 							>
-								<p class="atlas-catalog-hint">Inferred entry points</p>
+								<p class="atlas-catalog-hint">Where does the system start?</p>
 								<div id="atlas-starts"></div>
 							</AccordionItem>
 							<AccordionItem
@@ -241,7 +236,7 @@ import Tag from '../components/ui/Tag.astro';
 								class="atlas-catalog-acc-item"
 								title="Ends"
 							>
-								<p class="atlas-catalog-hint">Packages & sinks · click to reverse fan-in</p>
+								<p class="atlas-catalog-hint">Where do dependencies sink?</p>
 								<div id="atlas-ends"></div>
 							</AccordionItem>
 						</Accordion>
