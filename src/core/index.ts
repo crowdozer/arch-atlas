@@ -91,6 +91,19 @@ export {
 	parseImportClause,
 } from '@core/parse/imports.ts';
 export type { ImportBinding } from '@core/graph/types.ts';
+export {
+	CANDIDATE_LANGUAGE_NOTES,
+	RULES_BY_FAMILY,
+	familyForPath,
+	familyHasRule,
+} from '@core/parse/resolveRules.ts';
+export type {
+	CandidateLanguageNote,
+	LanguageFamilyId,
+	PathRuleFamily,
+} from '@core/parse/resolveRules.ts';
+export { resolveSpecifier, barePackageName, isRelativeSpecifier } from '@core/parse/resolve.ts';
+export type { ResolveResult } from '@core/parse/resolve.ts';
 export { ingestZip } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 export {
