@@ -140,13 +140,17 @@ export {
 	AGENT_FILE_SCHEMA,
 	AGENT_TREE_SCHEMA,
 	ANALYSIS_HONESTY,
+	ANALYSIS_HONESTY_EXACT,
 	buildAgentDigest,
 	buildAgentFileReport,
 	buildAgentTree,
+	fileLocFromExportSurface,
 } from '@core/export/agentDigest.ts';
 export type {
 	AgentDigest,
+	AgentDigestAnalysis,
 	AgentDigestSource,
+	AgentExactSurfaceInput,
 	AgentFileReport,
 	AgentTreeOut,
 	BuildAgentDigestInput,

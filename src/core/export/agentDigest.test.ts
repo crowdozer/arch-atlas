@@ -70,6 +70,36 @@ describe('buildAgentDigest', () => {
 		}
 	});
 
+	it('exact mode re-ranks fileLoc by export-surface LOC', () => {
+		const exportSurfaceLoc = new Map<string, number>();
+		for (const f of graph.files.values()) {
+			if (!f.isSource) continue;
+			// Force hub to dominate export-surface ranking
+			exportSurfaceLoc.set(
+				f.path,
+				f.path === 'src/god/hub.ts' ? 999 : 1,
+			);
+		}
+		const digest = buildAgentDigest({
+			graph,
+			catalog,
+			source: { kind: 'directory', path: '/tmp/demo' },
+			exact: {
+				engineSource: 'local',
+				classicAst: true,
+				exportSurfaceLoc,
+			},
+		});
+		expect(digest.analysis.tier).toBe('exact');
+		expect(digest.analysis.locMetric).toBe('export-surface');
+		expect(digest.analysis.engine?.source).toBe('local');
+		expect(digest.catalog.fileLoc[0]?.path).toBe('src/god/hub.ts');
+		expect(digest.catalog.fileLoc[0]?.loc).toBe(999);
+		expect(digest.catalogEstimateFileLoc?.length).toBeGreaterThan(0);
+		// topology bins unchanged vs estimate catalog
+		expect(digest.catalog.blastRadius).toEqual(catalog.blastRadius);
+	});
+
 	it('respects catalog limit from index', () => {
 		const small = indexFiles(files, { catalog: { limit: 3 } });
 		const digest = buildAgentDigest({

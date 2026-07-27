@@ -66,9 +66,15 @@ npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
 | `--limit N` | Top-N catalog ranking bins (digest/file). Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
 | `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks and ZIP entries. |
+| `--exact` | **Exact (export surface)** for digest `fileLoc`: load classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. |
+| `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
 | `-h`, `--help` | Usage. |
+
+Local classic engine is the **`typescript-classic`** npm package (TypeScript 5.x with
+`createSourceFile`) under `node_modules/` — not a checked-in `typescript.js`. CDN is
+the same UMD path the web host uses when local classic is unavailable.
 
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.

@@ -16,6 +16,7 @@ import {
 	buildAgentTree,
 	indexHostFeed,
 } from '@core/index.ts';
+import { loadExactExportSurface } from './exactSurface.ts';
 import { DEFAULT_MAX_DEPTH, loadFeed } from './loadFeed.ts';
 import { parseOmitFlagValues } from './omitGlobs.ts';
 
@@ -27,6 +28,10 @@ type GlobalOpts = {
 	maxDepth: number;
 	/** Raw --omit values (may include comma lists); normalized later. */
 	omitRaw: string[];
+	/** Exact export-surface LOC (classic TS local → jsDelivr → unpkg). */
+	exact: boolean;
+	/** With --exact: skip CDN (local typescript-classic / inject only). */
+	exactLocalOnly: boolean;
 	file?: string;
 	help: boolean;
 };
@@ -35,11 +40,11 @@ function printUsage(stream: NodeJS.WritableStream = process.stderr): void {
 	stream.write(`arch-atlas — local-first architecture lens for agents
 
 Usage:
-  arch-atlas digest <path> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
-  arch-atlas tree   <path> [--max-depth N] [--omit GLOB]… [--out file.json]
-  arch-atlas file   <path> --file <relative/path> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+  arch-atlas digest <path> [options]
+  arch-atlas tree   <path> [options]
+  arch-atlas file   <path> --file <relative/path> [options]
 
-<path> is a directory or .zip file. Analysis is Level-1 Estimate only
+<path> is a directory or .zip file. Default analysis is Level-1 Estimate
 (static JS/TS import graph; not LSP / not tree-shake). No raw source in output.
 
 Options:
@@ -49,14 +54,20 @@ Options:
   --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
                   Bare names match that segment anywhere (fixtures → fixtures/**).
                   Also: --omit=**/fixtures/** or --omit=fixtures,dist
+  --exact         Export-surface LOC ranking (Exact). Loads classic TypeScript:
+                    1) local typescript-classic (node_modules; not a vendored file)
+                    2) jsDelivr typescript UMD  3) unpkg fallback
+                  Graph topology bins unchanged; fileLoc uses export-surface LOC.
+                  Not a language server / not bundler tree-shake.
+  --exact-local   Like --exact but never hits CDN (local/inject only).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.
   -h, --help      Show this help.
 
 Examples:
   arch-atlas digest . --omit fixtures
-  arch-atlas digest . --omit=**/fixtures/** --omit '**/*.test.ts'
-  npm run atlas -- digest . --omit fixtures --out product.json
+  arch-atlas digest . --omit fixtures --omit '**/*.test.ts' --exact --out runtime.json
+  npm run atlas -- digest . --omit fixtures --exact-local
 
 Exit codes: 0 success (including empty graph with warnings); 1 usage/IO/index failure.
 `);
@@ -72,6 +83,8 @@ function parseArgs(argv: string[]): {
 		limit: CLI_LIMIT_DEFAULT,
 		maxDepth: DEFAULT_MAX_DEPTH,
 		omitRaw: [],
+		exact: false,
+		exactLocalOnly: false,
 		help: false,
 	};
 	const positional: string[] = [];
@@ -80,6 +93,15 @@ function parseArgs(argv: string[]): {
 		const a = argv[i]!;
 		if (a === '-h' || a === '--help') {
 			opts.help = true;
+			continue;
+		}
+		if (a === '--exact') {
+			opts.exact = true;
+			continue;
+		}
+		if (a === '--exact-local') {
+			opts.exact = true;
+			opts.exactLocalOnly = true;
 			continue;
 		}
 		if (a === '--out') {
@@ -234,7 +256,38 @@ export async function runCli(argv: string[]): Promise<number> {
 	}
 
 	const source = feed.source;
-	const warnings = feed.warnings;
+	const warnings = [...feed.warnings];
+
+	let exactInput:
+		| {
+				engineSource: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
+				classicAst?: boolean;
+				exportSurfaceLoc: ReadonlyMap<string, number>;
+		  }
+		| undefined;
+
+	if (opts.exact && command === 'digest') {
+		const exact = await loadExactExportSurface(graph, {
+			localOnly: opts.exactLocalOnly,
+		});
+		if (!exact.ok) {
+			process.stderr.write(
+				`error: --exact failed: ${exact.error}` +
+					(exact.tried?.length ? ` (tried: ${exact.tried.join(', ')})` : '') +
+					'\n',
+			);
+			return 1;
+		}
+		exactInput = {
+			engineSource: exact.source,
+			classicAst: exact.classicAst,
+			exportSurfaceLoc: exact.maps.exportSurfaceLoc,
+		};
+	} else if (opts.exact && command !== 'digest') {
+		warnings.push(
+			'--exact currently applies to digest fileLoc only; ignored for this command.',
+		);
+	}
 
 	try {
 		if (command === 'digest') {
@@ -243,6 +296,7 @@ export async function runCli(argv: string[]): Promise<number> {
 				catalog,
 				source,
 				warnings,
+				exact: exactInput,
 			});
 			emitJson(digest, opts.out);
 			return 0;

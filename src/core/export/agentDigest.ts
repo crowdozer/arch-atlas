@@ -28,6 +28,10 @@ export const AGENT_FILE_SCHEMA = 'arch-atlas.agent-file.v1' as const;
 export const ANALYSIS_HONESTY =
 	'Level-1 static JS/TS import graph; not LSP / not tree-shake';
 
+/** Exact (export surface) honesty — same product contract as web Precision Exact. */
+export const ANALYSIS_HONESTY_EXACT =
+	'Level-1 import graph + export-declaration surface LOC (classic TS AST or text fallback); not LSP / not bundler tree-shake';
+
 export type AgentDigestSource = {
 	kind: 'directory' | 'zip';
 	/** Absolute or user-supplied path string (host-owned; not resolved by core). */
@@ -65,22 +69,44 @@ export type AgentDigestCatalog = {
 	views: SuggestedView[];
 };
 
+export type AgentDigestAnalysis = {
+	tier: 'estimate' | 'exact';
+	honesty: string;
+	/** How fileLoc.loc was measured. */
+	locMetric: 'whole-file' | 'export-surface';
+	/** Exact engine origin when tier is exact. */
+	engine?: {
+		source: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
+		/** True when classic createSourceFile AST was used for spans. */
+		classicAst?: boolean;
+	};
+};
+
 export type AgentDigest = {
 	schema: typeof AGENT_DIGEST_SCHEMA;
 	generatedAt: string;
 	source: AgentDigestSource;
-	analysis: {
-		tier: 'estimate';
-		honesty: string;
-	};
+	analysis: AgentDigestAnalysis;
 	summary: MapCatalog['summary'];
 	warnings: string[];
 	catalog: AgentDigestCatalog;
+	/**
+	 * When exact: whole-file LOC ranking retained for comparison
+	 * (fileLoc uses export-surface LOC).
+	 */
+	catalogEstimateFileLoc?: CatalogFileLoc[];
 	graph: {
 		files: AgentDigestGraphFile[];
 		packages: AgentDigestGraphPackage[];
 		edges: AgentDigestGraphEdge[];
 	};
+};
+
+export type AgentExactSurfaceInput = {
+	engineSource: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
+	classicAst?: boolean;
+	/** path → unique lines covered by export decls */
+	exportSurfaceLoc: ReadonlyMap<string, number>;
 };
 
 export type BuildAgentDigestInput = {
@@ -91,6 +117,11 @@ export type BuildAgentDigestInput = {
 	warnings?: string[];
 	/** Override clock for tests. */
 	generatedAt?: string;
+	/**
+	 * When set, digest uses Exact honesty and re-ranks fileLoc by export-surface
+	 * LOC (graph topology / other bins unchanged — Exact is not a re-index).
+	 */
+	exact?: AgentExactSurfaceInput;
 };
 
 export type AgentTreeOut = {
@@ -153,6 +184,47 @@ function languageForPath(path: string, isSource: boolean): string | undefined {
 }
 
 /**
+ * Re-rank catalog fileLoc rows using export-surface LOC (Exact).
+ * Preserves degree fields from the estimate rows when present.
+ */
+export function fileLocFromExportSurface(
+	graph: CodeGraph,
+	exportSurfaceLoc: ReadonlyMap<string, number>,
+	limit: number,
+	estimateRows?: readonly CatalogFileLoc[],
+): CatalogFileLoc[] {
+	const byPath = new Map(estimateRows?.map((r) => [r.path, r]) ?? []);
+	const outDeg = new Map<string, number>();
+	const inDeg = new Map<string, number>();
+	if (!estimateRows?.length) {
+		for (const e of graph.edges) {
+			outDeg.set(e.from, (outDeg.get(e.from) ?? 0) + 1);
+			if (e.toKind === 'file') {
+				inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
+			}
+		}
+	}
+
+	const rows: CatalogFileLoc[] = [];
+	for (const [path, node] of graph.files) {
+		if (!node.isSource) continue;
+		const loc = exportSurfaceLoc.get(path) ?? 0;
+		if (loc <= 0) continue;
+		const est = byPath.get(path);
+		rows.push({
+			id: path,
+			path,
+			loc,
+			outDegree: est?.outDegree ?? outDeg.get(path) ?? 0,
+			inDegree: est?.inDegree ?? inDeg.get(path) ?? 0,
+			epistemic: 'observed',
+		});
+	}
+	rows.sort((a, b) => b.loc - a.loc || a.path.localeCompare(b.path));
+	return rows.slice(0, Math.max(0, limit));
+}
+
+/**
  * Project graph + catalog into a JSON-safe agent digest.
  * Never includes `contents` or raw source text.
  */
@@ -185,14 +257,44 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		warnings.push('Empty graph: no import-parseable source files in feed.');
 	}
 
+	const exact = input.exact;
+	let fileLoc = catalog.fileLoc;
+	let catalogEstimateFileLoc: CatalogFileLoc[] | undefined;
+	let analysis: AgentDigestAnalysis = {
+		tier: 'estimate',
+		honesty: ANALYSIS_HONESTY,
+		locMetric: 'whole-file',
+	};
+
+	if (exact) {
+		const limit = Math.max(catalog.fileLoc.length, 40);
+		catalogEstimateFileLoc = catalog.fileLoc.map((r) => ({ ...r }));
+		fileLoc = fileLocFromExportSurface(
+			graph,
+			exact.exportSurfaceLoc,
+			limit,
+			catalog.fileLoc,
+		);
+		analysis = {
+			tier: 'exact',
+			honesty: ANALYSIS_HONESTY_EXACT,
+			locMetric: 'export-surface',
+			engine: {
+				source: exact.engineSource,
+				classicAst: exact.classicAst,
+			},
+		};
+		warnings.push(
+			`Exact export-surface LOC via engine source=${exact.engineSource}` +
+				(exact.classicAst ? ' (classic AST)' : ' (text fallback spans)'),
+		);
+	}
+
 	return {
 		schema: AGENT_DIGEST_SCHEMA,
 		generatedAt,
 		source,
-		analysis: {
-			tier: 'estimate',
-			honesty: ANALYSIS_HONESTY,
-		},
+		analysis,
 		summary: { ...catalog.summary },
 		warnings,
 		catalog: {
@@ -201,10 +303,11 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			hotspots: catalog.hotspots,
 			complex: catalog.complex,
 			deepest: catalog.deepest,
-			fileLoc: catalog.fileLoc,
+			fileLoc,
 			blastRadius: catalog.blastRadius,
 			views: catalog.views,
 		},
+		catalogEstimateFileLoc,
 		graph: { files, packages, edges },
 	};
 }
