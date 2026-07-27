@@ -72,9 +72,10 @@ npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
 | `--out <path>` | Write JSON to file instead of stdout. |
 | `-h`, `--help` | Usage. |
 
-Local classic engine is the **`typescript-classic`** npm package (TypeScript 5.x with
-`createSourceFile`) under `node_modules/` — not a checked-in `typescript.js`. CDN is
-the same UMD path the web host uses when local classic is unavailable.
+Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
+**`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile` under
+`node_modules/`), not a vendored `typescript.js`; else CDN (jsDelivr / unpkg) unless
+`--exact-local`.
 
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
@@ -124,11 +125,14 @@ inject). Non-JS languages stay estimate-honest.
 
 | Area | Path |
 | ---- | ---- |
-| Graph / parse / catalog / views | `src/core/` |
-| Agent CLI host | `src/cli/` (`npm run atlas` / bin `arch-atlas`) |
-| Client workspace controller | `src/client/app.ts` |
+| Graph / parse / catalog / views | `src/core/` (pure TS; agent JSON in `export/agentDigest.ts`) |
+| Host-shared Exact | `src/exact/` (`@exact`) — export-surface engine (local classic / CDN); web + CLI share this; **not** pure core |
+| Agent CLI host | `src/cli/` (`npm run atlas` / bin `arch-atlas`); Exact via `@exact` (no `src/client/` imports) |
+| Pure shell (nav, captions, project, controls) | `src/shell/` (`@shell`) — no DOM/Carbon/chart |
+| Alluvial stage | `src/stage/` (`@stage`) — Carbon mount, polish, focus, drill |
+| Web client workspace | `src/client/` — thinned composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `wireUi.ts` — no `@carbon/charts` |
+| Astro app shell / theme | `src/pages/`, `src/layouts/`, `src/styles/` (zinc/teal) |
 | Carbon wrappers | `src/components/ui/` |
-| Shell + theme (zinc/teal) | `src/layouts/`, `src/styles/` |
 | Sample fixtures | `fixtures/demo-*`, `fixtures/sample-ts-project/` |
 
 ## Agents
