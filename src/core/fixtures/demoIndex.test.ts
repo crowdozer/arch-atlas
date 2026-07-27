@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { indexFiles } from '@core/index.ts';
+import { indexFiles, projectFileHub } from '@core/index.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../fixtures');
@@ -86,5 +86,16 @@ describe('demo fixtures index', () => {
 				pkgNames.has('requests') ||
 				pkgNames.has('sqlalchemy'),
 		).toBe(true);
+
+		// Default start must be hub-openable (not edge-less app/__init__.py)
+		const first = catalog.starts[0];
+		expect(first).toBeDefined();
+		expect(first!.path).not.toBe('app/__init__.py');
+		// Prefer common Python entry when present
+		expect(
+			first!.path === 'app/main.py' ||
+				(first!.outDegree ?? 0) + (first!.inDegree ?? 0) > 0,
+		).toBe(true);
+		expect(projectFileHub(graph, first!.id)).not.toBeNull();
 	});
 });

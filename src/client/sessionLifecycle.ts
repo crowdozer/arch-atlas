@@ -131,6 +131,35 @@ export function createSessionLifecycle(
 		deps.navigateReplace(viewForFileOpen(startId), opts);
 	}
 
+	/**
+	 * Open file-hub for startId. Returns whether navigateReplace succeeded
+	 * (false when hub payload is null / no edges).
+	 */
+	function trySelectStart(
+		startId: string,
+		opts?: { skipPersist?: boolean },
+	): boolean {
+		if (!deps.getSession()) return false;
+		return deps.navigateReplace(viewForFileOpen(startId), opts);
+	}
+
+	/**
+	 * Auto-open preferred start; if hub is null, try remaining catalog starts
+	 * (first with edges). Does not invent hub edges.
+	 */
+	function openPreferredStart(
+		preferredId: string,
+		starts: { id: string }[],
+		opts?: { skipPersist?: boolean },
+	): boolean {
+		if (trySelectStart(preferredId, opts)) return true;
+		for (const s of starts) {
+			if (s.id === preferredId) continue;
+			if (trySelectStart(s.id, opts)) return true;
+		}
+		return false;
+	}
+
 	function activateSession(
 		next: Session,
 		statusLine: string,
@@ -166,8 +195,17 @@ export function createSessionLifecycle(
 		deps.showWarnings(next.warnings);
 		showWorkspaceShell();
 		deps.renderCatalog(next.catalog, next.startId);
-		if (next.startId) selectStart(next.startId, { skipPersist: true });
-		else {
+		if (next.startId) {
+			// Null hub for preferred start must not leave tree unpainted; try next starts.
+			const opened = openPreferredStart(
+				next.startId,
+				next.catalog.starts,
+				{ skipPersist: true },
+			);
+			if (!opened) {
+				deps.renderTree();
+			}
+		} else {
 			deps.renderTree();
 			deps.setStatus(statusLine);
 		}

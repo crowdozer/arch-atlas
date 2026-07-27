@@ -323,3 +323,56 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(ctx.getLocPrecision()).toBe('program');
 	});
 });
+
+describe('sessionLifecycle activate when auto-start hub fails', () => {
+	beforeEach(() => {
+		installDomStub();
+	});
+
+	it('paints tree when preferred navigateReplace fails and no later start opens', () => {
+		const { deps } = mockDeps({ locPrecision: 'estimate' });
+		// Prefer fails; remaining starts (if any) also fail → still paint tree
+		deps.navigateReplace = vi.fn(() => false);
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+
+		expect(deps.navigateReplace).toHaveBeenCalled();
+		expect(deps.renderTree).toHaveBeenCalled();
+	});
+
+	it('falls through to a subsequent start when first navigateReplace fails', () => {
+		const { deps } = mockDeps({ locPrecision: 'estimate' });
+		const opened: string[] = [];
+		deps.navigateReplace = vi.fn((view) => {
+			// viewForFileOpen → { kind: 'file-hub', fileId }
+			const id =
+				view && typeof view === 'object' && 'fileId' in view
+					? String((view as { fileId: string }).fileId)
+					: '';
+			opened.push(id);
+			// Fail only the first attempt
+			return opened.length > 1;
+		});
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+
+		expect(deps.navigateReplace).toHaveBeenCalled();
+		expect(opened.length).toBeGreaterThan(1);
+		// Successful open commits chrome via navigateReplace; tree paint is inside commit
+		// so we must not force renderTree on success path
+		// (renderTree only when all opens fail)
+	});
+
+	it('does not call renderTree when first navigateReplace succeeds', () => {
+		const { deps } = mockDeps({ locPrecision: 'estimate' });
+		deps.navigateReplace = vi.fn(() => true);
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+
+		expect(deps.navigateReplace).toHaveBeenCalledTimes(1);
+		expect(deps.renderTree).not.toHaveBeenCalled();
+	});
+});
