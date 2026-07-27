@@ -15,7 +15,10 @@ import {
 import type { InteractionMode } from '@shell/types.ts';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
-const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
+const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact', 'program'];
+
+/** Exported for UI lists / tests. */
+export { LOC_PRECISIONS };
 
 export function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'target-loc';

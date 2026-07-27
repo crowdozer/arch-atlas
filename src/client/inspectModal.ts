@@ -43,6 +43,11 @@ function evidenceHeaderLabel(
 	precision: LocPrecision,
 	surfaceLive: boolean,
 ): string {
+	if (precision === 'program') {
+		return surfaceLive
+			? 'Import evidence · Program topology + export surface (not LSP)'
+			: 'Import evidence · Program topology (estimate mass; not LSP)';
+	}
 	if (precision !== 'exact') return 'Import evidence · estimate (whole file)';
 	return surfaceLive
 		? 'Import evidence · export surface (not LSP)'

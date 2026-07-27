@@ -18,6 +18,10 @@ export default defineConfig({
 				'@exact': path.join(root, 'src/exact'),
 			},
 		},
+		// Program enrich Web Worker (src/exact/program.worker.ts) is ESM
+		worker: {
+			format: 'es',
+		},
 		ssr: {
 			noExternal: ['@carbon/icons', '@carbon/icon-helpers'],
 		},

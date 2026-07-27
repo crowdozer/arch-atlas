@@ -4,6 +4,11 @@
 
 export { buildGraph, classifyUnresolvedReason, reachableFiles } from '@core/graph/build.ts';
 export type { BuildGraphOpts } from '@core/graph/build.ts';
+export {
+	deserializeCodeGraph,
+	serializeCodeGraph,
+} from '@core/graph/serialize.ts';
+export type { SerializedCodeGraph } from '@core/graph/serialize.ts';
 export type {
 	AlluvialFocus,
 	AlluvialFocusKind,

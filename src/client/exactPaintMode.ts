@@ -4,10 +4,12 @@
  * Extracted from the composition root: enable / disable / auto-local / reset.
  * Injected deps keep module state ownership in `app.ts` (no session framework).
  * Engine load lives in host-shared `@exact` — this module is web paint/chrome only.
+ * Program (createProgram) topology enrich is async via Web Worker (P4).
  */
 
 import {
 	graphNeedsTypescript,
+	type CodeGraph,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
 	type WeightAxis,
@@ -22,8 +24,13 @@ import {
 	statusForView,
 	type AtlasView,
 	type Session,
+	type SessionProgramMeta,
 } from '@shell/index.ts';
 import { $ } from './dom.ts';
+import {
+	cancelProgramEnrichment,
+	runProgramEnrichment,
+} from './programWorkerClient.ts';
 
 export type ExactPaintModeDeps = {
 	getSession: () => Session | null;
@@ -37,6 +44,16 @@ export type ExactPaintModeDeps = {
 	setExactEnableInFlight: (v: boolean) => void;
 	getExactMixedWarningShown: () => boolean;
 	setExactMixedWarningShown: (v: boolean) => void;
+	/**
+	 * When Program was entered from Exact: true so mass can rehydrate Exact
+	 * after graph swap while precision chrome stays `program`.
+	 */
+	getProgramExactMass: () => boolean;
+	setProgramExactMass: (v: boolean) => void;
+	/**
+	 * Apply enriched graph + catalog rebuild + programMeta (host owns session).
+	 */
+	applyProgramGraph: (graph: CodeGraph, meta: SessionProgramMeta) => void;
 	remountCurrentView: () => void;
 	setStatus: (msg: string) => void;
 	openUnavailableModal: (opts: {
@@ -57,6 +74,8 @@ export type ExactPaintModeDeps = {
 
 export type ExactPaintMode = {
 	enableExactSurfaceMode: (trigger: 'precision' | 'shaken') => Promise<void>;
+	/** Opt-in Program (createProgram) topology enrich via Web Worker. */
+	enableProgramMode: () => Promise<void>;
 	disableExactPaintMode: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
 	/** Full Exact chrome reset (new ZIP/demo/open). Forces Estimate. */
@@ -78,6 +97,34 @@ export type ExactPaintMode = {
 	/** Sync Precision / Weight Carbon dropdowns to current module state. */
 	syncExactChrome: () => void;
 };
+
+/** Evidence-gated Program status line (not LSP; L2/L3 only when earned). */
+export function programStatusHonesty(meta: {
+	resolvedCount: number;
+	resolvedAliasCount: number;
+	thinL3: boolean;
+	tsconfig: string;
+	missingLibs: string[];
+}): string {
+	const bits: string[] = [
+		`Program: resolved ${meta.resolvedCount} edge${meta.resolvedCount === 1 ? '' : 's'}`,
+	];
+	if (meta.resolvedAliasCount > 0) {
+		bits[0] += ` (alias ${meta.resolvedAliasCount})`;
+	}
+	if (meta.resolvedCount > 0) {
+		bits.push('L2 re-resolve');
+	}
+	if (meta.thinL3) {
+		bits.push('thin L3 exportSymbolCount');
+	}
+	bits.push('not LSP');
+	bits.push('skipDefaultLib');
+	if (meta.tsconfig && meta.tsconfig !== 'full') {
+		bits.push(`tsconfig ${meta.tsconfig}`);
+	}
+	return bits.join(' · ');
+}
 
 /** Shared install path after ensureExact succeeds or fails. */
 type InstallExactOpts = {
@@ -301,9 +348,11 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		}
 	}
 
-	/** Leave Exact paint mode (keep provider cached for re-entry). */
+	/** Leave Exact / Program paint mode (keep Exact provider cached for re-entry). */
 	function disableExactPaintMode(): void {
+		cancelProgramEnrichment();
 		deps.setLocPrecision('estimate');
+		deps.setProgramExactMass(false);
 		const precEl = precisionDropdown();
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 		deps.remountCurrentView();
@@ -366,12 +415,115 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 	/** Drop Exact paint + provider cache when graph identity changes (new open). */
 	function resetExactState(): void {
 		exactGraphGeneration += 1;
+		// Cancel in-flight Program worker (new ZIP/demo/session)
+		cancelProgramEnrichment();
 		deps.setSurfaceProvider(null);
 		deps.setLocPrecision('estimate');
+		deps.setProgramExactMass(false);
 		deps.setExactMixedWarningShown(false);
 		deps.setExactEnableInFlight(false);
 		const precEl = precisionDropdown();
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
+	}
+
+	/**
+	 * Precision → Program: async createProgram enrich in a Web Worker.
+	 * Soft-fail keeps prior graph + warning. Topology only; Exact mass path
+	 * rehydrates when the user was already on Exact (programExactMass).
+	 */
+	async function enableProgramMode(): Promise<void> {
+		const session = deps.getSession();
+		if (!session) {
+			deps.setStatus('Open a project before enabling Program mode');
+			return;
+		}
+		if (deps.getExactEnableInFlight()) return;
+
+		const wasExact =
+			deps.getLocPrecision() === 'exact' && Boolean(deps.getSurfaceProvider());
+		const precEl = precisionDropdown();
+
+		deps.setExactEnableInFlight(true);
+		deps.setLocPrecision('program');
+		if (precEl) deps.syncPrecisionDropdown(precEl, 'program');
+		deps.setStatus('Program: loading TypeScript engine in worker…');
+
+		try {
+			const result = await runProgramEnrichment(session.graph, {
+				skipDefaultLib: true,
+				onProgress: (phase) => {
+					if (phase === 'loading-ts') {
+						deps.setStatus('Program: loading TypeScript engine…');
+					} else if (phase === 'create-program') {
+						deps.setStatus('Program: createProgram (feed VFS)…');
+					} else if (phase === 'enrich') {
+						deps.setStatus('Program: re-resolving unresolved edges…');
+					}
+				},
+			});
+
+			if (result.ok === false) {
+				if (result.cancelled) {
+					// New session / supersede — do not toast over open status
+					return;
+				}
+				// Soft-fail: prior graph unchanged; stay on program chrome with warning
+				deps.setProgramExactMass(false);
+				deps.setStatus(
+					`Program unavailable — ${result.error} · graph left at L1 (not LSP)`,
+				);
+				deps.remountCurrentView();
+				return;
+			}
+
+			const meta: SessionProgramMeta = {
+				resolvedCount: result.stats.resolvedCount,
+				resolvedAliasCount: result.stats.resolvedAliasCount,
+				thinL3: result.thinL3,
+				exportSymbolCount: result.exportSymbolCount,
+				tsconfig: result.stats.tsconfig,
+				missingLibs: [...result.stats.missingLibs],
+				rootFileCount: result.stats.rootFileCount,
+			};
+			deps.applyProgramGraph(result.graph, meta);
+
+			// Product: if was Exact, rehydrate Exact mass after graph swap
+			if (wasExact) {
+				deps.setStatus(
+					'Program topology applied · rebuilding export-surface Exact…',
+				);
+				const exactResult = await ensureExactForGraph(result.graph, {
+					cachedProvider: null,
+				});
+				if (exactResult.ok) {
+					deps.setSurfaceProvider(exactResult.provider);
+					deps.setProgramExactMass(true);
+					deps.remountCurrentView();
+					deps.setStatus(
+						`${programStatusHonesty(meta)} · Exact mass rehydrated`,
+					);
+				} else {
+					deps.setProgramExactMass(false);
+					deps.remountCurrentView();
+					deps.setStatus(
+						`${programStatusHonesty(meta)} · Exact mass unavailable (${exactResult.error}) · estimate mass`,
+					);
+				}
+			} else {
+				deps.setProgramExactMass(false);
+				deps.remountCurrentView();
+				deps.setStatus(programStatusHonesty(meta));
+			}
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			deps.setProgramExactMass(false);
+			deps.setStatus(
+				`Program failed soft: ${msg} · graph left at L1 (not LSP)`,
+			);
+			deps.remountCurrentView();
+		} finally {
+			deps.setExactEnableInFlight(false);
+		}
 	}
 
 	/**
@@ -413,6 +565,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 	return {
 		enableExactSurfaceMode,
+		enableProgramMode,
 		disableExactPaintMode,
 		tryAutoExactWhenLocalAvailable,
 		resetExactState,

@@ -22,6 +22,7 @@ export type { PayloadProjectOpts } from '@shell/project.ts';
 export { payloadForView } from '@shell/project.ts';
 
 export {
+	LOC_PRECISIONS,
 	canMountWeight,
 	isShakenWeightUi,
 	parseInteractionMode,
@@ -38,4 +39,8 @@ export {
 } from '@shell/spineFormulaHelp.ts';
 export type { SpineFormulaHelp } from '@shell/spineFormulaHelp.ts';
 
-export type { InteractionMode, Session } from '@shell/types.ts';
+export type {
+	InteractionMode,
+	Session,
+	SessionProgramMeta,
+} from '@shell/types.ts';

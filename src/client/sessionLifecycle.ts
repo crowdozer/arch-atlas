@@ -40,6 +40,11 @@ export type SessionLifecycleDeps = {
 	setVizMaxDepth: (d: number) => void;
 	/** Precision before graph swap (reindex snapshot). */
 	getLocPrecision: () => LocPrecision;
+	/**
+	 * Cancel in-flight Program worker before graph identity changes.
+	 * Optional — hosts without Program skip.
+	 */
+	cancelProgramEnrichment?: () => void;
 	/** Full Exact reset (ZIP/demo/open/reset). Forces Estimate + clears spine at app layer. */
 	resetExactState: () => void;
 	/**
@@ -128,6 +133,9 @@ export function createSessionLifecycle(
 		// Snapshot before any Exact invalidate/reset
 		const wasExact =
 			kind === 'reindex' && deps.getLocPrecision() === 'exact';
+
+		// Drop in-flight Program enrich (stale graph after open/reindex)
+		deps.cancelProgramEnrichment?.();
 
 		if (kind === 'reindex') {
 			// Same project, new file set — drop stale provider/mass; keep precision chrome

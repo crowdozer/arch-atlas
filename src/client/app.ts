@@ -10,6 +10,7 @@
 import {
 	DEFAULT_SPINE_FORMULA,
 	HUB_DEFAULT_MAX_DEPTH,
+	buildMapCatalog,
 	buildMassBins,
 	catalogSpines,
 	primaryImporterFile,
@@ -39,6 +40,7 @@ import {
 	type AtlasView,
 	type InteractionMode,
 	type Session,
+	type SessionProgramMeta,
 } from '@shell/index.ts';
 import {
 	createAlluvialStage,
@@ -65,6 +67,7 @@ import {
 	readPersistPreference,
 	savePersistedSession,
 } from './sessionStore.ts';
+import { cancelProgramEnrichment } from './programWorkerClient.ts';
 import { wireUi } from './wireUi.ts';
 
 // ── Module state (web host bag) ──────────────────────────────────────────────
@@ -100,6 +103,11 @@ let surfaceProvider: ImportedSurfaceProvider | null = null;
 let exactEnableInFlight = false;
 /** Once per enable: mixed-language warning already shown. */
 let exactMixedWarningShown = false;
+/**
+ * Program mode entered from Exact: use rehydrated Exact mass while precision
+ * chrome stays `program`. Cleared on estimate / new open.
+ */
+let programExactMass = false;
 /**
  * Viz-only dual BFS hop radius for file-hub (does not bound graph scan).
  * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); module ignores depth.
@@ -148,10 +156,18 @@ let tree!: ReturnType<typeof createTreeRenderer>;
 let catalog!: ReturnType<typeof createCatalogRenderer>;
 let lifecycle!: SessionLifecycle;
 
+/** Exact mass when Precision is exact, or Program after Exact rehydrate. */
+function surfaceLiveForMass(): ImportedSurfaceProvider | null {
+	if (!surfaceProvider) return null;
+	if (locPrecision === 'exact') return surfaceProvider;
+	if (locPrecision === 'program' && programExactMass) return surfaceProvider;
+	return null;
+}
+
 const inspect = createInspectModals({
 	getLocPrecision: () => locPrecision,
 	getSession: () => session,
-	getSurface: () => (locPrecision === 'exact' ? surfaceProvider : null),
+	getSurface: () => surfaceLiveForMass(),
 	refForName: (name) => stage.refForName(name),
 });
 
@@ -207,7 +223,7 @@ function paintCatalog(selectedStart?: string | null): void {
 
 	let publicMass = base.publicMass ?? [];
 	let icebergs = base.icebergs ?? [];
-	const massExactReady = locPrecision === 'exact' && Boolean(surfaceProvider);
+	const massExactReady = Boolean(surfaceLiveForMass());
 	if (massExactReady) {
 		if (!exportSurfaceLocCache) {
 			exportSurfaceLocCache = exportSurfaceLocMapFromGraph(session.graph);
@@ -220,12 +236,23 @@ function paintCatalog(selectedStart?: string | null): void {
 		icebergs = [];
 	}
 
+	// Thin L3 badges from Program meta (topology path only)
+	let fileLoc = base.fileLoc;
+	const pmeta = session.programMeta;
+	if (pmeta?.exportSymbolCount?.size) {
+		fileLoc = fileLoc.map((row) => {
+			const n = pmeta.exportSymbolCount.get(row.path);
+			return n === undefined ? row : { ...row, exportSymbolCount: n };
+		});
+	}
+
 	const cat: MapCatalog = {
 		...base,
 		spines,
 		spineFormula: formula,
 		publicMass,
 		icebergs,
+		fileLoc,
 	};
 	catalog.renderCatalog(cat, fileId, {
 		massExactReady,
@@ -254,6 +281,27 @@ function clearPackageFocusIntent(): void {
 	api.clearFocus();
 }
 
+function applyProgramGraph(graph: CodeGraph, meta: SessionProgramMeta): void {
+	if (!session) return;
+	let cat = buildMapCatalog(graph);
+	if (meta.exportSymbolCount.size) {
+		cat = {
+			...cat,
+			fileLoc: cat.fileLoc.map((row) => {
+				const n = meta.exportSymbolCount.get(row.path);
+				return n === undefined ? row : { ...row, exportSymbolCount: n };
+			}),
+		};
+	}
+	session = {
+		...session,
+		graph,
+		catalog: cat,
+		programMeta: meta,
+	};
+	exportSurfaceLocCache = null;
+}
+
 const exact = createExactPaintMode({
 	getSession: () => session,
 	getSurfaceProvider: () => surfaceProvider,
@@ -278,6 +326,11 @@ const exact = createExactPaintMode({
 	setExactMixedWarningShown: (v) => {
 		exactMixedWarningShown = v;
 	},
+	getProgramExactMass: () => programExactMass,
+	setProgramExactMass: (v) => {
+		programExactMass = v;
+	},
+	applyProgramGraph,
 	remountCurrentView: () => remountCurrentView(),
 	setStatus,
 	openUnavailableModal: (opts) => inspect.openUnavailableModal(opts),
@@ -334,7 +387,16 @@ function applyDepthDefaultForView(view: AtlasView): void {
 
 /** When exact + target-loc, refuse remount with estimate numbers. */
 function gateWeight(): { ok: true } | { ok: false; message: string } {
-	return canMountWeight(weightAxis, locPrecision, surfaceProvider);
+	// Program uses estimate mass unless Exact was rehydrated (surfaceLiveForMass)
+	const precisionForGate: LocPrecision =
+		locPrecision === 'program' && programExactMass
+			? 'exact'
+			: locPrecision === 'program'
+				? 'estimate'
+				: locPrecision;
+	const surface =
+		precisionForGate === 'exact' ? surfaceLiveForMass() : surfaceProvider;
+	return canMountWeight(weightAxis, precisionForGate, surface);
 }
 
 /** Mount payload only when weight precision allows; never fake exact target-loc. */
@@ -376,11 +438,19 @@ function currentView(): AtlasView | null {
 
 function payloadForView(view: AtlasView): AlluvialPayload | null {
 	if (!session) return null;
+	const surface = surfaceLiveForMass();
+	// Program + Exact rehydrate: paint Exact mass; else program → estimate mass
+	const precisionForMass: LocPrecision =
+		locPrecision === 'program' && surface
+			? 'exact'
+			: locPrecision === 'program'
+				? 'estimate'
+				: locPrecision;
 	return projectPayloadForView(session.graph, view, {
 		weightAxis,
 		maxDepth: vizMaxDepth,
-		precision: locPrecision,
-		surface: locPrecision === 'exact' ? surfaceProvider : null,
+		precision: precisionForMass,
+		surface,
 	});
 }
 
@@ -638,15 +708,18 @@ lifecycle = createSessionLifecycle({
 		vizMaxDepth = d;
 	},
 	getLocPrecision: () => locPrecision,
+	cancelProgramEnrichment: () => cancelProgramEnrichment(),
 	resetExactState: () => {
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
+		programExactMass = false;
 		// New open/reset: spine formula is session chrome for a fresh project
 		spineFormula = DEFAULT_SPINE_FORMULA;
 	},
 	invalidateExactProvider: () => {
 		// Provider null → setSurfaceProvider clears exportSurfaceLocCache
 		exact.invalidateExactProvider();
+		programExactMass = false;
 		// Do **not** reset spineFormula / weightAxis / locPrecision (reindex preserve)
 	},
 	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
@@ -727,6 +800,7 @@ wireUi({
 	syncDepthDropdown,
 	syncInteractionModeUi,
 	enableExactSurfaceMode: (t) => exact.enableExactSurfaceMode(t),
+	enableProgramMode: () => exact.enableProgramMode(),
 	disableExactPaintMode: () => exact.disableExactPaintMode(),
 	remountCurrentView,
 	navigatePop: () => navigatePop(),

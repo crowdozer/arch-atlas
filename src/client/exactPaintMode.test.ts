@@ -81,12 +81,14 @@ function mockPaintDeps(session: Session): {
 		surfaceProvider: null as ImportedSurfaceProvider | null,
 		exactEnableInFlight: false,
 		exactMixedWarningShown: false,
+		programExactMass: false,
 	};
 	const calls = {
 		remount: 0,
 		modals: [] as { label: string; heading: string; body: string }[],
 		statuses: [] as string[],
 		precisionSyncs: [] as LocPrecision[],
+		programApplies: 0,
 	};
 
 	const deps: ExactPaintModeDeps = {
@@ -110,6 +112,13 @@ function mockPaintDeps(session: Session): {
 		getExactMixedWarningShown: () => state.exactMixedWarningShown,
 		setExactMixedWarningShown: (v) => {
 			state.exactMixedWarningShown = v;
+		},
+		getProgramExactMass: () => state.programExactMass,
+		setProgramExactMass: (v) => {
+			state.programExactMass = v;
+		},
+		applyProgramGraph: () => {
+			calls.programApplies += 1;
 		},
 		remountCurrentView: () => {
 			calls.remount += 1;

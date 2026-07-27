@@ -52,6 +52,8 @@ export type WireUiDeps = {
 	syncDepthDropdown: () => void;
 	syncInteractionModeUi: () => void;
 	enableExactSurfaceMode: (trigger: 'precision' | 'shaken') => Promise<void>;
+	/** Precision → Program (createProgram worker enrich). */
+	enableProgramMode: () => Promise<void>;
 	disableExactPaintMode: () => void;
 	remountCurrentView: () => void;
 	navigatePop: () => boolean;
@@ -181,6 +183,10 @@ export function wireUi(deps: WireUiDeps): void {
 			const parsed = parseLocPrecision(next);
 			if (parsed === 'exact') {
 				void deps.enableExactSurfaceMode('precision');
+				return;
+			}
+			if (parsed === 'program') {
+				void deps.enableProgramMode();
 				return;
 			}
 			// Estimate: leave provider cached; paint estimate mass again

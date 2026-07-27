@@ -384,12 +384,13 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Precision"
-								titleText="Estimate = whole-file LOC. Exact = JS/TS export-declaration surface (not a language server)."
+								titleText="Estimate = whole-file LOC. Exact = JS/TS export-declaration surface (not a language server). Program = createProgram re-resolve (topology; not LSP)."
 								value="estimate"
 								aria-labelledby="atlas-precision-label"
 							>
 								<DropdownItem value="estimate">Estimate</DropdownItem>
 								<DropdownItem value="exact">Exact (export surface)</DropdownItem>
+								<DropdownItem value="program">Program (createProgram resolve)</DropdownItem>
 							</Dropdown>
 						</div>
 						<div class="atlas-stage__control-group atlas-stage__control-group--tests">

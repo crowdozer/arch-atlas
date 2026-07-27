@@ -18,8 +18,10 @@ export type WeightAxis = 'import-edges' | 'importer-loc' | 'target-loc';
 /**
  * Honesty mode for imported-surface claims (target-loc + inspect imported code).
  * Default estimate; exact refuses rather than silently falling back.
+ * `program` = createProgram topology enrich (L2 re-resolve + thin L3); mass is
+ * estimate unless the host rehydrates Exact after the graph swap.
  */
-export type LocPrecision = 'estimate' | 'exact';
+export type LocPrecision = 'estimate' | 'exact' | 'program';
 
 /** Optional Exact mass inputs for {@link edgeWeight}. */
 export type EdgeWeightOpts = {

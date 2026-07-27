@@ -21,6 +21,7 @@ describe('control parsers', () => {
 	it('parseLocPrecision defaults to estimate', () => {
 		expect(parseLocPrecision('exact')).toBe('exact');
 		expect(parseLocPrecision('estimate')).toBe('estimate');
+		expect(parseLocPrecision('program')).toBe('program');
 		expect(parseLocPrecision('')).toBe('estimate');
 	});
 
@@ -51,6 +52,10 @@ describe('control parsers', () => {
 describe('canMountWeight', () => {
 	it('allows estimate + target-loc', () => {
 		expect(canMountWeight('target-loc', 'estimate')).toEqual({ ok: true });
+	});
+
+	it('allows program + target-loc without surface (topology; estimate mass)', () => {
+		expect(canMountWeight('target-loc', 'program')).toEqual({ ok: true });
 	});
 
 	it('allows exact + import-edges (not imported-surface claim)', () => {

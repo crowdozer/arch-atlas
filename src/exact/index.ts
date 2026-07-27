@@ -62,3 +62,13 @@ export {
 	type ProgramEnrichResult,
 	type ProgramEnrichStats,
 } from './programEnrich.ts';
+
+export {
+	isProgramWorkerProgress,
+	isProgramWorkerResult,
+	type ProgramWorkerEnrichRequest,
+	type ProgramWorkerOutbound,
+	type ProgramWorkerProgress,
+	type ProgramWorkerProgressPhase,
+	type ProgramWorkerResult,
+} from './programWorkerMessages.ts';
