@@ -228,6 +228,7 @@ export type {
 	AgentDigestScope,
 	AgentDigestSource,
 	AgentExactSurfaceInput,
+	AgentProgramInput,
 	AgentFileAnalysis,
 	AgentFileLensCapabilities,
 	AgentFileReport,

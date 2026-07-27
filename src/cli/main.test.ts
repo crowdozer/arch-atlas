@@ -233,6 +233,49 @@ describe('runCli', () => {
 		expect(parsed.analysis?.capabilityDetail?.aliases).toBe('rewrite-map');
 	});
 
+	it('digest --program stamps importGraph program + L2 (soft)', async () => {
+		capture();
+		const code = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--program',
+			'--estimate',
+			'--limit',
+			'20',
+		]);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
+		// Soft: either program applied or warning when engine missing
+		const programApplied =
+			parsed.analysis?.capabilityDetail?.importGraph === 'program';
+		const programWarn = (parsed.warnings ?? []).some((w: string) =>
+			/Program/i.test(w),
+		);
+		expect(programApplied || programWarn).toBe(true);
+		if (programApplied) {
+			expect(parsed.analysis.capabilities).toEqual(
+				expect.arrayContaining(['L0', 'L1', 'L2']),
+			);
+			expect(parsed.analysis.capabilityDetail.aliases).toBe('program');
+			expect(parsed.analysis.honesty).toMatch(/not LSP/i);
+			// Thin L3 only when exportSymbolCount landed
+			if (parsed.analysis.capabilities.includes('L3')) {
+				const withCount = (parsed.catalog?.fileLoc ?? []).some(
+					(r: { exportSymbolCount?: number }) =>
+						typeof r.exportSymbolCount === 'number',
+				);
+				expect(withCount).toBe(true);
+			}
+			// tsconfig paths resolve without --alias
+			const utilEdge = (parsed.graph?.edges ?? []).find(
+				(e: { from: string; to: string; toKind: string }) =>
+					e.from === 'client/main.ts' && e.to === 'client/util.ts',
+			);
+			expect(utilEdge?.toKind).toBe('file');
+		}
+	});
+
 	it('digest --artifact writes arch-atlas.artifact.v1 wrapper', async () => {
 		capture();
 		const dir = mkdtempSync(path.join(tmpdir(), 'atlas-artifact-'));

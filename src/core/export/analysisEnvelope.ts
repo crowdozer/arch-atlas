@@ -1,9 +1,10 @@
 /**
- * Analysis-protocol P2 envelope + portable artifact helpers (pure core).
+ * Analysis-protocol P2+ envelope + portable artifact helpers (pure core).
  *
- * Stamps capabilities **actually available** for this run (L0–L2 partial today),
- * completeness hints, and a wrapper schema hosts can share.
- * Never claims L3/L4 / Program this ship.
+ * Stamps capabilities **actually available** for this run (L0–L2; optional
+ * Program-backed L2/thin L3 when host passes program stamps), completeness
+ * hints, and a wrapper schema hosts can share.
+ * Never claims LSP / L4 / full public-member L3 without real evidence.
  */
 
 import type { CodeGraph } from '@core/graph/types.ts';
@@ -87,6 +88,23 @@ export type BuildAnalysisEnvelopeInput = {
 	 * Default `absent` — current hosts ignore/filter node_modules from the feed.
 	 */
 	nodeModules?: AnalysisCompleteness['nodeModules'];
+	/**
+	 * CLI `--program`: real createProgram enrichment ran (soft-fail not set).
+	 * Stamps importGraph `program`, ensures L2, aliases may become `program`.
+	 */
+	programApplied?: boolean;
+	/**
+	 * Thin L3: ≥1 file received exportSymbolCount from Program checker.
+	 * Only then is L3 claimed — never from export-declaration span alone.
+	 */
+	thinL3Applied?: boolean;
+	/**
+	 * Host completeness overrides from Program host (tsconfig / missing libs).
+	 */
+	programCompleteness?: {
+		tsconfig?: AnalysisCompleteness['tsconfig'];
+		missingLibs?: string[];
+	};
 };
 
 /**
@@ -144,11 +162,16 @@ export function buildAnalysisEnvelope(
 	const hasTsconfigPaths = Boolean(tsconfigCfg?.paths.length);
 	const tsconfigPresent = hasTsconfigFile(graph.contents);
 
-	const aliases: CapabilityDetailAliases = hasRewrites
-		? 'rewrite-map'
-		: hasTsconfigPaths
-			? 'tsconfig'
-			: 'none';
+	const programApplied = Boolean(input.programApplied);
+	const thinL3Applied = Boolean(input.thinL3Applied);
+
+	const aliases: CapabilityDetailAliases = programApplied
+		? 'program'
+		: hasRewrites
+			? 'rewrite-map'
+			: hasTsconfigPaths
+				? 'tsconfig'
+				: 'none';
 
 	// Same merge as graph build (rewrite wins on pattern)
 	const merged = mergePathAliases(
@@ -161,27 +184,30 @@ export function buildAnalysisEnvelope(
 	if (graph.stats.sourceCount > 0) {
 		capabilities.push('L1');
 	}
-	// L2 only when alias/tsconfig paths actually resolved at least one file edge
-	if (l2Helped) {
+	// L2: alias/tsconfig helped, or Program enrichment applied
+	if (l2Helped || programApplied) {
 		capabilities.push('L2');
 	}
-	// Never L3/L4 this ship
+	// L3 only when thin Program export-symbol counts actually landed
+	if (thinL3Applied) {
+		capabilities.push('L3');
+	}
+	// Never L4 without build integration
 
 	const hasTypeOnly = graph.edges.some((e) => e.typeOnly === true);
 	const exactApplied = Boolean(input.exactApplied);
 
 	const capabilityDetail: CapabilityDetail = {
-		importGraph: l2Helped ? 'resolved' : 'syntax',
+		importGraph: programApplied ? 'program' : l2Helped ? 'resolved' : 'syntax',
 		mass: exactApplied ? 'export-declaration-span' : 'whole-file',
 		typeEdges: hasTypeOnly ? 'import-type-flag' : 'none',
 		aliases,
 	};
 
-	const tsconfigCompleteness: AnalysisCompleteness['tsconfig'] = !tsconfigPresent
-		? 'none'
-		: hasTsconfigPaths
-			? 'full'
-			: 'partial';
+	const tsconfigFromProgram = input.programCompleteness?.tsconfig;
+	const tsconfigCompleteness: AnalysisCompleteness['tsconfig'] =
+		tsconfigFromProgram ??
+		(!tsconfigPresent ? 'none' : hasTsconfigPaths ? 'full' : 'partial');
 
 	// Current hosts strip/ignore node_modules — stamp absent unless host overrides.
 	const nodeModules = input.nodeModules ?? 'absent';
@@ -195,15 +221,19 @@ export function buildAnalysisEnvelope(
 
 	const honesty = input.honesty ?? DEFAULT_ENVELOPE_HONESTY;
 
+	const missingLibs = input.programCompleteness?.missingLibs?.filter(Boolean);
+	const completeness: AnalysisCompleteness = {
+		tsconfig: tsconfigCompleteness,
+		nodeModules,
+		workspaceRoots,
+		...(missingLibs?.length ? { missingLibs: [...missingLibs] } : {}),
+	};
+
 	return {
 		protocol: ANALYSIS_PROTOCOL_ID,
 		capabilities,
 		capabilityDetail,
-		completeness: {
-			tsconfig: tsconfigCompleteness,
-			nodeModules,
-			workspaceRoots,
-		},
+		completeness,
 		honesty,
 	};
 }

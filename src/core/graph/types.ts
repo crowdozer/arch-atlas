@@ -268,6 +268,11 @@ export type CatalogFileLoc = {
 	 * Exact fileLoc only: wire alias of exportDeclarationLoc / loc.
 	 */
 	surfaceLoc?: number;
+	/**
+	 * Thin L3 (Program path only): count of checker export symbols for this file.
+	 * Not publicMemberLoc / not full API surface — optional additive stamp.
+	 */
+	exportSymbolCount?: number;
 	outDegree: number;
 	inDegree: number;
 	epistemic: 'observed';

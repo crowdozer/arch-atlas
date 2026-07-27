@@ -121,6 +121,32 @@ describe('buildAnalysisEnvelope', () => {
 		expect(env.capabilities).toEqual(['L0']);
 		expect(env.capabilityDetail.importGraph).toBe('syntax');
 	});
+
+	it('stamps importGraph program + L2 when programApplied', () => {
+		const { graph } = indexFiles(artilleryFiles, { catalog: { limit: 10 } });
+		const env = buildAnalysisEnvelope({
+			graph,
+			programApplied: true,
+			programCompleteness: { tsconfig: 'full', missingLibs: [] },
+		});
+		expect(env.capabilities).toEqual(
+			expect.arrayContaining(['L0', 'L1', 'L2']),
+		);
+		expect(env.capabilities).not.toContain('L3');
+		expect(env.capabilityDetail.importGraph).toBe('program');
+		expect(env.capabilityDetail.aliases).toBe('program');
+	});
+
+	it('stamps L3 only when thinL3Applied', () => {
+		const { graph } = indexFiles(sampleFiles, { catalog: { limit: 10 } });
+		const env = buildAnalysisEnvelope({
+			graph,
+			programApplied: true,
+			thinL3Applied: true,
+		});
+		expect(env.capabilities).toContain('L3');
+		expect(env.capabilityDetail.importGraph).toBe('program');
+	});
 });
 
 describe('envelope wired into agent lenses', () => {

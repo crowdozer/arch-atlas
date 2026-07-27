@@ -212,6 +212,25 @@ export type AgentExactSurfaceInput = {
 	exportSurfaceLoc: ReadonlyMap<string, number>;
 };
 
+/**
+ * CLI `--program` stamps for analysis envelope + thin L3 exportSymbolCount.
+ * Hosts (not pure core) build the Program; digest only projects honesty.
+ */
+export type AgentProgramInput = {
+	/** Program enrichment pass completed (graph may or may not have gained edges). */
+	applied: true;
+	/** Thin L3: ≥1 file got export symbol counts. */
+	thinL3: boolean;
+	/** path → checker export symbol count (optional overlay on fileLoc). */
+	exportSymbolCount?: ReadonlyMap<string, number>;
+	/** Completeness from Program host. */
+	tsconfig?: 'none' | 'partial' | 'full';
+	missingLibs?: string[];
+	/** Stats for warnings / agents. */
+	resolvedCount?: number;
+	resolvedAliasCount?: number;
+};
+
 export type BuildAgentDigestInput = {
 	graph: CodeGraph;
 	catalog: MapCatalog;
@@ -227,6 +246,11 @@ export type BuildAgentDigestInput = {
 	exact?: AgentExactSurfaceInput;
 	/** Optional scope stamp (CLI omit / Exact flags). */
 	scope?: Partial<AgentDigestScope>;
+	/**
+	 * When set, analysis envelope stamps importGraph `program` + L2;
+	 * optional L3 when thinL3; optional exportSymbolCount on fileLoc rows.
+	 */
+	program?: AgentProgramInput;
 };
 
 export type AgentTreeNode = {
@@ -474,6 +498,7 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	}
 
 	const exact = input.exact;
+	const program = input.program;
 	let fileLoc = catalog.fileLoc;
 	let catalogEstimateFileLoc: CatalogFileLoc[] | undefined;
 	let publicMass = catalog.publicMass ?? [];
@@ -482,11 +507,24 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	const spineFormula =
 		catalog.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	const scope = resolveScope(source, input.scope, Boolean(exact));
+
+	const programHonestySuffix = program
+		? ' Program L2 resolve (createProgram over feed VFS; incomplete without node_modules); not LSP.'
+		: '';
+	const baseHonesty = exact ? ANALYSIS_HONESTY_EXACT : ANALYSIS_HONESTY;
 	const envelope = buildAnalysisEnvelope({
 		graph,
 		exactApplied: Boolean(exact),
 		aliasRewrites: scope.aliasRewrites,
-		honesty: exact ? ANALYSIS_HONESTY_EXACT : ANALYSIS_HONESTY,
+		honesty: baseHonesty + programHonestySuffix,
+		programApplied: Boolean(program?.applied),
+		thinL3Applied: Boolean(program?.thinL3),
+		programCompleteness: program
+			? {
+					tsconfig: program.tsconfig,
+					missingLibs: program.missingLibs,
+				}
+			: undefined,
 	});
 	const protocol = envelopeFields(envelope);
 
@@ -525,6 +563,24 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		warnings.push(
 			`Exact export-surface LOC via engine source=${exact.engineSource}` +
 				(exact.classicAst ? ' (classic AST)' : ' (text fallback spans)'),
+		);
+	}
+
+	// Thin L3 overlay: attach exportSymbolCount without rewriting loc / mass
+	if (program?.exportSymbolCount?.size) {
+		fileLoc = fileLoc.map((row) => {
+			const n = program.exportSymbolCount!.get(row.path);
+			return n === undefined ? row : { ...row, exportSymbolCount: n };
+		});
+	}
+
+	if (program?.applied) {
+		const rc = program.resolvedCount ?? 0;
+		const ac = program.resolvedAliasCount ?? 0;
+		warnings.push(
+			`Program enrichment applied (resolved ${rc} unresolved edge(s), ${ac} alias);` +
+				` incomplete without node_modules; not LSP` +
+				(program.thinL3 ? '; thin L3 exportSymbolCount on fileLoc' : ''),
 		);
 	}
 

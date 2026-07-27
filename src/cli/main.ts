@@ -16,6 +16,7 @@ import {
 	buildAgentFileReport,
 	buildAgentImpact,
 	buildAgentTree,
+	buildMapCatalog,
 	filterFilesByTestInclusion,
 	indexHostFeed,
 	isDebugPath,
@@ -23,7 +24,16 @@ import {
 	parseAliasFlag,
 	toPortableArtifact,
 } from '@core/index.ts';
-import type { AgentAliasRewrite, AgentScopePreset } from '@core/index.ts';
+import type {
+	AgentAliasRewrite,
+	AgentProgramInput,
+	AgentScopePreset,
+} from '@core/index.ts';
+import {
+	enrichGraphWithProgram,
+	isProgramTypescriptModule,
+	loadTypescript,
+} from '@exact/index.ts';
 import { loadExactExportSurface } from './exactSurface.ts';
 import { DEFAULT_MAX_DEPTH, loadFeed } from './loadFeed.ts';
 import { loadGitRef } from './loadGitRef.ts';
@@ -73,6 +83,11 @@ type GlobalOpts = {
 	 * (stdout / --out remain bare agent-digest).
 	 */
 	artifact?: string;
+	/**
+	 * Digest: opt-in TypeScript createProgram enrichment (L2 resolve + thin L3).
+	 * Soft-fail: warning + L1 graph unchanged on error.
+	 */
+	program: boolean;
 	help: boolean;
 };
 
@@ -116,6 +131,12 @@ Options:
                   Not a language server / not bundler tree-shake.
                   Ignored for impact (topology-only experiment).
   --exact-local   Like --exact but never hits CDN (local/inject only).
+  --program       Digest: TypeScript createProgram over feed VFS (opt-in).
+                  Re-resolves unresolved edges via resolveModuleName when the
+                  target is in the feed; rebuilds catalog; stamps
+                  importGraph=program + L2 (thin L3 exportSymbolCount when
+                  checker exports land). Local classic typescript only.
+                  Soft-fail on error. Incomplete without node_modules; not LSP.
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.
@@ -130,7 +151,9 @@ Examples:
   arch-atlas digest . --exact-local --out exact.json
   arch-atlas digest fixtures/sample-ts-project --estimate --artifact /tmp/a.atlas.json
   arch-atlas digest fixtures/agent-artillery-shaped --scope product --alias '@/modules/artillery/*=./*'
+  arch-atlas digest fixtures/agent-artillery-shaped --program --estimate
   npm run atlas -- digest . --omit fixtures
+  npm run atlas -- digest fixtures/agent-artillery-shaped --program --estimate
   npm run atlas -- tree . --tree-full
   npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
 
@@ -158,6 +181,7 @@ function parseArgs(argv: string[]): {
 		treeFull: false,
 		scope: 'full',
 		aliasRaw: [],
+		program: false,
 		help: false,
 	};
 	const positional: string[] = [];
@@ -189,6 +213,10 @@ function parseArgs(argv: string[]): {
 		}
 		if (a === '--tree-full') {
 			opts.treeFull = true;
+			continue;
+		}
+		if (a === '--program') {
+			opts.program = true;
 			continue;
 		}
 		if (a === '--out') {
@@ -485,6 +513,47 @@ export async function runCli(argv: string[]): Promise<number> {
 		...(aliasRewrites.length ? { aliasRewrites } : {}),
 	};
 
+	// ── Program enrichment (digest opt-in; soft-fail) ─────────────────────
+	let programInput: AgentProgramInput | undefined;
+	if (opts.program && command === 'digest') {
+		try {
+			const loaded = await loadTypescript({ skipCdn: true });
+			if (!loaded.ok) {
+				warnings.push(
+					`Program unavailable (${loaded.error}); graph left at L1` +
+						(loaded.tried?.length ? ` (tried: ${loaded.tried.join(', ')})` : ''),
+				);
+			} else if (!isProgramTypescriptModule(loaded.ts)) {
+				warnings.push(
+					'Program unavailable (loaded TypeScript lacks createProgram/resolveModuleName); graph left at L1',
+				);
+			} else {
+				const enrich = enrichGraphWithProgram(graph, loaded.ts);
+				if (enrich.applied) {
+					graph = enrich.graph;
+					catalog = buildMapCatalog(graph, { limit: opts.limit });
+					programInput = {
+						applied: true,
+						thinL3: enrich.thinL3,
+						exportSymbolCount: enrich.exportSymbolCount,
+						tsconfig: enrich.stats.tsconfig,
+						missingLibs: enrich.stats.missingLibs,
+						resolvedCount: enrich.stats.resolvedCount,
+						resolvedAliasCount: enrich.stats.resolvedAliasCount,
+					};
+				}
+			}
+		} catch (err) {
+			warnings.push(
+				`Program enrichment failed soft: ${err instanceof Error ? err.message : String(err)}; graph left at L1`,
+			);
+		}
+	} else if (opts.program && command !== 'digest') {
+		warnings.push(
+			'--program applies to digest only; ignored for this command.',
+		);
+	}
+
 	let exactInput:
 		| {
 				engineSource: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
@@ -535,6 +604,7 @@ export async function runCli(argv: string[]): Promise<number> {
 				source,
 				warnings,
 				exact: exactInput,
+				program: programInput,
 				scope: {
 					...scopeBase,
 					exactRequested: opts.exact && !opts.estimate,

@@ -38,3 +38,27 @@ export {
 	type EnsureExactResult,
 	type EnsureExactSource,
 } from './ensureExact.ts';
+
+/** Real createProgram feed VFS (not createSourceFile span provider). */
+export {
+	compilerOptionsFromFeed,
+	createFeedProgram,
+	fromVirtualPath,
+	isProgramTypescriptModule,
+	normalizeFeedPath,
+	resolveSpecifierWithProgram,
+	toVirtualPath,
+	type CreateFeedProgramOpts,
+	type CreateFeedProgramResult,
+	type FeedProgramCompleteness,
+	type ProgramTypescriptModule,
+} from './programHost.ts';
+
+export {
+	collectExportSymbolCounts,
+	enrichGraphWithProgram,
+	patchUnresolvedEdges,
+	type EnrichGraphWithProgramOpts,
+	type ProgramEnrichResult,
+	type ProgramEnrichStats,
+} from './programEnrich.ts';
