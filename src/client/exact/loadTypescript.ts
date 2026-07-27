@@ -8,9 +8,9 @@
  * 3. jsDelivr `typescript@latest` (primary CDN — classic UMD when available)
  * 4. unpkg `typescript@latest` on primary failure
  *
- * Note: TypeScript 7+ default npm export is version-only; Exact mass uses pure
- * export-surface analysis, but loading the engine still proves host readiness
- * and enables classic AST when the UMD exposes createSourceFile.
+ * Note: TypeScript 7+ default npm export is version-only; Exact mass prefers
+ * classic `createSourceFile` (local alias or CDN UMD). Text export-surface is
+ * fallback only when the classic API is unavailable.
  *
  * Never imported from `src/core`. VS Code hosts inject ImportedSurfaceProvider.
  */
@@ -83,16 +83,21 @@ function coerceModule(mod: unknown): TypescriptModule | null {
 }
 
 async function loadLocal(): Promise<TypescriptModule | null> {
-	// Prefer classic alias (devDependency typescript-classic → typescript@5.x)
+	// Prefer classic alias (devDependency typescript-classic → typescript@5.x).
+	// Specifiers are runtime strings + @vite-ignore so production Rolldown/Vite
+	// does not hard-fail when the alias is absent from the client bundle graph.
+	// Web Exact still loads via CDN when local modules are not bundled.
+	const classicSpec = 'typescript-classic';
+	const tsSpec = 'typescript';
 	try {
-		const mod = await import('typescript-classic');
+		const mod = await import(/* @vite-ignore */ classicSpec);
 		const ts = coerceModule(mod);
 		if (ts) return ts;
 	} catch {
-		/* not installed */
+		/* not installed / not resolved in this host */
 	}
 	try {
-		const mod = await import('typescript');
+		const mod = await import(/* @vite-ignore */ tsSpec);
 		const ts = coerceModule(mod);
 		if (ts) return ts;
 	} catch {
