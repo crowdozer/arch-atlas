@@ -43,6 +43,35 @@ tree-shake** for the current in-tab Exact path.
 | **Does not buy alone** | Automatic full multi-lang Exact product; **bundler tree-shake**; zero work on surface policy. |
 | **Honest goal** | Better resolution/references/Program for JS/TS; multi-lang later via same port. |
 
+## Map catalog bins (mass + spines)
+
+Catalog ranking bins that touch size or “importance” must stay on the honesty
+ladder. Exact **does not re-index** topology; mass overlays only reweight from
+export-surface LOC when a surface map is available.
+
+| Bin | Tier | What it measures | Honesty |
+| --- | ---- | ---------------- | ------- |
+| **File LOC** | Estimate (always) | Whole-file line count of indexed source | Baseline “big files.” **Not** replaced by Exact on the web map catalog. |
+| **Public mass** | Exact overlay only | Large files where `surfaceLoc / wholeLoc` is high (defaults: whole ≥ 80, ratio ≥ 0.90); ranked by surface LOC | Export-declaration surface ratio — **not** LSP, **not** bundler tree-shake. Empty under Estimate. |
+| **Icebergs** | Exact overlay only | Large files with substantial private body under a smaller surface (defaults: whole ≥ 80, ratio ≤ 0.70, private ≥ 40); ranked by private LOC | Same surface map honesty as public mass. Empty under Estimate. |
+| **Spines** | Estimate topology | Cross-cutting dependency-plane files: direct fan-in + importer module diversity (`topFolder`); optional formula chooser | Observed import graph + path folders. Not a basename/config classifier; not multi-hop blast alone; not LSP. |
+
+**File LOC stays whole-file** on the map catalog and in estimate digests. Agent
+digest `--exact` may **re-rank** `catalog.fileLoc` by export-surface LOC for
+comparison while retaining whole-file rows in `catalogEstimateFileLoc` — that
+is a digest lens, not a claim that UI File LOC became surface mass.
+
+**Public mass / icebergs** use the Exact export-surface ratio only
+(`buildMassBins` + surface map). UI needs Exact ready (provider + precision);
+CLI needs `--exact` / `--exact-local`. Empty arrays under estimate keep a stable
+catalog shape.
+
+**Spines** are ranked from estimate-graph topology (`spineMetrics` /
+`rankSpineRows`). Formula options: `modules-then-in` (default), `fan-in`,
+`composite`, `share`. Soft floor: `importerModuleCount ≥ 2` except pure
+`fan-in`. Formula help lives in the Spines accordion (not a separate honesty
+tier).
+
 ## UI copy rules
 
 1. Prefer **export surface** / **Exact (export surface)** over **LSP**.
@@ -51,6 +80,7 @@ tree-shake** for the current in-tab Exact path.
 4. Callsites: always qualify **not type-checked** / **name scan**.
 5. Status: **export-surface mode** + engine source (`local` / `cdn` / `inject`).
 6. Mixed-language: keep warning that only JS/TS Exact applies.
+7. Catalog: **File LOC** = whole-file; **Public mass** / **Icebergs** = need Exact (export surface); **Spines** = topology + formula (not mass Exact).
 
 ## Related
 

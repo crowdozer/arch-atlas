@@ -19,6 +19,7 @@ applies_when:
   - Imported LOC or Shaken weight labels
   - claiming LSP or language server in product
   - tree-shake or imported surface mass claims
+  - public mass / iceberg / spine catalog bins
   - VS Code extension Exact / multi-language plans
   - inspect imported-code honesty
   - README or scope analysis capability docs
@@ -26,6 +27,9 @@ touches:
   - src/core/view/weight.ts
   - src/core/view/importedSurface.ts
   - src/core/view/inspect.ts
+  - src/core/catalog/massBins.ts
+  - src/core/catalog/spines.ts
+  - src/core/export/agentDigest.ts
   - src/client/exact/
   - src/client/app.ts
   - src/client/inspectModal.ts
@@ -38,6 +42,8 @@ invariants:
   - Estimate is Level-1 static JS/TS import topology + estimate mass — not type-aware
   - In-tab Exact is export-declaration surface via classic createSourceFile (or text) — not LSP
   - Exact does not re-index graph topology
+  - Map catalog File LOC remains whole-file; public mass / icebergs are Exact surface-ratio overlays only
+  - Spines are observed topology + formula chooser (not Exact mass, not basename classifiers)
   - VS Code host can offer real language features / multi-LSP as platform — not free tree-shake
   - UI must not claim full LSP or bundler tree-shake for current Exact
   - Fail-closed: no silent whole-file under Exact forward surface mass

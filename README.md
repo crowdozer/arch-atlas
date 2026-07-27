@@ -10,9 +10,10 @@ JavaScript (Level-1: files, imports, packages).
 ## Status
 
 **MVP vertical slice (Level-1).** Upload a TS/JS ZIP → file tree + map catalog
-(starts/ends, hotspots, file LOC, **blast radius**, suggested views) → file-hub
-traversal alluvial (catalog only picks the start file). Stack: **Astro +
-TypeScript**, pure core under `src/core/`, client index in `src/client/`.
+(starts/ends, hotspots, **file LOC** whole-file, **blast radius**, **spines**,
+Exact-only **public mass** / **icebergs**, suggested views) → file-hub traversal
+alluvial (catalog only picks the start file). Stack: **Astro + TypeScript**, pure
+core under `src/core/`, client index in `src/client/`.
 
 UI design language tracks **Sentinel** grammar (Carbon, zinc shell) with
 **teal** interactive brand — not emerald.
@@ -66,7 +67,7 @@ npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
 | `--limit N` | Top-N catalog ranking bins (digest/file). Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
 | `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks and ZIP entries. |
-| `--exact` | **Exact (export surface)** for digest `fileLoc`: load classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. |
+| `--exact` | **Exact (export surface)** for digest mass lens (see below). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. |
 | `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
@@ -76,6 +77,28 @@ Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
 **`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile` under
 `node_modules/`), not a vendored `typescript.js`; else CDN (jsDelivr / unpkg) unless
 `--exact-local`.
+
+### Agent digest catalog bins
+
+`digest` JSON (`arch-atlas.agent-digest.v1`) includes the map-catalog ranking
+bins. Estimate is the default; `--exact` is an export-surface **overlay** (not a
+graph re-index).
+
+| Field | Estimate | With `--exact` |
+| ----- | -------- | -------------- |
+| `catalog.fileLoc` | Whole-file LOC ranking | Re-ranked by **export-surface** LOC (`analysis.locMetric: export-surface`) |
+| `catalogEstimateFileLoc` | omitted | Whole-file File LOC retained for comparison |
+| `catalog.publicMass` | `[]` | High surface/whole ratio (export-surface honesty) |
+| `catalog.icebergs` | `[]` | Large private body under smaller surface |
+| `catalog.spines` | Topology ranking (+ `analysis.spineFormula`) | Same topology (formula stamp unchanged by Exact) |
+| Other bins (starts, hotspots, blast, …) | Estimate graph | Unchanged topology |
+
+Spines answer cross-cutting fan-in / module diversity (formula chooser on web;
+default `modules-then-in` in digest). Public mass and icebergs need Exact; File
+LOC on the **web map catalog** stays whole-file even when Exact is on (Exact
+splits “big surface” vs “private body” into the mass bins instead of rewriting
+File LOC). Full honesty ladder:
+[.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md).
 
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
@@ -118,6 +141,7 @@ inject). Non-JS languages stay estimate-honest.
 | Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
 | Weight axes (edges / importer LOC / **estimated** target file LOC; hub reverse uses importer LOC under Imported LOC) | Multi-language Exact engines; Program topology re-index |
 | Optional **Exact export-surface** mass + inspect (named/default export spans; not whole-file under Exact when surface resolves) | Full type-checker / LanguageService / bundler tree-shake |
+| Catalog: **File LOC** whole-file; Exact **public mass** / **icebergs** (surface ratio); **spines** (topology + formula) | Claiming mass bins are LSP/tree-shake; replacing File LOC with surface LOC on the web catalog |
 | Inspect: import line + export-surface excerpt (Exact) or whole-file (estimate) | Type-checked references; multi-language Exact |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |
 
