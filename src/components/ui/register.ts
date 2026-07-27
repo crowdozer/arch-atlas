@@ -21,3 +21,7 @@ import '@carbon/web-components/es/components/checkbox/index.js';
 import '@carbon/web-components/es/components/file-uploader/index.js';
 import '@carbon/web-components/es/components/code-snippet/index.js';
 import '@carbon/web-components/es/components/contained-list/index.js';
+
+/* Side-effect imports above define all registered cds-* hosts. Drop the SSR
+ * FOUC class so any belt-and-suspenders pending styles can release. */
+document.documentElement.classList.remove('atlas-carbon-pending');
