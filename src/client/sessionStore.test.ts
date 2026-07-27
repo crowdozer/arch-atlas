@@ -59,6 +59,9 @@ describe('sessionStore encode/parse', () => {
 				hotspots: [],
 				complex: [],
 				deepest: [],
+				fileLoc: [],
+				godfiles: [],
+				blastRadius: [],
 				views: [],
 				summary: {
 					sourceCount: 2,

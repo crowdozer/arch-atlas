@@ -4,7 +4,7 @@
  */
 import type { VirtualFile } from '@core/graph/types.ts';
 
-export type DemoId = 'react-simple' | 'next-complex';
+export type DemoId = 'react-simple' | 'next-complex' | 'spaghetti-godfile';
 
 export type DemoMeta = {
 	id: DemoId;
@@ -26,6 +26,12 @@ export const DEMO_OPTIONS: DemoMeta[] = [
 		blurb: 'App Router + API + legacy pages, services, DB, Stripe, spaghetti edges.',
 		complexity: 'high',
 	},
+	{
+		id: 'spaghetti-godfile',
+		title: 'Spaghetti hub (godfile demo)',
+		blurb: 'Cross-domain hub with high fan-in/out and reverse blast chains.',
+		complexity: 'high',
+	},
 ];
 
 const reactModules = import.meta.glob('../../fixtures/demo-react-simple/**/*', {
@@ -40,6 +46,15 @@ const nextModules = import.meta.glob('../../fixtures/demo-next-complex/**/*', {
 	eager: true,
 }) as Record<string, string>;
 
+const spaghettiModules = import.meta.glob(
+	'../../fixtures/demo-spaghetti-godfile/**/*',
+	{
+		query: '?raw',
+		import: 'default',
+		eager: true,
+	},
+) as Record<string, string>;
+
 const GLOBS: Record<DemoId, { modules: Record<string, string>; marker: string }> = {
 	'react-simple': {
 		modules: reactModules,
@@ -48,6 +63,10 @@ const GLOBS: Record<DemoId, { modules: Record<string, string>; marker: string }>
 	'next-complex': {
 		modules: nextModules,
 		marker: 'fixtures/demo-next-complex/',
+	},
+	'spaghetti-godfile': {
+		modules: spaghettiModules,
+		marker: 'fixtures/demo-spaghetti-godfile/',
 	},
 };
 

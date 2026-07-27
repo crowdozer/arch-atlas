@@ -909,6 +909,9 @@ function wireUi() {
 	$('atlas-demo-next-complex')?.addEventListener('click', () => {
 		handleDemo('next-complex');
 	});
+	$('atlas-demo-spaghetti-godfile')?.addEventListener('click', () => {
+		handleDemo('spaghetti-godfile');
+	});
 
 	const treeFilter = $('atlas-tree-filter');
 	// Carbon search: cds-search-input; also listen for input if it bubbles

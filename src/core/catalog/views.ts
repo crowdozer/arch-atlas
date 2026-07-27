@@ -2,9 +2,11 @@
  * Suggested map-catalog views from graph + starts.
  */
 
+import { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
 import { catalogComplex, catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
 import { catalogFileLoc } from '@core/catalog/fileLoc.ts';
+import { catalogGodfiles } from '@core/catalog/godfiles.ts';
 import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
 import type { CodeGraph, MapCatalog, SuggestedView } from '@core/graph/types.ts';
@@ -28,6 +30,8 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 	const complex = catalogComplex(graph);
 	const deepest = catalogDeepest(graph);
 	const fileLoc = catalogFileLoc(graph);
+	const godfiles = catalogGodfiles(graph);
+	const blastRadius = catalogBlastRadius(graph);
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
@@ -55,7 +59,8 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		});
 	}
 
-	// Suggested shortcuts: complexity first, then high-edges, then depth
+	// Suggested shortcuts: complexity first, then high-edges, then depth,
+	// then topology findings (godfile + blast)
 	const listed = new Set(views.map((v) => v.startId));
 	for (const c of complex.slice(0, 3)) {
 		if (listed.has(c.id)) continue;
@@ -93,6 +98,30 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		});
 		listed.add(d.id);
 	}
+	for (const g of godfiles.slice(0, 2)) {
+		if (listed.has(g.id)) continue;
+		views.push({
+			id: `godfile:${g.id}`,
+			title: `Godfile candidate · ${basename(g.path)}`,
+			description: `score ${g.score} · in ${g.inDegree} · out ${g.outDegree} · ${g.domainsTouched} domains`,
+			startId: g.id,
+			edgeCount: g.inDegree + g.outDegree,
+			epistemic: 'inferred',
+		});
+		listed.add(g.id);
+	}
+	for (const b of blastRadius.slice(0, 2)) {
+		if (listed.has(b.id)) continue;
+		views.push({
+			id: `blast:${b.id}`,
+			title: `Blast radius · ${basename(b.path)}`,
+			description: `${b.reverseReachFiles} reverse consumers · ${b.reverseMaxHops} hops`,
+			startId: b.id,
+			edgeCount: b.reverseReachFiles,
+			epistemic: 'observed',
+		});
+		listed.add(b.id);
+	}
 
 	return {
 		starts,
@@ -101,6 +130,8 @@ export function buildMapCatalog(graph: CodeGraph): MapCatalog {
 		complex,
 		deepest,
 		fileLoc,
+		godfiles,
+		blastRadius,
 		views,
 		summary: {
 			sourceCount: graph.stats.sourceCount,
