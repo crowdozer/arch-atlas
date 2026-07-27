@@ -186,6 +186,7 @@ export {
 	mergePathAliases,
 	parseAliasFlag,
 	parseTsconfigPaths,
+	pickAliasConfig,
 } from '@core/parse/tsconfig.ts';
 export type { PathAliasConfig } from '@core/parse/tsconfig.ts';
 export { ingestZip, isTextPath } from '@core/ingest/zip.ts';

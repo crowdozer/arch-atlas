@@ -12,10 +12,12 @@ import {
 	buildAgentDigest,
 	buildAgentFileReport,
 	buildAgentTree,
+	detectTsconfigAlias,
 	indexFiles,
 	isPortableArtifact,
 	loadPortableArtifact,
 	parseAliasFlag,
+	pickAliasConfig,
 	toPortableArtifact,
 	type VirtualFile,
 } from '@core/index.ts';
@@ -47,6 +49,13 @@ describe('buildAnalysisEnvelope', () => {
 	const artilleryFiles = walkFiles(
 		path.join(fixturesRoot, 'agent-artillery-shaped'),
 	);
+
+	it('detectTsconfigAlias is the same pick as graph build (pickAliasConfig)', () => {
+		const { graph } = indexFiles(artilleryFiles, { catalog: { limit: 5 } });
+		expect(detectTsconfigAlias(graph.contents)).toEqual(
+			pickAliasConfig(graph.contents),
+		);
+	});
 
 	it('stamps L0+L1+L2 for sample-ts with tsconfig paths that resolve', () => {
 		const { graph } = indexFiles(sampleFiles, { catalog: { limit: 20 } });

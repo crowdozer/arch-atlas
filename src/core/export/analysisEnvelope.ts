@@ -9,7 +9,8 @@
 import type { CodeGraph } from '@core/graph/types.ts';
 import {
 	expandAlias,
-	parseTsconfigPaths,
+	mergePathAliases,
+	pickAliasConfig,
 	type PathAliasConfig,
 } from '@core/parse/tsconfig.ts';
 
@@ -89,35 +90,13 @@ export type BuildAnalysisEnvelopeInput = {
 };
 
 /**
- * Best-effort: find tsconfig/jsconfig paths config from graph contents
- * (same candidate order as graph build pickAliasConfig).
+ * Alias of `pickAliasConfig` — same owner as graph build (no twin pick logic).
+ * Kept for envelope/public callers that prefer the detect* name.
  */
 export function detectTsconfigAlias(
 	contents: ReadonlyMap<string, string>,
 ): PathAliasConfig | null {
-	const candidates = [
-		'tsconfig.json',
-		'jsconfig.json',
-		'tsconfig.app.json',
-		'tsconfig.base.json',
-	];
-	for (const name of candidates) {
-		const exact = contents.get(name);
-		if (exact) {
-			const dir = name.includes('/') ? name.slice(0, name.lastIndexOf('/')) : '';
-			const cfg = parseTsconfigPaths(exact, dir);
-			if (cfg) return cfg;
-		}
-	}
-	for (const [path, text] of contents) {
-		const base = path.split('/').pop() ?? '';
-		if (base === 'tsconfig.json' || base === 'jsconfig.json') {
-			const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
-			const cfg = parseTsconfigPaths(text, dir);
-			if (cfg) return cfg;
-		}
-	}
-	return null;
+	return pickAliasConfig(contents);
 }
 
 function hasTsconfigFile(contents: ReadonlyMap<string, string>): boolean {
@@ -132,28 +111,6 @@ function hasTsconfigFile(contents: ReadonlyMap<string, string>): boolean {
 		}
 	}
 	return false;
-}
-
-function mergeAliasConfig(
-	tsconfig: PathAliasConfig | null,
-	rewrites: readonly EnvelopeAliasRewrite[] | undefined,
-): PathAliasConfig | null {
-	if (!rewrites?.length) return tsconfig;
-	const byPattern = new Map<string, string[]>();
-	for (const p of tsconfig?.paths ?? []) {
-		byPattern.set(p.pattern, [...p.targets]);
-	}
-	for (const r of rewrites) {
-		if (!r.pattern || !r.targets?.length) continue;
-		byPattern.set(r.pattern, [...r.targets]);
-	}
-	const paths = [...byPattern.entries()].map(([pattern, targets]) => ({
-		pattern,
-		targets,
-	}));
-	const baseUrl = tsconfig?.baseUrl ?? '';
-	if (!paths.length && !baseUrl) return tsconfig;
-	return { baseUrl, paths };
 }
 
 /**
@@ -182,7 +139,8 @@ export function buildAnalysisEnvelope(
 	const { graph } = input;
 	const rewrites = input.aliasRewrites;
 	const hasRewrites = Boolean(rewrites?.length);
-	const tsconfigCfg = detectTsconfigAlias(graph.contents);
+	// Same pick as graph build — single owner in parse/tsconfig.ts
+	const tsconfigCfg = pickAliasConfig(graph.contents);
 	const hasTsconfigPaths = Boolean(tsconfigCfg?.paths.length);
 	const tsconfigPresent = hasTsconfigFile(graph.contents);
 
@@ -192,7 +150,11 @@ export function buildAnalysisEnvelope(
 			? 'tsconfig'
 			: 'none';
 
-	const merged = mergeAliasConfig(tsconfigCfg, rewrites);
+	// Same merge as graph build (rewrite wins on pattern)
+	const merged = mergePathAliases(
+		tsconfigCfg,
+		rewrites?.length ? [...rewrites] : undefined,
+	);
 	const l2Helped = aliasHelpedResolve(graph, merged);
 
 	const capabilities: AnalysisCapability[] = ['L0'];

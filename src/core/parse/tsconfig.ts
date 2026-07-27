@@ -49,6 +49,40 @@ export function parseTsconfigPaths(
 	return { baseUrl, paths };
 }
 
+/**
+ * Pick the first usable tsconfig/jsconfig paths config from a virtual file map.
+ * Same candidate order as graph build (root names first, then any nested
+ * tsconfig.json / jsconfig.json). Single owner for L2 resolve + honesty stamp.
+ */
+export function pickAliasConfig(
+	files: ReadonlyMap<string, string>,
+): PathAliasConfig | null {
+	const candidates = [
+		'tsconfig.json',
+		'jsconfig.json',
+		'tsconfig.app.json',
+		'tsconfig.base.json',
+	];
+	for (const name of candidates) {
+		// prefer root or first match
+		const exact = files.get(name);
+		if (exact) {
+			const dir = name.includes('/') ? name.slice(0, name.lastIndexOf('/')) : '';
+			const cfg = parseTsconfigPaths(exact, dir);
+			if (cfg) return cfg;
+		}
+	}
+	for (const [path, text] of files) {
+		const base = path.split('/').pop() ?? '';
+		if (base === 'tsconfig.json' || base === 'jsconfig.json') {
+			const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+			const cfg = parseTsconfigPaths(text, dir);
+			if (cfg) return cfg;
+		}
+	}
+	return null;
+}
+
 export function joinPosix(a: string, b: string): string {
 	if (!a || a === '.') return b.replace(/^\.\//, '');
 	if (!b || b === '.') return a;

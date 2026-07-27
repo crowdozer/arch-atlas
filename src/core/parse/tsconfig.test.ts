@@ -3,6 +3,7 @@ import {
 	mergePathAliases,
 	parseAliasFlag,
 	parseTsconfigPaths,
+	pickAliasConfig,
 } from '@core/parse/tsconfig.ts';
 
 describe('parseTsconfigPaths', () => {
@@ -82,5 +83,47 @@ describe('mergePathAliases / parseAliasFlag', () => {
 		const at = merged!.paths.find((p) => p.pattern === '@/*');
 		expect(at?.targets).toEqual(['./*']);
 		expect(merged!.paths.some((p) => p.pattern === '@/extra/*')).toBe(true);
+	});
+});
+
+describe('pickAliasConfig', () => {
+	it('prefers root tsconfig.json and parses paths', () => {
+		const files = new Map<string, string>([
+			[
+				'tsconfig.json',
+				JSON.stringify({
+					compilerOptions: {
+						baseUrl: '.',
+						paths: { '@/*': ['src/*'] },
+					},
+				}),
+			],
+			['nested/tsconfig.json', '{ "compilerOptions": { "paths": {} } }'],
+		]);
+		const cfg = pickAliasConfig(files);
+		expect(cfg).not.toBeNull();
+		expect(cfg!.paths).toEqual([{ pattern: '@/*', targets: ['src/*'] }]);
+	});
+
+	it('falls back to nested tsconfig when root absent', () => {
+		const files = new Map<string, string>([
+			[
+				'apps/web/tsconfig.json',
+				JSON.stringify({
+					compilerOptions: {
+						baseUrl: '.',
+						paths: { '@/app/*': ['src/app/*'] },
+					},
+				}),
+			],
+		]);
+		const cfg = pickAliasConfig(files);
+		expect(cfg).not.toBeNull();
+		expect(cfg!.paths[0]?.pattern).toBe('@/app/*');
+		expect(cfg!.baseUrl).toBe('apps/web');
+	});
+
+	it('returns null when no config files', () => {
+		expect(pickAliasConfig(new Map([['src/a.ts', 'export {}']]))).toBeNull();
 	});
 });
