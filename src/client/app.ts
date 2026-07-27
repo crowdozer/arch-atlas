@@ -13,7 +13,7 @@ import {
 	buildMapCatalog,
 	buildMassBins,
 	catalogSpines,
-	primaryImporterFile,
+	edgeMatchesPackage,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type CodeGraph,
@@ -82,7 +82,7 @@ let session: Session | null = null;
 /**
  * Nested alluvial focus (top of stack = current view).
  * File opens are always file-hub traversal; module is drill-only.
- * Package sinks open file-hub on {@link primaryImporterFile}.
+ * Package / unresolved sinks open package-hub (Export* → External).
  *
  * ## Navigation model
  * `viewStack` is the sole owner of “where we are.” Session `startId` (tree /
@@ -120,8 +120,9 @@ let exactMixedWarningShown = false;
  */
 let programExactMass = false;
 /**
- * Viz-only dual BFS hop radius for file-hub (does not bound graph scan).
- * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); module ignores depth.
+ * Viz-only hop radius for file-hub (dual BFS) and package-hub (reverse).
+ * Does not bound graph scan. Default {@link HUB_DEFAULT_MAX_DEPTH} (3);
+ * module ignores depth.
  */
 let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 /** True after the user picks Depth manually (stops auto mode defaults). */
@@ -546,8 +547,11 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 	if (mounted) {
 		if (pendingPackageFocusLabel) {
 			applyPendingPackageFocus();
-			const hub = fileId ?? (view.type === 'file-hub' ? view.fileId : '');
-			setStatus(`Package · ${pendingPackageFocusLabel} · hub ${hub}`);
+			const hubLabel =
+				view.type === 'package-hub'
+					? view.packageId
+					: (fileId ?? (view.type === 'file-hub' ? view.fileId : ''));
+			setStatus(`Package · ${pendingPackageFocusLabel} · hub ${hubLabel}`);
 		} else {
 			setStatus(statusForView(view));
 		}
@@ -608,10 +612,11 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 }
 
 /**
- * Package / unresolved sink → file-hub on primary importer.
+ * Package / unresolved sink → package-hub (Export* → External).
  * Catalog Export Roots use replace (like Import Roots); alluvial drill uses push.
- * Retains painted package label as sticky FocusSeed after mount (hover restore).
- * sameView no-op on push still re-seeds (shared primary importer, different package).
+ * Sticky package FocusSeed + Export Roots chrome via pendingPackageFocusLabel
+ * (hover restore; geometry already includes all kept importers).
+ * sameView keys on packageId.
  */
 function openPackageAsHub(
 	packageId: string,
@@ -619,14 +624,16 @@ function openPackageAsHub(
 	mode: 'push' | 'replace' = 'push',
 ): void {
 	if (!session) return;
-	const fileId = primaryImporterFile(session.graph, packageId);
-	if (!fileId) {
+	const hasImporters = session.graph.edges.some((e) =>
+		edgeMatchesPackage(e, packageId),
+	);
+	if (!hasImporters) {
 		setStatus(`No importers for ${label}`);
 		return;
 	}
 	// Display label matches pair packageName / External chip (not unresolved: id).
 	pendingPackageFocusLabel = label;
-	const view = viewForFileOpen(fileId);
+	const view: AtlasView = { type: 'package-hub', packageId };
 	packageOpenInFlight = true;
 	let navigated = false;
 	try {
@@ -638,9 +645,9 @@ function openPackageAsHub(
 	// Push sameView early-return skips commit — still update sticky package seed.
 	if (!navigated && pendingPackageFocusLabel) {
 		applyPendingPackageFocus();
-		setStatus(`Package · ${label} · hub ${fileId}`);
+		setStatus(`Package · ${label} · hub ${packageId}`);
 		tree.renderTree();
-		paintCatalog(fileId);
+		paintCatalog(nearestFileFocus(viewStack));
 	}
 }
 

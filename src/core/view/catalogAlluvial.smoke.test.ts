@@ -20,7 +20,9 @@ import {
 	projectFileHub,
 } from '@core/view/fileHub.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
+import { projectPackageHub } from '@core/view/packageHub.ts';
 import { primaryImporterFile } from '@core/view/packageImporters.ts';
+import { EXTERNAL_IMPORT_CATEGORY } from '@core/view/hubCategories.ts';
 
 /** Focus out-edges that are file→file (export-side hub mass). */
 function fileOutFileDegree(graph: CodeGraph, fileId: string): number {
@@ -323,19 +325,37 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(cats.has('Import folders')).toBe(false);
 	});
 
-	it('every catalog end with imports: primary importer opens file-hub', () => {
+	it('every catalog end with imports: package-hub conserves and has External sink', () => {
 		for (const end of catalog.ends) {
 			if (end.inDegree === 0) {
 				expect(primaryImporterFile(graph, end.id)).toBeNull();
+				expect(projectPackageHub(graph, end.id)).toBeNull();
 				continue;
 			}
-			const fileId = primaryImporterFile(graph, end.id);
-			expect(fileId, `end ${end.label}`).toBeTruthy();
-			const payload = payloadForFileClick(graph, fileId!);
-			expect(payload, `hub for ${end.label} via ${fileId}`).not.toBeNull();
+			const payload = projectPackageHub(graph, end.id, {
+				weightAxis: 'import-edges',
+			});
+			expect(payload, `package-hub for ${end.label}`).not.toBeNull();
 			assertColumnConservation(payload!, `end ${end.label}`);
 			assertNodeRefCoversNamedNodes(payload!, `end ${end.label}`);
 			expect(totalValue(payload!)).toBeGreaterThan(0);
+			const cats = new Set(
+				payload!.options.alluvial.nodes.map((n) => n.category),
+			);
+			expect(cats.has(EXTERNAL_IMPORT_CATEGORY)).toBe(true);
+			expect(cats.has('File')).toBe(false);
+			expect(cats.has('Imports')).toBe(false);
+			// Inflow into External equals observed importer edge count
+			const { inn } = flowTotals(payload!.data);
+			const externalNames = payload!.options.alluvial.nodes
+				.filter((n) => n.category === EXTERNAL_IMPORT_CATEGORY)
+				.map((n) => n.name);
+			expect(externalNames.length).toBe(1);
+			expect(inn.get(externalNames[0]!) ?? 0).toBe(end.inDegree);
+			// Pairs present for focus reverse∪
+			expect(
+				(payload!.meta.externalStraightPairs ?? []).length,
+			).toBeGreaterThan(0);
 		}
 	});
 

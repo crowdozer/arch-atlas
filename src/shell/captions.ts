@@ -9,6 +9,10 @@ export function captionForView(view: AtlasView, vizMaxDepth: number): string {
 			return vizMaxDepth > 1
 				? `Imports×${vizMaxDepth} → ${view.fileId} → Exports×${vizMaxDepth}`
 				: `Imports → ${view.fileId} → Exports`;
+		case 'package-hub':
+			return vizMaxDepth > 1
+				? `Exports×${vizMaxDepth} → ${view.packageId}`
+				: `Exports → ${view.packageId}`;
 		case 'module':
 			return `Module ends · ${view.moduleId}`;
 	}
@@ -18,6 +22,8 @@ export function statusForView(view: AtlasView): string {
 	switch (view.type) {
 		case 'file-hub':
 			return `Imports · Exports · ${view.fileId}`;
+		case 'package-hub':
+			return `Package hub · ${view.packageId}`;
 		case 'module':
 			return `Module: ${view.moduleId}`;
 	}
@@ -25,5 +31,8 @@ export function statusForView(view: AtlasView): string {
 
 export function emptyPayloadStatus(view: AtlasView): string {
 	if (view.type === 'module') return `No package edges in ${view.moduleId}`;
+	if (view.type === 'package-hub') {
+		return `No importers for ${view.packageId}`;
+	}
 	return `No hub edges for ${view.fileId}`;
 }

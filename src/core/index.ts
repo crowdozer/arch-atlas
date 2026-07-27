@@ -124,6 +124,7 @@ export {
 	edgeMatchesPackage,
 	primaryImporterFile,
 } from '@core/view/packageImporters.ts';
+export { projectPackageHub } from '@core/view/packageHub.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {
 	fileDegreeMaps,

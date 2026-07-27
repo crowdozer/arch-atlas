@@ -11,11 +11,14 @@ import { HUB_DEFAULT_MAX_DEPTH } from '@core/index.ts';
 
 /**
  * Nested alluvial focus (top of stack = current view).
- * File opens are always file-hub traversal; module is drill-only.
+ * File opens are always file-hub traversal; module is drill-only;
+ * package/unresolved ends open package-hub.
  */
 export type AtlasView =
 	/** Dual hub: importers → file → exporters (sole file projector). */
 	| { type: 'file-hub'; fileId: string }
+	/** Dep hub: Export hop* → Exports → External(package). */
+	| { type: 'package-hub'; packageId: string }
 	| { type: 'module'; moduleId: string };
 
 /** Top of stack, or null when empty. */
@@ -28,6 +31,9 @@ export function sameView(a: AtlasView, b: AtlasView): boolean {
 	if (a.type === 'file-hub' && b.type === 'file-hub') {
 		return a.fileId === b.fileId;
 	}
+	if (a.type === 'package-hub' && b.type === 'package-hub') {
+		return a.packageId === b.packageId;
+	}
 	if (a.type === 'module' && b.type === 'module') {
 		return a.moduleId === b.moduleId;
 	}
@@ -36,7 +42,7 @@ export function sameView(a: AtlasView, b: AtlasView): boolean {
 
 /**
  * File focus for tree/catalog/persist: nearest file-hub frame under the stack
- * top (module drills keep the underlying file selected).
+ * top (module / package-hub drills keep the underlying file selected when present).
  */
 export function nearestFileFocus(stack: readonly AtlasView[]): string | null {
 	for (let i = stack.length - 1; i >= 0; i--) {
@@ -51,12 +57,12 @@ export function viewForFileOpen(fileId: string): AtlasView {
 	return { type: 'file-hub', fileId };
 }
 
-/** Depth control is meaningful only for file-hub dual BFS radius. */
+/** Depth control is meaningful for file-hub dual BFS and package-hub reverse radius. */
 export function viewUsesDepth(view: AtlasView | null): boolean {
-	return view?.type === 'file-hub';
+	return view?.type === 'file-hub' || view?.type === 'package-hub';
 }
 
-/** Default viz depth for file-hub (module ignores depth). */
+/** Default viz depth for file-hub / package-hub (module ignores depth). */
 export function defaultDepthForView(_view: AtlasView): number {
 	return HUB_DEFAULT_MAX_DEPTH;
 }
