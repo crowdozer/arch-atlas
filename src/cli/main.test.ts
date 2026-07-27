@@ -110,6 +110,28 @@ describe('runCli', () => {
 		expect(parsed.tree.children?.length).toBeGreaterThan(0);
 	});
 
+	it('tree without --exact does not warn about Exact', async () => {
+		capture();
+		const code = await runCli(['tree', fixtureDir]);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(
+			(parsed.warnings ?? []).some((w: string) => /--exact/i.test(w)),
+		).toBe(false);
+	});
+
+	it('tree with --exact warns that Exact is digest-only', async () => {
+		capture();
+		const code = await runCli(['tree', fixtureDir, '--exact']);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(
+			(parsed.warnings ?? []).some((w: string) =>
+				/--exact applies to digest/i.test(w),
+			),
+		).toBe(true);
+	});
+
 	it('tree --tree-full sets mode full', async () => {
 		capture();
 		const code = await runCli(['tree', fixtureDir, '--tree-full']);
@@ -197,6 +219,10 @@ describe('runCli', () => {
 		expect(parsed.edges.removedCount).toBe(0);
 		expect(JSON.stringify(parsed)).not.toContain('"contents"');
 		expect(parsed.analysis.honesty).toMatch(/topology delta/i);
+		// bare impact must not warn about Exact (default is estimate for non-digest)
+		expect(
+			(parsed.warnings ?? []).some((w: string) => /--exact/i.test(w)),
+		).toBe(false);
 	});
 
 	it('impact ignores --exact with warning', async () => {

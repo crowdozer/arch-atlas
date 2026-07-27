@@ -41,6 +41,7 @@ export { catalogStarts, catalogStartsSplit } from '@core/catalog/starts.ts';
 export type { CatalogStartsResult } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
+export type { CatalogHotspotsOpts } from '@core/catalog/hotspots.ts';
 export {
 	inferFileRoles,
 	isBarrelBasename,

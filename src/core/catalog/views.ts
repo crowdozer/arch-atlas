@@ -53,7 +53,8 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const spineFormula = opts?.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	const { starts, entrypoints, roots } = catalogStartsSplit(graph, startsLimit);
 	const ends = catalogEnds(graph, endsLimit);
-	const hotspots = catalogHotspots(graph, rankLimit);
+	const entrypointSet = new Set(entrypoints.map((e) => e.path));
+	const hotspots = catalogHotspots(graph, rankLimit, { entrypointSet });
 	const complex = catalogComplex(graph, rankLimit);
 	const deepest = catalogDeepest(graph, rankLimit);
 	const fileLoc = catalogFileLoc(graph, rankLimit);

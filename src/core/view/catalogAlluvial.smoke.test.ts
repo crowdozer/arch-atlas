@@ -264,8 +264,9 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 
 	it('every high-edge hotspot: hub mass matches in+out edge-record degrees', () => {
 		for (const h of catalog.hotspots) {
-			// edgeCount is unique-neighbor score; dual-publish edge-record degrees
+			// edgeCount is pre-demotion unique/package runtime score; sort by rankScore
 			expect(h.edgeCount).toBeGreaterThan(0);
+			expect(h.rankScore ?? h.edgeCount).toBeGreaterThan(0);
 			expect(fileOutDegree(graph, h.id)).toBe(h.outDegree);
 			expect(fileInDegree(graph, h.id)).toBe(h.inDegree);
 

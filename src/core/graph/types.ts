@@ -168,19 +168,24 @@ export type CatalogHotspot = {
 	id: string;
 	path: string;
 	/**
-	 * Ranking score: unique runtime neighbors (in+out) unless dual fields set.
-	 * Historically edge-record count; agent rows publish both.
+	 * Pre-demotion unique runtime file neighbors (in+out), or runtime packageOut
+	 * for package-only hubs. Not the sort key when rankScore is present.
 	 */
 	edgeCount: number;
-	/** Edge-record out degree (all forms). */
+	/**
+	 * Sort key after role adjustments (e.g. barrel demotion ×0.35).
+	 * Agents should order by rankScore, not raw edgeCount.
+	 */
+	rankScore?: number;
+	/** Edge-record out degree (all forms, including typeOnly). */
 	outDegree: number;
-	/** Edge-record file→file in degree. */
+	/** Edge-record file→file in degree (all forms). */
 	inDegree: number;
 	/** Unique file neighbors out (runtime-preferring when typeOnly present). */
 	uniqueOut?: number;
 	/** Unique file neighbors in (runtime-preferring). */
 	uniqueIn?: number;
-	/** Outgoing edges to packages / unresolved / omitted. */
+	/** Outgoing edges to packages / unresolved / omitted (all forms). */
 	packageOut: number;
 	/** Inferred roles (barrel demotion etc.). */
 	roles?: InferredFileRole[];

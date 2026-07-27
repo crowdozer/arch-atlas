@@ -259,9 +259,10 @@ function parseArgs(argv: string[]): {
 		command = 'digest';
 	}
 
-	// Exact only meaningful for digest; tree/file/impact stay estimate topology
-	if (command !== 'digest') {
-		// Keep flags for warnings; do not force load
+	// Exact default applies to **digest only**. Other commands stay estimate
+	// unless the user passed --exact / --exact-local (exactExplicit).
+	if (command !== 'digest' && !opts.exactExplicit) {
+		opts.exact = false;
 	}
 
 	return { command, target, opts };
@@ -396,7 +397,8 @@ export async function runCli(argv: string[]): Promise<number> {
 				exportSurfaceLoc: exact.maps.exportSurfaceLoc,
 			};
 		}
-	} else if (opts.exact && command !== 'digest') {
+	} else if (opts.exactExplicit && command !== 'digest') {
+		// Only warn when user asked for Exact on a non-digest command
 		warnings.push(
 			'--exact applies to digest mass/fileLoc only; ignored for this command (topology stays Estimate).',
 		);
@@ -467,7 +469,7 @@ export function runImpact(
 	const shouldOmit = compileOmitMatcher(omit);
 	const warnings: string[] = [];
 
-	if (opts.exact && !opts.estimate) {
+	if (opts.exactExplicit) {
 		warnings.push(
 			'--exact ignored for impact (topology delta only; Exact mass not in this experiment).',
 		);
