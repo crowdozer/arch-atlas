@@ -87,6 +87,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) | File-hub columns, mass, pads; **before any alluvial/hub change** |
 | [hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) | Scar tissue: diagnosis table + episode log for alluvial/Carbon mishaps |
 | [hub-focus-behavior.md](../../reference/hub-focus-behavior.md) | Hub hover focus/highlight (LogicalFocusGraph); orthogonal to column matrix |
+| [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code — do not claim LSP/tree-shake |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |
 

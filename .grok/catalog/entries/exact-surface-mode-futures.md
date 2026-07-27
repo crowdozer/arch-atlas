@@ -45,6 +45,7 @@ open_questions:
 related:
   - dual-host-shell-stage
   - segmented-relative-path-labels
+  - analysis-capability-honesty
 realized_by: []
 superseded_by: null
 rationale_quality: full
@@ -55,9 +56,10 @@ rationale_quality: full
 Ship plan (lazy Exact / engine load): **web host on-ramp landed** — default
 estimate stays offline; Precision → Exact **or** Weight → Imported LOC (Shaken)
 loads TypeScript (inject → local → jsDelivr `@latest` → unpkg `@latest`), builds
-a Program-backed `ImportedSurfaceProvider`, and **reprojects + remounts** (no
-`buildGraph` re-index). Mixed-language zips get a warning; unsupported languages
-stay estimate-honest.
+an export-surface `ImportedSurfaceProvider` (classic `createSourceFile` spans —
+not full LSP), and **reprojects + remounts** (no `buildGraph` re-index).
+Mixed-language zips get a warning; unsupported languages stay estimate-honest.
+Honesty ladder: `analysis-capability-honesty` / reference `analysis-honesty.md`.
 
 ## Landed (this vertical)
 

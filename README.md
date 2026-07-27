@@ -47,18 +47,33 @@ Open on a **map catalog** (detected languages + generated views), not a blank
 canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 [.grok/reference/conversation.md](.grok/reference/conversation.md).
 
+### Analysis honesty ladder
+
+Full contract: [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md)
+(catalog memory: `analysis-capability-honesty`).
+
+| Tier | What it is | What it is not |
+| ---- | ---------- | -------------- |
+| **Estimate** | Level-1 static **JS/TS** import graph + estimate mass (fuzzy by design) | Type-aware resolve, multi-lang imports, symbols/calls |
+| **Exact (export surface)** | Match import bindings → **export declarations** via classic TS `createSourceFile` (or text); reweight + inspect only | Language server / LSP protocol, full typecheck, bundler tree-shake, graph re-index |
+| **VS Code host** (future) | Same provider port; workspace + real language features / multi-LSP *possible* | Free “full LSP + tree-shake” without more product work |
+
+Exact may auto-enable when local classic TS is available; otherwise Precision →
+Exact or Weight → export surface loads the engine (local / CDN `@latest` /
+inject). Non-JS languages stay estimate-honest.
+
 ### What Level-1 does (and does not)
 
 | Does | Does not |
 | ---- | -------- |
 | Unpack ZIP in-browser (`fflate`) | Upload source to a remote analyzer |
-| Static import/require/export edges | Type-aware resolution / LSP |
+| Static import/require/export edges (JS/TS) | Type-aware resolution / LSP protocol |
 | `tsconfig` `paths` / `baseUrl` (best-effort) | Full monorepo workspace semantics |
 | Inferred entrypoints + package ends | Call graph, symbols, DB entities |
 | Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
-| Weight axes (edges / importer LOC / **estimated** target file LOC) | Multi-language Exact engines (pyright/gopls/…); Program topology re-index |
-| Optional **Exact** surface mass (auto-on when local classic TS or host inject is available; otherwise Precision → Exact / Weight → Shaken loads classic TypeScript — local/CDN `@latest` — export spans via `createSourceFile` AST; inject via `ImportedSurfaceProvider`) | Full type-checker / LanguageService; multi-lang engines; Program topology re-index |
-| Inspect evidence (import + Exact export surface when provider present) | Type-checked multi-language surface outside JS/TS |
+| Weight axes (edges / importer LOC / **estimated** target file LOC; hub reverse uses importer LOC under Imported LOC) | Multi-language Exact engines; Program topology re-index |
+| Optional **Exact export-surface** mass + inspect (named/default export spans; not whole-file under Exact when surface resolves) | Full type-checker / LanguageService / bundler tree-shake |
+| Inspect: import line + export-surface excerpt (Exact) or whole-file (estimate) | Type-checked references; multi-language Exact |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |
 
 ## Layout

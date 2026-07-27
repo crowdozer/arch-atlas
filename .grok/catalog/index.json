@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T03:35:03Z",
-  "root": "arch-atlas",
-  "count": 5,
+  "generated_at": "2026-07-27T04:22:09Z",
+  "root": "/home/crwdzr/git-personal/arch-atlas",
+  "count": 6,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -47,7 +47,56 @@
       "related": [
         "dual-host-shell-stage",
         "geometric-vs-knot-architecture"
-      ]
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: refactoring src/client/alluvialPolish; renaming alluvialPolish or polishAlluvialHolder; former alluvialTopPack module or godfile cleanup; extracting stage from client"
+    },
+    {
+      "id": "analysis-capability-honesty",
+      "kind": "decision",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/analysis-capability-honesty.md",
+      "scope": [
+        "estimate",
+        "exact-mode",
+        "imported-surface",
+        "dual-host",
+        "vscode-extension",
+        "weight-axis",
+        "inspect",
+        "epistemic-honesty"
+      ],
+      "applies_when": [
+        "Exact or Estimate precision UX copy",
+        "Imported LOC or Shaken weight labels",
+        "claiming LSP or language server in product",
+        "tree-shake or imported surface mass claims",
+        "VS Code extension Exact / multi-language plans",
+        "inspect imported-code honesty",
+        "README or scope analysis capability docs"
+      ],
+      "touches": [
+        "src/core/view/weight.ts",
+        "src/core/view/importedSurface.ts",
+        "src/core/view/inspect.ts",
+        "src/client/exact/",
+        "src/client/app.ts",
+        "src/client/inspectModal.ts",
+        "src/pages/index.astro",
+        "README.md",
+        ".grok/reference/analysis-honesty.md",
+        "exact-surface-mode-futures",
+        "dual-host-shell-stage"
+      ],
+      "related": [
+        "exact-surface-mode-futures",
+        "dual-host-shell-stage",
+        "segmented-relative-path-labels"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: Exact or Estimate precision UX copy; Imported LOC or Shaken weight labels; claiming LSP or language server in product; tree-shake or imported surface mass claims"
     },
     {
       "id": "dual-host-shell-stage",
@@ -95,7 +144,9 @@
       ],
       "related": [
         "alluvial-top-pack-rename-split"
-      ]
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
     },
     {
       "id": "exact-surface-mode-futures",
@@ -136,8 +187,11 @@
       ],
       "related": [
         "dual-host-shell-stage",
-        "segmented-relative-path-labels"
-      ]
+        "segmented-relative-path-labels",
+        "analysis-capability-honesty"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: Exact or Imported LOC (Shaken) precision work; mixed estimate/exact band UI; pinning TypeScript engine version; multi-language engines (pyright, gopls)"
     },
     {
       "id": "geometric-vs-knot-architecture",
@@ -182,7 +236,9 @@
       ],
       "related": [
         "dual-host-shell-stage"
-      ]
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer"
     },
     {
       "id": "segmented-relative-path-labels",
@@ -222,7 +278,9 @@
       "related": [
         "dual-host-shell-stage",
         "alluvial-top-pack-rename-split"
-      ]
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels"
     }
   ]
 }
