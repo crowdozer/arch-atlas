@@ -10,7 +10,10 @@
  */
 
 import { buildGraph } from '@core/graph/build.ts';
-import { buildMapCatalog } from '@core/catalog/views.ts';
+import {
+	buildMapCatalog,
+	type BuildMapCatalogOpts,
+} from '@core/catalog/views.ts';
 import type { CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
 
 /**
@@ -27,12 +30,17 @@ export type IndexResult = {
 	catalog: MapCatalog;
 };
 
+export type IndexHostFeedOpts = {
+	/** Forwarded to {@link buildMapCatalog} (UI omits → default top-N). */
+	catalog?: BuildMapCatalogOpts;
+};
+
 /**
  * Stable engine entry: host feed → graph + catalog.
  * Single owner of the index path; `indexFiles(files)` delegates here.
  */
-export function indexHostFeed(feed: HostFileFeed): IndexResult {
+export function indexHostFeed(feed: HostFileFeed, opts?: IndexHostFeedOpts): IndexResult {
 	const graph = buildGraph(feed.files);
-	const catalog = buildMapCatalog(graph);
+	const catalog = buildMapCatalog(graph, opts?.catalog);
 	return { graph, catalog };
 }

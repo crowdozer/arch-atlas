@@ -10,6 +10,19 @@ import { catalogHotspots } from '@core/catalog/hotspots.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
 import type { CodeGraph, MapCatalog, SuggestedView } from '@core/graph/types.ts';
 
+/** Optional top-N overrides for catalog ranking bins (UI keeps defaults). */
+export type BuildMapCatalogOpts = {
+	/**
+	 * Top-N for hotspots, complex, deepest, fileLoc, blastRadius.
+	 * Default 15 (UI). CLI digest typically passes a higher limit (e.g. 40).
+	 */
+	limit?: number;
+	/** Starts list cap (default 40). */
+	startsLimit?: number;
+	/** Ends list cap (default 50). */
+	endsLimit?: number;
+};
+
 function languageTags(graph: CodeGraph): string[] {
 	const tags = new Set<string>();
 	for (const f of graph.files.values()) {
@@ -22,14 +35,18 @@ function languageTags(graph: CodeGraph): string[] {
 	return [...tags].sort();
 }
 
-export function buildMapCatalog(graph: CodeGraph): MapCatalog {
-	const starts = catalogStarts(graph);
-	const ends = catalogEnds(graph);
-	const hotspots = catalogHotspots(graph);
-	const complex = catalogComplex(graph);
-	const deepest = catalogDeepest(graph);
-	const fileLoc = catalogFileLoc(graph);
-	const blastRadius = catalogBlastRadius(graph);
+export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): MapCatalog {
+	const rankLimit = opts?.limit ?? 15;
+	const startsLimit = opts?.startsLimit ?? 40;
+	const endsLimit = opts?.endsLimit ?? 50;
+
+	const starts = catalogStarts(graph, startsLimit);
+	const ends = catalogEnds(graph, endsLimit);
+	const hotspots = catalogHotspots(graph, rankLimit);
+	const complex = catalogComplex(graph, rankLimit);
+	const deepest = catalogDeepest(graph, rankLimit);
+	const fileLoc = catalogFileLoc(graph, rankLimit);
+	const blastRadius = catalogBlastRadius(graph, rankLimit);
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
