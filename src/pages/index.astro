@@ -88,6 +88,22 @@ import Tag from '../components/ui/Tag.astro';
 							</span>
 						</span>
 					</button>
+					<button
+						type="button"
+						id="atlas-demo-spaghetti-godfile"
+						class="atlas-demo__card"
+						data-demo="spaghetti-godfile"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Spaghetti hub</span>
+								<Tag tone="yellow" size="sm">Godfile demo</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								Deliberate cross-domain hub, fan-in/out concentration, reverse blast chains.
+							</span>
+						</span>
+					</button>
 				</div>
 			</div>
 
@@ -182,6 +198,28 @@ import Tag from '../components/ui/Tag.astro';
 									file-hub at that start.
 								</p>
 								<div id="atlas-file-loc"></div>
+							</AccordionItem>
+							<AccordionItem
+								id="atlas-acc-godfiles"
+								class="atlas-catalog-acc-item"
+								title="Godfile candidates"
+							>
+								<p class="atlas-catalog-hint">
+									Multi-signal concentration (fan-in × fan-out × path-prefix domains).
+									Inferred rank — opens file-hub at that start.
+								</p>
+								<div id="atlas-godfiles"></div>
+							</AccordionItem>
+							<AccordionItem
+								id="atlas-acc-blast"
+								class="atlas-catalog-acc-item"
+								title="Blast radius"
+							>
+								<p class="atlas-catalog-hint">
+									Reverse import consumers — who can reach this file via import chains.
+									Opens file-hub at that start.
+								</p>
+								<div id="atlas-blast"></div>
 							</AccordionItem>
 							<AccordionItem
 								id="atlas-acc-views"

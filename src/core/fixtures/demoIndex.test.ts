@@ -51,4 +51,36 @@ describe('demo fixtures index', () => {
 			labels.has('next') || labels.has('stripe') || labels.has('pg') || labels.has('ioredis'),
 		).toBe(true);
 	});
+
+	it('spaghetti-godfile yields godfile candidates and blast radius', () => {
+		const files = walkFiles(path.join(root, 'demo-spaghetti-godfile'));
+		expect(files.length).toBeGreaterThan(15);
+		const { graph, catalog } = indexFiles(files);
+		expect(graph.stats.sourceCount).toBeGreaterThan(15);
+		expect(graph.stats.edgeCount).toBeGreaterThan(20);
+		expect(graph.files.has('src/god/hub.ts')).toBe(true);
+
+		// Multi-signal godfile bin should surface the hub
+		expect(catalog.godfiles.length).toBeGreaterThan(0);
+		const hub = catalog.godfiles.find((g) => g.path === 'src/god/hub.ts');
+		expect(hub).toBeDefined();
+		expect(hub!.inDegree).toBeGreaterThanOrEqual(2);
+		expect(hub!.outDegree).toBeGreaterThanOrEqual(2);
+		expect(hub!.domainsTouched).toBeGreaterThan(1);
+		expect(hub!.score).toBeGreaterThan(0);
+		expect(hub!.epistemic).toBe('inferred');
+
+		// Blast radius: reverse consumers exist (domain/money, chain leaf, etc.)
+		expect(catalog.blastRadius.length).toBeGreaterThan(0);
+		expect(catalog.blastRadius[0]!.reverseReachFiles).toBeGreaterThan(0);
+		expect(catalog.blastRadius.every((b) => b.epistemic === 'observed')).toBe(true);
+
+		// Suggested views may include godfile/blast shortcuts
+		const viewIds = catalog.views.map((v) => v.id);
+		const hasTopologyShortcut =
+			viewIds.some((id) => id.startsWith('godfile:')) ||
+			viewIds.some((id) => id.startsWith('blast:')) ||
+			catalog.godfiles.length > 0;
+		expect(hasTopologyShortcut).toBe(true);
+	});
 });

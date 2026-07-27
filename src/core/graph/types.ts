@@ -199,6 +199,42 @@ export type CatalogFileLoc = {
 	epistemic: 'observed';
 };
 
+/**
+ * Multi-signal godfile candidate (inferred rank).
+ * score = inDegree * outDegree * max(1, domainsTouched);
+ * domainsTouched = unique topFolder over self ∪ 1-hop file neighbors.
+ * Requires inDegree ≥ 1 and outDegree ≥ 1. packageOut is meta only.
+ */
+export type CatalogGodfile = {
+	id: string;
+	path: string;
+	/** Composite rank: in * out * max(1, domainsTouched). */
+	score: number;
+	inDegree: number;
+	outDegree: number;
+	/** Outgoing edges to packages / unresolved (display only). */
+	packageOut: number;
+	/** Unique path-prefix domains (topFolder) on self + 1-hop neighbors. */
+	domainsTouched: number;
+	epistemic: 'inferred';
+};
+
+/**
+ * Reverse blast radius: consumers that can reach this file via import chains.
+ * reverseReachFiles excludes self; ranking is pure observed counts.
+ */
+export type CatalogBlast = {
+	id: string;
+	path: string;
+	/** Distinct reverse-reachable files excluding self. */
+	reverseReachFiles: number;
+	/** Max BFS hops reverse along fileImportedBy. */
+	reverseMaxHops: number;
+	inDegree: number;
+	outDegree: number;
+	epistemic: 'observed';
+};
+
 export type SuggestedView = {
 	id: string;
 	title: string;
@@ -220,6 +256,10 @@ export type MapCatalog = {
 	deepest: CatalogDeep[];
 	/** Largest source files by whole-file LOC (high → low). */
 	fileLoc: CatalogFileLoc[];
+	/** Multi-signal godfile candidates (fan-in × fan-out × domains). */
+	godfiles: CatalogGodfile[];
+	/** Reverse-reach blast radius (import consumers). */
+	blastRadius: CatalogBlast[];
 	views: SuggestedView[];
 	summary: {
 		sourceCount: number;
