@@ -31,6 +31,7 @@ export {
 } from '@core/parse/capability.ts';
 export type { FileParseInfo } from '@core/parse/capability.ts';
 export { buildMapCatalog } from '@core/catalog/views.ts';
+export type { BuildMapCatalogOpts } from '@core/catalog/views.ts';
 export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
@@ -124,7 +125,7 @@ export type {
 } from '@core/parse/resolveRules.ts';
 export { resolveSpecifier, barePackageName, isRelativeSpecifier } from '@core/parse/resolve.ts';
 export type { ResolveResult } from '@core/parse/resolve.ts';
-export { ingestZip } from '@core/ingest/zip.ts';
+export { ingestZip, isTextPath } from '@core/ingest/zip.ts';
 export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 export {
 	buildFileTree,
@@ -133,16 +134,36 @@ export {
 } from '@core/tree/fileTree.ts';
 export type { FileTreeNode } from '@core/tree/fileTree.ts';
 export { indexHostFeed } from '@core/hostPipe.ts';
-export type { HostFileFeed, IndexResult } from '@core/hostPipe.ts';
+export type { HostFileFeed, IndexHostFeedOpts, IndexResult } from '@core/hostPipe.ts';
+export {
+	AGENT_DIGEST_SCHEMA,
+	AGENT_FILE_SCHEMA,
+	AGENT_TREE_SCHEMA,
+	ANALYSIS_HONESTY,
+	buildAgentDigest,
+	buildAgentFileReport,
+	buildAgentTree,
+} from '@core/export/agentDigest.ts';
+export type {
+	AgentDigest,
+	AgentDigestSource,
+	AgentFileReport,
+	AgentTreeOut,
+	BuildAgentDigestInput,
+} from '@core/export/agentDigest.ts';
 
-import { indexHostFeed, type IndexResult } from '@core/hostPipe.ts';
+import {
+	indexHostFeed,
+	type IndexHostFeedOpts,
+	type IndexResult,
+} from '@core/hostPipe.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
 import type { WeightAxis } from '@core/view/weight.ts';
 import type { AlluvialPayload, CodeGraph, VirtualFile } from '@core/graph/types.ts';
 
 /** Index virtual files into graph + map catalog (thin alias of indexHostFeed). */
-export function indexFiles(files: VirtualFile[]): IndexResult {
-	return indexHostFeed({ files });
+export function indexFiles(files: VirtualFile[], opts?: IndexHostFeedOpts): IndexResult {
+	return indexHostFeed({ files }, opts);
 }
 
 /** Convenience: catalog primary start → alluvial. */

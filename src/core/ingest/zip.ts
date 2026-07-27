@@ -6,7 +6,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 
-/** Extensions we decode as UTF-8 text for the Level-1 index. */
+/** Extensions we decode as UTF-8 text for the Level-1 index (ZIP + dir feed). */
 const TEXT_EXT =
 	/\.(m?[jt]sx?|cjs|mjs|json|md|css|html|svg|yml|yaml|toml|txt|map)$/i;
 
@@ -35,10 +35,12 @@ export function isZipDirectoryEntry(name: string, data: Uint8Array): boolean {
 	return false;
 }
 
-function isTextPath(path: string): boolean {
-	if (TEXT_EXT.test(path)) return true;
-	// package.json is already covered by TEXT_EXT via .json
-	return false;
+/**
+ * Whether a path is a known text extension kept in the Level-1 feed.
+ * Shared by ZIP ingest and directory walk so both hosts produce the same file set.
+ */
+export function isTextPath(path: string): boolean {
+	return TEXT_EXT.test(path);
 }
 
 /**
