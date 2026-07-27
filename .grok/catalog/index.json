@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T04:22:09Z",
+  "generated_at": "2026-07-27T05:49:16Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 6,
+  "count": 10,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -113,6 +113,7 @@
         "core-engine",
         "alluvial-viz",
         "web-host",
+        "cli-host",
         "injectors"
       ],
       "applies_when": [
@@ -125,7 +126,8 @@
         "workspace index vs ZIP ingest",
         "map catalog TreeView",
         "browser vs extension packaging",
-        "host ports SourcePort CatalogPort StagePort"
+        "host ports SourcePort CatalogPort StagePort",
+        "agent CLI digest / tree / file lens"
       ],
       "touches": [
         "src/core",
@@ -136,6 +138,7 @@
         "src/client/renderTree.ts",
         "src/client/renderCatalog.ts",
         "src/client/inspectModal.ts",
+        "src/cli/",
         "extension/",
         "hosts as injectors",
         "AlluvialChart mount",
@@ -194,6 +197,101 @@
       "consult": "Consult when: Exact or Imported LOC (Shaken) precision work; mixed estimate/exact band UI; pinning TypeScript engine version; multi-language engines (pyright, gopls)"
     },
     {
+      "id": "interchangeable-atlas-lenses",
+      "kind": "proposal",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/interchangeable-atlas-lenses.md",
+      "scope": [
+        "map-catalog",
+        "projections",
+        "alluvial-viz",
+        "heatmap",
+        "dependency-matrix",
+        "selection-continuity",
+        "atlas-metaphor",
+        "graph-as-sor"
+      ],
+      "applies_when": [
+        "adding a second visualization beyond alluvial",
+        "treemap heatmap matrix or multi-lens workspace",
+        "interchangeable architectural lenses",
+        "cross-view selection continuity",
+        "city continent highway metaphor for code structure",
+        "architecture investigation environment not dep graph",
+        "porting visualization ideas from external design chats",
+        "choosing Phase A product surface after Level-1 graph",
+        "stable spatial identity across chart types",
+        "avoiding collection of unrelated code charts"
+      ],
+      "touches": [
+        "src/core graph SoR",
+        "src/core/catalog",
+        "src/core/view/weight.ts",
+        "src/stage alluvial",
+        "src/client renderCatalog selection",
+        "future heatmap and matrix projectors",
+        ".grok/reference/scope.md suggested views",
+        "hierarchical-heatmap-lens",
+        "dependency-structure-matrix",
+        "git-architectural-time-machine"
+      ],
+      "related": [
+        "hierarchical-heatmap-lens",
+        "dependency-structure-matrix",
+        "git-architectural-time-machine",
+        "geometric-vs-knot-architecture",
+        "analysis-capability-honesty",
+        "dual-host-shell-stage"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: adding a second visualization beyond alluvial; treemap heatmap matrix or multi-lens workspace; interchangeable architectural lenses; cross-view selection continuity"
+    },
+    {
+      "id": "dependency-structure-matrix",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/dependency-structure-matrix.md",
+      "scope": [
+        "dependency-matrix",
+        "dsm",
+        "layer-violations",
+        "projections",
+        "coupling",
+        "cycles",
+        "architecture-rules",
+        "inspect"
+      ],
+      "applies_when": [
+        "dependency structure matrix or adjacency matrix view",
+        "DSM layering cycles bidirectional coupling",
+        "package-by-package coupling grid",
+        "layer violation matrix or intended architecture ordering",
+        "drag reorder layers to propose architecture",
+        "scalable alternative to force-directed graphs",
+        "third lens after alluvial and heatmap"
+      ],
+      "touches": [
+        "src/core graph edges",
+        "src/core/catalog",
+        "src/core/view inspect path",
+        "future matrix projector",
+        "layer classifiers / adapters (later)",
+        "interchangeable-atlas-lenses"
+      ],
+      "related": [
+        "interchangeable-atlas-lenses",
+        "hierarchical-heatmap-lens",
+        "geometric-vs-knot-architecture",
+        "analysis-capability-honesty"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: dependency structure matrix or adjacency matrix view; DSM layering cycles bidirectional coupling; package-by-package coupling grid; layer violation matrix or intended architecture ordering"
+    },
+    {
       "id": "geometric-vs-knot-architecture",
       "kind": "idea",
       "state": "partial",
@@ -239,6 +337,99 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer"
+    },
+    {
+      "id": "git-architectural-time-machine",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/git-architectural-time-machine.md",
+      "scope": [
+        "git-history",
+        "evolution",
+        "co-change",
+        "churn",
+        "line-age",
+        "architecture-diff",
+        "dual-host",
+        "cli-host",
+        "vscode-extension"
+      ],
+      "applies_when": [
+        "git history age churn co-change overlays",
+        "architectural time machine or evolution lens",
+        "line-age heatmap or fossil map",
+        "co-change edges vs import edges",
+        "architecture diff between refs or PRs",
+        "historical playback of dependency graph",
+        "repair gravity or knowledge map from blame",
+        "attaching .git metrics to static graph",
+        "Evolution view in multi-lens atlas"
+      ],
+      "touches": [
+        "hosts with filesystem checkout (CLI, future extension)",
+        "not default web ZIP path",
+        "future historical edge kinds on or beside CodeGraph",
+        "hierarchical-heatmap-lens heat switcher",
+        "interchangeable-atlas-lenses Evolution slot",
+        "conversation.md diff mode vision"
+      ],
+      "related": [
+        "interchangeable-atlas-lenses",
+        "hierarchical-heatmap-lens",
+        "dual-host-shell-stage",
+        "geometric-vs-knot-architecture"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: git history age churn co-change overlays; architectural time machine or evolution lens; line-age heatmap or fossil map; co-change edges vs import edges"
+    },
+    {
+      "id": "hierarchical-heatmap-lens",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/hierarchical-heatmap-lens.md",
+      "scope": [
+        "heatmap",
+        "treemap",
+        "map-catalog",
+        "weight-axis",
+        "hotspots",
+        "blast-radius",
+        "projections",
+        "epistemic-honesty"
+      ],
+      "applies_when": [
+        "hierarchical heatmap or treemap for codebase mass",
+        "LOC geometry with switchable color heat",
+        "coupling heat fan-in fan-out overlay",
+        "catalog hotspots spatialized not only ranked lists",
+        "second primitive beside alluvial",
+        "fragility score or risk prioritization map",
+        "heat layer vs weight axis design",
+        "CodeCharta-like metric layers without forking product"
+      ],
+      "touches": [
+        "src/core/catalog/hotspots.ts",
+        "src/core/catalog/fileLoc.ts",
+        "src/core/catalog/blastRadius.ts",
+        "src/core/catalog/deepest.ts",
+        "src/core/view/weight.ts",
+        "future HeatAxis or heat projector",
+        "src/client renderCatalog",
+        "interchangeable-atlas-lenses"
+      ],
+      "related": [
+        "interchangeable-atlas-lenses",
+        "dependency-structure-matrix",
+        "git-architectural-time-machine",
+        "analysis-capability-honesty",
+        "geometric-vs-knot-architecture"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: hierarchical heatmap or treemap for codebase mass; LOC geometry with switchable color heat; coupling heat fan-in fan-out overlay; catalog hotspots spatialized not only ranked lists"
     },
     {
       "id": "segmented-relative-path-labels",
