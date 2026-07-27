@@ -299,8 +299,8 @@ export function createTsProgramProvider(
 
 	function surfaceNote(path: string): string {
 		return astUsed.get(path)
-			? 'Exact export surface (TS Program / createSourceFile; not full type-check)'
-			: 'Exact export surface (text fallback; not full type-check)';
+			? 'Export surface (classic createSourceFile AST — not LSP / not type-check)'
+			: 'Export surface (text fallback — not LSP / not type-check)';
 	}
 
 	return {

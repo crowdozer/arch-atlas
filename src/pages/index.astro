@@ -292,14 +292,14 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Weight"
-								titleText="Band weight axis"
+								titleText="Band width: edges, file LOC, or import export-surface (Exact). Not bundler tree-shake."
 								value="target-loc"
 								aria-labelledby="atlas-weight-label"
 							>
 								<DropdownItem value="import-edges">Import Edges</DropdownItem>
 								<DropdownItem value="importer-loc">Importer file LOC</DropdownItem>
 								<DropdownItem value="target-loc">Imported LOC</DropdownItem>
-								<DropdownItem value="imported-loc">Imported LOC (Shaken)</DropdownItem>
+								<DropdownItem value="imported-loc">Export surface (Exact)</DropdownItem>
 							</Dropdown>
 						</div>
 						<div class="atlas-stage__control-group">
@@ -312,12 +312,12 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Precision"
-								titleText="LOC precision (estimate vs Exact surface engine)"
+								titleText="Estimate = whole-file LOC. Exact = JS/TS export-declaration surface (not a language server)."
 								value="estimate"
 								aria-labelledby="atlas-precision-label"
 							>
 								<DropdownItem value="estimate">Estimate</DropdownItem>
-								<DropdownItem value="exact">Exact</DropdownItem>
+								<DropdownItem value="exact">Exact (export surface)</DropdownItem>
 							</Dropdown>
 						</div>
 						<div

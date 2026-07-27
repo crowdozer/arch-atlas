@@ -43,10 +43,10 @@ function evidenceHeaderLabel(
 	precision: LocPrecision,
 	surfaceLive: boolean,
 ): string {
-	if (precision !== 'exact') return 'Import evidence · estimate';
+	if (precision !== 'exact') return 'Import evidence · estimate (whole file)';
 	return surfaceLive
-		? 'Import evidence · exact'
-		: 'Import evidence · exact unavailable';
+		? 'Import evidence · export surface (not LSP)'
+		: 'Import evidence · export surface unavailable';
 }
 
 function callsitesTitle(
@@ -54,11 +54,11 @@ function callsitesTitle(
 	surfaceLive: boolean,
 ): string {
 	if (precision !== 'exact') {
-		return 'Possible callsites (estimate — not type-checked)';
+		return 'Possible callsites (estimate — name scan, not type-checked)';
 	}
 	return surfaceLive
-		? 'Callsites (exact — best-effort)'
-		: 'Callsites (exact unavailable)';
+		? 'Callsites (name scan in importer — not type-checked)'
+		: 'Callsites (export surface unavailable)';
 }
 
 export function createInspectModals(deps: InspectModalDeps): {

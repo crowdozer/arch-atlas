@@ -80,12 +80,13 @@ let viewStack: AtlasView[] = [];
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'target-loc';
 /**
- * Imported-surface honesty: estimate (Level-1) vs exact (Program/LSP provider).
- * Exact/Shaken entry loads engines and installs {@link surfaceProvider}.
+ * Imported-surface honesty: estimate (Level-1) vs exact (export-surface provider).
+ * Exact / export-surface weight entry loads engines and installs {@link surfaceProvider}.
+ * Not a language server — classic createSourceFile export spans.
  */
 let locPrecision: LocPrecision = 'estimate';
 /**
- * Exact surface provider when engines are ready (web: TS Program; host inject).
+ * Exact surface provider when engines are ready (web: classic TS AST; host inject).
  * Cached across estimate↔exact toggles; not unloaded on Estimate.
  */
 let surfaceProvider: ImportedSurfaceProvider | null = null;
@@ -256,7 +257,7 @@ async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<
 	};
 
 	try {
-		setStatus('Loading analysis engine…');
+		setStatus('Loading JS/TS export-surface engine…');
 		const result = await ensureExactForGraph(session.graph, {
 			cachedProvider: surfaceProvider,
 		});
@@ -265,8 +266,10 @@ async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<
 			revertUi();
 			inspect.openUnavailableModal({
 				label: trigger === 'shaken' ? 'Weight' : 'Precision',
-				heading: 'Exact mode unavailable',
-				body: result.error + ' Charts stay on estimate (whole-file) weights.',
+				heading: 'Export surface unavailable',
+				body:
+					result.error +
+					' Charts stay on estimate (whole-file / dual-side estimate) weights. Exact is not a language server.',
 			});
 			setStatus(result.error);
 			return;
@@ -274,12 +277,12 @@ async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<
 
 		surfaceProvider = result.provider;
 		locPrecision = 'exact';
-		// Shaken is the UI name for exact surface mass on target-loc
+		// UI “Export surface (Exact)” maps to target-loc + exact precision
 		weightAxis = 'target-loc';
 
 		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'exact');
 		if (weightDropdown) {
-			// Prefer Shaken UI value when that was the entry; else keep target-loc
+			// Prefer export-surface UI value when that was the entry; else keep target-loc
 			if (trigger === 'shaken') {
 				weightDropdown.value = 'imported-loc';
 				weightDropdown.setAttribute('value', 'imported-loc');
@@ -293,27 +296,29 @@ async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<
 			exactMixedWarningShown = true;
 			const langs = missing.map((m) => m.language).join(', ');
 			inspect.openUnavailableModal({
-				label: 'Exact (partial)',
-				heading: 'Some languages stay on estimate',
-				body: `Exact surface mass is available for JavaScript/TypeScript. Other languages in this project (${langs}) stay estimate-honest until engines exist.`,
+				label: 'Export surface (partial)',
+				heading: 'Only JavaScript/TypeScript use Exact',
+				body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
 			});
 		}
 
 		const srcNote =
 			result.source === 'jsdelivr' || result.source === 'unpkg'
-				? ` (engine: ${result.source})`
+				? ` · engine ${result.source} (CDN)`
 				: result.source === 'local' || result.source === 'inject'
-					? ` (engine: ${result.source})`
-					: '';
+					? ` · engine ${result.source}`
+					: result.source === 'cached'
+						? ' · engine cached'
+						: '';
 		remountCurrentView();
-		setStatus(`Exact surface mode on${srcNote}`);
+		setStatus(`Export-surface Exact on (JS/TS export decls)${srcNote}`);
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
 		revertUi();
 		inspect.openUnavailableModal({
 			label: trigger === 'shaken' ? 'Weight' : 'Precision',
-			heading: 'Exact mode failed',
-			body: msg + ' Charts stay on estimate (whole-file) weights.',
+			heading: 'Export surface failed',
+			body: msg + ' Charts stay on estimate weights.',
 		});
 		setStatus(msg);
 	} finally {
@@ -380,7 +385,7 @@ async function tryAutoExactWhenLocalAvailable(): Promise<void> {
 		remountCurrentView();
 		const base = statusForView(session, currentView());
 		setStatus(
-			`${base} · Exact on (${result.source})`,
+			`${base} · export-surface Exact (${result.source})`,
 		);
 	} catch {
 		// stay estimate

@@ -42,7 +42,7 @@ const DEFAULT_AXIS: WeightAxis = 'target-loc';
 const DEFAULT_PRECISION: LocPrecision = 'estimate';
 
 export const EXACT_NOT_IMPLEMENTED_MESSAGE =
-	'Exact imported LOC requires an analysis engine (TypeScript Program or language server). Enable Exact or Imported LOC (Shaken) after the engine loads, or inject a provider.';
+	'Exact export-surface mass requires the JS/TS analysis engine (classic TypeScript AST — not a language server). Enable Precision → Exact (export surface) or Weight → Export surface after the engine loads, or inject a provider.';
 
 /** Provider present but export surface could not be resolved for this edge. */
 export const EXACT_SURFACE_UNRESOLVED_MESSAGE =
@@ -214,7 +214,7 @@ export function unitsForAxis(
 export const IMPORTED_SURFACE_LOC_UI = 'imported-loc' as const;
 
 export const IMPORTED_SURFACE_LOC_MESSAGE =
-	'Imported LOC (Shaken) uses Exact surface mass (TypeScript Program). The analysis engine will load when you select this option or Precision → Exact.';
+	'Export surface (Exact) sizes bands by matching import bindings to export declarations (classic TypeScript AST). Not bundler tree-shake and not a language server. Loads the engine when selected (same path as Precision → Exact).';
 
 export function resolveWeightAxis(axis?: WeightAxis): WeightAxis {
 	return axis ?? DEFAULT_AXIS;
