@@ -16,7 +16,7 @@ stay pure; ship only stitches them.
 ## Workspace
 
 - Repo: **arch-atlas**
-- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); web host in `src/client/` (composition root + paint modules); later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`src/stage` / `extension/` not landed** (dual-host partial — shell extract only)
+- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); alluvial stage in `src/stage/` (`@stage` — Carbon mount/polish/focus); web host in `src/client/` (composition root + paint modules). Later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`extension/` not landed** (dual-host partial — shell + stage web-in-process only)
 - Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → catalog/heuristics → suggested alluvial atlas views (source stays on-device)
 - Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
 - Mode: local `npm run dev` (Astro static + client index); no remote source upload
@@ -50,10 +50,16 @@ ZIP / files (browser)
   framework adapters (detect / classify / enrich / suggest / inspect)
         ↓
   map catalog → alluvial & other projections
+        ↓
+  src/stage (Carbon alluvial mount / polish / focus) ← web host injectors
 ```
 
 Underlying structure is a **directed graph** (shared helpers merge bands); rooted
 route views may look tree-like but must not assume a true tree.
+
+**Layout (current):** `src/core` (engine) · `src/shell` (pure session/nav) ·
+`src/stage` (DOM alluvial, landed web-in-process) · `src/client` (web injector).
+`extension/` (VS Code host) still **not landed**.
 
 ## Conventions
 
@@ -91,11 +97,11 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
 | Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
-| Web client workspace | `src/client/` — `app.ts` composition root (stage mount, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`; plus focus/ and alluvialPolish/ |
-| Stage (target) | `src/stage/` — **not landed**; alluvial mount/polish/clicks still in `app.ts` |
+| Alluvial stage | `src/stage/` (`@stage`) — `createAlluvialStage`, `polish/`, `focus/`, drill/carbonEvents/height; owns `@carbon/charts` |
+| Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no Carbon/chart |
 | VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
-| UI / Carbon / alluvial | `src/components/ui/`, `src/styles/`, `@carbon/charts` |
+| UI / Carbon wrappers | `src/components/ui/`, `src/styles/` |
 
 ## Commands
 

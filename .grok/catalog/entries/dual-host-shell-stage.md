@@ -45,7 +45,7 @@ invariants:
   - src/shell stays pure — no document, no Carbon, no chart
   - Level-1 static analysis remains default; Exact/LSP is a later vertical
   - Local-first — web ZIP and VS Code workspace both on-device
-  - Astro remains the fast paint loop until stage is extract-stable
+  - Astro remains the fast paint loop until stage is extract-stable; stage extract landed web-in-process — keep Astro until extension/webview path is real
 open_questions:
   - How deep TreeView catalog parity goes after scaffold (not required for first land)
   - Whether stage eventually owns controls DOM fully vs web-only Carbon dropdown IDs
@@ -55,6 +55,8 @@ related:
 realized_by:
   - f9d5bc7
   - a8c9c2c
+  - a05db72
+  - 83a2858
 superseded_by: null
 rationale_quality: full
 ---
@@ -63,16 +65,20 @@ rationale_quality: full
 
 Approved ship plan (Gate A, run `3e810aae`) — **partially realized**.
 
-**Landed (ship `139cf7dc`, godfile shell extract):** pure `src/shell/`
+**Landed — shell (ship `139cf7dc` / `f9d5bc7`):** pure `src/shell/`
 (types, atlasView, captions, project, controls + tests); `@shell` path alias
 (tsconfig / Vite / Vitest); client paint modularization
-(`dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`);
-`app.ts` remains composition root (~937 LOC) owning stage mount + nav commit +
-`wireUi`.
+(`dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`).
 
-**Still unrealized:** `src/stage` extract; VS Code `extension/` adapter;
-webview message loop; dual-host packaging. Do not treat dual-host as complete.
+**Landed — stage web-in-process (ship `1b51d6d5` / `a05db72`, merge
+`83a2858`):** `src/stage/` package (`mount`, `height`, `carbonEvents`, `drill`,
+`polish/`, `focus/`); `@stage` alias; `app.ts` is web host composition root —
+injects `createAlluvialStage` callbacks; no `@carbon/charts` in client. Polish
+and focus live under stage (not client).
 
+**Still unrealized:** VS Code `extension/` adapter; webview message loop;
+dual-host packaging. Do not treat dual-host as complete — stage is landed for
+**web in-process only**.
 Source research/plan: conversation dual-host research; ship plan dual-host
 minimal rewrite.
 
@@ -146,15 +152,14 @@ VS Code: shell on extension host; stage via **postMessage** (`messages.ts`).
 | Step | Status |
 | ---- | ------ |
 | 1. `src/shell` — types, nav/atlasView, project, captions, controls + unit tests | **Done** (`139cf7dc` / `f9d5bc7`) — messages types for webview not yet |
-| 2. Client paint out of godfile — `dom`, `renderTree`, `renderCatalog`, `inspectModal` | **Done** (same ship; web-only factories, not dual-host stage) |
-| 3. Rewire `app.ts`; `@shell` alias | **Done** — `@stage` not yet |
-| 4. `src/stage` — mount/clicks; move/share `alluvialPolish/` | **Not landed** — stage remains in `app.ts` |
+| 2. Client paint out of godfile — `dom`, `renderTree`, `renderCatalog`, `inspectModal` | **Done** (same ship; web-only factories) |
+| 3. Rewire `app.ts`; `@shell` alias | **Done** |
+| 4. `src/stage` — mount/clicks; move polish + focus | **Done** web-in-process (`1b51d6d5` / `a05db72`, merge `83a2858`) — `polish/` + `focus/` under stage; `@stage` alias |
 | 5. `extension/` — compile, Index Workspace → `indexFiles`, stage panel stub | **Not landed** |
-| 6. Root scripts `extension:compile`; dual-host docs | Docs note partial only |
+| 6. Root scripts `extension:compile`; dual-host docs | Partial docs only; no extension scripts |
 
 **Out of scope for first land (still):** TreeView catalog parity, Exact LSP,
 ZIP-in-extension, marketplace publish.
-
 ## Open questions
 
 - Depth of catalog TreeView after scaffold.
@@ -165,8 +170,9 @@ ZIP-in-extension, marketplace publish.
 ## Revisit when
 
 - ~~First shell extract lands → `state: partial`, fill `realized_by`.~~ **Done**
-  (shell + client paint; stage/extension still open).
-- `src/stage` extract lands → update partial notes / `realized_by`.
+  (shell + client paint).
+- ~~`src/stage` extract lands → update partial notes / `realized_by`.~~ **Done**
+  (web-in-process only; extension still open — stay `partial`).
 - First extension compile + web parity land → keep partial or split entry if
   dual-host packaging becomes the focus.
 - TreeView catalog or full stage message loop ships → update partial/implemented.

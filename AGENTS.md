@@ -54,11 +54,12 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | ---- | ------------ |
 | Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
-| Web client workspace | `src/client/` — composition root `app.ts` (~stage mount + nav + `wireUi`); paint modules `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`; focus + alluvialPolish still client-side |
+| Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
+| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint modules `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no `@carbon/charts` |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | UI / Carbon | `src/components/ui/`, `src/styles/` |
 
-**Not yet landed:** `src/stage` (alluvial mount extract), `extension/` (VS Code host). Dual-host plan is **partial** — shell slice + client paint modularization only. See [dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
+**Not yet landed:** `extension/` (VS Code host). Dual-host plan is **partial** — shell + stage web-in-process landed; extension / webview message loop not. See [dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
 
 ## How to treat this repo
 

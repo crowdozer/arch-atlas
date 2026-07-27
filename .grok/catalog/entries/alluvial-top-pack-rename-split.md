@@ -28,14 +28,13 @@ applies_when:
   - src/stage ownership of chart paint
   - alluvialPolish.test.ts geometry suite
 touches:
-  - src/client/alluvialPolish/
-  - src/client/alluvialPolish/index.ts
-  - src/client/alluvialPolish/polish.ts
-  - src/client/alluvialPolish/alluvialPolish.test.ts
-  - src/client/app.ts (polishAlluvialHolder call site)
-  - src/client/focus/displayInventory.ts
-  - src/client/focus/e2e/focusE2eBoot.ts
-  - future src/stage/*
+  - src/stage/polish/ (current home; was src/client/alluvialPolish/)
+  - src/stage/polish/index.ts
+  - src/stage/polish/polish.ts
+  - src/stage/polish/alluvialPolish.test.ts
+  - src/stage/mount.ts
+  - src/stage/focus/
+  - src/client/app.ts (stage host injectors; no polish import)
   - dual-host-shell-stage catalog plan
 invariants:
   - Graph (CodeGraph) remains SoR; polish only mutates Carbon DOM projections
@@ -43,38 +42,41 @@ invariants:
   - Pure helpers that do not need document stay extractable; DOM polish stays out of src/core
 open_questions:
   - How many exports stay public vs become module-private once only polish facade is needed?
-  - Dual-host stage extract still future — when to move package under src/stage?
 related:
   - dual-host-shell-stage
   - geometric-vs-knot-architecture
 realized_by:
-  - src/client/alluvialPolish/
-  - src/client/alluvialPolish/index.ts
-  - src/client/alluvialPolish/polish.ts
-  - src/client/alluvialPolish/externalStraighten.ts
-  - src/client/alluvialPolish/labels.ts
-  - src/client/alluvialPolish/rails.ts
-  - src/client/alluvialPolish/terminators.ts
-  - src/client/alluvialPolish/fileSpine.ts
-  - src/client/alluvialPolish/fileChrome.ts
-  - src/client/alluvialPolish/sankeyDom.ts
-  - src/client/alluvialPolish/alluvialPolish.test.ts
+  - src/stage/polish/ (home after stage extract; was src/client/alluvialPolish/)
+  - src/stage/polish/index.ts
+  - src/stage/polish/polish.ts
+  - src/stage/polish/externalStraighten.ts
+  - src/stage/polish/labels.ts
+  - src/stage/polish/rails.ts
+  - src/stage/polish/terminators.ts
+  - src/stage/polish/fileSpine.ts
+  - src/stage/polish/fileChrome.ts
+  - src/stage/polish/sankeyDom.ts
+  - src/stage/polish/alluvialPolish.test.ts
+  - src/stage/mount.ts
   - src/client/app.ts
-  - src/client/focus/displayInventory.ts
-  - src/client/focus/e2e/focusE2eBoot.ts
+  - src/stage/focus/displayInventory.ts
+  - src/stage/focus/e2e/focusE2eBoot.ts
   - .grok/reference/hub-alluvial-behavior.md
   - .grok/reference/hub-alluvial-field-notes.md
   - "ship: 266dfe9 refactor(view): rename alluvialTopPack to alluvialPolish package"
   - "merge: 9181841 chore(arch-atlas): merge alluvialPolish package rename"
+  - "ship: a05db72 refactor(arch-atlas): extract alluvial stage into src/stage"
+  - "merge: 83a2858 chore(arch-atlas): merge ship stage alluvial extract"
 superseded_by: null
 rationale_quality: full
 ---
 
 # Rename + split `alluvialTopPack` (client rendering godfile)
 
-**Status:** implemented (rename + split under `src/client/alluvialPolish/`).  
-No `src/stage` extract in this land — dual-host stage move remains future work
-(see `dual-host-shell-stage`).
+**Status:** implemented. First land renamed/split under `src/client/alluvialPolish/`;
+stage extract (`1b51d6d5` / `a05db72`) moved the package to **`src/stage/polish/`**
+(and focus to `src/stage/focus/`). Facade `polishAlluvialHolder` preserved.
+See `dual-host-shell-stage` for remaining extension/webview work.
 
 ## Problem
 
