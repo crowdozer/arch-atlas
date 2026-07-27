@@ -55,8 +55,11 @@ export type AgentDigestSource = {
 	path: string;
 };
 
-/** Scope preset name stamped when CLI `--scope` expands heuristics. */
-export type AgentScopePreset = 'full' | 'product' | 'debug' | 'test' | string;
+/**
+ * Scope preset name stamped when CLI `--scope` expands heuristics.
+ * Ship B CLI: `full` (default) | `product` only — do not advertise unwired modes.
+ */
+export type AgentScopePreset = 'full' | 'product';
 
 export type AgentAliasRewrite = {
 	pattern: string;

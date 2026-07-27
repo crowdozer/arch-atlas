@@ -13,6 +13,11 @@ const fixtureDir = path.join(
 	'../../fixtures/demo-spaghetti-godfile',
 );
 
+const artilleryFixtureDir = path.join(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'../../fixtures/agent-artillery-shaped',
+);
+
 describe('runCli', () => {
 	const logs: string[] = [];
 	const errs: string[] = [];
@@ -166,6 +171,85 @@ describe('runCli', () => {
 		const paths = (parsed.graph?.files ?? []).map((f: { path: string }) => f.path);
 		expect(paths.some((p: string) => p.includes('god/hub'))).toBe(false);
 		expect(parsed.warnings?.some((w: string) => w.includes('omitted'))).toBe(true);
+	});
+
+	it('digest --scope product stamps presets and drops test/debug paths', async () => {
+		capture();
+		const code = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--scope',
+			'product',
+			'--estimate',
+			'--limit',
+			'20',
+		]);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
+		expect(parsed.scope?.presets).toEqual(['product']);
+		expect(parsed.scope?.includeTests).toBe(false);
+		const paths = (parsed.graph?.files ?? []).map((f: { path: string }) => f.path);
+		expect(paths.some((p: string) => p.includes('__tests__'))).toBe(false);
+		expect(paths.some((p: string) => p.startsWith('scripts/'))).toBe(false);
+		// Product sources still present
+		expect(paths).toContain('client/main.ts');
+		expect(
+			(parsed.warnings ?? []).some((w: string) => /scope product/i.test(w)),
+		).toBe(true);
+	});
+
+	it('digest --alias stamps aliasRewrites and resolves path rewrite', async () => {
+		capture();
+		const code = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--alias',
+			'@/modules/artillery/*=./*',
+			'--estimate',
+			'--limit',
+			'20',
+		]);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
+		expect(parsed.scope?.aliasRewrites).toEqual([
+			{ pattern: '@/modules/artillery/*', targets: ['./*'] },
+		]);
+		// Alias import from main resolves to client/util.ts (toKind file)
+		const utilEdge = (parsed.graph?.edges ?? []).find(
+			(e: { from: string; to: string; toKind: string }) =>
+				e.from === 'client/main.ts' && e.to === 'client/util.ts',
+		);
+		expect(utilEdge?.toKind).toBe('file');
+		// Default full scope stamp when not product
+		expect(parsed.scope?.presets).toEqual(['full']);
+		expect(parsed.scope?.includeTests).toBe(true);
+	});
+
+	it('digest rejects invalid --scope and --alias', async () => {
+		capture();
+		const badScope = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--scope',
+			'debug',
+			'--estimate',
+		]);
+		expect(badScope).toBe(1);
+		expect(errs.join('').toLowerCase()).toMatch(/scope|full\|product/);
+
+		logs.length = 0;
+		errs.length = 0;
+		const badAlias = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--alias',
+			'noseconds',
+			'--estimate',
+		]);
+		expect(badAlias).toBe(1);
+		expect(errs.join('').toLowerCase()).toMatch(/alias|pattern/);
 	});
 
 	it('impact without --base/--head exits 1', async () => {
