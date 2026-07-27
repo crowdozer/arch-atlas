@@ -13,7 +13,7 @@ import type { AlluvialPayload } from '@core/graph/types.ts';
 import {
 	isExternalStraightPairLink,
 	type ExternalStraightPair,
-} from '../alluvialTopPack.ts';
+} from '../alluvialPolish/index.ts';
 import {
 	externalBandKey,
 	fileBandKey,

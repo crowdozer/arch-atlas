@@ -195,7 +195,7 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 | Hub builder / residual / multi-instance / reverse rings | `src/core/view/fileHub.ts` |
 | Pad scaffold undraw | `src/core/view/alluvial.ts` (`isImportPadScaffoldLink`) |
 | Carbon-like layout for tests | `src/core/view/alluvialCarbonLayout.ts` |
-| Straighten + terminator polish | `src/client/alluvialTopPack.ts` |
+| Straighten + terminator polish | `src/client/alluvialPolish/` |
 | Polish wiring / meta | `src/client/app.ts` |
 | Terminator CSS | `src/styles/carbon-theme.css` |
 | Membership goldens | `src/core/view/hubOrientation.golden.test.ts` |

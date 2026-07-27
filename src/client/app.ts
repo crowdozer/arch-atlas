@@ -34,7 +34,7 @@ import {
 	nodeMatchesFilter,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
-import { polishAlluvialHolder } from './alluvialTopPack.ts';
+import { polishAlluvialHolder } from './alluvialPolish/index.ts';
 import {
 	bindHubAlluvialFocusEvents,
 	createHubAlluvialFocus,

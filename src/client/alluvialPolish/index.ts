@@ -1,0 +1,47 @@
+/**
+ * Carbon alluvial post-mount polish package.
+ *
+ * Public host surface: polishAlluvialHolder, isExternalStraightPairLink,
+ * ExternalStraightPair. Test-facing pure helpers re-exported for the suite.
+ */
+
+export { polishAlluvialHolder } from './polish.ts';
+
+export {
+	isExternalStraightPairLink,
+	planExternalStraightBands,
+	straightenExternalPackageBands,
+	type ExternalStraightPair,
+	type ExternalStraightBandPlan,
+} from './externalStraighten.ts';
+
+export {
+	centerHubFileSpine,
+	centerHubFileSpineInHolder,
+	isHubFileSpine,
+} from './fileSpine.ts';
+
+export {
+	ALLUVIAL_LABEL_MAX_CHARS,
+	carbonAlluvialLabelTitleOffset,
+	rightTruncateAlluvialLabels,
+	rightTruncateLabel,
+} from './labels.ts';
+
+export { hideAlluvialRails, isImportRailLabel } from './rails.ts';
+
+export {
+	markAlluvialExportTerminators,
+	markAlluvialTerminators,
+} from './terminators.ts';
+
+export {
+	highlightFileSpine,
+	injectFileHeaderIcon,
+	isExportSideCategory,
+	isFileCategory,
+	recolorExportBands,
+} from './fileChrome.ts';
+
+export { recomputeLinkBreadths } from './sankeyDom.ts';
+export type { SankeyLink, SankeyNode } from './sankeyDom.ts';
