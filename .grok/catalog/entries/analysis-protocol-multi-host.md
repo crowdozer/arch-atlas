@@ -1,7 +1,7 @@
 ---
 id: analysis-protocol-multi-host
 kind: decision
-state: partial
+state: partial  # P0–P2 landed; P3+ open
 authority: normative
 provenance: user
 
@@ -72,6 +72,8 @@ realized_by:
   - b1c8b35  # protocol docs
   - 7792882  # Ship B P1 graph interpretation
   - 2859d22  # Ship B czar fixes
+  - c1767c2  # Ship C protocol envelope
+  - 587926b  # Ship C pickAliasConfig single owner
 superseded_by: null
 rationale_quality: full
 ---

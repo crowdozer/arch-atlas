@@ -147,7 +147,7 @@ first.” Prefer **honest packs + one IR protocol + CLI TS reference**, then por
 | ----- | ----- | ------- |
 | **P0** | Pack honesty residuals | **Landed (Ship A):** `exportDeclarationLoc` dual-publish; `surfaceSupport` on mass rows; file `*Shown` truncation; fileLens matrix; `downwindReach`/`reverseReach` aliases |
 | **P1** | Graph interpretation | **Landed (Ship B):** `--alias` rewrites; `unresolvedReason`; `catalog.cycles` runtime/type; `boundaryCrossings`; `--scope product`; `facade` role; `fixtures/agent-artillery-shaped` laws |
-| **P2** | Analysis protocol v2 + portable artifact | Capabilities envelope; single pipeline; CLI artifact browser/extension can open |
+| **P2** | Analysis protocol v2 + portable artifact | **Landed (Ship C):** `analysis.capabilities` L0–L2 stamps; `capabilityDetail`/`completeness`; `digest --artifact` → `arch-atlas.artifact.v1` |
 | **P3** | CLI TypeScript Program | L2 resolve + optional L3 members; completeness stamps |
 | **P4** | Browser Program worker | Port P3 host interface; stream enrichment; fail soft to L1 |
 | **P5** | Tree-sitter multi-lang L1 breadth | Syntax baseline; always stamp L1 only |

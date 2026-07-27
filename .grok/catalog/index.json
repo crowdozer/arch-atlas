@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-27T19:46:30Z",
+  "generated_at": "2026-07-27T19:59:38Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 13,
   "entries": [
@@ -575,7 +575,7 @@
     {
       "id": "analysis-protocol-multi-host",
       "kind": "decision",
-      "state": "partial",
+      "state": "partial  # P0\u2013P2 landed; P3+ open",
       "authority": "normative",
       "provenance": "user",
       "path": ".grok/catalog/entries/analysis-protocol-multi-host.md",

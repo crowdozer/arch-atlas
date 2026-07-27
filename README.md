@@ -95,6 +95,7 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 | `--tree-full` | **Tree only:** full verbose file leaves. Default tree mode is **summary** (directory rolls with `fileCount` / `sourceCount`; leaves only for small folders or deep paths). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
+| `--artifact <path>` | **Digest:** write portable `arch-atlas.artifact.v1` wrapper (payload = digest). Stdout/`--out` stay bare agent-digest. |
 | `-h`, `--help` | Usage. |
 
 ### Digest Exact default
@@ -132,6 +133,7 @@ Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
 | Graph edges `typeOnly` | Present when `import type` / `export type … from` (best-effort; `import { type X }` may still be value form). Ranking prefers runtime edges. |
 | Edge `toKind: 'omitted'` | Target missing because feed `--omit`, not true unresolved. |
 | Hotspot `rankScore` | Sort key after role adjustments (e.g. barrel demotion). Prefer over raw `edgeCount`. Dual degrees: edge-record `inDegree`/`outDegree` + unique `uniqueIn`/`uniqueOut`. |
+| `analysis.capabilities` / `capabilityDetail` / `completeness` | Protocol envelope: L0–L2 stamps (never L3 without Program). |
 | `exportDeclarationLoc` | Alias of Exact `surfaceLoc` (export-declaration span). Prefer this name in agents. Mass rows may stamp `surfaceSupport: 'supported'`. |
 | `downwindReach` / `reverseReach` | Agent aliases of `complex` / `blastRadius` (same arrays). |
 | `catalog.cycles` | `{ runtime, type }` SCC summaries (size ≥ 2). |
