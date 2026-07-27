@@ -193,11 +193,11 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		);
 		setAccordionTitle(
 			'atlas-acc-starts',
-			`Starts${startsN ? ` (${startsN})` : ''}`,
+			`Import Roots${startsN ? ` (${startsN})` : ''}`,
 		);
 		setAccordionTitle(
 			'atlas-acc-ends',
-			`External${endsN ? ` (${endsN})` : ''}`,
+			`Export Roots${endsN ? ` (${endsN})` : ''}`,
 		);
 
 		const formula =
