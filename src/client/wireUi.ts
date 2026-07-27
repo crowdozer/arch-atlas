@@ -18,6 +18,10 @@ import {
 import { $, setStatus } from './dom.ts';
 import type { DemoId } from './demoFixtures.ts';
 import {
+	readEnginePrefEnabled,
+	writeEnginePrefEnabled,
+} from './enginePrefs.ts';
+import {
 	clearPersistedSession,
 	readPersistPreference,
 	writePersistPreference,
@@ -35,6 +39,8 @@ export type WireUiDeps = {
 	setInteractionMode: (m: InteractionMode) => void;
 	currentView: () => AtlasView | null;
 	persistCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
+	/** Splash: remember language-engine precision prefs (not engine binaries). */
+	enginePrefCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
 	includeTestsCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
 	getIncludeTests: () => boolean;
 	setIncludeTests: (on: boolean) => void;
@@ -83,6 +89,15 @@ function wirePersistCheckbox(deps: WireUiDeps): void {
 	});
 }
 
+function wireEnginePrefCheckbox(deps: WireUiDeps): void {
+	const box = deps.enginePrefCheckbox();
+	if (!box) return;
+	box.checked = readEnginePrefEnabled();
+	box.addEventListener('cds-checkbox-changed', () => {
+		writeEnginePrefEnabled(Boolean(box.checked));
+	});
+}
+
 function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 	const box = deps.includeTestsCheckbox();
 	if (!box) return;
@@ -100,6 +115,7 @@ function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 /** Bind all workspace chrome controls; call once at bootstrap. */
 export function wireUi(deps: WireUiDeps): void {
 	wirePersistCheckbox(deps);
+	wireEnginePrefCheckbox(deps);
 	wireIncludeTestsCheckbox(deps);
 
 	const drop = $('atlas-drop');

@@ -124,13 +124,21 @@ import Tag from '../components/ui/Tag.astro';
 				</div>
 			</div>
 
-			<div class="atlas-persist mt-4">
+			<div class="atlas-persist mt-4 space-y-3">
 				<Checkbox
 					id="atlas-persist"
 					checked={true}
 					labelText="Remember this project in the browser"
 					helper-text="Saves the indexed files to localStorage so a refresh or dev reload keeps your session. Stays on this device only."
 					class="atlas-persist"
+				/>
+				<Checkbox
+					id="atlas-engine-pref"
+					checked={true}
+					labelText="Remember language engine preference"
+					helper-text="Stores Estimate / Exact / Program choice per language family in localStorage (prefs only — not the TypeScript compiler). Engines still load local or CDN when you reopen."
+					title="Preference map only; does not store multi-MB engine binaries in localStorage."
+					class="atlas-engine-pref"
 				/>
 			</div>
 			<p id="atlas-upload-status" class="mt-3 text-sm text-zinc-500" role="status"></p>

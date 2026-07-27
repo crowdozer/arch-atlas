@@ -6,14 +6,17 @@ import {
 	MIN_PRIVATE,
 	MIN_WHOLE,
 	PUBLIC_MIN_RATIO,
+	type LocPrecision,
 	type MapCatalog,
 	type SpineFormula,
 } from '@core/index.ts';
 import {
 	SPINE_FORMULA_HONESTY_FOOTER,
+	languageChipStatus,
 	spineFormulaHelp,
 } from '@shell/index.ts';
 import { $, escapeHtml } from './dom.ts';
+import { createStatusIndicatorEl } from './statusIndicatorDom.ts';
 
 export type CatalogRenderDeps = {
 	selectStart: (id: string) => void;
@@ -42,6 +45,12 @@ export type CatalogPaintOpts = {
 	 * matching Export Roots row gets is-selected. Not a startId.
 	 */
 	selectedPackage?: string | null;
+	/** Session Precision chrome (language chip status indicators). */
+	locPrecision?: LocPrecision;
+	/** Program worker in flight (lifecycle incomplete on JS/TS chips). */
+	programLoading?: boolean;
+	/** Exact/Program enable failed → indication failed on loadable languages. */
+	engineFailed?: boolean;
 };
 
 /**
@@ -217,8 +226,26 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		const tags = $('atlas-summary-tags');
 		if (tags) {
 			tags.replaceChildren();
+			const precision = opts?.locPrecision ?? 'estimate';
+			const programLoading = Boolean(opts?.programLoading);
+			const engineFailed = Boolean(opts?.engineFailed);
 			for (const lang of catalog.summary.languages) {
-				tags.appendChild(makeSummaryTag(lang, 'teal'));
+				const wrap = document.createElement('span');
+				wrap.className = 'atlas-lang-chip';
+				const status = languageChipStatus(lang, {
+					locPrecision: precision,
+					programLoading,
+					engineFailed,
+				});
+				wrap.appendChild(
+					createStatusIndicatorEl(status, {
+						size: 'xs',
+						showLabel: false,
+						className: 'atlas-lang-chip__status',
+					}),
+				);
+				wrap.appendChild(makeSummaryTag(lang, 'teal'));
+				tags.appendChild(wrap);
 			}
 		}
 

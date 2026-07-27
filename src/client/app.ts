@@ -65,6 +65,11 @@ import {
 	type SessionLifecycle,
 } from './sessionLifecycle.ts';
 import {
+	readEnginePrefEnabled,
+	readEnginePrefs,
+	stickyOpenAction,
+} from './enginePrefs.ts';
+import {
 	readPersistPreference,
 	savePersistedSession,
 } from './sessionStore.ts';
@@ -102,6 +107,11 @@ let locPrecision: LocPrecision = 'estimate';
 let surfaceProvider: ImportedSurfaceProvider | null = null;
 /** True while ensureExact is in flight (ignore re-entrant control events). */
 let exactEnableInFlight = false;
+/**
+ * Last Exact/Program enable failed/demoted — language chip fail indication.
+ * Cleared on success, user Estimate, or full Exact reset.
+ */
+let engineFailed = false;
 /** Once per enable: mixed-language warning already shown. */
 let exactMixedWarningShown = false;
 /**
@@ -262,6 +272,9 @@ function paintCatalog(selectedStart?: string | null): void {
 	catalog.renderCatalog(cat, fileId, {
 		massExactReady,
 		selectedPackage: pendingPackageFocusLabel,
+		locPrecision,
+		programLoading: exactEnableInFlight && locPrecision === 'program',
+		engineFailed,
 	});
 }
 
@@ -333,6 +346,9 @@ const exact = createExactPaintMode({
 	setExactEnableInFlight: (v) => {
 		exactEnableInFlight = v;
 	},
+	setEngineFailed: (v) => {
+		engineFailed = v;
+	},
 	getExactMixedWarningShown: () => exactMixedWarningShown,
 	setExactMixedWarningShown: (v) => {
 		exactMixedWarningShown = v;
@@ -345,6 +361,7 @@ const exact = createExactPaintMode({
 	applyProgramGraph,
 	clearProgramMeta,
 	remountCurrentView: () => remountCurrentView(),
+	refreshCatalogChrome: () => paintCatalog(),
 	showStageLoading: (msg) => {
 		stage.showLoading(msg);
 	},
@@ -427,6 +444,10 @@ function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
 /** Carbon cds-checkbox host (checked is a property, not a native input). */
 function persistCheckbox(): (HTMLElement & { checked?: boolean }) | null {
 	return $('atlas-persist') as (HTMLElement & { checked?: boolean }) | null;
+}
+
+function enginePrefCheckbox(): (HTMLElement & { checked?: boolean }) | null {
+	return $('atlas-engine-pref') as (HTMLElement & { checked?: boolean }) | null;
 }
 
 function includeTestsCheckbox(): (HTMLElement & { checked?: boolean }) | null {
@@ -730,6 +751,7 @@ lifecycle = createSessionLifecycle({
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
 		programExactMass = false;
+		// engineFailed cleared inside exact.resetExactState via setEngineFailed
 		// New open/reset: spine formula is session chrome for a fresh project
 		spineFormula = DEFAULT_SPINE_FORMULA;
 	},
@@ -742,6 +764,26 @@ lifecycle = createSessionLifecycle({
 	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
 	syncExactChrome: () => exact.syncExactChrome(),
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
+	applyStickyEnginePref: async () => {
+		const s = session;
+		if (!s) return 'none';
+		const action = stickyOpenAction(
+			s.graph,
+			readEnginePrefs(),
+			readEnginePrefEnabled(),
+		);
+		if (action === 'program') {
+			await exact.enableProgramMode();
+			// Soft-fail demotes chrome — don't claim applied / block auto-local
+			return locPrecision === 'program' ? 'applied' : 'none';
+		}
+		if (action === 'exact') {
+			await exact.enableExactSurfaceMode('precision');
+			return locPrecision === 'exact' ? 'applied' : 'none';
+		}
+		if (action === 'stay-estimate') return 'stay-estimate';
+		return 'none';
+	},
 	clearStage: () => {
 		clearPackageFocusIntent();
 		stage.clear();
@@ -805,6 +847,7 @@ wireUi({
 	},
 	currentView: () => currentView(),
 	persistCheckbox,
+	enginePrefCheckbox,
 	includeTestsCheckbox,
 	getIncludeTests: () => includeTests,
 	setIncludeTests: (on) => {

@@ -1681,6 +1681,71 @@ cds-tag.atlas-summary-tag {
   flex-shrink: 0;
 }
 
+/* Language chip row: status glyph + teal language tag */
+.atlas-lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Sentinel-rehomed shape status (indication / lifecycle geometry) */
+.ui-status-indicator {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.35rem;
+  vertical-align: middle;
+  color: var(--ui-status-color, var(--cds-status-gray));
+}
+
+.ui-status-indicator__shape {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.ui-status-indicator__shape svg,
+.ui-status-indicator__svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.ui-status-indicator--xs .ui-status-indicator__shape svg,
+.ui-status-indicator--xs .ui-status-indicator__svg {
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px;
+  min-height: 10px;
+}
+
+.ui-status-indicator__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--cds-text-secondary, #a1a1aa);
+}
+
+.ui-status-indicator--xs .ui-status-indicator__label {
+  font-size: 0.625rem;
+}
+
+.ui-status-indicator--sm .ui-status-indicator__label {
+  font-size: 0.75rem;
+}
+
+.ui-status-indicator--md .ui-status-indicator__label {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #fafafa);
+}
+
 /* Upload / catalog warning stack */
 .atlas-warning-notification,
 cds-inline-notification.atlas-warning-notification {

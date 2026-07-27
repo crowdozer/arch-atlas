@@ -64,6 +64,13 @@ export type SessionLifecycleDeps = {
 	/** Align Precision / Weight dropdowns to current module state. */
 	syncExactChrome: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
+	/**
+	 * Sticky engine prefs on open: Exact/Program re-apply (may CDN) or stay
+	 * Estimate when demoted. When absent, open falls through to auto-local only.
+	 */
+	applyStickyEnginePref?: () => Promise<
+		'applied' | 'stay-estimate' | 'none'
+	>;
 	clearStage: () => void;
 	renderCatalog: (catalog: MapCatalog, startId: string | null) => void;
 	renderTree: () => void;
@@ -254,8 +261,15 @@ export function createSessionLifecycle(
 			return;
 		}
 
-		// Prefer Exact when local classic TS / host inject is already available (no CDN)
-		void deps.tryAutoExactWhenLocalAvailable();
+		// Sticky higher-fidelity engine prefs (Exact/Program), else auto-local Exact
+		void (async () => {
+			const sticky = deps.applyStickyEnginePref
+				? await deps.applyStickyEnginePref()
+				: 'none';
+			if (sticky === 'applied' || sticky === 'stay-estimate') return;
+			// Prefer Exact when local classic TS / host inject is already available (no CDN)
+			await deps.tryAutoExactWhenLocalAvailable();
+		})();
 	}
 
 	function openFromFiles(
