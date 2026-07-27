@@ -191,7 +191,7 @@ Under holder class `.ui-alluvial-label-dimming`:
 | Straighten External | `atlas-alluvial-external-straight--focus` | non-focus straighten → opacity 0.3 `!important` |
 | Pad bands | never focus | stay undrawn / pointer-events none |
 
-Clear Carbon inline `stroke-opacity` / `opacity` on apply so CSS wins.
+Clear Carbon/polish inline `stroke-opacity` / `fill-opacity` / `opacity` on apply so CSS wins (bands are filled ribbons; dim/focus use fill-opacity parity).
 
 **Removed (post foundation):** `ui-alluvial-external-pkg-focus` blanket
 “dim entire Carbon tree” — package reverse-path plan lights the correct subset

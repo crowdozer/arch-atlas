@@ -56,7 +56,10 @@ export function recolorExportBands(
 		if (!isExportSideCategory(cat)) continue;
 		const color = colorScale[target.name];
 		if (!color) continue;
+		// Ribbons paint mass with fill; keep stroke in sync for any residual stroke
+		path.style.fill = color;
 		path.style.stroke = color;
+		path.setAttribute('fill', color);
 	}
 }
 

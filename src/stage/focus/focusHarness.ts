@@ -190,6 +190,7 @@ export class HarnessEl {
 	style: {
 		display?: string;
 		strokeOpacity?: string;
+		fillOpacity?: string;
 		opacity?: string;
 		removeProperty?: (p: string) => void;
 	};
@@ -204,6 +205,7 @@ export class HarnessEl {
 		const style: HarnessEl['style'] = {};
 		style.removeProperty = (p: string) => {
 			if (p === 'stroke-opacity') delete style.strokeOpacity;
+			if (p === 'fill-opacity') delete style.fillOpacity;
 			if (p === 'opacity') delete style.opacity;
 		};
 		this.style = style;

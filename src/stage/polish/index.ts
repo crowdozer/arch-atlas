@@ -43,5 +43,10 @@ export {
 	recolorExportBands,
 } from './fileChrome.ts';
 
-export { recomputeLinkBreadths } from './sankeyDom.ts';
+export {
+	horizontalLinkPath,
+	horizontalLinkRibbonPath,
+	recomputeLinkBreadths,
+	rewriteLinkRibbons,
+} from './sankeyDom.ts';
 export type { SankeyLink, SankeyNode } from './sankeyDom.ts';
