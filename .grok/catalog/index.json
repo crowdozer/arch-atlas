@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-26T21:56:35Z",
+  "generated_at": "2026-07-26T23:48:38Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 1,
+  "count": 2,
   "entries": [
     {
       "id": "dual-host-shell-stage",
@@ -46,6 +46,50 @@
       "related": [],
       "rationale_quality": "full",
       "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
+    },
+    {
+      "id": "geometric-vs-knot-architecture",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/geometric-vs-knot-architecture.md",
+      "scope": [
+        "architecture-quality",
+        "agent-behavior",
+        "alluvial-import-graph",
+        "topology-feedback",
+        "godfiles",
+        "import-weights",
+        "geometric-architecture"
+      ],
+      "applies_when": [
+        "agent writes or refactors code and risks low-energy completion",
+        "evaluating whether a change improved architecture vs only behavior",
+        "designing agent personality / architectural review prompts",
+        "alluvial import graph as architectural insight not just explorer",
+        "godfile detection and responsibility concentration",
+        "machine-readable topology metrics for agents",
+        "before/after architectural diff after a change",
+        "fan-in fan-out betweenness boundary crossings",
+        "architectural loss function alongside tests",
+        "connection validity vs system topology",
+        "incidental complexity vs architectural complexity",
+        "boundaries that prohibit invalid connections"
+      ],
+      "touches": [
+        "hub alluvial import graph",
+        "weighted dependency edges",
+        "semantic buckets / domains",
+        "agent findings projection",
+        "topology diff after edit",
+        ".grok agent personality formulations"
+      ],
+      "related": [
+        "dual-host-shell-stage"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer"
     }
   ]
 }
