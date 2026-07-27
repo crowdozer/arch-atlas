@@ -95,11 +95,19 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 	function wireSpineControls(): void {
 		if (spineControlsWired) return;
 		spineControlsWired = true;
-		const select = $('atlas-spine-formula') as HTMLSelectElement | null;
-		if (select && deps.onSpineFormulaChange) {
-			select.addEventListener('change', () => {
-				deps.onSpineFormulaChange?.(select.value);
-			});
+		const dropdown = $('atlas-spine-formula') as
+			| (HTMLElement & { value?: string })
+			| null;
+		if (dropdown && deps.onSpineFormulaChange) {
+			dropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+				const detail = (e as CustomEvent).detail as {
+					item?: { value?: string };
+				} | null;
+				const next =
+					detail?.item?.value ??
+					(typeof dropdown.value === 'string' ? dropdown.value : '');
+				deps.onSpineFormulaChange?.(next);
+			}) as EventListener);
 		}
 		const info = $('atlas-spine-formula-info');
 		if (info && deps.onSpineFormulaInfo) {
@@ -117,10 +125,12 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 	}
 
 	function syncSpineFormulaSelect(formula: SpineFormula): void {
-		const select = $('atlas-spine-formula') as HTMLSelectElement | null;
-		if (!select) return;
-		if (select.value !== formula) {
-			select.value = formula;
+		const dropdown = $('atlas-spine-formula') as
+			| (HTMLElement & { value?: string })
+			| null;
+		if (!dropdown) return;
+		if (dropdown.value !== formula) {
+			dropdown.value = formula;
 		}
 	}
 
