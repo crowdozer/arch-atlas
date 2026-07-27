@@ -12,6 +12,7 @@ import {
 	shouldIgnorePath,
 	type VirtualFile,
 } from '@core/index.ts';
+import { compileOmitMatcher } from './omitGlobs.ts';
 
 /** Default max path-segment depth from walk root (finite; skip deep subtrees). */
 export const DEFAULT_MAX_DEPTH = 24;
@@ -19,28 +20,45 @@ export const DEFAULT_MAX_DEPTH = 24;
 export type LoadFeedResult = {
 	files: VirtualFile[];
 	source: { kind: 'directory' | 'zip'; path: string };
-	/** Paths skipped (ignore, non-text, binary, read errors). */
+	/** Paths skipped (ignore, non-text, binary, omit, read errors). */
 	skipped: number;
 	warnings: string[];
 };
 
-export type LoadDirectoryOpts = {
+export type LoadFeedOpts = {
 	/**
 	 * Max relative path segments from walk root (file or dir).
 	 * Default {@link DEFAULT_MAX_DEPTH} (24).
 	 * `0` or negative → unlimited (not recommended for unbounded trees).
 	 */
 	maxDepth?: number;
+	/**
+	 * Glob patterns (picomatch) of relative paths to drop from the feed.
+	 * Examples: fixtures, star-star/fixtures/star-star, star-star/*.test.ts.
+	 * Applied to directory walks and ZIP entries.
+	 */
+	omit?: readonly string[];
 };
+
+/** @deprecated Prefer {@link LoadFeedOpts} */
+export type LoadDirectoryOpts = LoadFeedOpts;
+
+function omitNote(patterns: readonly string[], omittedCount: number): string | null {
+	if (!patterns.length || omittedCount <= 0) return null;
+	const shown = patterns.slice(0, 6).join(', ');
+	const more = patterns.length > 6 ? `, …(+${patterns.length - 6})` : '';
+	return `omitted ${omittedCount} path(s) matching --omit (${shown}${more})`;
+}
 
 /**
  * Walk a directory into VirtualFile[] using the same ignore + text filters as ZIP.
  * Skips `node_modules`, `.git`, dist, etc. via {@link shouldIgnorePath}.
  * When max-depth is exceeded, the subtree is skipped and a warning is recorded.
+ * Optional {@link LoadFeedOpts.omit} globs skip matching paths (and subtrees).
  */
 export function loadDirectory(
 	dirPath: string,
-	opts?: LoadDirectoryOpts,
+	opts?: LoadFeedOpts,
 ): LoadFeedResult {
 	const root = path.resolve(dirPath);
 	const st = statSync(root);
@@ -50,9 +68,12 @@ export function loadDirectory(
 
 	const maxDepth = opts?.maxDepth ?? DEFAULT_MAX_DEPTH;
 	const unlimited = maxDepth <= 0;
+	const omitPatterns = opts?.omit ?? [];
+	const shouldOmit = compileOmitMatcher(omitPatterns);
 	const files: VirtualFile[] = [];
 	const warnings: string[] = [];
 	let skipped = 0;
+	let omitted = 0;
 	/** Relative dirs already warned for max-depth (avoid spam). */
 	const depthWarned = new Set<string>();
 
@@ -72,6 +93,13 @@ export function loadDirectory(
 			const rel = relDir ? `${relDir}/${name}` : name;
 			const norm = normalizePath(rel);
 			if (!norm) {
+				skipped++;
+				continue;
+			}
+
+			// Agent omit globs (skip entire subtree when a dir matches)
+			if (shouldOmit(norm)) {
+				omitted++;
 				skipped++;
 				continue;
 			}
@@ -106,7 +134,6 @@ export function loadDirectory(
 			}
 
 			if (childSt.isDirectory()) {
-				// Also skip ignored directory names (node_modules etc. already caught)
 				walk(abs, norm, childDepth);
 				continue;
 			}
@@ -137,6 +164,9 @@ export function loadDirectory(
 
 	walk(root, '', 0);
 
+	const note = omitNote(omitPatterns, omitted);
+	if (note) warnings.push(note);
+
 	if (files.length > 2000) {
 		warnings.push(`Many files (${files.length}); digest may be large.`);
 	}
@@ -150,9 +180,9 @@ export function loadDirectory(
 }
 
 /**
- * Load a ZIP file from disk via pure {@link ingestZip}.
+ * Load a ZIP file from disk via pure {@link ingestZip}, then apply omit globs.
  */
-export function loadZip(zipPath: string): LoadFeedResult {
+export function loadZip(zipPath: string, opts?: LoadFeedOpts): LoadFeedResult {
 	const abs = path.resolve(zipPath);
 	const st = statSync(abs);
 	if (!st.isFile()) {
@@ -160,12 +190,29 @@ export function loadZip(zipPath: string): LoadFeedResult {
 	}
 	const buf = readFileSync(abs);
 	const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-	const { files, skipped, warnings } = ingestZip(ab);
+	const { files: raw, skipped: ingestSkipped, warnings } = ingestZip(ab);
+
+	const omitPatterns = opts?.omit ?? [];
+	const shouldOmit = compileOmitMatcher(omitPatterns);
+	const files: VirtualFile[] = [];
+	let omitted = 0;
+	for (const f of raw) {
+		if (shouldOmit(f.path)) {
+			omitted++;
+			continue;
+		}
+		files.push(f);
+	}
+
+	const outWarnings = [...warnings];
+	const note = omitNote(omitPatterns, omitted);
+	if (note) outWarnings.push(note);
+
 	return {
 		files,
 		source: { kind: 'zip', path: abs },
-		skipped,
-		warnings: [...warnings],
+		skipped: ingestSkipped + omitted,
+		warnings: outWarnings,
 	};
 }
 
@@ -174,10 +221,7 @@ export function loadZip(zipPath: string): LoadFeedResult {
  * ZIP when path ends with `.zip` (case-insensitive) or is a regular file that
  * loads as ZIP; otherwise must be a directory.
  */
-export function loadFeed(
-	inputPath: string,
-	opts?: LoadDirectoryOpts,
-): LoadFeedResult {
+export function loadFeed(inputPath: string, opts?: LoadFeedOpts): LoadFeedResult {
 	const abs = path.resolve(inputPath);
 	let st: ReturnType<typeof statSync>;
 	try {
@@ -193,9 +237,8 @@ export function loadFeed(
 	}
 
 	if (st.isFile()) {
-		// .zip or any regular file that unzips (misnamed archives)
 		try {
-			return loadZip(abs);
+			return loadZip(abs, opts);
 		} catch (err) {
 			const looksZip = /\.zip$/i.test(abs);
 			if (looksZip) throw err;

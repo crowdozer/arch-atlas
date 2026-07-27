@@ -46,27 +46,34 @@ LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
 
 ```bash
 # via npm script (recommended in-repo)
-npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--out file.json]
-npm run atlas -- tree   <dir|zip> [--max-depth N] [--out file.json]
-npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--out file.json]
+npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- tree   <dir|zip> [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
 # after npm install: package bin (src/cli/bin.mjs → tsx main.ts)
 npx arch-atlas digest .
 npx arch-atlas --help
+
+# product-only self-scan (drop demo fixtures that otherwise dominate starts/views)
+npm run atlas -- digest . --omit fixtures --out product.json
+# equivalent globs:
+npm run atlas -- digest . --omit=**/fixtures --omit=**/fixtures/**
+npm run atlas -- digest . --omit '**/*.test.ts' --omit fixtures
 ```
 
 | Flag | Meaning |
 | ---- | ------- |
 | `--limit N` | Top-N catalog ranking bins (digest/file). Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
+| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks and ZIP entries. |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
 | `-h`, `--help` | Usage. |
 
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
-non-text paths (`isTextPath`); depth overruns emit warnings. Path alone without a
-subcommand defaults to `digest`. Implementation: `src/cli/` + pure builders in
-`src/core/export/agentDigest.ts`.
+non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
+Path alone without a subcommand defaults to `digest`. Implementation: `src/cli/`
++ pure builders in `src/core/export/agentDigest.ts`.
 
 ## Product sketch
 

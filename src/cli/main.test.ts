@@ -80,4 +80,25 @@ describe('runCli', () => {
 		expect(code).toBe(1);
 		expect(errs.join('').toLowerCase()).toMatch(/missing|usage|path/);
 	});
+
+	it('digest --omit fixtures drops fixture paths from repo-root style tree', async () => {
+		// Walk parent that contains this fixture under fixtures/… only when
+		// invoked on a synthetic layout via fixtureDir's parent — use fixtureDir
+		// itself with omit of src to prove flag wiring (path still indexes).
+		capture();
+		const code = await runCli([
+			'digest',
+			fixtureDir,
+			'--omit',
+			'src/god/**',
+			'--limit',
+			'10',
+		]);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
+		const paths = (parsed.graph?.files ?? []).map((f: { path: string }) => f.path);
+		expect(paths.some((p: string) => p.includes('god/hub'))).toBe(false);
+		expect(parsed.warnings?.some((w: string) => w.includes('omitted'))).toBe(true);
+	});
 });

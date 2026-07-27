@@ -17,6 +17,7 @@ import {
 	indexHostFeed,
 } from '@core/index.ts';
 import { DEFAULT_MAX_DEPTH, loadFeed } from './loadFeed.ts';
+import { parseOmitFlagValues } from './omitGlobs.ts';
 
 const CLI_LIMIT_DEFAULT = 40;
 
@@ -24,6 +25,8 @@ type GlobalOpts = {
 	out?: string;
 	limit: number;
 	maxDepth: number;
+	/** Raw --omit values (may include comma lists); normalized later. */
+	omitRaw: string[];
 	file?: string;
 	help: boolean;
 };
@@ -32,9 +35,9 @@ function printUsage(stream: NodeJS.WritableStream = process.stderr): void {
 	stream.write(`arch-atlas — local-first architecture lens for agents
 
 Usage:
-  arch-atlas digest <path> [--limit N] [--max-depth N] [--out file.json]
-  arch-atlas tree   <path> [--max-depth N] [--out file.json]
-  arch-atlas file   <path> --file <relative/path> [--limit N] [--max-depth N] [--out file.json]
+  arch-atlas digest <path> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+  arch-atlas tree   <path> [--max-depth N] [--omit GLOB]… [--out file.json]
+  arch-atlas file   <path> --file <relative/path> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
 <path> is a directory or .zip file. Analysis is Level-1 Estimate only
 (static JS/TS import graph; not LSP / not tree-shake). No raw source in output.
@@ -43,9 +46,17 @@ Options:
   --limit N       Top-N for ranking bins (digest/file catalog). Default ${CLI_LIMIT_DEFAULT}.
   --max-depth N   Max path segments from walk root for directory feeds.
                   Default ${DEFAULT_MAX_DEPTH}. 0 or negative = unlimited.
+  --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
+                  Bare names match that segment anywhere (fixtures → fixtures/**).
+                  Also: --omit=**/fixtures/** or --omit=fixtures,dist
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.
   -h, --help      Show this help.
+
+Examples:
+  arch-atlas digest . --omit fixtures
+  arch-atlas digest . --omit=**/fixtures/** --omit '**/*.test.ts'
+  npm run atlas -- digest . --omit fixtures --out product.json
 
 Exit codes: 0 success (including empty graph with warnings); 1 usage/IO/index failure.
 `);
@@ -60,6 +71,7 @@ function parseArgs(argv: string[]): {
 	const opts: GlobalOpts = {
 		limit: CLI_LIMIT_DEFAULT,
 		maxDepth: DEFAULT_MAX_DEPTH,
+		omitRaw: [],
 		help: false,
 	};
 	const positional: string[] = [];
@@ -110,6 +122,18 @@ function parseArgs(argv: string[]): {
 				return { command: '', opts, error: '--max-depth requires a number' };
 			}
 			opts.maxDepth = Math.floor(n);
+			continue;
+		}
+		if (a === '--omit') {
+			const v = argv[++i];
+			if (!v) return { command: '', opts, error: '--omit requires a glob pattern' };
+			opts.omitRaw.push(v);
+			continue;
+		}
+		if (a.startsWith('--omit=')) {
+			const v = a.slice('--omit='.length);
+			if (!v) return { command: '', opts, error: '--omit requires a glob pattern' };
+			opts.omitRaw.push(v);
 			continue;
 		}
 		if (a === '--file') {
@@ -181,9 +205,11 @@ export async function runCli(argv: string[]): Promise<number> {
 		return 1;
 	}
 
+	const omit = parseOmitFlagValues(opts.omitRaw);
+
 	let feed;
 	try {
-		feed = loadFeed(target, { maxDepth: opts.maxDepth });
+		feed = loadFeed(target, { maxDepth: opts.maxDepth, omit });
 	} catch (err) {
 		process.stderr.write(
 			`error: ${err instanceof Error ? err.message : String(err)}\n`,

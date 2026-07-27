@@ -87,3 +87,40 @@ describe('loadFeed auto-detect', () => {
 		expect(feed.files.length).toBeGreaterThan(10);
 	});
 });
+
+describe('loadDirectory --omit globs', () => {
+	it('drops fixtures tree from a mini monorepo layout', () => {
+		const root = mkdtempSync(path.join(tmpdir(), 'atlas-omit-'));
+		mkdirSync(path.join(root, 'src'), { recursive: true });
+		mkdirSync(path.join(root, 'fixtures', 'demo'), { recursive: true });
+		writeFileSync(path.join(root, 'src', 'app.ts'), 'export const a = 1;\n');
+		writeFileSync(
+			path.join(root, 'fixtures', 'demo', 'hub.ts'),
+			'export const h = 1;\n',
+		);
+
+		const full = loadDirectory(root);
+		expect(pathsOf(full.files).has('src/app.ts')).toBe(true);
+		expect(pathsOf(full.files).has('fixtures/demo/hub.ts')).toBe(true);
+
+		const omitted = loadDirectory(root, { omit: ['fixtures'] });
+		const paths = pathsOf(omitted.files);
+		expect(paths.has('src/app.ts')).toBe(true);
+		expect(paths.has('fixtures/demo/hub.ts')).toBe(false);
+		expect(
+			omitted.warnings.some((w) => w.includes('omitted') && w.includes('fixtures')),
+		).toBe(true);
+	});
+
+	it('supports **/fixtures/** glob form', () => {
+		const root = mkdtempSync(path.join(tmpdir(), 'atlas-omit-glob-'));
+		mkdirSync(path.join(root, 'src'), { recursive: true });
+		mkdirSync(path.join(root, 'fixtures', 'x'), { recursive: true });
+		writeFileSync(path.join(root, 'src', 'a.ts'), 'export {};\n');
+		writeFileSync(path.join(root, 'fixtures', 'x', 'b.ts'), 'export {};\n');
+
+		const feed = loadDirectory(root, { omit: ['**/fixtures/**'] });
+		expect(pathsOf(feed.files).has('src/a.ts')).toBe(true);
+		expect(pathsOf(feed.files).has('fixtures/x/b.ts')).toBe(false);
+	});
+});
