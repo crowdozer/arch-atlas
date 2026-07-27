@@ -33,8 +33,10 @@ export type ImportTreePadResult = {
 	tree: Map<string, { lab: string; dist: number }>;
 	maxFileDist: number;
 	/**
-	 * Hub mass still sitting on each kept file after File→file routing.
-	 * Tree package sinks spend this residual (not raw importer-loc of the leaf).
+	 * Reserved package share per kept file (after reserve-then-route).
+	 * Tree package sinks spend this residual (capped by raw package-edge total).
+	 * Scarce dual-spend may leave residual equal to min(arrived, rawPkg) while
+	 * file children also received full arrived mass (unit-edge E7 case).
 	 */
 	residualMass: Map<string, number>;
 	padFromFile: (targetLab: string, toDist: number, w: number) => void;
@@ -187,19 +189,41 @@ export function addExportRings(
 	const display = new Map<string, string>(); // ik → label
 	const keptByDist = new Map<number, string[]>(); // dist → paths kept
 	const mass = new Map<string, number>(); // ik → mass
-	/** Mass that reached each path (any instance) — package budget (not leftover after file children). */
+	/** Mass that reached each path (any instance) — used to build reserved residual. */
 	const arrivedByPath = new Map<string, number>();
 	const noteArrived = (path: string, w: number) => {
 		if (w <= 0) return;
 		arrivedByPath.set(path, (arrivedByPath.get(path) ?? 0) + w);
 	};
 
-	const fileHasPackageOut = (path: string): boolean => {
+	/** Raw package/unresolved out-weight for path (same basis as package spend). */
+	const rawPkgWeight = (path: string): number => {
+		let s = 0;
 		for (const e of graph.edges) {
 			if (e.from !== path) continue;
-			if (e.toKind === 'package' || e.toKind === 'unresolved') return true;
+			if (e.toKind === 'package' || e.toKind === 'unresolved') {
+				s += edgeWeight(e, graph, weightAxis);
+			}
 		}
-		return false;
+		return s;
+	};
+
+	const fileHasPackageOut = (path: string): boolean => {
+		return rawPkgWeight(path) > 0;
+	};
+
+	/**
+	 * Remaining package-reserve capacity per path (multi-instance safe).
+	 * First instance that routes consumes up to rawPkg; later instances route
+	 * full mass to file children so residual is not double-counted.
+	 */
+	const pkgRoomLeft = new Map<string, number>();
+	const takePkgReserve = (path: string, m: number): number => {
+		if (!pkgRoomLeft.has(path)) pkgRoomLeft.set(path, rawPkgWeight(path));
+		const room = pkgRoomLeft.get(path) ?? 0;
+		const take = Math.min(m, room);
+		if (take > 0) pkgRoomLeft.set(path, room - take);
+		return take;
 	};
 
 	// --- Materialize nodes hop by hop ---
@@ -275,6 +299,10 @@ export function addExportRings(
 	}
 
 	// --- Route mass parent@d → child@(d+1) when real edge exists ---
+	// Reserve package budget first, then equal-split only the remainder among
+	// file children (Kirchhoff when mass can cover both). Scarce dual-spend:
+	// if reserve would starve all file children, route full m to files AND keep
+	// package residual so unit-weight edges still show External packages.
 	for (let d = 1; d < radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -301,8 +329,17 @@ export function addExportRings(
 					a.path.localeCompare(b.path),
 			);
 
-			const base = Math.floor(m / targets.length);
-			let rem = m - base * targets.length;
+			const pkgReserve = takePkgReserve(f, m);
+			let fileMass = m - pkgReserve;
+			// Scarce dual-spend: unit (or tight) mass would leave file children
+			// with nothing after package reserve — route full arrived to files
+			// while residual still claims pkgReserve via residualMass map.
+			if (fileMass === 0 && targets.length > 0 && m > 0) {
+				fileMass = m;
+			}
+
+			const base = Math.floor(fileMass / targets.length);
+			let rem = fileMass - base * targets.length;
 			for (const t of targets) {
 				const share = base + (rem > 0 ? 1 : 0);
 				if (rem > 0) rem -= 1;
@@ -317,9 +354,9 @@ export function addExportRings(
 		}
 	}
 
-	// Packages: one tree entry per path → deepest kept instance (packages collapse)
-	// Budget = mass that **arrived** at the path (not leftover after file children),
-	// so redis→ioredis still appears when redis also forwards mass to logger.
+	// Packages: one tree entry per path → shallowest kept instance (packages collapse).
+	// Residual = reserved package share min(arrived, rawPkg) — not full arrived —
+	// matching reserve-then-route (scarce dual-spend still yields residual > 0).
 	const tree = new Map<string, { lab: string; dist: number }>();
 	const residualMass = new Map<string, number>();
 	let maxFileDist = 0;
@@ -341,7 +378,10 @@ export function addExportRings(
 		if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
 		tree.set(f, { lab, dist: shallow });
 		const arrived = arrivedByPath.get(f) ?? 0;
-		if (arrived > 0) residualMass.set(f, arrived);
+		if (arrived <= 0) continue;
+		const pkgR = Math.min(arrived, rawPkgWeight(f));
+		// Always record reserved share (0 when no package outs — spend skips it).
+		residualMass.set(f, pkgR);
 	}
 	// silence unused longest map when multi-instance fully covers
 	void dist;

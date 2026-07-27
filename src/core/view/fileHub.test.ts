@@ -948,6 +948,100 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		expect(keys.has(`${typesUser}\0${ioredis}`)).toBe(false);
 	});
 
+	/**
+	 * Reserve-then-route: intermediate hop bars must not double-spend arrived
+	 * mass on both full file forward and full package residual (E7 fix).
+	 * layout.tsx → session → redis is the measured repro.
+	 */
+	it('layout.tsx hop-2 redis: Kirchhoff under default target-loc; ioredis pair kept', () => {
+		const id = 'app/layout.tsx';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			// UI default axis
+			weightAxis: 'target-loc',
+		})!;
+		const redisLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'file' && r.id === 'src/lib/redis.ts',
+		)?.[0];
+		expect(redisLab, 'redis on import tree').toBeTruthy();
+
+		const catOf = (name: string) =>
+			payload.options.alluvial.nodes.find((n) => n.name === name)?.category;
+		const isHidden = (l: { source: string; target: string }) =>
+			isImportPadScaffoldLink(l.source, l.target, {
+				sourceCategory: catOf(l.source),
+				targetCategory: catOf(l.target),
+			});
+
+		const inn = payload.data.filter((l) => l.target === redisLab);
+		const out = payload.data.filter((l) => l.source === redisLab);
+		const flowIn = inn.reduce((s, l) => s + l.value, 0);
+		const flowOut = out.reduce((s, l) => s + l.value, 0);
+		const visOut = out
+			.filter((l) => !isHidden(l))
+			.reduce((s, l) => s + l.value, 0);
+		const hidOut = out
+			.filter((l) => isHidden(l))
+			.reduce((s, l) => s + l.value, 0);
+
+		// Reserve-then-route: file out + pad out ≤ arrived (Kirchhoff at redis)
+		expect(flowOut, 'redis total out').toBe(flowIn);
+		// Visible file band to logger · h3; hidden pad to ioredis (width 1 under target-loc)
+		expect(visOut).toBe(flowIn - hidOut);
+		expect(hidOut).toBeGreaterThanOrEqual(1);
+
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		const ioredisLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'package' && r.id === 'ioredis',
+		)?.[0];
+		expect(ioredisLab).toBeTruthy();
+		const redisPair = pairs.find(
+			(p) => p.parent === redisLab && p.packageName === ioredisLab,
+		);
+		expect(redisPair, 'redis→ioredis straighten pair').toBeTruthy();
+		expect(redisPair!.width).toBeGreaterThanOrEqual(1);
+	});
+
+	it('layout.tsx hop-2 redis under import-edges: scarce dual-spend keeps ioredis + logger', () => {
+		const id = 'app/layout.tsx';
+		const payload = projectFileHub(graph, id, {
+			maxDepth: 3,
+			maxImporters: 48,
+			maxDeps: 48,
+			weightAxis: 'import-edges',
+		})!;
+		const redisLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'file' && r.id === 'src/lib/redis.ts',
+		)?.[0];
+		expect(redisLab, 'redis on import tree').toBeTruthy();
+
+		// Unit mass: reserve would starve logger — dual-spend routes full m to
+		// file children AND keeps package residual so External still appears.
+		const loggerOut = payload.data.filter(
+			(l) =>
+				l.source === redisLab &&
+				payload.meta.nodeRef[l.target]?.kind === 'file' &&
+				payload.meta.nodeRef[l.target]?.id === 'src/lib/logger.ts',
+		);
+		expect(
+			loggerOut.reduce((s, l) => s + l.value, 0),
+			'redis→logger hop mass under scarce dual-spend',
+		).toBeGreaterThanOrEqual(1);
+
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		const ioredisLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'package' && r.id === 'ioredis',
+		)?.[0];
+		expect(ioredisLab).toBeTruthy();
+		const redisPair = pairs.find(
+			(p) => p.parent === redisLab && p.packageName === ioredisLab,
+		);
+		expect(redisPair, 'redis→ioredis pair under import-edges').toBeTruthy();
+		expect(redisPair!.width).toBeGreaterThanOrEqual(1);
+	});
+
 	it('legacyHelpers: all direct file deps on Imports; packages External far right', () => {
 		const id = 'src/utils/legacyHelpers.ts';
 		const payload = projectFileHub(graph, id, {
