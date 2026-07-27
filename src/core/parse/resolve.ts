@@ -171,6 +171,21 @@ export function isRelativeSpecifier(specifier: string): boolean {
 	);
 }
 
+/**
+ * Strip Vite/webpack resource query and hash before tryFile / bare parse.
+ * e.g. `../exact/program.worker.ts?worker` → `../exact/program.worker.ts`
+ * Cuts at the first `?` or `#` (path?query#hash).
+ */
+export function stripSpecifierResourceSuffix(specifier: string): string {
+	const q = specifier.indexOf('?');
+	const h = specifier.indexOf('#');
+	let cut = -1;
+	if (q !== -1 && h !== -1) cut = Math.min(q, h);
+	else if (q !== -1) cut = q;
+	else if (h !== -1) cut = h;
+	return cut === -1 ? specifier : specifier.slice(0, cut);
+}
+
 function isTildeSpecifier(specifier: string): boolean {
 	return specifier === '~' || specifier.startsWith('~/');
 }
@@ -289,30 +304,36 @@ export function resolveSpecifier(
 		return resolvePythonSpecifier(fromPath, specifier, fileSet);
 	}
 
+	// Vite/webpack resource queries (`?worker`, `?raw`, …) and optional hash
+	const cleaned = stripSpecifierResourceSuffix(specifier);
+	if (!cleaned) {
+		return { kind: 'unresolved', specifier: cleaned || specifier };
+	}
+
 	const rewriteExt = hasRule(family, 'specifier-ext-rewrite');
 	const tryOpts = { rewriteExt };
 
 	// R1: dot-relative
-	if (hasRule(family, 'dot-relative') && isRelativeSpecifier(specifier)) {
+	if (hasRule(family, 'dot-relative') && isRelativeSpecifier(cleaned)) {
 		const base = dirnamePosix(fromPath);
-		const joined = joinPosix(base, specifier);
+		const joined = joinPosix(base, cleaned);
 		const hit = tryFile(fileSet, joined, tryOpts);
 		if (hit) return { kind: 'file', path: hit };
-		return { kind: 'unresolved', specifier };
+		return { kind: 'unresolved', specifier: cleaned };
 	}
 
 	// R6: ~/ → baseUrl/root join + tryFile; miss → unresolved (never package ~)
-	if (hasRule(family, 'tilde-prefix') && isTildeSpecifier(specifier)) {
-		const rest = specifier === '~' ? '' : specifier.slice(2);
+	if (hasRule(family, 'tilde-prefix') && isTildeSpecifier(cleaned)) {
+		const rest = cleaned === '~' ? '' : cleaned.slice(2);
 		const joined = joinPosix(tildeBase(alias), rest);
 		const hit = tryFile(fileSet, joined, tryOpts);
 		if (hit) return { kind: 'file', path: hit };
-		return { kind: 'unresolved', specifier };
+		return { kind: 'unresolved', specifier: cleaned };
 	}
 
 	// R3: config path aliases (tsconfig/jsconfig)
 	if (hasRule(family, 'config-path-alias')) {
-		const aliased = expandAlias(specifier, alias);
+		const aliased = expandAlias(cleaned, alias);
 		for (const cand of aliased) {
 			const hit = tryFile(fileSet, cand, tryOpts);
 			if (hit) return { kind: 'file', path: hit };
@@ -320,27 +341,27 @@ export function resolveSpecifier(
 	}
 
 	// builtins (bare-external subset)
-	const bare = barePackageName(specifier);
+	const bare = barePackageName(cleaned);
 	if (
 		hasRule(family, 'bare-external') &&
-		(NODE_BUILTINS.has(specifier) || NODE_BUILTINS.has(bare) || specifier.startsWith('node:'))
+		(NODE_BUILTINS.has(cleaned) || NODE_BUILTINS.has(bare) || cleaned.startsWith('node:'))
 	) {
 		return {
 			kind: 'package',
-			name: specifier.startsWith('node:') ? specifier : bare,
+			name: cleaned.startsWith('node:') ? cleaned : bare,
 			builtin: true,
 		};
 	}
 
 	// R4: path-like @/… is never a real npm scope (scopes are @name/pkg).
-	if (hasRule(family, 'pathlike-at-fail-closed') && specifier.startsWith('@/')) {
-		return { kind: 'unresolved', specifier };
+	if (hasRule(family, 'pathlike-at-fail-closed') && cleaned.startsWith('@/')) {
+		return { kind: 'unresolved', specifier: cleaned };
 	}
 
 	// R5: bare package
-	if (hasRule(family, 'bare-external') && !specifier.startsWith('.')) {
+	if (hasRule(family, 'bare-external') && !cleaned.startsWith('.')) {
 		return { kind: 'package', name: bare, builtin: false };
 	}
 
-	return { kind: 'unresolved', specifier };
+	return { kind: 'unresolved', specifier: cleaned };
 }

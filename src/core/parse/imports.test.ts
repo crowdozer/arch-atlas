@@ -262,6 +262,54 @@ import {
 		expect(s).toContain('http://x');
 		expect(s).not.toContain('trail');
 	});
+
+	it('does not latch import inside string literals (union type / form field)', () => {
+		// Product false-positive class: form: 'import' | 'export' | … → package '|'
+		const src = `
+/** static import | export-from | require | dynamic import() */
+form: 'import' | 'export' | 'require' | 'dynamic';
+import { a } from './a';
+import 'side-effect';
+`;
+		const imps = extractImports(src);
+		const specs = imps.map((i) => i.specifier);
+		expect(specs).not.toContain('|');
+		expect(specs).not.toContain('export');
+		expect(specs).not.toContain('require');
+		expect(specs).not.toContain('dynamic');
+		expect(bySpecifier(imps)['./a']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'a', local: 'a' }],
+		});
+		expect(bySpecifier(imps)['side-effect']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+	});
+
+	it('does not treat string form argument as import then harvest following args', () => {
+		// Self-scan class: push(..., 'import', idx, [{ kind: 'side-effect' }], …)
+		const src = `
+push(cleaned.slice(j + 1, end), 'import', idx, [{ kind: 'side-effect' }], false);
+import './real';
+`;
+		const imps = extractImports(src);
+		const specs = imps.map((i) => i.specifier);
+		expect(specs.some((s) => s.includes('idx') || s.includes('kind:'))).toBe(false);
+		expect(bySpecifier(imps)['./real']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+	});
+
+	it('skips import keyword inside template literals', () => {
+		const src = `
+const s = \`form: 'import' | 'export'\`;
+import { x } from './x';
+`;
+		const imps = extractImports(src);
+		expect(imps.map((i) => i.specifier)).toEqual(['./x']);
+	});
 });
 
 describe('parseImportClause', () => {

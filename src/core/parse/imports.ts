@@ -189,9 +189,62 @@ function findStringEnd(s: string, open: number, quote: "'" | '"'): number {
 }
 
 /**
+ * Index of closing backtick for a template starting at `open` (the `` ` ``), or -1.
+ * Escape-aware; same best-effort as stripComments (no nested-`${}` rewrite).
+ */
+function findTemplateEnd(s: string, open: number): number {
+	let i = open + 1;
+	while (i < s.length) {
+		const c = s[i]!;
+		if (c === '\\') {
+			i += 2;
+			continue;
+		}
+		if (c === '`') return i;
+		i++;
+	}
+	return -1;
+}
+
+/**
+ * Next `\bimport\b` keyword outside string/template literals, starting at `from`.
+ * Prevents false side-effect specs from e.g. `form: 'import' | 'export' | …`.
+ */
+function nextImportKeywordOutsideStrings(s: string, from: number): number {
+	const n = s.length;
+	let i = from;
+	while (i < n) {
+		const c = s[i]!;
+		if (c === "'" || c === '"') {
+			const end = findStringEnd(s, i, c);
+			if (end === -1) return -1;
+			i = end + 1;
+			continue;
+		}
+		if (c === '`') {
+			const end = findTemplateEnd(s, i);
+			if (end === -1) return -1;
+			i = end + 1;
+			continue;
+		}
+		if (
+			c === 'i' &&
+			s.startsWith('import', i) &&
+			!isIdentChar(s[i - 1]) &&
+			!isIdentChar(s[i + 6])
+		) {
+			return i;
+		}
+		i++;
+	}
+	return -1;
+}
+
+/**
  * Brace-aware static `import` / `import type` extraction.
  * Handles multi-line `import { … }\nfrom '…'` without latching on `from` inside braces.
  * Dynamic `import(` is left to the dynRe pass.
+ * Keyword search is string-aware — does not latch `import` inside quotes/templates.
  */
 function scanStaticImports(
 	cleaned: string,
@@ -206,14 +259,8 @@ function scanStaticImports(
 	const n = cleaned.length;
 	let i = 0;
 	while (i < n) {
-		const idx = cleaned.indexOf('import', i);
+		const idx = nextImportKeywordOutsideStrings(cleaned, i);
 		if (idx === -1) break;
-
-		// \bimport\b
-		if (isIdentChar(cleaned[idx - 1]) || isIdentChar(cleaned[idx + 6])) {
-			i = idx + 6;
-			continue;
-		}
 
 		const afterImport = idx + 6;
 		let j = skipWs(cleaned, afterImport);

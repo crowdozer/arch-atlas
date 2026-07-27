@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSpecifier } from '@core/parse/resolve.ts';
+import {
+	resolveSpecifier,
+	stripSpecifierResourceSuffix,
+} from '@core/parse/resolve.ts';
 import {
 	RULES_BY_FAMILY,
 	familyForPath,
@@ -56,6 +59,62 @@ describe('resolveSpecifier relative', () => {
 		const files = new Set(['src/lib/util.ts', 'src/app.ts']);
 		const r = resolveSpecifier('src/lib/util.ts', '../app', files, null);
 		expect(r).toEqual({ kind: 'file', path: 'src/app.ts' });
+	});
+});
+
+describe('resolveSpecifier resource query strip', () => {
+	it('strips ?worker before tryFile and hits the underlying file', () => {
+		const files = new Set([
+			'src/client/programWorkerClient.ts',
+			'src/exact/program.worker.ts',
+		]);
+		const r = resolveSpecifier(
+			'src/client/programWorkerClient.ts',
+			'../exact/program.worker.ts?worker',
+			files,
+			null,
+		);
+		expect(r).toEqual({ kind: 'file', path: 'src/exact/program.worker.ts' });
+	});
+
+	it('strips ?raw / ?url and combined query', () => {
+		const files = new Set(['src/a.ts', 'src/asset.txt']);
+		expect(resolveSpecifier('src/a.ts', './asset.txt?raw', files, null)).toEqual({
+			kind: 'file',
+			path: 'src/asset.txt',
+		});
+		expect(resolveSpecifier('src/a.ts', './asset.txt?url', files, null)).toEqual({
+			kind: 'file',
+			path: 'src/asset.txt',
+		});
+		expect(
+			resolveSpecifier('src/a.ts', './asset.txt?worker&inline', files, null),
+		).toEqual({ kind: 'file', path: 'src/asset.txt' });
+	});
+
+	it('unresolved miss uses cleaned specifier (no ?worker paint noise)', () => {
+		const r = resolveSpecifier(
+			'src/client/x.ts',
+			'../exact/missing.worker.ts?worker',
+			emptyFiles,
+			null,
+		);
+		expect(r).toEqual({
+			kind: 'unresolved',
+			specifier: '../exact/missing.worker.ts',
+		});
+	});
+
+	it('leaves bare package names unchanged', () => {
+		const r = resolveSpecifier('src/a.ts', 'zod', emptyFiles, null);
+		expect(r).toEqual({ kind: 'package', name: 'zod', builtin: false });
+	});
+
+	it('stripSpecifierResourceSuffix cuts at first ? or #', () => {
+		expect(stripSpecifierResourceSuffix('../x.ts?worker')).toBe('../x.ts');
+		expect(stripSpecifierResourceSuffix('../x.ts#hash')).toBe('../x.ts');
+		expect(stripSpecifierResourceSuffix('../x.ts?worker#frag')).toBe('../x.ts');
+		expect(stripSpecifierResourceSuffix('zod')).toBe('zod');
 	});
 });
 
