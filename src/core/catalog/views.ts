@@ -38,6 +38,8 @@ function languageTags(graph: CodeGraph): string[] {
 			tags.add('JavaScript');
 		} else if (/\.py$/i.test(f.path) || f.parseKind === 'python-import') {
 			tags.add('Python');
+		} else if (/\.astro$/i.test(f.path) || f.parseKind === 'astro-import') {
+			tags.add('Astro');
 		}
 	}
 	return [...tags].sort();

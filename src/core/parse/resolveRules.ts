@@ -122,12 +122,16 @@ const JS_TS_SOURCE_EXT = /\.(m?[jt]sx?|cjs|mjs)$/i;
 /** Python source extension (mirrors isPythonSourceFile). */
 const PYTHON_SOURCE_EXT = /\.py$/i;
 
+/** Astro SFCs resolve like JS/TS (script-island imports). */
+const ASTRO_SOURCE_EXT = /\.astro$/i;
+
 /**
  * Derive language family from importer path. Returns null when no estimate
  * resolve family is registered (unsupported languages never reach resolve today).
  */
 export function familyForPath(path: string): LanguageFamilyId | null {
 	if (JS_TS_SOURCE_EXT.test(path)) return 'js-ts';
+	if (ASTRO_SOURCE_EXT.test(path)) return 'js-ts';
 	if (PYTHON_SOURCE_EXT.test(path)) return 'python';
 	return null;
 }

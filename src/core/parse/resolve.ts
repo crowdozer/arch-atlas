@@ -13,11 +13,22 @@ import {
 	type PathRuleFamily,
 } from '@core/parse/resolveRules.ts';
 
-/** Probe extensions for js-ts tryFile (ext-index-probe). */
-const SOURCE_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts', ''] as const;
+/** Probe extensions for js-ts tryFile (ext-index-probe). Includes Astro SFCs. */
+const SOURCE_EXTS = [
+	'.ts',
+	'.tsx',
+	'.js',
+	'.jsx',
+	'.mjs',
+	'.cjs',
+	'.mts',
+	'.cts',
+	'.astro',
+	'',
+] as const;
 
 /** Index basenames under a directory candidate. */
-const INDEX_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'] as const;
+const INDEX_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.astro'] as const;
 
 /**
  * Specifier/path tails eligible for TS ESM rewrite (specifier-ext-rewrite).

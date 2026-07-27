@@ -136,6 +136,11 @@ export {
 	extractPythonImports,
 	stripPythonNoise,
 } from '@core/parse/pythonImports.ts';
+export {
+	extractAstroImports,
+	extractAstroScriptIslands,
+	extractAstroScriptText,
+} from '@core/parse/astroImports.ts';
 export type { ImportBinding } from '@core/graph/types.ts';
 export {
 	CANDIDATE_LANGUAGE_NOTES,
@@ -153,6 +158,7 @@ export type { ResolveResult } from '@core/parse/resolve.ts';
 export { ingestZip, isTextPath } from '@core/ingest/zip.ts';
 export {
 	filterFilesByTestInclusion,
+	isAstroSourceFile,
 	isPythonSourceFile,
 	isSourceFile,
 	isTestPath,

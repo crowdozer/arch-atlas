@@ -30,6 +30,13 @@ describe('classifyFileParse', () => {
 		expect(py.note).toMatch(/Python/i);
 	});
 
+	it('marks Astro as import-parseable (astro-import)', () => {
+		const a = classifyFileParse('src/pages/index.astro');
+		expect(a.importParseable).toBe(true);
+		expect(a.kind).toBe('astro-import');
+		expect(a.note).toMatch(/Astro/i);
+	});
+
 	it('marks unsupported languages with a clear note', () => {
 		const go = classifyFileParse('svc/main.go');
 		expect(go.importParseable).toBe(false);

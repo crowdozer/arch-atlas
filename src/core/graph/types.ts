@@ -9,6 +9,7 @@ export type Epistemic = 'observed' | 'inferred' | 'declared';
 export type FileParseKind =
 	| 'js-ts-import'
 	| 'python-import'
+	| 'astro-import'
 	| 'config'
 	| 'text'
 	| 'unsupported-language';

@@ -61,6 +61,7 @@ const UNSUPPORTED_LANG: ReadonlyArray<{
 	{ ext: /\.jl$/i, language: 'Julia' },
 	{ ext: /\.vue$/i, language: 'Vue SFC', engine: 'vue-typescript' },
 	{ ext: /\.svelte$/i, language: 'Svelte', engine: 'svelte-language-server' },
+	// .astro is Estimate-parseable (astro-import); Exact island surface not loadable yet
 	{ ext: /\.astro$/i, language: 'Astro', engine: 'astro-ls' },
 ];
 
@@ -105,6 +106,12 @@ export function requiredEngines(graph: CodeGraph): RequiredEnginesResult {
 		// Python L1 Estimate — present as source, no Exact engine
 		if (kind === 'python-import' || /\.py$/i.test(path)) {
 			addMissing({ language: 'Python', engine: 'python' });
+			continue;
+		}
+
+		// Astro L1 Estimate (script islands) — Exact island surface not loadable yet
+		if (kind === 'astro-import' || /\.astro$/i.test(path)) {
+			addMissing({ language: 'Astro', engine: 'astro-ls' });
 			continue;
 		}
 

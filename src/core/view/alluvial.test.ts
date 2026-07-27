@@ -211,20 +211,26 @@ describe('projectFileImporters', () => {
 		expect(fileOut).toBeGreaterThan(5); // many demo modules import logger
 	});
 
-	it('target-loc total = inDegree * LOC(focus) for redis.ts', () => {
+	it('target-loc reverse total = sum of importer LOC (not shared focus LOC)', () => {
+		// Reverse hub mass under estimate target-loc uses hubReverseEdgeWeight:
+		// each importer→focus edge weighs importer LOC (consumer size), not
+		// inDegree * LOC(focus) which collapses every export band to the same mass.
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const fileId = 'src/lib/redis.ts';
-		const inDegree = graph.edges.filter(
+		const reverseEdges = graph.edges.filter(
 			(e) => e.toKind === 'file' && e.to === fileId,
-		).length;
-		expect(inDegree).toBe(12);
-		const loc = fileLineCount(graph, fileId);
-		expect(loc).toBeGreaterThan(1);
+		);
+		expect(reverseEdges.length).toBe(12);
+		const expected = reverseEdges.reduce((sum, e) => {
+			const n = fileLineCount(graph, e.from);
+			return sum + (n > 0 ? n : 1);
+		}, 0);
+		expect(expected).toBeGreaterThan(12);
 
 		const rev = projectFileImporters(graph, fileId, { weightAxis: 'target-loc' })!;
 		const { out } = flowTotals(rev.data);
 		const focusOut = out.get(fileId) ?? 0;
-		expect(focusOut).toBe(inDegree * loc);
+		expect(focusOut).toBe(expected);
 	});
 });
 

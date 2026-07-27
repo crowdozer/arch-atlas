@@ -17,23 +17,31 @@ describe('requiredEngines', () => {
 		expect(graphNeedsTypescript(graph)).toBe(true);
 	});
 
-	it('reports missing engines for unsupported languages and Python', () => {
+	it('reports missing engines for unsupported languages, Python, and Astro', () => {
 		const { graph } = indexFiles([
 			{ path: 'src/a.ts', content: "export const a = 1;\n", byteLength: 20 },
 			{ path: 'svc/main.go', content: 'package main\n', byteLength: 13 },
 			{ path: 'ml/train.py', content: 'x = 1\n', byteLength: 6 },
+			{
+				path: 'src/pages/x.astro',
+				content: '---\nconst n = 1;\n---\n<p />\n',
+				byteLength: 30,
+			},
 		]);
 		const r = requiredEngines(graph);
 		expect(r.loadable).toEqual(['typescript']);
 		const langs = r.missing.map((m) => m.language).sort();
-		expect(langs).toEqual(['Go', 'Python']);
+		expect(langs).toEqual(['Astro', 'Go', 'Python']);
 		const go = r.missing.find((m) => m.language === 'Go');
 		expect(go?.engine).toBe('gopls');
 		const py = r.missing.find((m) => m.language === 'Python');
 		expect(py?.engine).toBe('python');
+		const astro = r.missing.find((m) => m.language === 'Astro');
+		expect(astro?.engine).toBe('astro-ls');
 		// Python is import-parseable but must NOT force typescript alone
 		expect(graph.files.get('ml/train.py')?.isSource).toBe(true);
 		expect(graph.files.get('ml/train.py')?.parseKind).toBe('python-import');
+		expect(graph.files.get('src/pages/x.astro')?.parseKind).toBe('astro-import');
 	});
 
 	it('does not require typescript for pure-Python graphs', () => {

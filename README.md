@@ -42,7 +42,8 @@ npm run build
 ## Agent CLI (local lens)
 
 Third host over pure core: directory or ZIP → JSON (no raw source). Same
-Level-1 **Estimate** honesty as the web app (static JS/TS + Python import graph; not
+Level-1 **Estimate** honesty as the web app (static JS/TS + Python + Astro
+script-island import graph; not
 LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
 `arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`,
 `arch-atlas.agent-impact.v1` (two git refs → topology delta).

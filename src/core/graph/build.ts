@@ -12,6 +12,7 @@ import type {
 	VirtualFile,
 } from '@core/graph/types.ts';
 import { classifyFileParse, shouldKeepInGraph } from '@core/parse/capability.ts';
+import { extractAstroImports } from '@core/parse/astroImports.ts';
 import { extractImports } from '@core/parse/imports.ts';
 import { extractPythonImports } from '@core/parse/pythonImports.ts';
 import { resolveSpecifier } from '@core/parse/resolve.ts';
@@ -123,7 +124,9 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 		const imports =
 			node.parseKind === 'python-import'
 				? extractPythonImports(text)
-				: extractImports(text);
+				: node.parseKind === 'astro-import'
+					? extractAstroImports(text)
+					: extractImports(text);
 		for (const imp of imports) {
 			const resolved = resolveSpecifier(path, imp.specifier, fileSet, alias);
 			let to: string;

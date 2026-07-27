@@ -13,16 +13,18 @@ Phased plan after **Gate A** (foundation + Python Level-1 Estimate). Companion:
 | Exact `requiredEngines`: TS only for JS/TS; Python → missing engine | done |
 | Fixture `fixtures/sample-python-project/` | done |
 | Built-in UI demo `fixtures/demo-python-app/` | done |
+| Astro frontmatter / `<script>` island Estimate | done |
+| Exact island surface for Astro | later (missing engine honesty today) |
 
-**Safe Estimate claims:** static observed import graph for JS/TS + Python.
-**Non-claims:** type-aware resolve, site-packages, importlib, pyright/Exact for Python.
+**Safe Estimate claims:** static observed import graph for JS/TS + Python + Astro script islands.
+**Non-claims:** type-aware resolve, site-packages, importlib, pyright/Exact for Python; full SFC component graph / Astro Exact.
 
 ## Later phases (desire order adjusted for complexity)
 
-### Phase 2 — Astro (complexity win; dogfood)
+### Phase 2 — Astro (shipped Estimate; Exact island surface later)
 
-- Admit `.astro`; extract frontmatter / script islands → existing JS/TS extract + resolve.
-- Exact: reuse TS provider on script text with honesty “script islands only.”
+- ~~Admit `.astro`; extract frontmatter / script islands → existing JS/TS extract + resolve.~~ **done**
+- Exact: reuse TS provider on script text with honesty “script islands only” — **not yet**; graph remount still estimate for `.astro`.
 
 ### Phase 3 — PHP
 
@@ -51,7 +53,7 @@ Phased plan after **Gate A** (foundation + Python Level-1 Estimate). Companion:
 | Language | Estimate | Exact (web/CDN) |
 | -------- | -------- | --------------- |
 | **Python** | L1 shipped | Coarse surface later; not pyright |
-| **Astro** | High (reuse JS/TS) | Reuse TS Exact on islands |
+| **Astro** | L1 islands shipped | Exact islands later (missing engine today) |
 | **PHP** | Medium-high (Composer) | Coarse surface later |
 | **C family** | Medium-low (`#include` roots) | Defer |
 | **Lua/Godot** | Ambiguous | Defer |

@@ -10,8 +10,8 @@ tree-shake** for the current in-tab Exact path.
 
 | Tier | Contract |
 | ---- | -------- |
-| **Estimate** | Observed static import graph for **JS/TS + Python (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
-| **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python stays estimate mass. |
+| **Estimate** | Observed static import graph for **JS/TS + Python + Astro script islands (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
+| **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python and Astro stay estimate mass (no island Exact surface yet). |
 | **VS Code host (future)** | Same `ImportedSurfaceProvider` port; host may use workspace language features / multi-LSP — still not automatic tree-shake. |
 
 ## Capability scorecard
@@ -20,10 +20,10 @@ tree-shake** for the current in-tab Exact path.
 
 | | |
 | - | - |
-| **Shows** | File/package nodes; static import/require/export edges (JS/TS + Python `import`/`from`); estimate band weights (edges, importer LOC, target whole-file LOC; reverse hub uses importer LOC under Imported LOC). |
-| **Gets right** | Observed topology; no type fantasy; local-first; Python package-relative + bare external leaves. |
+| **Shows** | File/package nodes; static import/require/export edges (JS/TS + Python `import`/`from` + Astro frontmatter/`<script>` islands); estimate band weights (edges, importer LOC, target whole-file LOC; reverse hub uses importer LOC under Imported LOC). |
+| **Gets right** | Observed topology; no type fantasy; local-first; Python package-relative + bare external leaves; Astro component/script imports only (not template HTML graph). |
 | **Misrepresents if…** | User expects resolved monorepo paths, dynamic imports, site-packages, or full multi-lang Exact. |
-| **Missing** | Symbols, calls, type-aware resolve; C/PHP/Astro/Lua extractors; Python Exact / pyright. |
+| **Missing** | Symbols, calls, type-aware resolve; C/PHP/Lua extractors; Python Exact / pyright; Astro Exact island surface. |
 
 ### Exact (in-tab “export surface”)
 

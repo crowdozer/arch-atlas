@@ -71,6 +71,14 @@ export function isPythonSourceFile(path: string): boolean {
 }
 
 /**
+ * Astro SFCs (Level-1 import-parseable via frontmatter / script islands).
+ * Exact: script-island surface only when a host maps islands — not full SFC LSP.
+ */
+export function isAstroSourceFile(path: string): boolean {
+	return /\.astro$/i.test(path);
+}
+
+/**
  * Heuristic: path looks like a unit/integration test (or colocated mock).
  * Used by the web host inclusion toggle — **not** applied by CLI unless a host
  * opts in. Does not treat bare `test/` product folders as tests.
