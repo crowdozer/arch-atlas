@@ -94,7 +94,10 @@ export {
 	graphNeedsTypescript,
 	requiredEngines,
 } from '@core/exact/engineMap.ts';
-export { projectPackageImporters } from '@core/view/packageImporters.ts';
+export {
+	edgeMatchesPackage,
+	primaryImporterFile,
+} from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {
 	fileInDegree,

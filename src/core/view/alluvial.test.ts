@@ -23,7 +23,10 @@ import {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
-import { projectPackageImporters } from '@core/view/packageImporters.ts';
+import {
+	edgeMatchesPackage,
+	primaryImporterFile,
+} from '@core/view/packageImporters.ts';
 import { fileLineCount, type WeightAxis } from '@core/view/weight.ts';
 
 const fixturesRoot = path.join(
@@ -141,76 +144,23 @@ describe('projectAlluvial conservation', () => {
 	);
 });
 
-describe('projectPackageImporters', () => {
-	it('nodemailer importers in demo-next-complex (src/lib/email.ts only)', () => {
+describe('primaryImporterFile', () => {
+	it('nodemailer → sole importer email.ts', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
-		const payload = projectPackageImporters(graph, 'nodemailer', {
-			weightAxis: 'import-edges',
-		});
-		expect(payload).not.toBeNull();
-		expect(payload!.meta.focus.kind).toBe('package');
-		expect(payload!.meta.focus.label).toBe('nodemailer');
-
-		// Left column is package; right is importer(s)
-		const packageNodes = payload!.options.alluvial.nodes.filter(
-			(n) => n.category === 'Package',
-		);
-		expect(packageNodes.map((n) => n.name)).toEqual(['nodemailer']);
-
-		const importers = payload!.options.alluvial.nodes.filter(
-			(n) => n.category === 'Importers',
-		);
-		expect(importers.length).toBe(1);
-		// Single importer → file promote; full path label
-		expect(importers[0]!.name).toBe('src/lib/email.ts');
-
-		const total = payload!.data.reduce((s, l) => s + l.value, 0);
-		expect(total).toBe(1);
-		expect(payload!.data.every((l) => l.source === 'nodemailer')).toBe(true);
-		expect(payload!.data.every((l) => l.target !== 'nodemailer')).toBe(true);
-
-		const importerRef = payload!.meta.nodeRef[importers[0]!.name];
-		expect(importerRef).toEqual({ kind: 'file', id: 'src/lib/email.ts' });
-		expect(payload!.meta.nodeRef.nodemailer.kind).toBe('package');
-	});
-
-	it('conserves package → importer weights', () => {
-		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
-		// redis is used from multiple places likely
-		const payload = projectPackageImporters(graph, 'ioredis');
-		// may or may not exist — try a common one; fall back to nodemailer
-		const p =
-			payload ??
-			projectPackageImporters(graph, 'nodemailer') ??
-			projectPackageImporters(graph, 'next');
-		expect(p).not.toBeNull();
-		const { out, inn } = flowTotals(p!.data);
-		const packageLabel = p!.meta.focus.label;
-		const packageOut = out.get(packageLabel) ?? 0;
-		const importerIn = [...inn.entries()]
-			.filter(([k]) => k !== packageLabel)
-			.reduce((s, [, v]) => s + v, 0);
-		expect(packageOut).toBe(importerIn);
-		expect(packageOut).toBeGreaterThan(0);
+		expect(primaryImporterFile(graph, 'nodemailer')).toBe('src/lib/email.ts');
 	});
 
 	it('returns null for unknown package', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
-		expect(projectPackageImporters(graph, 'definitely-not-a-pkg-xyz')).toBeNull();
+		expect(primaryImporterFile(graph, 'definitely-not-a-pkg-xyz')).toBeNull();
 	});
 
-	it('target-loc total equals inDegree (package fallback weight 1)', () => {
-		const { graph, catalog } = indexFiles(
-			walk(path.join(fixturesRoot, 'demo-next-complex')),
-		);
-		const end = catalog.ends.find((e) => e.id === 'nodemailer') ?? catalog.ends[0];
-		expect(end).toBeTruthy();
-		const payload = projectPackageImporters(graph, end!.id, {
-			weightAxis: 'target-loc',
-		});
-		expect(payload).not.toBeNull();
-		const total = payload!.data.reduce((s, l) => s + l.value, 0);
-		expect(total).toBe(end!.inDegree);
+	it('edgeMatchesPackage matches id and display label', () => {
+		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
+		const edge = graph.edges.find((e) => e.to === 'nodemailer');
+		expect(edge).toBeTruthy();
+		expect(edgeMatchesPackage(edge!, 'nodemailer')).toBe(true);
+		expect(edgeMatchesPackage(edge!, 'not-it')).toBe(false);
 	});
 });
 

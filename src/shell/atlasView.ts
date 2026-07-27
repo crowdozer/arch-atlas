@@ -11,12 +11,11 @@ import { HUB_DEFAULT_MAX_DEPTH } from '@core/index.ts';
 
 /**
  * Nested alluvial focus (top of stack = current view).
- * File opens are always file-hub traversal; package/module are drill-only.
+ * File opens are always file-hub traversal; module is drill-only.
  */
 export type AtlasView =
 	/** Dual hub: importers → file → exporters (sole file projector). */
 	| { type: 'file-hub'; fileId: string }
-	| { type: 'package'; packageId: string; label: string }
 	| { type: 'module'; moduleId: string };
 
 /** Top of stack, or null when empty. */
@@ -29,9 +28,6 @@ export function sameView(a: AtlasView, b: AtlasView): boolean {
 	if (a.type === 'file-hub' && b.type === 'file-hub') {
 		return a.fileId === b.fileId;
 	}
-	if (a.type === 'package' && b.type === 'package') {
-		return a.packageId === b.packageId;
-	}
 	if (a.type === 'module' && b.type === 'module') {
 		return a.moduleId === b.moduleId;
 	}
@@ -40,7 +36,7 @@ export function sameView(a: AtlasView, b: AtlasView): boolean {
 
 /**
  * File focus for tree/catalog/persist: nearest file-hub frame under the stack
- * top (package/module drills keep the underlying file selected).
+ * top (module drills keep the underlying file selected).
  */
 export function nearestFileFocus(stack: readonly AtlasView[]): string | null {
 	for (let i = stack.length - 1; i >= 0; i--) {
@@ -60,7 +56,7 @@ export function viewUsesDepth(view: AtlasView | null): boolean {
 	return view?.type === 'file-hub';
 }
 
-/** Default viz depth for file-hub (package/module ignore depth). */
+/** Default viz depth for file-hub (module ignores depth). */
 export function defaultDepthForView(_view: AtlasView): number {
 	return HUB_DEFAULT_MAX_DEPTH;
 }

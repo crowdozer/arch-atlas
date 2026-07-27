@@ -12,6 +12,7 @@ import {
 	HUB_DEFAULT_MAX_DEPTH,
 	buildMassBins,
 	catalogSpines,
+	primaryImporterFile,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type CodeGraph,
@@ -71,7 +72,8 @@ import { wireUi } from './wireUi.ts';
 let session: Session | null = null;
 /**
  * Nested alluvial focus (top of stack = current view).
- * File opens are always file-hub traversal; package/module are drill-only.
+ * File opens are always file-hub traversal; module is drill-only.
+ * Package sinks open file-hub on {@link primaryImporterFile}.
  *
  * ## Navigation model
  * `viewStack` is the sole owner of “where we are.” Session `startId` (tree /
@@ -100,7 +102,7 @@ let exactEnableInFlight = false;
 let exactMixedWarningShown = false;
 /**
  * Viz-only dual BFS hop radius for file-hub (does not bound graph scan).
- * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); package/module ignore depth.
+ * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); module ignores depth.
  */
 let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 /** True after the user picks Depth manually (stops auto mode defaults). */
@@ -449,6 +451,26 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 	return commitNavigation(opts);
 }
 
+/**
+ * Package / unresolved sink → file-hub on primary importer.
+ * Catalog Export Roots use replace (like Import Roots); alluvial drill uses push.
+ */
+function openPackageAsHub(
+	packageId: string,
+	label: string,
+	mode: 'push' | 'replace' = 'push',
+): void {
+	if (!session) return;
+	const fileId = primaryImporterFile(session.graph, packageId);
+	if (!fileId) {
+		setStatus(`No importers for ${label}`);
+		return;
+	}
+	const view = viewForFileOpen(fileId);
+	if (mode === 'replace') navigateReplace(view);
+	else navigatePush(view);
+}
+
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 	if (ref.kind === 'bucket') {
 		setStatus(`Can't drill into aggregate “${displayName}”`);
@@ -459,7 +481,7 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'package' || ref.kind === 'unresolved') {
-		navigatePush({ type: 'package', packageId: ref.id, label: displayName });
+		openPackageAsHub(ref.id, displayName);
 		return;
 	}
 	if (ref.kind === 'module') {
@@ -581,7 +603,8 @@ tree = createTreeRenderer({
 
 catalog = createCatalogRenderer({
 	selectStart: (id) => lifecycle.selectStart(id),
-	navigatePush: (view) => navigatePush(view),
+	openPackage: (packageId, label) =>
+		openPackageAsHub(packageId, label, 'replace'),
 	getSpineFormula: () => spineFormula,
 	onSpineFormulaChange: (raw) => {
 		spineFormula = parseSpineFormula(raw);

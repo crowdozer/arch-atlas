@@ -20,7 +20,7 @@ import {
 	projectFileHub,
 } from '@core/view/fileHub.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
-import { projectPackageImporters } from '@core/view/packageImporters.ts';
+import { primaryImporterFile } from '@core/view/packageImporters.ts';
 
 /** Focus out-edges that are file→file (export-side hub mass). */
 function fileOutFileDegree(graph: CodeGraph, fileId: string): number {
@@ -319,26 +319,19 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(cats.has('Import folders')).toBe(false);
 	});
 
-	it('every catalog end: package reverse total === inDegree', () => {
+	it('every catalog end with imports: primary importer opens file-hub', () => {
 		for (const end of catalog.ends) {
 			if (end.inDegree === 0) {
-				// Declared package with no imports — no reverse payload
-				const p = projectPackageImporters(graph, end.id, {
-					weightAxis: 'import-edges',
-				});
-				expect(p).toBeNull();
+				expect(primaryImporterFile(graph, end.id)).toBeNull();
 				continue;
 			}
-			const payload = projectPackageImporters(graph, end.id, {
-				weightAxis: 'import-edges',
-			});
-			expect(payload, `package ${end.label}`).not.toBeNull();
+			const fileId = primaryImporterFile(graph, end.id);
+			expect(fileId, `end ${end.label}`).toBeTruthy();
+			const payload = payloadForFileClick(graph, fileId!);
+			expect(payload, `hub for ${end.label} via ${fileId}`).not.toBeNull();
 			assertColumnConservation(payload!, `end ${end.label}`);
 			assertNodeRefCoversNamedNodes(payload!, `end ${end.label}`);
-			expect(totalValue(payload!), end.label).toBe(end.inDegree);
-			// Subject on the left
-			expect(payload!.data.every((l) => l.source === end.label || l.source === '(other ends)') ||
-				payload!.data.some((l) => l.source === end.label)).toBe(true);
+			expect(totalValue(payload!)).toBeGreaterThan(0);
 		}
 	});
 

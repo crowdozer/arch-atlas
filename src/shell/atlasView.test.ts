@@ -19,14 +19,6 @@ describe('sameView', () => {
 		expect(sameView(a, c)).toBe(false);
 	});
 
-	it('compares package by packageId', () => {
-		const a: AtlasView = { type: 'package', packageId: 'react', label: 'react' };
-		const b: AtlasView = { type: 'package', packageId: 'react', label: 'React' };
-		const c: AtlasView = { type: 'package', packageId: 'vue', label: 'vue' };
-		expect(sameView(a, b)).toBe(true);
-		expect(sameView(a, c)).toBe(false);
-	});
-
 	it('compares module by moduleId', () => {
 		const a: AtlasView = { type: 'module', moduleId: 'src' };
 		const b: AtlasView = { type: 'module', moduleId: 'src' };
@@ -37,8 +29,8 @@ describe('sameView', () => {
 
 	it('rejects different types', () => {
 		const file: AtlasView = { type: 'file-hub', fileId: 'x' };
-		const pkg: AtlasView = { type: 'package', packageId: 'x', label: 'x' };
-		expect(sameView(file, pkg)).toBe(false);
+		const mod: AtlasView = { type: 'module', moduleId: 'x' };
+		expect(sameView(file, mod)).toBe(false);
 	});
 });
 
@@ -52,10 +44,9 @@ describe('nearestFileFocus', () => {
 		expect(nearestFileFocus(stack)).toBe('src/a.ts');
 	});
 
-	it('walks under package/module drills to nearest file-hub', () => {
+	it('walks under module drills to nearest file-hub', () => {
 		const stack: AtlasView[] = [
 			{ type: 'file-hub', fileId: 'src/a.ts' },
-			{ type: 'package', packageId: 'react', label: 'react' },
 			{ type: 'module', moduleId: 'src' },
 		];
 		expect(nearestFileFocus(stack)).toBe('src/a.ts');
@@ -65,7 +56,7 @@ describe('nearestFileFocus', () => {
 		const stack: AtlasView[] = [
 			{ type: 'file-hub', fileId: 'src/old.ts' },
 			{ type: 'file-hub', fileId: 'src/new.ts' },
-			{ type: 'package', packageId: 'x', label: 'x' },
+			{ type: 'module', moduleId: 'lib' },
 		];
 		expect(nearestFileFocus(stack)).toBe('src/new.ts');
 	});
@@ -81,9 +72,6 @@ describe('viewForFileOpen / depth helpers', () => {
 
 	it('viewUsesDepth only for file-hub', () => {
 		expect(viewUsesDepth({ type: 'file-hub', fileId: 'a' })).toBe(true);
-		expect(viewUsesDepth({ type: 'package', packageId: 'p', label: 'p' })).toBe(
-			false,
-		);
 		expect(viewUsesDepth({ type: 'module', moduleId: 'm' })).toBe(false);
 		expect(viewUsesDepth(null)).toBe(false);
 	});
@@ -98,12 +86,11 @@ describe('viewForFileOpen / depth helpers', () => {
 		expect(topOfStack([])).toBeNull();
 		const stack: AtlasView[] = [
 			{ type: 'file-hub', fileId: 'a' },
-			{ type: 'package', packageId: 'p', label: 'p' },
+			{ type: 'module', moduleId: 'm' },
 		];
 		expect(topOfStack(stack)).toEqual({
-			type: 'package',
-			packageId: 'p',
-			label: 'p',
+			type: 'module',
+			moduleId: 'm',
 		});
 	});
 });

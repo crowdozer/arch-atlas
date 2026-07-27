@@ -7,7 +7,6 @@ import {
 } from '@shell/captions.ts';
 
 const fileHub: AtlasView = { type: 'file-hub', fileId: 'src/a.ts' };
-const pkg: AtlasView = { type: 'package', packageId: 'react', label: 'react' };
 const mod: AtlasView = { type: 'module', moduleId: 'src' };
 
 describe('captionForView', () => {
@@ -21,8 +20,7 @@ describe('captionForView', () => {
 		);
 	});
 
-	it('package and module captions', () => {
-		expect(captionForView(pkg, 3)).toBe('Package · react → imports');
+	it('module caption', () => {
 		expect(captionForView(mod, 3)).toBe('Module ends · src');
 	});
 });
@@ -30,13 +28,11 @@ describe('captionForView', () => {
 describe('statusForView / emptyPayloadStatus', () => {
 	it('status strings per view type', () => {
 		expect(statusForView(fileHub)).toBe('Imports · Exports · src/a.ts');
-		expect(statusForView(pkg)).toBe('Package: react');
 		expect(statusForView(mod)).toBe('Module: src');
 	});
 
 	it('empty payload status per view type', () => {
 		expect(emptyPayloadStatus(fileHub)).toBe('No hub edges for src/a.ts');
-		expect(emptyPayloadStatus(pkg)).toBe('No importers for react');
 		expect(emptyPayloadStatus(mod)).toBe('No package edges in src');
 	});
 });

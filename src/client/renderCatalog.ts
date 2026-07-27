@@ -9,7 +9,6 @@ import {
 	type MapCatalog,
 	type SpineFormula,
 } from '@core/index.ts';
-import type { AtlasView } from '@shell/atlasView.ts';
 import {
 	SPINE_FORMULA_HONESTY_FOOTER,
 	spineFormulaHelp,
@@ -18,7 +17,11 @@ import { $, escapeHtml } from './dom.ts';
 
 export type CatalogRenderDeps = {
 	selectStart: (id: string) => void;
-	navigatePush: (view: AtlasView) => boolean | void;
+	/**
+	 * Export Roots: open package sink as file-hub on its primary importer
+	 * (host resolves package → file).
+	 */
+	openPackage: (packageId: string, label: string) => void;
 	/** Current spine formula (for select sync). */
 	getSpineFormula?: () => SpineFormula;
 	/** User changed formula select. */
@@ -463,7 +466,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 						: e.kind === 'builtin'
 							? 'text-teal-300'
 							: 'text-zinc-200';
-				// Ends only have inbound degree (importers of the package)
+				// Export roots: inbound degree only (importers of the package)
 				row.innerHTML = `
 				<span class="atlas-list-btn__row">
 					<span class="${kindColor} truncate text-sm font-medium" title="${escapeHtml(e.id)}">${escapeHtml(e.label)}</span>
@@ -471,11 +474,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				</span>
 				<span class="meta">${escapeHtml(e.kind)} · ${e.inDegree} importer${e.inDegree === 1 ? '' : 's'}</span>`;
 				row.addEventListener('click', () => {
-					deps.navigatePush({
-						type: 'package',
-						packageId: e.id,
-						label: e.label,
-					});
+					deps.openPackage(e.id, e.label);
 				});
 				endsHost.appendChild(row);
 			}
