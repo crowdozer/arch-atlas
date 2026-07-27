@@ -41,7 +41,7 @@ CodeGraph (observed edges)
 | “External” header over Imports column | Carbon last-category-wins at that x0 | Change categoryOrder alone | Depth + alignment (categoryOrder does not override free-source layers) |
 | logger / seed “deep” on Import hop with rail pads | Seed clamp; File→seed rails | Expand radius | Seeds always dist 1 + **direct** File→seed; no File→seed rails |
 | analytics does not branch to redis/logger (also seeds) | Single node per path | Drop seed clamp | Multi-instance `(path, dist)`; packages still collapse |
-| types/user→zod island thicker than users→types | Package mass source | Cap by raw only | Residual = **arrived** mass at parent, min(residual, raw package) |
+| types/user→zod island thicker than users→types | Package mass source | Cap by raw only; residual = full arrived (double-spend) | Reserve-then-route: residual = min(arrived, rawPkg); scarce dual-spend if reserve would starve file children |
 | External packages fan equally to every Imports file | Shared `·in-rail·hN` + straighten BFS | Split residual equally | `meta.externalStraightPairs` at construction; polish uses pairs |
 | Straight External bands kink through Imports | Pad bands still painted | Leave kink | Undraw parent→in-rail→External; redraw straight parent→package |
 | Reverse free source missing cyan (e.g. dashboard→AdminFlags only) | `radiusL === 1` terminator gate | Fake multi-hop pads | Terminators = all reverse free sources, not only padded multi-hop |
@@ -100,9 +100,10 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 
 ### E7 — Package residual mass / oauth zod island
 
-- **Symptom:** types/user→zod thicker than users→types; floating island mass.
-- **Rejected:** invent unit package mass when residual 0; equal-split all children when remainder scarce (starved package leaves).
-- **Landed:** residual = mass **arrived** at path (not leftover after file children); budget min(residual, raw package edges); prefer package-bearing remainder when equal-splitting.
+- **Symptom:** types/user→zod thicker than users→types; floating island mass. Later (ship 519a0ccc): hidden pad mass still thickened Import-hop bars when residual double-spent full arrived onto both file children and packages (e.g. layout.tsx `redis.ts`).
+- **Rejected:** invent unit package mass when residual 0; equal-split all children when remainder scarce (starved package leaves); residual = full **arrived** while still routing full `m` to file children (double-spend under intermediate Kirchhoff cases).
+- **Early landed:** residual = mass **arrived** at path (not leftover after file children); budget min(residual, raw package edges); prefer package-bearing remainder when equal-splitting. Fixed free-source invent / zod island vs parent — still double-spent arrived onto file hops + packages.
+- **Later landed (reserve-then-route):** reserve package budget `min(m, rawPkg)` **before** equal-split to file children; `residualMass = min(arrived, rawPkg)` (reserved share only). Prefer intermediate Kirchhoff when mass can cover both. **Scarce dual-spend exception:** if reserve would leave `fileMass = 0` with file children present, route full `m` to files **and** keep package residual so unit-weight External edges still appear.
 
 ### E8 — Straighten External past Imports kinks
 

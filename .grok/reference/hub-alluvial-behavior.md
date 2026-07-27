@@ -178,11 +178,13 @@ product fork, not a polish tweak.
 | --- | --- |
 | Into File | Reverse importer edges only |
 | Out of File | Focus → file seeds + focus → packages |
-| Through import tree | Seed mass equal-split along kept file→file edges to children at `displayDist + 1` (package-bearing children preferred for scarce integer remainder) |
-| Packages of deep files | **Residual** hub mass at parent after file→file routing, capped by raw package-edge weight — never invent free-source `types→zod` islands thicker than `users→types` |
+| Through import tree | **Reserve-then-route:** reserve package budget `pkgReserve = min(arrived, rawPkg)` first; equal-split only the remainder (`fileMass = m − pkgReserve`) along kept file→file edges to children at `displayDist + 1` (package-bearing children preferred for scarce integer remainder). Prefer intermediate Kirchhoff when mass can cover both packages and file hops. |
+| Packages of deep files | **Residual** = reserved package share `min(arrived, rawPkg)` — not full arrived double-spend after file routing. Never invent free-source `types→zod` islands thicker than parent file mass when intermediate Kirchhoff holds. |
+| Scarce dual-spend | If reserve would leave `fileMass = 0` with file children present and `m > 0`, route **full** arrived `m` to files **and** keep package residual so unit-weight External edges still appear |
 
-Full Kirchhoff conservation is **not** product law; smoke tests may exempt
-laterals / package emits.
+Intermediate Kirchhoff (reserve-then-route) is the preferred default when mass allows.
+Full conservation is **not** absolute product law under unit/scarce edges (dual-spend
+exception). Smoke tests may exempt laterals / package emits.
 
 ---
 
