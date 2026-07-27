@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T22:29:26Z",
+  "generated_at": "2026-07-27T22:37:56Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 13,
+  "count": 14,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -297,6 +297,57 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: adding a second visualization beyond alluvial; treemap heatmap matrix or multi-lens workspace; interchangeable architectural lenses; cross-view selection continuity"
+    },
+    {
+      "id": "alluvial-nav-order-and-residual-mass",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/alluvial-nav-order-and-residual-mass.md",
+      "scope": [
+        "hub-alluvial",
+        "alluvial-navigation",
+        "band-order",
+        "residual-mass",
+        "mass-honesty",
+        "client-controls",
+        "stage-polish",
+        "file-hub"
+      ],
+      "applies_when": [
+        "hub alluvial bar heights do not sum to file total LOC",
+        "residual private body not imported or not exported",
+        "not-exported or not-imported band experiment",
+        "stabilizing band order across clicks or re-renders",
+        "sorting alluvial bands by name LOC or directory walk",
+        "band traverse hard to follow during hub navigation",
+        "dropdown for alluvial column sort order",
+        "checkbox for experimental residual mass bands",
+        "mass mismatch between File spine and linked flow",
+        "hub orientation or category membership vs total mass",
+        "pad rails residual straighten interacting with band order"
+      ],
+      "touches": [
+        "src/core/view/fileHub.ts",
+        "src/core/view/alluvial.ts",
+        "src/stage/polish/",
+        "src/shell/ (controls / view options if landed)",
+        "src/client/ (UI chrome for sort dropdown + residual checkbox)",
+        ".grok/reference/hub-alluvial-behavior.md",
+        ".grok/reference/hub-alluvial-field-notes.md",
+        ".grok/reference/analysis-honesty.md"
+      ],
+      "related": [
+        "analysis-capability-honesty",
+        "exact-surface-mode-futures",
+        "alluvial-top-pack-rename-split",
+        "segmented-relative-path-labels",
+        "geometric-vs-knot-architecture",
+        "hierarchical-heatmap-lens"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: hub alluvial bar heights do not sum to file total LOC; residual private body not imported or not exported; not-exported or not-imported band experiment; stabilizing band order across clicks or re-renders"
     },
     {
       "id": "dependency-structure-matrix",
