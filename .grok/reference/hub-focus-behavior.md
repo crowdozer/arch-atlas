@@ -1,8 +1,9 @@
 # Hub alluvial focus — behavioral matrix
 
-**Status:** foundational product law (ship `5ee2b6cf`)  
+**Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`)  
 **Code SoR:** `src/client/focus/logicalFocusGraph.ts` (plan),  
 `src/client/focus/displayInventory.ts` + `focusApply.ts` (drawn bands),  
+`src/client/focus/focusHarness.ts` (test observation: plan + inventory classify + MiniEl apply),  
 thin wire in `src/client/app.ts`  
 **Geometry matrix (orthogonal):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)  
 **Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
@@ -156,6 +157,24 @@ After polish (or simulated from payload + pairs):
 
 Undrawn pair Carbon links are **not** drawn bands. Apply classifies **every**
 drawn band as **focus** or **dim** (no third state). Pad-bands never focus.
+
+### 4a. Observation harness (tests)
+
+Do **not** pin blue tracks with Carbon mounts or screenshots as the primary
+oracle. Use `observeHubFocus` / `observeHubFocusApplied` in
+`focusHarness.ts`:
+
+| Layer | Observable |
+| ----- | ---------- |
+| Plan | `activeLabels`, `focusedBandKeys` |
+| Drawn inventory | `listDrawnBandsFromPayload` keys |
+| Classify | every inventory band → `focus` \| `dim` |
+| Apply (MiniEl) | `atlas-alluvial-carbon-link-focus` / `-dim` on those paths |
+
+Invariant pin (`focusHarness.test.ts`, fixture `fixtures/codebreaker-focus`):
+Buffer hover → sibling **index→useCodebreaker** drawn band is **dim**;
+Buffer→hook and hook→deps are **focus**. FAQ is the control sibling (no hook
+import).
 
 ---
 
