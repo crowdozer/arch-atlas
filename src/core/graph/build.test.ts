@@ -63,7 +63,6 @@ describe('buildGraph fixture', () => {
 		const catalog = buildMapCatalog(graph);
 		expect(catalog.starts[0]?.path).toBe('src/index.ts');
 		expect(catalog.ends.some((e) => e.label === 'zod')).toBe(true);
-		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
 	it('projects alluvial from start (imports → file)', () => {

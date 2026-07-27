@@ -19,7 +19,6 @@ import type {
 	CodeGraph,
 	MapCatalog,
 	SpineFormula,
-	SuggestedView,
 } from '@core/graph/types.ts';
 import {
 	buildFileTree,
@@ -78,7 +77,6 @@ export type AgentDigestCatalog = {
 	icebergs: CatalogIceberg[];
 	/** Cross-cutting spines (topology). */
 	spines: CatalogSpine[];
-	views: SuggestedView[];
 };
 
 export type AgentDigestAnalysis = {
@@ -335,7 +333,6 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			publicMass,
 			icebergs,
 			spines,
-			views: catalog.views,
 		},
 		catalogEstimateFileLoc,
 		graph: { files, packages, edges },

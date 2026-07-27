@@ -280,16 +280,6 @@ export type CatalogIceberg = {
 	epistemic: 'observed';
 };
 
-export type SuggestedView = {
-	id: string;
-	title: string;
-	description: string;
-	startId: string;
-	/** Outgoing edges from the start (when known). */
-	edgeCount?: number;
-	epistemic: Epistemic;
-};
-
 export type MapCatalog = {
 	starts: CatalogStart[];
 	ends: CatalogEnd[];
@@ -315,7 +305,6 @@ export type MapCatalog = {
 	spines: CatalogSpine[];
 	/** Formula used to rank `spines` (optional stamp). */
 	spineFormula?: SpineFormula;
-	views: SuggestedView[];
 	summary: {
 		sourceCount: number;
 		packageCount: number;

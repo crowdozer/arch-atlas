@@ -221,7 +221,6 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		expect(catalog.deepest.length).toBeGreaterThan(3);
 		expect(catalog.starts.length).toBeGreaterThan(0);
 		expect(catalog.ends.length).toBeGreaterThan(0);
-		expect(catalog.views.length).toBeGreaterThan(0);
 	});
 
 	it('every tree-depth entry: hub open conserves', () => {
@@ -354,16 +353,6 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			assertColumnConservation(payload, `start ${s.path}`);
 			assertNodeRefCoversNamedNodes(payload, `start ${s.path}`);
 			expect(focusIncidentMass(payload)).toBe(s.outDegree + s.inDegree);
-		}
-	});
-
-	it('every suggested view startId resolves to a non-empty alluvial', () => {
-		for (const v of catalog.views) {
-			const payload = payloadForFileClick(graph, v.startId);
-			expect(payload, `view ${v.id}`).not.toBeNull();
-			assertColumnConservation(payload!, `view ${v.id}`);
-			assertNodeRefCoversNamedNodes(payload!, `view ${v.id}`);
-			expect(totalValue(payload!)).toBeGreaterThan(0);
 		}
 	});
 

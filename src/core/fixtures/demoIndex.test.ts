@@ -64,8 +64,5 @@ describe('demo fixtures index', () => {
 		expect(catalog.blastRadius.length).toBeGreaterThan(0);
 		expect(catalog.blastRadius[0]!.reverseReachFiles).toBeGreaterThan(0);
 		expect(catalog.blastRadius.every((b) => b.epistemic === 'observed')).toBe(true);
-
-		const viewIds = catalog.views.map((v) => v.id);
-		expect(viewIds.some((id) => id.startsWith('blast:'))).toBe(true);
 	});
 });

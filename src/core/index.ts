@@ -24,7 +24,6 @@ export type {
 	MapCatalog,
 	ParseMapEntry,
 	SpineFormula,
-	SuggestedView,
 	VirtualFile,
 } from '@core/graph/types.ts';
 export {

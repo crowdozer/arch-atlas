@@ -157,7 +157,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		const icebergsN = catalog.icebergs?.length ?? 0;
 		const spinesN = catalog.spines?.length ?? 0;
 		const blastN = catalog.blastRadius?.length ?? 0;
-		const viewsN = catalog.views.length;
 		const startsN = Math.min(catalog.starts.length, 25);
 		const endsN = Math.min(catalog.ends.length, 30);
 		setAccordionTitle(
@@ -193,14 +192,13 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			`Blast radius${blastN ? ` (${blastN})` : ''}`,
 		);
 		setAccordionTitle(
-			'atlas-acc-views',
-			`Suggested views${viewsN ? ` (${viewsN})` : ''}`,
-		);
-		setAccordionTitle(
 			'atlas-acc-starts',
 			`Starts${startsN ? ` (${startsN})` : ''}`,
 		);
-		setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
+		setAccordionTitle(
+			'atlas-acc-ends',
+			`External${endsN ? ` (${endsN})` : ''}`,
+		);
 
 		const formula =
 			deps.getSpineFormula?.() ??
@@ -430,66 +428,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			}
 			if (!list.length) {
 				blastHost.innerHTML = `<p class="text-xs text-zinc-600">No reverse consumers yet.</p>`;
-			}
-		}
-
-		const viewsHost = $('atlas-views');
-		if (viewsHost) {
-			viewsHost.innerHTML = '';
-			for (const v of catalog.views) {
-				const btn = document.createElement('button');
-				btn.type = 'button';
-				btn.className = 'atlas-list-btn';
-				if (selectedStart === v.startId) btn.classList.add('is-selected');
-				const startMeta = catalog.starts.find((s) => s.id === v.startId);
-				const hotMeta = catalog.hotspots?.find((h) => h.id === v.startId);
-				const deepMeta = catalog.deepest?.find((d) => d.id === v.startId);
-				const complexMeta = catalog.complex?.find((c) => c.id === v.startId);
-				const fileLocMeta = catalog.fileLoc?.find((f) => f.id === v.startId);
-				const blastMeta = catalog.blastRadius?.find((b) => b.id === v.startId);
-				const spineMeta = catalog.spines?.find((s) => s.id === v.startId);
-				const outD =
-					startMeta?.outDegree ??
-					hotMeta?.outDegree ??
-					complexMeta?.outDegree ??
-					deepMeta?.outDegree ??
-					fileLocMeta?.outDegree ??
-					blastMeta?.outDegree ??
-					spineMeta?.outDegree ??
-					v.edgeCount ??
-					0;
-				const inD =
-					startMeta?.inDegree ??
-					hotMeta?.inDegree ??
-					complexMeta?.inDegree ??
-					deepMeta?.inDegree ??
-					fileLocMeta?.inDegree ??
-					blastMeta?.inDegree ??
-					spineMeta?.inDegree ??
-					0;
-				const badge =
-					typeof v.edgeCount === 'number' ||
-					startMeta ||
-					hotMeta ||
-					complexMeta ||
-					deepMeta ||
-					fileLocMeta ||
-					blastMeta ||
-					spineMeta
-						? edgeBadge(outD, inD)
-						: '';
-				btn.innerHTML = `
-				<span class="atlas-list-btn__row">
-					<strong class="text-sm text-zinc-100">${escapeHtml(v.title)}</strong>
-					${badge}
-				</span>
-				<span class="meta">${escapeHtml(v.description)}</span>`;
-				// Catalog bins only choose startId; projector is always file-hub
-				btn.addEventListener('click', () => deps.selectStart(v.startId));
-				viewsHost.appendChild(btn);
-			}
-			if (!catalog.views.length) {
-				viewsHost.innerHTML = `<p class="text-xs text-zinc-600">No views — no source files found.</p>`;
 			}
 		}
 

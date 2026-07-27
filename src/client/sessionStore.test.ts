@@ -62,7 +62,6 @@ describe('sessionStore encode/parse', () => {
 				publicMass: [],
 				icebergs: [],
 				spines: [],
-				views: [],
 				summary: {
 					sourceCount: 1,
 					packageCount: 0,
@@ -107,7 +106,6 @@ describe('sessionStore encode/parse', () => {
 				publicMass: [],
 				icebergs: [],
 				spines: [],
-				views: [],
 				summary: {
 					sourceCount: 2,
 					packageCount: 0,
