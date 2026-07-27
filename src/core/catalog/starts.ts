@@ -40,6 +40,13 @@ const COMMON_ENTRIES = [
 	'pages/_app.js',
 	'pages/index.tsx',
 	'pages/index.js',
+	// Python common entries (avoid treating app/**/*.py as framework routes)
+	'main.py',
+	'app.py',
+	'app/main.py',
+	'__main__.py',
+	'src/main.py',
+	'manage.py',
 ];
 
 function packageEntryPaths(graph: CodeGraph): string[] {
@@ -98,13 +105,23 @@ function packageEntryPaths(graph: CodeGraph): string[] {
 	return out;
 }
 
+/** JS/TS (and common ESM/CJS) source extensions — not Python/other. */
+function isJsTsSourcePath(path: string): boolean {
+	return /\.(m?[jt]sx?|cjs|mjs)$/.test(path);
+}
+
+/**
+ * Framework route / page signals for JS/TS only.
+ * Must not promote Python package modules under `app/` (e.g. app/__init__.py).
+ * Next App Router: named page/layout/route files; Pages/Remix: JS/TS under pages|routes.
+ */
 function isFrameworkish(path: string): boolean {
-	return (
-		/(^|\/)(pages|routes|app)\//.test(path) ||
-		/(^|\/)page\.(t|j)sx?$/.test(path) ||
-		/(^|\/)route\.(t|j)sx?$/.test(path) ||
-		/(^|\/)layout\.(t|j)sx?$/.test(path)
-	);
+	// Named Next/Remix-style route files (JS/TS extensions only)
+	if (/(^|\/)(page|layout|route)\.(t|j)sx?$/.test(path)) return true;
+	// Pages Router / routes dirs: only JS/TS sources (not bare dir membership)
+	if (/(^|\/)(pages|routes)\//.test(path) && isJsTsSourcePath(path)) return true;
+	// Do not treat bare `app/**` as framework — Python packages collide with Next app/
+	return false;
 }
 
 export type CatalogStartsResult = {
@@ -229,10 +246,20 @@ export function catalogStartsSplit(graph: CodeGraph, limit = 40): CatalogStartsR
 
 	// ensure at least something if graph has sources
 	if (!starts.length) {
-		const sources = [...graph.files.values()]
+		const ranked = [...graph.files.values()]
 			.filter((f) => f.isSource)
-			.sort((a, b) => a.path.localeCompare(b.path));
-		for (const f of sources.slice(0, 10)) {
+			.map((f) => {
+				const degree = (inDeg.get(f.path) ?? 0) + (outDeg.get(f.path) ?? 0);
+				return { f, degree };
+			})
+			// Prefer edged sources first; avoid zero-degree (__init__.py) when any edge exists
+			.sort(
+				(a, b) =>
+					b.degree - a.degree || a.f.path.localeCompare(b.f.path),
+			);
+		const edged = ranked.filter((r) => r.degree > 0);
+		const pick = edged.length > 0 ? edged : ranked;
+		for (const { f } of pick.slice(0, 10)) {
 			starts.push(
 				toStart(
 					f.path,
