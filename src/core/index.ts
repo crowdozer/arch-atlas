@@ -61,15 +61,11 @@ export {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 export {
-	DEFAULT_PACKAGE_LEAF_MODE,
 	HUB_DEFAULT_MAX_DEPTH,
 	NORMAL_DEFAULT_MAX_DEPTH,
-	PACKAGE_LEAF_MODES,
 	preferFileHubView,
 	projectFileHub,
-	resolvePackageLeafMode,
 } from '@core/view/fileHub.ts';
-export type { PackageLeafMode } from '@core/view/fileHub.ts';
 export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
 export {
 	callSitesForEdge,

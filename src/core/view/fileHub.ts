@@ -38,8 +38,8 @@
  * - Into File: reverse importer edges only
  * - Out of File: focus → file deps + focus package/unresolved
  *
- * **{@link PackageLeafMode}** placement no-op for export packages; still
- * controls plain hop labels (`per-hop` vs plain).
+ * **Hop labels:** plain path basenames (hop is column category only). Multi-instance
+ * dual-path extras still get `path · hN` for second+ instances of the same path.
  *
  * Integer multi-parent split conserves File incident mass (accepted default).
  */
@@ -83,36 +83,6 @@ const DEFAULT_MAX_MODULES = 12;
 export const HUB_DEFAULT_MAX_DEPTH = 3;
 /** Non-hub multi-hop default (tree maps). */
 export const NORMAL_DEFAULT_MAX_DEPTH = 7;
-
-/**
- * Dupes / hop-label control. Under file-pure export cascade, pin modes do **not**
- * place package leaves on Exports (that path was removed). Modes only affect
- * whether multi-hop file labels get · in/out hN suffixes (`per-hop` = suffixed).
- *
- * | Mode | Behavior (labels only) |
- * | ---- | ---------------------- |
- * | `pin-overdraw` | Plain hop file labels (default) |
- * | `pin-clip` | Plain hop file labels |
- * | `per-hop` | Legacy · in/out hN suffixes on multi-hop files |
- */
-export type PackageLeafMode = 'pin-overdraw' | 'pin-clip' | 'per-hop';
-
-export const PACKAGE_LEAF_MODES: readonly PackageLeafMode[] = [
-	'pin-overdraw',
-	'pin-clip',
-	'per-hop',
-] as const;
-
-export const DEFAULT_PACKAGE_LEAF_MODE: PackageLeafMode = 'pin-overdraw';
-
-export function resolvePackageLeafMode(
-	raw?: string | null,
-): PackageLeafMode {
-	if (raw === 'pin-clip' || raw === 'per-hop' || raw === 'pin-overdraw') {
-		return raw;
-	}
-	return DEFAULT_PACKAGE_LEAF_MODE;
-}
 
 /**
  * True when the file has both inbound and outbound edge activity.
@@ -167,8 +137,6 @@ export function exportRailId(stage: number): string {
  *
  * @param opts.maxDepth Viz-only dual BFS radius (default {@link HUB_DEFAULT_MAX_DEPTH}).
  *   Scan is unbounded.
- * @param opts.packageLeafMode Hop label style only under file-pure cascade
- *   (default {@link DEFAULT_PACKAGE_LEAF_MODE}).
  */
 export function projectFileHub(
 	graph: CodeGraph,
@@ -181,7 +149,6 @@ export function projectFileHub(
 		/** Viz-only dual hop radius. Does not affect indexing. */
 		maxDepth?: number;
 		weightAxis?: WeightAxis;
-		packageLeafMode?: PackageLeafMode;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
@@ -192,7 +159,6 @@ export function projectFileHub(
 	const maxModules = opts?.maxModules ?? DEFAULT_MAX_MODULES;
 	const hubRadius = Math.max(1, Math.floor(opts?.maxDepth ?? HUB_DEFAULT_MAX_DEPTH));
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const packageLeafMode = resolvePackageLeafMode(opts?.packageLeafMode);
 	const units = unitsForAxis(weightAxis, 'import-edges');
 
 	const inEdges = graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId);
@@ -270,8 +236,6 @@ export function projectFileHub(
 				hubRadius,
 				maxPerHop: Math.min(48, maxImporters),
 				weightAxis,
-				// Plain labels unless legacy per-hop suffix mode
-				plainHopLabels: packageLeafMode !== 'per-hop',
 				addLink,
 				nodeRef,
 				nodeMeta,
@@ -296,7 +260,6 @@ export function projectFileHub(
 		hubRadius,
 		maxPerHop: Math.min(48, maxDeps),
 		weightAxis,
-		packageLeafMode,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -421,7 +384,7 @@ export function projectFileHub(
 		nodeRef,
 		startId: fileId,
 		units,
-		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius}, packages ${packageLeafMode})`,
+		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius})`,
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: exportTerminators.length
 			? exportTerminators
@@ -927,8 +890,6 @@ function addImportRings(
 		inEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
-		/** When true, skip · in hN suffixes (pin modes use plain labels). */
-		plainHopLabels?: boolean;
 		classicLabels?: Map<string, string>;
 	},
 ): string[] {
@@ -940,7 +901,6 @@ function addImportRings(
 		hubRadius,
 		maxPerHop,
 		weightAxis,
-		plainHopLabels = false,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -993,18 +953,8 @@ function addImportRings(
 		const otherCount = ranked.length - kept.length;
 
 		if (otherCount > 0) {
-			const preferred = hopOverflowDisplay(
-				moreCountLabel(otherCount),
-				'in',
-				d,
-				radiusL,
-				plainHopLabels,
-			);
-			const otherName = claimName(
-				usedNames,
-				preferred,
-				plainHopLabels ? 'more' : `in h${d}`,
-			);
+			const preferred = moreCountLabel(otherCount);
+			const otherName = claimName(usedNames, preferred, 'more');
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(f, otherName);
 			}
@@ -1018,12 +968,7 @@ function addImportRings(
 		const pathLabels = classicLabels ?? uniqueFileLabels(kept);
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
-			const preferred = hopNodeDisplay(base, 'in', d, radiusL, plainHopLabels);
-			const name = claimName(
-				usedNames,
-				preferred,
-				plainHopLabels ? 'file' : `in h${d}`,
-			);
+			const name = claimName(usedNames, base, 'file');
 			display.set(f, name);
 			nodeRef[name] = { kind: 'file', id: f };
 			nodeMeta.set(name, {
@@ -1194,7 +1139,6 @@ function addExportRings(
 		outEdges: ImportEdge[];
 		hubRadius: number;
 		maxPerHop: number;
-		packageLeafMode: PackageLeafMode;
 		classicLabels?: Map<string, string>;
 	},
 ): ImportTreePadResult {
@@ -1205,7 +1149,6 @@ function addExportRings(
 		outEdges,
 		hubRadius,
 		maxPerHop,
-		packageLeafMode,
 		weightAxis,
 		addLink,
 		nodeRef,
@@ -1213,7 +1156,6 @@ function addExportRings(
 		usedNames,
 		classicLabels,
 	} = args;
-	const plainHopLabels = packageLeafMode !== 'per-hop';
 
 	const fwdAdj = fileImportAdj(graph);
 	// Longest path: format→types stays at hop 2 when types is also a direct dep
@@ -1363,18 +1305,8 @@ function addExportRings(
 		const otherCount = ranked.length - kept.length;
 
 		if (otherCount > 0) {
-			const preferred = hopOverflowDisplay(
-				moreCountLabel(otherCount),
-				'out',
-				d,
-				radiusR,
-				plainHopLabels,
-			);
-			const otherName = claimName(
-				usedNames,
-				preferred,
-				plainHopLabels ? 'more' : `out h${d}`,
-			);
+			const preferred = moreCountLabel(otherCount);
+			const otherName = claimName(usedNames, preferred, 'more');
 			for (const f of files) {
 				if (!keptSet.has(f)) display.set(ik(f, d), otherName);
 			}
@@ -1395,13 +1327,11 @@ function addExportRings(
 				(sd) => sd >= 1 && display.has(ik(f, sd)),
 			);
 			const isExtraInstance = d > 1 && (fileSeed.has(f) || hasShallower);
-			const preferred = isExtraInstance
-				? `${base} · h${d}`
-				: hopNodeDisplay(base, 'out', d, radiusR, plainHopLabels);
+			const preferred = isExtraInstance ? `${base} · h${d}` : base;
 			const name = claimName(
 				usedNames,
 				preferred,
-				isExtraInstance ? `h${d}` : plainHopLabels ? 'file' : `out h${d}`,
+				isExtraInstance ? `h${d}` : 'file',
 			);
 			display.set(ik(f, d), name);
 			nodeRef[name] = { kind: 'file', id: f };
@@ -1519,51 +1449,6 @@ function edgeWeightFromSet(
 		n += edgeWeight(e, graph, weightAxis);
 	}
 	return n;
-}
-
-/** Display label: plain at dist-1 when single-hop; hop/side suffix when multi-hop. */
-function hopFileLabel(
-	base: string,
-	side: 'in' | 'out',
-	dist: number,
-	radius: number,
-): string {
-	if (radius <= 1 && dist <= 1) return base;
-	if (dist <= 1) return `${base} · ${side}`;
-	return `${base} · ${side} h${dist}`;
-}
-
-function hopOverflowLabel(
-	base: string,
-	side: 'in' | 'out',
-	dist: number,
-): string {
-	return `${base} · ${side} h${dist}`;
-}
-
-/**
- * Pin-far modes: plain path labels (hop is column category only).
- * Per-hop: keep · in/out hN for cross-column identity.
- */
-function hopNodeDisplay(
-	base: string,
-	side: 'in' | 'out',
-	dist: number,
-	radius: number,
-	plain: boolean,
-): string {
-	return plain ? base : hopFileLabel(base, side, dist, radius);
-}
-
-function hopOverflowDisplay(
-	base: string,
-	side: 'in' | 'out',
-	dist: number,
-	radius: number,
-	plain: boolean,
-): string {
-	if (plain || radius <= 1) return base;
-	return hopOverflowLabel(base, side, dist);
 }
 
 function addImportModules(

@@ -21,7 +21,6 @@ import {
 	importHopCategory,
 	preferFileHubView,
 	projectFileHub,
-	type PackageLeafMode,
 } from '@core/view/fileHub.ts';
 
 const fixturesRoot = path.join(
@@ -801,13 +800,12 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		}
 	}
 
-	it('main.tsx pin-clip: focus packages on External; no export package leaves', () => {
+	it('main.tsx: focus packages on External; no export package leaves', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 3,
 			maxDeps: 48,
 			maxImporters: 48,
 			weightAxis: 'importer-loc',
-			packageLeafMode: 'pin-clip',
 		})!;
 		assertNoSameCategoryFileEdges(payload);
 
@@ -832,33 +830,10 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		);
 		expect(rrdExport).toHaveLength(0);
 		expect(reactExport).toHaveLength(0);
-	});
 
-	it('main.tsx pin-overdraw: focus on Imports; no export package leaves', () => {
-		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
-			maxDepth: 3,
-			maxDeps: 48,
-			weightAxis: 'importer-loc',
-			packageLeafMode: 'pin-overdraw',
-		})!;
-		assertNoSameCategoryFileEdges(payload);
-
-		const reactImport = packageNodesOnCategory(payload, 'react', 'External');
-		expect(reactImport).toHaveLength(1);
-		expect(reactImport[0]!.name).toBe('react');
-
-		const reactExport = packageNodesOnCategory(
-			payload,
-			'react',
-			(c) => c === 'Exports' || c.startsWith('Export hop'),
-		);
-		expect(reactExport).toHaveLength(0);
-		const rrdExport = packageNodesOnCategory(
-			payload,
-			'react-router-dom',
-			(c) => c === 'Exports' || c.startsWith('Export hop'),
-		);
-		expect(rrdExport).toHaveLength(0);
+		// Only External copy per package id
+		expect(packageNodes(payload, 'react-router-dom')).toHaveLength(1);
+		expect(packageNodes(payload, 'react')).toHaveLength(1);
 
 		// File import tree still present (App etc. on Imports)
 		const importFiles = payload.options.alluvial.nodes.filter(
@@ -869,30 +844,11 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		expect(importFiles.length).toBeGreaterThan(0);
 	});
 
-	it('main.tsx per-hop: focus package on Imports only; export side file-pure', () => {
-		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
-			maxDepth: 3,
-			maxDeps: 48,
-			weightAxis: 'importer-loc',
-			packageLeafMode: 'per-hop',
-		})!;
-		assertNoSameCategoryFileEdges(payload);
-
-		const rrdImport = packageNodesOnCategory(payload, 'react-router-dom', 'External');
-		expect(rrdImport.length).toBeGreaterThanOrEqual(1);
-
-		const rrd = packageNodes(payload, 'react-router-dom');
-		// Only External copy — no structural export package leaves
-		expect(rrd).toHaveLength(1);
-		expect(rrd[0]!.category).toBe('External');
-	});
-
-	it('main.tsx pin-clip depth=1: focus packages on External (not Exports)', () => {
+	it('main.tsx depth=1: focus packages on External; no export hop columns', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 1,
 			maxDeps: 48,
 			weightAxis: 'importer-loc',
-			packageLeafMode: 'pin-clip',
 		})!;
 		const importRrd = packageNodesOnCategory(payload, 'react-router-dom', 'External');
 		expect(importRrd).toHaveLength(1);
@@ -915,82 +871,19 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 		).toBe(false);
 	});
 
-	it('main.tsx pin-overdraw depth=1: focus on Imports; no intermediate package overdraw', () => {
-		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
-			maxDepth: 1,
-			maxDeps: 48,
-			weightAxis: 'importer-loc',
-			packageLeafMode: 'pin-overdraw',
-		})!;
-		const rrdImport = packageNodesOnCategory(payload, 'react-router-dom', 'External');
-		expect(rrdImport).toHaveLength(1);
-		expect(rrdImport[0]!.name).toBe('react-router-dom');
-
-		// File-pure cascade: no package pin columns past Depth
-		const rrdExport = packageNodesOnCategory(
-			payload,
-			'react-router-dom',
-			(c) => c === 'Exports' || c.startsWith('Export hop'),
-		);
-		expect(rrdExport).toHaveLength(0);
-		expect(
-			payload.options.alluvial.nodes.some((n) =>
-				n.category.startsWith('Export hop'),
-			),
-		).toBe(false);
-	});
-
-	it('pin-far modes: no · in/out hN on file labels', () => {
-		for (const mode of ['pin-clip', 'pin-overdraw'] as const) {
-			const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
-				maxDepth: 3,
-				maxDeps: 48,
-				weightAxis: 'importer-loc',
-				packageLeafMode: mode,
-			})!;
-			for (const n of payload.options.alluvial.nodes) {
-				// Rails / zero-width pads may exist; skip pure buckets without labels
-				if (n.name.includes('\u200b')) continue;
-				expect(n.name, `${mode} ${n.category} ${n.name}`).not.toMatch(
-					/ · (?:in|out)(?: h\d+)?$/,
-				);
-				expect(n.name, `${mode} ${n.name}`).not.toMatch(/ · (?:in|out) h\d+/);
-			}
-		}
-	});
-
-	it('per-hop suffixes multi-hop file labels (not package leaves)', () => {
+	it('plain hop labels: no · in/out hN suffixes', () => {
 		const payload = projectFileHub(simpleGraph, 'src/main.tsx', {
 			maxDepth: 3,
 			maxDeps: 48,
 			weightAxis: 'importer-loc',
-			packageLeafMode: 'per-hop',
 		})!;
-		const hopFiles = payload.options.alluvial.nodes.filter(
-			(n) =>
-				(n.category.startsWith('Export hop') ||
-					n.category.startsWith('Import hop')) &&
-				payload.meta.nodeRef[n.name]?.kind === 'file',
-		);
-		expect(hopFiles.some((n) => / · (?:in|out) h\d+/.test(n.name))).toBe(true);
-		// Still no export-side packages under per-hop
-		const exportPkgs = payload.options.alluvial.nodes.filter(
-			(n) =>
-				(n.category === 'Exports' || n.category.startsWith('Export hop')) &&
-				payload.meta.nodeRef[n.name]?.kind === 'package',
-		);
-		expect(exportPkgs).toHaveLength(0);
-	});
-
-	it('resolvePackageLeafMode accepts the three modes', () => {
-		const modes: PackageLeafMode[] = ['pin-overdraw', 'pin-clip', 'per-hop'];
-		for (const m of modes) {
-			expect(
-				projectFileHub(simpleGraph, 'src/main.tsx', {
-					maxDepth: 2,
-					packageLeafMode: m,
-				}),
-			).not.toBeNull();
+		for (const n of payload.options.alluvial.nodes) {
+			// Rails / zero-width pads may exist; skip pure buckets without labels
+			if (n.name.includes('\u200b')) continue;
+			expect(n.name, `${n.category} ${n.name}`).not.toMatch(
+				/ · (?:in|out)(?: h\d+)?$/,
+			);
+			expect(n.name, n.name).not.toMatch(/ · (?:in|out) h\d+/);
 		}
 	});
 });

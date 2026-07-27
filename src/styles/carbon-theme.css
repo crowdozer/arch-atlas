@@ -989,7 +989,7 @@ cds-search.atlas-tree-search {
   min-width: 0;
 }
 
-/* Depth/Dupes leave layout when disabled (package/module views free ~16rem) */
+/* Depth leaves layout when disabled (package/module views free space) */
 .atlas-stage__control-group.is-depth-disabled {
   display: none;
 }
@@ -1016,20 +1016,6 @@ cds-search.atlas-tree-search {
  * Carbon form-items default to flex: 1 1 auto + column layout.
  * Force a fixed field width and single-row host (modestly tighter than prior).
  */
-/* Package-leaf mode — room for "Pin far · overdraw" */
-cds-dropdown.atlas-stage__pkg-mode,
-.atlas-stage__pkg-mode {
-  box-sizing: border-box;
-  display: block !important;
-  flex: 0 0 10rem !important;
-  flex-direction: row !important;
-  width: 10rem !important;
-  max-width: 10rem !important;
-  min-width: 0 !important;
-  height: 2rem;
-  align-self: center;
-}
-
 cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
@@ -1141,8 +1127,7 @@ button.atlas-stage__mode-btn.is-active:hover {
 
 cds-dropdown.atlas-stage__weight,
 cds-dropdown.atlas-stage__depth,
-cds-dropdown.atlas-stage__precision,
-cds-dropdown.atlas-stage__pkg-mode {
+cds-dropdown.atlas-stage__precision {
   position: relative;
   z-index: 2; /* open list above mode segment */
 }
