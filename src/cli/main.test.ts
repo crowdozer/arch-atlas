@@ -1,7 +1,7 @@
 /**
  * CLI smoke: import runCli against fixture, parse JSON.
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -225,6 +225,42 @@ describe('runCli', () => {
 		// Default full scope stamp when not product
 		expect(parsed.scope?.presets).toEqual(['full']);
 		expect(parsed.scope?.includeTests).toBe(true);
+		// P2 envelope: rewrite-map + L2 when alias helps
+		expect(parsed.analysis?.protocol).toBe('arch-atlas.analysis.v1');
+		expect(parsed.analysis?.capabilities).toEqual(
+			expect.arrayContaining(['L0', 'L1', 'L2']),
+		);
+		expect(parsed.analysis?.capabilityDetail?.aliases).toBe('rewrite-map');
+	});
+
+	it('digest --artifact writes arch-atlas.artifact.v1 wrapper', async () => {
+		capture();
+		const dir = mkdtempSync(path.join(tmpdir(), 'atlas-artifact-'));
+		tempDirs.push(dir);
+		const artPath = path.join(dir, 'a.atlas.json');
+		const outPath = path.join(dir, 'd.json');
+		const code = await runCli([
+			'digest',
+			artilleryFixtureDir,
+			'--estimate',
+			'--limit',
+			'10',
+			'--out',
+			outPath,
+			'--artifact',
+			artPath,
+		]);
+		expect(code).toBe(0);
+		const digest = JSON.parse(readFileSync(outPath, 'utf8'));
+		const art = JSON.parse(readFileSync(artPath, 'utf8'));
+		expect(digest.schema).toBe('arch-atlas.agent-digest.v1');
+		expect(digest.analysis?.protocol).toBe('arch-atlas.analysis.v1');
+		expect(art.schema).toBe('arch-atlas.artifact.v1');
+		expect(art.format).toBe('agent-digest');
+		expect(art.payload?.schema).toBe('arch-atlas.agent-digest.v1');
+		expect(art.payload?.analysis?.capabilities).toEqual(
+			expect.arrayContaining(['L0', 'L1', 'L2']),
+		);
 	});
 
 	it('digest rejects invalid --scope and --alias', async () => {

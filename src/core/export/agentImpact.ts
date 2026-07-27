@@ -14,6 +14,11 @@ import {
 	ANALYSIS_HONESTY,
 	type AgentDigestGraphEdge,
 } from '@core/export/agentDigest.ts';
+import {
+	buildAnalysisEnvelope,
+	envelopeFields,
+	type AnalysisEnvelopeFields,
+} from '@core/export/analysisEnvelope.ts';
 import { fileInDegree, fileOutDegree } from '@core/view/fileImporters.ts';
 
 export const AGENT_IMPACT_SCHEMA = 'arch-atlas.agent-impact.v1' as const;
@@ -65,7 +70,7 @@ export type AgentImpact = {
 	analysis: {
 		tier: 'estimate';
 		honesty: string;
-	};
+	} & AnalysisEnvelopeFields;
 	refs: {
 		base: string;
 		head: string;
@@ -330,12 +335,20 @@ export function buildAgentImpact(input: BuildAgentImpactInput): AgentImpact {
 		);
 	}
 
+	// P2 envelope from head graph (delta lens; topology-only — never Exact mass)
+	const envelope = buildAnalysisEnvelope({
+		graph: headG,
+		exactApplied: false,
+		honesty: ANALYSIS_HONESTY_IMPACT,
+	});
+
 	return {
 		schema: AGENT_IMPACT_SCHEMA,
 		generatedAt,
 		analysis: {
 			tier: 'estimate',
-			honesty: ANALYSIS_HONESTY_IMPACT,
+			honesty: envelope.honesty,
+			...envelopeFields(envelope),
 		},
 		refs: { ...input.refs },
 		summary: {

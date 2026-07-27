@@ -33,6 +33,11 @@ import {
 	fileUniqueInDegree,
 	fileUniqueOutDegree,
 } from '@core/view/fileImporters.ts';
+import {
+	buildAnalysisEnvelope,
+	envelopeFields,
+	type AnalysisEnvelopeFields,
+} from '@core/export/analysisEnvelope.ts';
 
 export const AGENT_DIGEST_SCHEMA = 'arch-atlas.agent-digest.v1' as const;
 export const AGENT_TREE_SCHEMA = 'arch-atlas.agent-tree.v1' as const;
@@ -171,7 +176,7 @@ export type AgentDigestAnalysis = {
 		/** True when classic createSourceFile AST was used for spans. */
 		classicAst?: boolean;
 	};
-};
+} & AnalysisEnvelopeFields;
 
 export type AgentDigestSummary = MapCatalog['summary'] & {
 	/** External packages only (alias of packageCount). */
@@ -242,6 +247,10 @@ export type AgentTreeNode = {
 	edgeOut?: number;
 };
 
+export type AgentTreeAnalysis = {
+	honesty: string;
+} & AnalysisEnvelopeFields;
+
 export type AgentTreeOut = {
 	schema: typeof AGENT_TREE_SCHEMA;
 	generatedAt: string;
@@ -249,6 +258,10 @@ export type AgentTreeOut = {
 	warnings: string[];
 	/** full = verbose file leaves; summary = directory rolls. */
 	mode?: 'full' | 'summary';
+	/** P2 analysis-protocol envelope (capabilities / completeness). */
+	analysis?: AgentTreeAnalysis;
+	/** Optional scope stamp (omit / alias / feed). */
+	scope?: AgentDigestScope;
 	tree: AgentTreeNode | FileTreeNode;
 };
 
@@ -302,7 +315,7 @@ export type AgentFileAnalysis = {
 	/** Capability matrix for this lens. */
 	fileLens: AgentFileLensCapabilities;
 	honesty: string;
-};
+} & AnalysisEnvelopeFields;
 
 export type AgentFileReport = {
 	schema: typeof AGENT_FILE_SCHEMA;
@@ -468,11 +481,21 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	const spines = catalog.spines ?? [];
 	const spineFormula =
 		catalog.spineFormula ?? DEFAULT_SPINE_FORMULA;
+	const scope = resolveScope(source, input.scope, Boolean(exact));
+	const envelope = buildAnalysisEnvelope({
+		graph,
+		exactApplied: Boolean(exact),
+		aliasRewrites: scope.aliasRewrites,
+		honesty: exact ? ANALYSIS_HONESTY_EXACT : ANALYSIS_HONESTY,
+	});
+	const protocol = envelopeFields(envelope);
+
 	let analysis: AgentDigestAnalysis = {
 		tier: 'estimate',
-		honesty: ANALYSIS_HONESTY,
+		honesty: envelope.honesty,
 		locMetric: 'whole-file',
 		spineFormula,
+		...protocol,
 	};
 
 	if (exact) {
@@ -489,7 +512,7 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		icebergs = mass.icebergs;
 		analysis = {
 			tier: 'exact',
-			honesty: ANALYSIS_HONESTY_EXACT,
+			honesty: envelope.honesty,
 			locMetric: 'export-surface',
 			surfaceMetricNote: SURFACE_METRIC_NOTE,
 			spineFormula,
@@ -497,14 +520,13 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 				source: exact.engineSource,
 				classicAst: exact.classicAst,
 			},
+			...protocol,
 		};
 		warnings.push(
 			`Exact export-surface LOC via engine source=${exact.engineSource}` +
 				(exact.classicAst ? ' (classic AST)' : ' (text fallback spans)'),
 		);
 	}
-
-	const scope = resolveScope(source, input.scope, Boolean(exact));
 
 	const summary: AgentDigestSummary = {
 		...catalog.summary,
@@ -647,6 +669,7 @@ export function buildAgentTree(input: {
 	warnings?: string[];
 	generatedAt?: string;
 	mode?: 'full' | 'summary';
+	scope?: Partial<AgentDigestScope>;
 }): AgentTreeOut {
 	const { graph } = input;
 	const mode = input.mode ?? 'summary';
@@ -671,12 +694,25 @@ export function buildAgentTree(input: {
 			? fullTreeNode(full)
 			: summarizeTree(full, 0, { maxLeafDepth: 3, smallFolderMax: 8 });
 
+	const scope = resolveScope(input.source, input.scope, false);
+	const envelope = buildAnalysisEnvelope({
+		graph,
+		exactApplied: false,
+		aliasRewrites: scope.aliasRewrites,
+		honesty: ANALYSIS_HONESTY,
+	});
+
 	return {
 		schema: AGENT_TREE_SCHEMA,
 		generatedAt: input.generatedAt ?? new Date().toISOString(),
 		source: input.source,
 		warnings: [...(input.warnings ?? [])],
 		mode,
+		analysis: {
+			honesty: envelope.honesty,
+			...envelopeFields(envelope),
+		},
+		scope,
 		tree,
 	};
 }
@@ -702,9 +738,16 @@ export function buildAgentFileReport(input: {
 	const limit = input.neighborLimit ?? 40;
 	const node = input.graph.files.get(path);
 	const scope = resolveScope(input.source, input.scope, false);
+	const envelope = buildAnalysisEnvelope({
+		graph: input.graph,
+		exactApplied: false,
+		aliasRewrites: scope.aliasRewrites,
+		honesty: ANALYSIS_HONESTY_FILE,
+	});
 	const analysis: AgentFileAnalysis = {
 		fileLens: FILE_LENS_CAPABILITIES,
-		honesty: ANALYSIS_HONESTY_FILE,
+		honesty: envelope.honesty,
+		...envelopeFields(envelope),
 	};
 
 	if (!node) {

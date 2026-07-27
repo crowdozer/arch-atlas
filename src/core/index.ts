@@ -231,10 +231,37 @@ export type {
 	AgentFileLensCapabilities,
 	AgentFileReport,
 	AgentScopePreset,
+	AgentTreeAnalysis,
 	AgentTreeNode,
 	AgentTreeOut,
 	BuildAgentDigestInput,
 } from '@core/export/agentDigest.ts';
+export {
+	ANALYSIS_PROTOCOL_ID,
+	PORTABLE_ARTIFACT_SCHEMA,
+	aliasHelpedResolve,
+	buildAnalysisEnvelope,
+	detectTsconfigAlias,
+	envelopeFields,
+	isPortableArtifact,
+	loadPortableArtifact,
+	toPortableArtifact,
+} from '@core/export/analysisEnvelope.ts';
+export type {
+	AnalysisCapability,
+	AnalysisCompleteness,
+	AnalysisEnvelope,
+	AnalysisEnvelopeFields,
+	BuildAnalysisEnvelopeInput,
+	CapabilityDetail,
+	CapabilityDetailAliases,
+	CapabilityDetailImportGraph,
+	CapabilityDetailMass,
+	CapabilityDetailTypeEdges,
+	EnvelopeAliasRewrite,
+	PortableArtifact,
+	PortableArtifactFormat,
+} from '@core/export/analysisEnvelope.ts';
 export {
 	AGENT_IMPACT_SCHEMA,
 	ANALYSIS_HONESTY_IMPACT,

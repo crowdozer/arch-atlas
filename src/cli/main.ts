@@ -21,6 +21,7 @@ import {
 	isDebugPath,
 	isTestPath,
 	parseAliasFlag,
+	toPortableArtifact,
 } from '@core/index.ts';
 import type { AgentAliasRewrite, AgentScopePreset } from '@core/index.ts';
 import { loadExactExportSurface } from './exactSurface.ts';
@@ -67,6 +68,11 @@ type GlobalOpts = {
 	 * Raw `--alias PATTERN=TARGET` values (repeatable).
 	 */
 	aliasRaw: string[];
+	/**
+	 * Digest: write portable `arch-atlas.artifact.v1` wrapper to this path
+	 * (stdout / --out remain bare agent-digest).
+	 */
+	artifact?: string;
 	help: boolean;
 };
 
@@ -113,12 +119,16 @@ Options:
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.
+  --artifact <p>  Digest: also write portable artifact wrapper
+                  (schema arch-atlas.artifact.v1, format agent-digest) to path.
+                  Bare digest still goes to stdout / --out.
   -h, --help      Show this help.
 
 Examples:
   arch-atlas digest . --omit fixtures
   arch-atlas digest . --omit fixtures --estimate --out runtime.json
   arch-atlas digest . --exact-local --out exact.json
+  arch-atlas digest fixtures/sample-ts-project --estimate --artifact /tmp/a.atlas.json
   arch-atlas digest fixtures/agent-artillery-shaped --scope product --alias '@/modules/artillery/*=./*'
   npm run atlas -- digest . --omit fixtures
   npm run atlas -- tree . --tree-full
@@ -189,6 +199,18 @@ function parseArgs(argv: string[]): {
 		}
 		if (a.startsWith('--out=')) {
 			opts.out = a.slice('--out='.length);
+			continue;
+		}
+		if (a === '--artifact') {
+			const v = argv[++i];
+			if (!v) return { command: '', opts, error: '--artifact requires a path' };
+			opts.artifact = v;
+			continue;
+		}
+		if (a.startsWith('--artifact=')) {
+			const v = a.slice('--artifact='.length);
+			if (!v) return { command: '', opts, error: '--artifact requires a path' };
+			opts.artifact = v;
 			continue;
 		}
 		if (a === '--limit') {
@@ -520,7 +542,16 @@ export async function runCli(argv: string[]): Promise<number> {
 				},
 			});
 			emitJson(digest, opts.out);
+			if (opts.artifact) {
+				emitJson(toPortableArtifact(digest), opts.artifact);
+			}
 			return 0;
+		}
+
+		if (opts.artifact) {
+			warnings.push(
+				'--artifact applies to digest only; ignored for this command.',
+			);
 		}
 
 		if (command === 'tree') {
@@ -529,6 +560,11 @@ export async function runCli(argv: string[]): Promise<number> {
 				source,
 				warnings,
 				mode: opts.treeFull ? 'full' : 'summary',
+				scope: {
+					...scopeBase,
+					exactRequested: false,
+					exactApplied: false,
+				},
 			});
 			emitJson(tree, opts.out);
 			return 0;
