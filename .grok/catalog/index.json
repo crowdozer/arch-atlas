@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T05:49:16Z",
+  "generated_at": "2026-07-27T17:18:34Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 10,
+  "count": 12,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -73,6 +73,7 @@
         "Imported LOC or Shaken weight labels",
         "claiming LSP or language server in product",
         "tree-shake or imported surface mass claims",
+        "public mass / iceberg / spine catalog bins",
         "VS Code extension Exact / multi-language plans",
         "inspect imported-code honesty",
         "README or scope analysis capability docs"
@@ -81,6 +82,9 @@
         "src/core/view/weight.ts",
         "src/core/view/importedSurface.ts",
         "src/core/view/inspect.ts",
+        "src/core/catalog/massBins.ts",
+        "src/core/catalog/spines.ts",
+        "src/core/export/agentDigest.ts",
         "src/client/exact/",
         "src/client/app.ts",
         "src/client/inspectModal.ts",
@@ -97,6 +101,47 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: Exact or Estimate precision UX copy; Imported LOC or Shaken weight labels; claiming LSP or language server in product; tree-shake or imported surface mass claims"
+    },
+    {
+      "id": "architecture-triage-freeze",
+      "kind": "plan",
+      "state": "partial",
+      "authority": "advisory",
+      "provenance": "ship",
+      "path": ".grok/catalog/entries/architecture-triage-freeze.md",
+      "scope": [
+        "architecture-triage",
+        "host-shared-exact",
+        "app-composition-root",
+        "hub-freeze",
+        "types-co-location",
+        "barrels"
+      ],
+      "applies_when": [
+        "thinning app.ts",
+        "moving Exact engines",
+        "hub or alluvial cleanup urge",
+        "types.ts split urge",
+        "barrel purge urge"
+      ],
+      "touches": [
+        "src/exact",
+        "src/client/app.ts",
+        "src/client/exactPaintMode.ts",
+        "src/client/sessionLifecycle.ts",
+        "src/client/wireUi.ts",
+        "src/cli/exactSurface.ts",
+        "src/core/view",
+        "src/core/graph/types.ts",
+        "src/core/index.ts"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "exact-surface-mode-futures",
+        "analysis-capability-honesty"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: thinning app.ts; moving Exact engines; hub or alluvial cleanup urge; types.ts split urge"
     },
     {
       "id": "dual-host-shell-stage",
@@ -139,6 +184,7 @@
         "src/client/renderCatalog.ts",
         "src/client/inspectModal.ts",
         "src/cli/",
+        "src/exact",
         "extension/",
         "hosts as injectors",
         "AlluvialChart mount",
@@ -430,6 +476,54 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: hierarchical heatmap or treemap for codebase mass; LOC geometry with switchable color heat; coupling heat fan-in fan-out overlay; catalog hotspots spatialized not only ranked lists"
+    },
+    {
+      "id": "mermaid-structure-graph",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/mermaid-structure-graph.md",
+      "scope": [
+        "mermaid",
+        "structure-graph",
+        "folder-tree",
+        "dependency-graph",
+        "agent-export",
+        "projections",
+        "epistemic-honesty",
+        "atlas-lenses"
+      ],
+      "applies_when": [
+        "automated mermaid graph or flowchart export",
+        "dependency + folder structure diagram (not domain map)",
+        "agent lens or ChatGPT-portable architecture sketch",
+        "structural overview without inferred features/domains",
+        "flowchart of packages or path prefixes from CodeGraph",
+        "mermaid flowchart TD or graph LR from import edges",
+        "second/third lens after alluvial for static structure",
+        "CLI digest/tree companion that renders as mermaid",
+        "avoiding force-directed hairball for agent handoff"
+      ],
+      "touches": [
+        "src/core/export agent digest / tree / future mermaid builder",
+        "src/core graph edges + packages",
+        "path-prefix package rollup (existing Level-1)",
+        "optional web stage or shell panel that embeds mermaid",
+        "interchangeable-atlas-lenses",
+        "dependency-structure-matrix",
+        "hierarchical-heatmap-lens",
+        "analysis-capability-honesty"
+      ],
+      "related": [
+        "interchangeable-atlas-lenses",
+        "dependency-structure-matrix",
+        "hierarchical-heatmap-lens",
+        "analysis-capability-honesty",
+        "geometric-vs-knot-architecture"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: automated mermaid graph or flowchart export; dependency + folder structure diagram (not domain map); agent lens or ChatGPT-portable architecture sketch; structural overview without inferred features/domains"
     },
     {
       "id": "segmented-relative-path-labels",
