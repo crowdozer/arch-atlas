@@ -8,6 +8,7 @@ import {
 	parseSpineFormula,
 	parseVizMaxDepth,
 	parseWeightAxis,
+	precisionForSurfaceClaims,
 } from '@shell/controls.ts';
 
 describe('control parsers', () => {
@@ -23,6 +24,15 @@ describe('control parsers', () => {
 		expect(parseLocPrecision('estimate')).toBe('estimate');
 		expect(parseLocPrecision('program')).toBe('program');
 		expect(parseLocPrecision('')).toBe('estimate');
+	});
+
+	it('precisionForSurfaceClaims remaps program by Exact mass rehydrate', () => {
+		expect(precisionForSurfaceClaims('estimate', false)).toBe('estimate');
+		expect(precisionForSurfaceClaims('estimate', true)).toBe('estimate');
+		expect(precisionForSurfaceClaims('exact', false)).toBe('exact');
+		expect(precisionForSurfaceClaims('exact', true)).toBe('exact');
+		expect(precisionForSurfaceClaims('program', false)).toBe('estimate');
+		expect(precisionForSurfaceClaims('program', true)).toBe('exact');
 	});
 
 	it('parseInteractionMode defaults to drill', () => {

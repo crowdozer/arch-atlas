@@ -45,6 +45,26 @@ export function parseLocPrecision(raw: string): LocPrecision {
 		: 'estimate';
 }
 
+/**
+ * Precision for export-surface claims (public mass, icebergs, target-loc band
+ * mass, inspect imported surface). Chrome may stay `program` while Exact mass
+ * is rehydrated (`programExactMass`); core only honors surface when precision
+ * is `'exact'`, so the host remaps at this boundary.
+ *
+ * - program + rehydrated Exact mass → `'exact'`
+ * - program without mass → `'estimate'` (topology only; no public mass claim)
+ * - else → chrome precision unchanged
+ */
+export function precisionForSurfaceClaims(
+	locPrecision: LocPrecision,
+	programExactMass: boolean,
+): LocPrecision {
+	if (locPrecision === 'program') {
+		return programExactMass ? 'exact' : 'estimate';
+	}
+	return locPrecision;
+}
+
 export function parseInteractionMode(raw: string): InteractionMode {
 	return raw === 'inspect' ? 'inspect' : 'drill';
 }

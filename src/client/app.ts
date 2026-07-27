@@ -32,6 +32,7 @@ import {
 	parseInteractionMode,
 	parseSpineFormula,
 	payloadForView as projectPayloadForView,
+	precisionForSurfaceClaims,
 	sameView,
 	statusForView,
 	topOfStack,
@@ -165,7 +166,11 @@ function surfaceLiveForMass(): ImportedSurfaceProvider | null {
 }
 
 const inspect = createInspectModals({
+	/** Chrome precision for honesty headers (Program stays Program). */
 	getLocPrecision: () => locPrecision,
+	/** Remapped precision for export-surface evidence / callsite copy. */
+	getPrecisionForSurfaceClaims: () =>
+		precisionForSurfaceClaims(locPrecision, programExactMass),
 	getSession: () => session,
 	getSurface: () => surfaceLiveForMass(),
 	refForName: (name) => stage.refForName(name),
@@ -398,12 +403,10 @@ function applyDepthDefaultForView(view: AtlasView): void {
 /** When exact + target-loc, refuse remount with estimate numbers. */
 function gateWeight(): { ok: true } | { ok: false; message: string } {
 	// Program uses estimate mass unless Exact was rehydrated (surfaceLiveForMass)
-	const precisionForGate: LocPrecision =
-		locPrecision === 'program' && programExactMass
-			? 'exact'
-			: locPrecision === 'program'
-				? 'estimate'
-				: locPrecision;
+	const precisionForGate = precisionForSurfaceClaims(
+		locPrecision,
+		programExactMass,
+	);
 	const surface =
 		precisionForGate === 'exact' ? surfaceLiveForMass() : surfaceProvider;
 	return canMountWeight(weightAxis, precisionForGate, surface);
@@ -450,12 +453,10 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 	if (!session) return null;
 	const surface = surfaceLiveForMass();
 	// Program + Exact rehydrate: paint Exact mass; else program → estimate mass
-	const precisionForMass: LocPrecision =
-		locPrecision === 'program' && surface
-			? 'exact'
-			: locPrecision === 'program'
-				? 'estimate'
-				: locPrecision;
+	const precisionForMass = precisionForSurfaceClaims(
+		locPrecision,
+		programExactMass,
+	);
 	return projectPayloadForView(session.graph, view, {
 		weightAxis,
 		maxDepth: vizMaxDepth,

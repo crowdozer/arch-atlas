@@ -16,7 +16,17 @@ import type { Session } from '@shell/types.ts';
 import { $, escapeHtml } from './dom.ts';
 
 export type InspectModalDeps = {
+	/**
+	 * Chrome precision (dropdown). Used for honesty headers so Program stays
+	 * labeled Program even when Exact mass is rehydrated.
+	 */
 	getLocPrecision: () => LocPrecision;
+	/**
+	 * Precision for export-surface evidence / callsite copy. Host remaps
+	 * program+programExactMass → `'exact'` (shell `precisionForSurfaceClaims`);
+	 * defaults to chrome when omitted.
+	 */
+	getPrecisionForSurfaceClaims?: () => LocPrecision;
 	getSession: () => Session | null;
 	/** Exact surface provider when engines are ready (null under estimate). */
 	getSurface?: () => ImportedSurfaceProvider | null;
@@ -59,16 +69,32 @@ function evidenceHeaderLabel(
 		: 'Import evidence · export surface unavailable';
 }
 
-function callsitesTitle(
-	precision: LocPrecision,
+/**
+ * Callsite section title from surface-claim precision (not chrome).
+ * Program + rehydrated Exact mass remaps to `'exact'` so copy matches surface path.
+ */
+export function callsitesTitle(
+	claimPrecision: LocPrecision,
 	surfaceLive: boolean,
 ): string {
-	if (precision !== 'exact') {
+	if (claimPrecision !== 'exact') {
 		return 'Possible callsites (estimate — name scan, not type-checked)';
 	}
 	return surfaceLive
 		? 'Callsites (name scan in importer — not type-checked)'
 		: 'Callsites (export surface unavailable)';
+}
+
+/** Empty callsite note from surface-claim precision + live surface. */
+export function emptyCallsitesNote(
+	claimPrecision: LocPrecision,
+	surfaceLive: boolean,
+	blockerMessage?: string,
+): string {
+	if (blockerMessage) return blockerMessage;
+	return surfaceLive && claimPrecision === 'exact'
+		? 'No exact callsites found for import bindings.'
+		: 'No estimated callsites found for import bindings.';
 }
 
 export function createInspectModals(deps: InspectModalDeps): {
@@ -135,14 +161,16 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const body = $('atlas-inspect-body');
 		if (!modal || !heading || !body) return;
 
-		const locPrecision = deps.getLocPrecision();
+		const chromePrecision = deps.getLocPrecision();
+		const claimPrecision =
+			deps.getPrecisionForSurfaceClaims?.() ?? chromePrecision;
 		const surfaceLive = Boolean(deps.getSurface?.());
 		const programApplied = Boolean(deps.getSession()?.programMeta);
 
 		heading.textContent = title;
 		if (label) {
 			label.textContent = evidenceHeaderLabel(
-				locPrecision,
+				chromePrecision,
 				surfaceLive,
 				programApplied,
 			);
@@ -230,12 +258,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 			}
 			li.appendChild(codeSec);
 
-			// Callsites
+			// Callsites (surface-claim precision — Program+mass remaps to exact)
 			const callSec = document.createElement('div');
 			callSec.className = 'atlas-inspect__section';
 			const callH = document.createElement('div');
 			callH.className = 'atlas-inspect__section-title';
-			callH.textContent = callsitesTitle(locPrecision, surfaceLive);
+			callH.textContent = callsitesTitle(claimPrecision, surfaceLive);
 			callSec.appendChild(callH);
 			if (ev.callsites.length) {
 				for (const cs of ev.callsites) {
@@ -254,11 +282,11 @@ export function createInspectModals(deps: InspectModalDeps): {
 						b.code === 'exact-surface-unresolved' ||
 						b.code === 'no-bindings',
 				);
-				note.textContent =
-					blocker?.message ??
-					(surfaceLive && locPrecision === 'exact'
-						? 'No exact callsites found for import bindings.'
-						: 'No estimated callsites found for import bindings.');
+				note.textContent = emptyCallsitesNote(
+					claimPrecision,
+					surfaceLive,
+					blocker?.message,
+				);
 				callSec.appendChild(note);
 			}
 			li.appendChild(callSec);
@@ -268,6 +296,10 @@ export function createInspectModals(deps: InspectModalDeps): {
 
 		body.appendChild(list);
 		modal.open = true;
+	}
+
+	function claimPrecision(): LocPrecision {
+		return deps.getPrecisionForSurfaceClaims?.() ?? deps.getLocPrecision();
 	}
 
 	function inspectNode(name: string, ref: AlluvialNodeRef): void {
@@ -286,7 +318,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const evidence = evidenceForEdges(
 			session.graph,
 			edges,
-			deps.getLocPrecision(),
+			claimPrecision(),
 			surface,
 		);
 		openInspectModal(
@@ -311,7 +343,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const evidence = evidenceForEdges(
 			session.graph,
 			edges,
-			deps.getLocPrecision(),
+			claimPrecision(),
 			surface,
 		);
 		openInspectModal(

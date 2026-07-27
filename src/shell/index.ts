@@ -30,6 +30,7 @@ export {
 	parseSpineFormula,
 	parseVizMaxDepth,
 	parseWeightAxis,
+	precisionForSurfaceClaims,
 } from '@shell/controls.ts';
 
 export {
