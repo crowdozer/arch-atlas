@@ -746,7 +746,7 @@ cds-tag.ui-tag--yellow {
 /*
  * Hub focus class contract (SoR: .grok/reference/hub-focus-behavior.md §5).
  * Holder gets .ui-alluvial-label-dimming while a FocusPlan is active.
- * Classes applied by src/client/focus/focusApply.ts — not Carbon sourceLinks.
+ * Classes applied by src/stage/focus/focusApply.ts — not Carbon sourceLinks.
  *
  * | Target        | Focus                              | Dim                                      |
  * |---------------|------------------------------------|------------------------------------------|

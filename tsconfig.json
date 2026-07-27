@@ -6,7 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@core/*": ["src/core/*"],
-      "@shell/*": ["src/shell/*"]
+      "@shell/*": ["src/shell/*"],
+      "@stage/*": ["src/stage/*"]
     }
   }
 }

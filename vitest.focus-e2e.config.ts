@@ -13,10 +13,12 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@core': path.join(root, 'src/core'),
+			'@shell': path.join(root, 'src/shell'),
+			'@stage': path.join(root, 'src/stage'),
 		},
 	},
 	test: {
-		include: ['src/client/focus/e2e/**/*.e2e.test.ts'],
+		include: ['src/stage/focus/e2e/**/*.e2e.test.ts'],
 		testTimeout: 600_000,
 		hookTimeout: 180_000,
 		fileParallelism: false,
