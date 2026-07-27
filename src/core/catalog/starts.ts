@@ -1,9 +1,14 @@
 /**
- * Inferred entrypoint catalog for Level-1 atlas.
+ * Inferred entrypoint / root catalog for Level-1 atlas.
+ * Entrypoints = package.json / common names / framework routes.
+ * Roots = orphan out>0 not already entrypoints.
+ * scripts/debug demoted from entrypoints.
  */
 
+import { isDebugPath, inferFileRoles } from '@core/catalog/roles.ts';
 import type { CatalogStart, CodeGraph } from '@core/graph/types.ts';
 import { joinPosix } from '@core/parse/tsconfig.ts';
+import { fileDegreeMaps } from '@core/view/fileImporters.ts';
 
 const COMMON_ENTRIES = [
 	'src/index.ts',
@@ -93,23 +98,6 @@ function packageEntryPaths(graph: CodeGraph): string[] {
 	return out;
 }
 
-function inDegreeMap(graph: CodeGraph): Map<string, number> {
-	const m = new Map<string, number>();
-	for (const f of graph.files.keys()) m.set(f, 0);
-	for (const e of graph.edges) {
-		if (e.toKind === 'file') m.set(e.to, (m.get(e.to) ?? 0) + 1);
-	}
-	return m;
-}
-
-function outDegreeMap(graph: CodeGraph): Map<string, number> {
-	const m = new Map<string, number>();
-	for (const e of graph.edges) {
-		m.set(e.from, (m.get(e.from) ?? 0) + 1);
-	}
-	return m;
-}
-
 function isFrameworkish(path: string): boolean {
 	return (
 		/(^|\/)(pages|routes|app)\//.test(path) ||
@@ -119,57 +107,125 @@ function isFrameworkish(path: string): boolean {
 	);
 }
 
-/**
- * Rank inferred start points for the map catalog.
- */
-export function catalogStarts(graph: CodeGraph, limit = 40): CatalogStart[] {
-	const scores = new Map<string, { score: number; reasons: string[] }>();
+export type CatalogStartsResult = {
+	/** Merged: entrypoints then roots (compat). */
+	starts: CatalogStart[];
+	entrypoints: CatalogStart[];
+	roots: CatalogStart[];
+};
 
-	const bump = (path: string, score: number, reason: string) => {
+function toStart(
+	path: string,
+	score: number,
+	reasons: string[],
+	startKind: CatalogStart['startKind'],
+	outDeg: Map<string, number>,
+	inDeg: Map<string, number>,
+	uniqueOut: Map<string, number>,
+	uniqueIn: Map<string, number>,
+	graph: CodeGraph,
+	entrypointSet: Set<string>,
+): CatalogStart {
+	return {
+		id: path,
+		path,
+		reason: reasons.join('; '),
+		score,
+		outDegree: outDeg.get(path) ?? 0,
+		inDegree: inDeg.get(path) ?? 0,
+		uniqueOut: uniqueOut.get(path) ?? 0,
+		uniqueIn: uniqueIn.get(path) ?? 0,
+		roles: inferFileRoles(graph, path, { entrypointSet }),
+		startKind,
+		epistemic: 'inferred',
+	};
+}
+
+/**
+ * Rank inferred start points: entrypoints first, then orphan roots.
+ * scripts/debug paths are excluded from entrypoints (may still appear as roots).
+ */
+export function catalogStartsSplit(graph: CodeGraph, limit = 40): CatalogStartsResult {
+	const { outDeg, inDeg, uniqueOut, uniqueIn } = fileDegreeMaps(graph);
+
+	const entryScores = new Map<string, { score: number; reasons: string[] }>();
+	const bumpEntry = (path: string, score: number, reason: string) => {
 		if (!graph.files.has(path) || !graph.files.get(path)?.isSource) return;
-		const cur = scores.get(path) ?? { score: 0, reasons: [] };
+		// Demote scripts/debug from declared entrypoints
+		if (isDebugPath(path)) return;
+		const cur = entryScores.get(path) ?? { score: 0, reasons: [] };
 		cur.score += score;
 		if (!cur.reasons.includes(reason)) cur.reasons.push(reason);
-		scores.set(path, cur);
+		entryScores.set(path, cur);
 	};
 
 	for (const p of packageEntryPaths(graph)) {
-		bump(p, 100, 'package.json entry');
+		bumpEntry(p, 100, 'package.json entry');
 	}
 	for (const p of COMMON_ENTRIES) {
-		if (graph.files.has(p)) bump(p, 80, 'common entry name');
+		if (graph.files.has(p)) bumpEntry(p, 80, 'common entry name');
 	}
 	for (const path of graph.files.keys()) {
 		if (isFrameworkish(path) && graph.files.get(path)?.isSource) {
-			bump(path, 60, 'framework-ish route/page');
+			bumpEntry(path, 60, 'framework-ish route/page');
 		}
 	}
 
-	const inDeg = inDegreeMap(graph);
-	const outDeg = outDegreeMap(graph);
+	const entrypointSet = new Set(entryScores.keys());
+
+	const rootScores = new Map<string, { score: number; reasons: string[] }>();
 	for (const [path, node] of graph.files) {
 		if (!node.isSource) continue;
+		if (entrypointSet.has(path)) continue;
 		const inn = inDeg.get(path) ?? 0;
 		const out = outDeg.get(path) ?? 0;
 		if (inn === 0 && out > 0) {
-			bump(path, 40 + Math.min(out, 20), 'root (no importers)');
-		}
-		if (out > 0) {
-			bump(path, Math.min(out, 15), 'has outgoing imports');
+			const reasons = ['root (no importers)'];
+			let score = 40 + Math.min(out, 20);
+			if (isDebugPath(path)) {
+				score = Math.floor(score * 0.4);
+				reasons.push('debug/scripts demoted');
+			}
+			rootScores.set(path, { score, reasons });
 		}
 	}
 
-	const starts: CatalogStart[] = [...scores.entries()]
-		.map(([path, v]) => ({
-			id: path,
-			path,
-			reason: v.reasons.join('; '),
-			score: v.score,
-			outDegree: outDeg.get(path) ?? 0,
-			inDegree: inDeg.get(path) ?? 0,
-			epistemic: 'inferred' as const,
-		}))
+	const entrypoints: CatalogStart[] = [...entryScores.entries()]
+		.map(([path, v]) =>
+			toStart(
+				path,
+				v.score,
+				v.reasons,
+				'entrypoint',
+				outDeg,
+				inDeg,
+				uniqueOut,
+				uniqueIn,
+				graph,
+				entrypointSet,
+			),
+		)
 		.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+
+	const roots: CatalogStart[] = [...rootScores.entries()]
+		.map(([path, v]) =>
+			toStart(
+				path,
+				v.score,
+				v.reasons,
+				'root',
+				outDeg,
+				inDeg,
+				uniqueOut,
+				uniqueIn,
+				graph,
+				entrypointSet,
+			),
+		)
+		.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+
+	// starts = entrypoints then roots (stable split recoverable)
+	let starts = [...entrypoints, ...roots];
 
 	// ensure at least something if graph has sources
 	if (!starts.length) {
@@ -177,17 +233,35 @@ export function catalogStarts(graph: CodeGraph, limit = 40): CatalogStart[] {
 			.filter((f) => f.isSource)
 			.sort((a, b) => a.path.localeCompare(b.path));
 		for (const f of sources.slice(0, 10)) {
-			starts.push({
-				id: f.path,
-				path: f.path,
-				reason: 'fallback source file',
-				score: 1,
-				outDegree: outDeg.get(f.path) ?? 0,
-				inDegree: inDeg.get(f.path) ?? 0,
-				epistemic: 'inferred',
-			});
+			starts.push(
+				toStart(
+					f.path,
+					1,
+					['fallback source file'],
+					'fallback',
+					outDeg,
+					inDeg,
+					uniqueOut,
+					uniqueIn,
+					graph,
+					entrypointSet,
+				),
+			);
 		}
 	}
 
-	return starts.slice(0, limit);
+	const cap = Math.max(0, limit);
+	starts = starts.slice(0, cap);
+	return {
+		starts,
+		entrypoints: entrypoints.slice(0, cap),
+		roots: roots.slice(0, cap),
+	};
+}
+
+/**
+ * Rank inferred start points for the map catalog (compat wrapper).
+ */
+export function catalogStarts(graph: CodeGraph, limit = 40): CatalogStart[] {
+	return catalogStartsSplit(graph, limit).starts;
 }

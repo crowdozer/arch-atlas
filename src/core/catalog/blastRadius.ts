@@ -1,6 +1,7 @@
 /**
  * Reverse blast-radius ranking for the map catalog.
  * Counts consumers that can reach a file via reverse import chains.
+ * Ranking prefers runtime edges; honesty: reverse-reach is cycle-sensitive.
  */
 
 import {
@@ -9,11 +10,13 @@ import {
 } from '@core/catalog/deepest.ts';
 import type { CatalogBlast, CodeGraph } from '@core/graph/types.ts';
 
+const BLAST_REASON = 'reverse-reach file count (cycle-sensitive)';
+
 /**
  * Source files ranked by reverse-reachable consumer count.
  *
  * Defaults (reversible):
- * - revAdj = fileImportedByAdj(graph) once
+ * - revAdj = fileImportedByAdj(graph, runtimeOnly) once
  * - reverseReachFiles = dist.size - 1 (exclude self)
  * - reverseMaxHops from BFS
  * - Keep reverseReachFiles > 0
@@ -21,7 +24,7 @@ import type { CatalogBlast, CodeGraph } from '@core/graph/types.ts';
  * - epistemic: observed (pure count order, not a classifier)
  */
 export function catalogBlastRadius(graph: CodeGraph, limit = 15): CatalogBlast[] {
-	const revAdj = fileImportedByAdj(graph);
+	const revAdj = fileImportedByAdj(graph, { runtimeOnly: true });
 	const outDeg = new Map<string, number>();
 	const inDeg = new Map<string, number>();
 
@@ -45,6 +48,7 @@ export function catalogBlastRadius(graph: CodeGraph, limit = 15): CatalogBlast[]
 			reverseMaxHops: maxHops,
 			inDegree: inDeg.get(path) ?? 0,
 			outDegree: outDeg.get(path) ?? 0,
+			reason: BLAST_REASON,
 			epistemic: 'observed',
 		});
 	}

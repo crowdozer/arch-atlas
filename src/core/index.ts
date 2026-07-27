@@ -3,6 +3,7 @@
  */
 
 export { buildGraph, reachableFiles } from '@core/graph/build.ts';
+export type { BuildGraphOpts } from '@core/graph/build.ts';
 export type {
 	AlluvialFocus,
 	AlluvialFocusKind,
@@ -21,6 +22,7 @@ export type {
 	CatalogStart,
 	CodeGraph,
 	FileParseKind,
+	InferredFileRole,
 	MapCatalog,
 	ParseMapEntry,
 	SpineFormula,
@@ -35,9 +37,17 @@ export {
 export type { FileParseInfo } from '@core/parse/capability.ts';
 export { buildMapCatalog } from '@core/catalog/views.ts';
 export type { BuildMapCatalogOpts } from '@core/catalog/views.ts';
-export { catalogStarts } from '@core/catalog/starts.ts';
+export { catalogStarts, catalogStartsSplit } from '@core/catalog/starts.ts';
+export type { CatalogStartsResult } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
+export {
+	inferFileRoles,
+	isBarrelBasename,
+	isDebugPath,
+	isPureBarrel,
+	primaryRole,
+} from '@core/catalog/roles.ts';
 export { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 export { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
 export {
@@ -100,11 +110,15 @@ export {
 } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {
+	fileDegreeMaps,
 	fileInDegree,
 	fileOutDegree,
+	fileUniqueInDegree,
+	fileUniqueOutDegree,
 	preferFileImportersView,
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
+export type { DegreeOpts } from '@core/view/fileImporters.ts';
 export {
 	HUB_DEFAULT_MAX_DEPTH,
 	NORMAL_DEFAULT_MAX_DEPTH,
@@ -179,6 +193,7 @@ export {
 	AGENT_TREE_SCHEMA,
 	ANALYSIS_HONESTY,
 	ANALYSIS_HONESTY_EXACT,
+	SURFACE_METRIC_NOTE,
 	buildAgentDigest,
 	buildAgentFileReport,
 	buildAgentTree,
@@ -187,9 +202,11 @@ export {
 export type {
 	AgentDigest,
 	AgentDigestAnalysis,
+	AgentDigestScope,
 	AgentDigestSource,
 	AgentExactSurfaceInput,
 	AgentFileReport,
+	AgentTreeNode,
 	AgentTreeOut,
 	BuildAgentDigestInput,
 } from '@core/export/agentDigest.ts';

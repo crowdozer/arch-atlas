@@ -1,5 +1,6 @@
 /**
  * Inferred end / sink catalog: packages, builtins, unresolved bare imports.
+ * Omitted feed targets are not ranked as architecture ends.
  */
 
 import type { CatalogEnd, CodeGraph } from '@core/graph/types.ts';
@@ -8,6 +9,7 @@ export function catalogEnds(graph: CodeGraph, limit = 50): CatalogEnd[] {
 	const inDeg = new Map<string, number>();
 
 	for (const e of graph.edges) {
+		// Do not treat omitted as unresolved architecture ends
 		if (e.toKind === 'package' || e.toKind === 'unresolved') {
 			inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
 		}

@@ -301,22 +301,130 @@ function projectImportsColumn(args: {
 	});
 }
 
-/** Outgoing edge count from a file. */
-export function fileOutDegree(graph: CodeGraph, fileId: string): number {
+export type DegreeOpts = {
+	/**
+	 * When true, skip edges with `typeOnly: true` (runtime-preferring degrees).
+	 * Edges without the flag still count (backward compatible).
+	 */
+	runtimeOnly?: boolean;
+};
+
+function edgeCountsForDegrees(
+	e: CodeGraph['edges'][number],
+	opts?: DegreeOpts,
+): boolean {
+	if (opts?.runtimeOnly && e.typeOnly) return false;
+	return true;
+}
+
+/** Outgoing edge count from a file (edge records). */
+export function fileOutDegree(
+	graph: CodeGraph,
+	fileId: string,
+	opts?: DegreeOpts,
+): number {
 	let n = 0;
 	for (const e of graph.edges) {
-		if (e.from === fileId) n += 1;
+		if (e.from !== fileId) continue;
+		if (!edgeCountsForDegrees(e, opts)) continue;
+		n += 1;
 	}
 	return n;
 }
 
-/** Incoming file-import edges to a file. */
-export function fileInDegree(graph: CodeGraph, fileId: string): number {
+/** Incoming file-import edges to a file (edge records). */
+export function fileInDegree(
+	graph: CodeGraph,
+	fileId: string,
+	opts?: DegreeOpts,
+): number {
 	let n = 0;
 	for (const e of graph.edges) {
-		if (e.toKind === 'file' && e.to === fileId) n += 1;
+		if (e.toKind !== 'file' || e.to !== fileId) continue;
+		if (!edgeCountsForDegrees(e, opts)) continue;
+		n += 1;
 	}
 	return n;
+}
+
+/** Distinct file neighbors this file imports (toKind file). */
+export function fileUniqueOutDegree(
+	graph: CodeGraph,
+	fileId: string,
+	opts?: DegreeOpts,
+): number {
+	const seen = new Set<string>();
+	for (const e of graph.edges) {
+		if (e.from !== fileId || e.toKind !== 'file') continue;
+		if (!edgeCountsForDegrees(e, opts)) continue;
+		seen.add(e.to);
+	}
+	return seen.size;
+}
+
+/** Distinct files that import this file. */
+export function fileUniqueInDegree(
+	graph: CodeGraph,
+	fileId: string,
+	opts?: DegreeOpts,
+): number {
+	const seen = new Set<string>();
+	for (const e of graph.edges) {
+		if (e.toKind !== 'file' || e.to !== fileId) continue;
+		if (!edgeCountsForDegrees(e, opts)) continue;
+		seen.add(e.from);
+	}
+	return seen.size;
+}
+
+/**
+ * Batch unique + edge-record degrees for all source files (one edge pass).
+ * Ranking helpers prefer unique+runtime; badges may still show edge records.
+ */
+export function fileDegreeMaps(
+	graph: CodeGraph,
+	opts?: DegreeOpts,
+): {
+	outDeg: Map<string, number>;
+	inDeg: Map<string, number>;
+	uniqueOut: Map<string, number>;
+	uniqueIn: Map<string, number>;
+	packageOut: Map<string, number>;
+} {
+	const outDeg = new Map<string, number>();
+	const inDeg = new Map<string, number>();
+	const packageOut = new Map<string, number>();
+	const uniqueOutSets = new Map<string, Set<string>>();
+	const uniqueInSets = new Map<string, Set<string>>();
+
+	const bumpSet = (m: Map<string, Set<string>>, key: string, val: string) => {
+		let s = m.get(key);
+		if (!s) {
+			s = new Set();
+			m.set(key, s);
+		}
+		s.add(val);
+	};
+
+	for (const e of graph.edges) {
+		if (!edgeCountsForDegrees(e, opts)) continue;
+		outDeg.set(e.from, (outDeg.get(e.from) ?? 0) + 1);
+		if (e.toKind === 'package' || e.toKind === 'unresolved' || e.toKind === 'omitted') {
+			packageOut.set(e.from, (packageOut.get(e.from) ?? 0) + 1);
+		}
+		if (e.toKind === 'file') {
+			inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
+			bumpSet(uniqueOutSets, e.from, e.to);
+			bumpSet(uniqueInSets, e.to, e.from);
+		}
+	}
+
+	const uniqueOut = new Map<string, number>();
+	const uniqueIn = new Map<string, number>();
+	for (const [k, s] of uniqueOutSets) uniqueOut.set(k, s.size);
+	for (const [k, s] of uniqueInSets) uniqueIn.set(k, s.size);
+
+	return { outDeg, inDeg, uniqueOut, uniqueIn, packageOut };
 }
 
 /**

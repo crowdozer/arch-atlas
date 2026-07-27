@@ -53,7 +53,11 @@ export type ImportEdge = {
 	kind: 'imports';
 	from: string; // file path
 	to: string; // file path or package id
-	toKind: 'file' | 'package' | 'unresolved';
+	/**
+	 * file | package | unresolved | omitted
+	 * `omitted` = target missing because feed omit (not true unresolved).
+	 */
+	toKind: 'file' | 'package' | 'unresolved' | 'omitted';
 	/** original specifier as written in source */
 	specifier: string;
 	epistemic: Epistemic;
@@ -63,6 +67,11 @@ export type ImportEdge = {
 	line: number;
 	/** Clause bindings from Level-1 parse (estimate evidence). */
 	bindings: ImportBinding[];
+	/**
+	 * True when statement was `import type` / `export type … from`.
+	 * Best-effort: `import { type X }` may still be value form.
+	 */
+	typeOnly?: boolean;
 };
 
 /**
@@ -114,7 +123,17 @@ export type ExtractedImport = {
 	line: number;
 	/** Observed clause bindings; empty when form has no clause (or unparsed). */
 	bindings: ImportBinding[];
+	/** True for `import type` / `export type … from` (best-effort). */
+	typeOnly?: boolean;
 };
+
+/** Inferred file roles for agent ranking (never claimed as observed topology). */
+export type InferredFileRole =
+	| 'test'
+	| 'debug'
+	| 'barrel'
+	| 'entrypoint'
+	| 'module';
 
 export type CatalogStart = {
 	id: string; // file path
@@ -125,13 +144,21 @@ export type CatalogStart = {
 	outDegree: number;
 	/** Observed incoming file-import edges to this file. */
 	inDegree: number;
+	/** Unique file neighbors out (when published). */
+	uniqueOut?: number;
+	/** Unique file neighbors in (when published). */
+	uniqueIn?: number;
+	/** Inferred roles (epistemic: inferred). */
+	roles?: InferredFileRole[];
+	/** start kind: declared-ish entrypoint vs orphan root */
+	startKind?: 'entrypoint' | 'root' | 'fallback';
 	epistemic: Epistemic;
 };
 
 export type CatalogEnd = {
 	id: string;
 	label: string;
-	kind: 'package' | 'builtin' | 'unresolved';
+	kind: 'package' | 'builtin' | 'unresolved' | 'omitted';
 	inDegree: number;
 	epistemic: Epistemic;
 };
@@ -140,12 +167,23 @@ export type CatalogEnd = {
 export type CatalogHotspot = {
 	id: string;
 	path: string;
-	/** outDegree + inDegree (file→file in only). */
+	/**
+	 * Ranking score: unique runtime neighbors (in+out) unless dual fields set.
+	 * Historically edge-record count; agent rows publish both.
+	 */
 	edgeCount: number;
+	/** Edge-record out degree (all forms). */
 	outDegree: number;
+	/** Edge-record file→file in degree. */
 	inDegree: number;
-	/** Outgoing edges to packages / unresolved. */
+	/** Unique file neighbors out (runtime-preferring when typeOnly present). */
+	uniqueOut?: number;
+	/** Unique file neighbors in (runtime-preferring). */
+	uniqueIn?: number;
+	/** Outgoing edges to packages / unresolved / omitted. */
 	packageOut: number;
+	/** Inferred roles (barrel demotion etc.). */
+	roles?: InferredFileRole[];
 	epistemic: 'observed';
 };
 
@@ -168,6 +206,7 @@ export type CatalogDeep = {
 /**
  * Source file ranked by outbound tree complexity:
  * all downwind import edges (file→file + file→package) from the start.
+ * Agent honesty: “downwind import reach” (not cyclomatic complexity).
  */
 export type CatalogComplex = {
 	id: string;
@@ -175,6 +214,7 @@ export type CatalogComplex = {
 	/**
 	 * Primary score: edges with `from` in the outbound reachable set
 	 * (file imports + package imports). start→page→pkg = 2.
+	 * Ranking prefers runtime edges when typeOnly flags present.
 	 */
 	downwindEdges: number;
 	/** Distinct packages/unresolved reachable downwind (secondary). */
@@ -184,6 +224,8 @@ export type CatalogComplex = {
 	edgeCount: number;
 	outDegree: number;
 	inDegree: number;
+	/** Honesty label for agent consumers. */
+	reason?: string;
 	epistemic: 'observed';
 };
 
@@ -204,6 +246,7 @@ export type CatalogFileLoc = {
 /**
  * Reverse blast radius: consumers that can reach this file via import chains.
  * reverseReachFiles excludes self; ranking is pure observed counts.
+ * Agent honesty: reverse-reach file count (cycle-sensitive).
  */
 export type CatalogBlast = {
 	id: string;
@@ -214,6 +257,8 @@ export type CatalogBlast = {
 	reverseMaxHops: number;
 	inDegree: number;
 	outDegree: number;
+	/** Honesty label for agent consumers. */
+	reason?: string;
 	epistemic: 'observed';
 };
 
@@ -284,6 +329,15 @@ export type CatalogIceberg = {
 
 export type MapCatalog = {
 	starts: CatalogStart[];
+	/**
+	 * Declared-ish entrypoints (package.json / common names / framework).
+	 * Additive split of starts for agent honesty.
+	 */
+	entrypoints?: CatalogStart[];
+	/**
+	 * Orphan roots (in=0 & out>0) not already entrypoints.
+	 */
+	roots?: CatalogStart[];
 	ends: CatalogEnd[];
 	/** High-edge files for one-click exploration. */
 	hotspots: CatalogHotspot[];
@@ -309,7 +363,12 @@ export type MapCatalog = {
 	spineFormula?: SpineFormula;
 	summary: {
 		sourceCount: number;
+		/** External package nodes (npm/builtin), not monorepo packages. */
 		packageCount: number;
+		/**
+		 * Alias of packageCount for agent clarity (external packages only).
+		 */
+		externalPackageCount?: number;
 		edgeCount: number;
 		unresolvedCount: number;
 		languages: string[];

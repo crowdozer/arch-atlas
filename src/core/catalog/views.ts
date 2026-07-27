@@ -11,7 +11,7 @@ import {
 	DEFAULT_SPINE_FORMULA,
 	catalogSpines,
 } from '@core/catalog/spines.ts';
-import { catalogStarts } from '@core/catalog/starts.ts';
+import { catalogStartsSplit } from '@core/catalog/starts.ts';
 import type { CodeGraph, MapCatalog, SpineFormula } from '@core/graph/types.ts';
 
 /** Optional top-N overrides for catalog ranking bins (UI keeps defaults). */
@@ -51,7 +51,7 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const endsLimit = opts?.endsLimit ?? 50;
 
 	const spineFormula = opts?.spineFormula ?? DEFAULT_SPINE_FORMULA;
-	const starts = catalogStarts(graph, startsLimit);
+	const { starts, entrypoints, roots } = catalogStartsSplit(graph, startsLimit);
 	const ends = catalogEnds(graph, endsLimit);
 	const hotspots = catalogHotspots(graph, rankLimit);
 	const complex = catalogComplex(graph, rankLimit);
@@ -65,6 +65,8 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 
 	return {
 		starts,
+		entrypoints,
+		roots,
 		ends,
 		hotspots,
 		complex,
@@ -78,6 +80,7 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 		summary: {
 			sourceCount: graph.stats.sourceCount,
 			packageCount: graph.stats.packageCount,
+			externalPackageCount: graph.stats.packageCount,
 			edgeCount: graph.stats.edgeCount,
 			unresolvedCount: graph.stats.unresolvedCount,
 			languages: languageTags(graph),

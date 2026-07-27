@@ -1,6 +1,9 @@
 /**
  * Public-mass and iceberg catalog bins from whole-file LOC + Exact export-surface LOC.
  * Pure overlay: does not re-index the graph. Empty until a surface map is supplied.
+ *
+ * Guardrails: only js-ts-import (export-surface engine support); skip surfaceLoc===0
+ * icebergs; surfaceLoc = export-declaration span coverage, not public API.
  */
 
 import type {
@@ -8,6 +11,7 @@ import type {
 	CatalogPublicMass,
 	CodeGraph,
 } from '@core/graph/types.ts';
+import { isDebugPath } from '@core/catalog/roles.ts';
 import { fileLineCount } from '@core/view/weight.ts';
 
 /** Minimum whole-file LOC to consider for mass bins (bookkeeping floor). */
@@ -31,9 +35,19 @@ export type MassBinsResult = {
 	icebergs: CatalogIceberg[];
 };
 
+/** Files with real export-surface engine support for mass bins. */
+function hasExportSurfaceSupport(graph: CodeGraph, path: string): boolean {
+	const node = graph.files.get(path);
+	if (!node) return false;
+	// Classic Exact path is JS/TS only; Astro/Python stay estimate mass
+	return node.parseKind === 'js-ts-import';
+}
+
 /**
  * Build public-mass and iceberg rankings from graph + export-surface LOC map.
  * Degrees are for list badges only.
+ *
+ * surfaceLoc is **export-declaration span** coverage (not public-API member surface).
  */
 export function buildMassBins(
 	graph: CodeGraph,
@@ -60,10 +74,17 @@ export function buildMassBins(
 
 	for (const [path, node] of graph.files) {
 		if (!node.isSource) continue;
+		if (!hasExportSurfaceSupport(graph, path)) continue;
+		// Demote obvious debug/script noise from mass bins
+		if (isDebugPath(path)) continue;
+
 		const wholeLoc = fileLineCount(graph, path);
 		if (wholeLoc < minWhole) continue;
 
 		const surfaceLoc = exportSurfaceLoc.get(path) ?? 0;
+		// Zero-surface files are unsupported / empty for icebergs (not "private body")
+		if (surfaceLoc === 0) continue;
+
 		const ratio = wholeLoc > 0 ? surfaceLoc / wholeLoc : 0;
 		const privateLoc = Math.max(0, wholeLoc - surfaceLoc);
 		const outDegree = outDeg.get(path) ?? 0;

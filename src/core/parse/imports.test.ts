@@ -5,10 +5,17 @@ import {
 	stripComments,
 } from '@core/parse/imports.ts';
 
-/** Map specifier → { form, bindings } for golden snapshots (first win if dup). */
+/** Map specifier → { form, bindings, typeOnly? } for golden snapshots (first win if dup). */
 function bySpecifier(imps: ReturnType<typeof extractImports>) {
 	return Object.fromEntries(
-		imps.map((i) => [i.specifier, { form: i.form, bindings: i.bindings }]),
+		imps.map((i) => [
+			i.specifier,
+			{
+				form: i.form,
+				bindings: i.bindings,
+				...(i.typeOnly ? { typeOnly: true } : {}),
+			},
+		]),
 	);
 }
 
@@ -35,6 +42,7 @@ const d = import('node:fs');
 		expect(by['./b']).toEqual({
 			form: 'import',
 			bindings: [{ kind: 'named', imported: 'B', local: 'B' }],
+			typeOnly: true,
 		});
 		expect(by['side-effect']).toEqual({
 			form: 'import',
@@ -63,6 +71,23 @@ const d = import('node:fs');
 		expect(specs).toEqual(
 			['../x', '../y', './a', './b', 'node:fs', 'side-effect', 'zod'].sort(),
 		);
+		expect(imps.find((i) => i.specifier === './b')?.typeOnly).toBe(true);
+	});
+
+	it('marks export type … from as typeOnly', () => {
+		const imps = extractImports(`export type { T } from './types';\nexport { V } from './val';\n`);
+		expect(imps.find((i) => i.specifier === './types')?.typeOnly).toBe(true);
+		expect(imps.find((i) => i.specifier === './val')?.typeOnly).toBeUndefined();
+	});
+
+	it('prefers runtime when both import type and value import exist', () => {
+		const imps = extractImports(`
+import type { A } from './a';
+import { A } from './a';
+`);
+		const a = imps.filter((i) => i.specifier === './a');
+		expect(a).toHaveLength(1);
+		expect(a[0]!.typeOnly).toBeFalsy();
 	});
 
 	it('extracts named, default, namespace, and side-effect bindings (full golden)', () => {
@@ -119,6 +144,7 @@ import type {
 		expect(bySpecifier(imps)['./b']).toEqual({
 			form: 'import',
 			bindings: [{ kind: 'named', imported: 'B', local: 'B' }],
+			typeOnly: true,
 		});
 	});
 

@@ -142,4 +142,29 @@ describe('buildMassBins', () => {
 		});
 		expect(publicMass.length).toBe(2);
 	});
+
+	it('skips non-js-ts parseKind and zero-surface icebergs', () => {
+		const big = padLines('# large python\n' + 'x = 1\n'.repeat(100), 120);
+		const zeroSurfaceTs = padLines('const privateBody = 1;\n'.repeat(100), 120);
+		const { graph } = indexFiles(
+			files([
+				['src/app.py', big],
+				['src/page.astro', padLines('---\nconst x = 1;\n---\n<div></div>\n', 120)],
+				['src/zero.ts', zeroSurfaceTs],
+			]),
+		);
+		const surface = new Map<string, number>([
+			['src/app.py', 0],
+			['src/page.astro', 0],
+			['src/zero.ts', 0],
+		]);
+		const bins = buildMassBins(graph, surface, 15, {
+			minWhole: 50,
+			icebergMaxRatio: 0.7,
+			minPrivate: 10,
+		});
+		// Python/Astro excluded; zero surface skipped (not false icebergs)
+		expect(bins.icebergs).toEqual([]);
+		expect(bins.publicMass).toEqual([]);
+	});
 });

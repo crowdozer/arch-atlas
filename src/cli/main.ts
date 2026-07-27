@@ -21,7 +21,7 @@ import {
 import { loadExactExportSurface } from './exactSurface.ts';
 import { DEFAULT_MAX_DEPTH, loadFeed } from './loadFeed.ts';
 import { loadGitRef } from './loadGitRef.ts';
-import { parseOmitFlagValues } from './omitGlobs.ts';
+import { compileOmitMatcher, parseOmitFlagValues } from './omitGlobs.ts';
 
 const CLI_LIMIT_DEFAULT = 40;
 
@@ -33,10 +33,19 @@ type GlobalOpts = {
 	maxDepth: number;
 	/** Raw --omit values (may include comma lists); normalized later. */
 	omitRaw: string[];
-	/** Exact export-surface LOC (classic TS local → jsDelivr → unpkg). */
+	/**
+	 * Exact export-surface LOC. Default **true for digest** (soft-fallback).
+	 * `--estimate` forces off; `--exact` / `--exact-local` force on (fail-closed).
+	 */
 	exact: boolean;
-	/** With --exact: skip CDN (local typescript-classic / inject only). */
+	/** Explicit --exact / --exact-local (fail-closed on engine error). */
+	exactExplicit: boolean;
+	/** With exact: skip CDN (local typescript-classic / inject only). */
 	exactLocalOnly: boolean;
+	/** Force estimate-only (opt out of default Exact on digest). */
+	estimate: boolean;
+	/** Tree: emit full leaves (`--tree-full`); default summary. */
+	treeFull: boolean;
 	file?: string;
 	/** Git ref for impact --base (required for impact). */
 	base?: string;
@@ -56,8 +65,8 @@ Usage:
 
 <path> is a directory or .zip file (digest/tree/file). For impact, <git-repo>
 is a git work tree root; trees are materialized via git archive (no dirty tree).
-Default analysis is Level-1 Estimate (static JS/TS import graph; not LSP / not
-tree-shake). No raw source in output.
+Default digest analysis is Exact export-surface mass when the engine loads
+(Estimate topology always). Not LSP / not tree-shake. No raw source in output.
 
 Impact usage cheatsheet (read order for large JSON):
   .grok/reference/impact-cheatsheet.md
@@ -72,26 +81,29 @@ Options:
                   Also: --omit=**/fixtures/** or --omit=fixtures,dist
   --base <ref>    Impact: base git ref (required). Example: main, HEAD^, abc123
   --head <ref>    Impact: head git ref (required). Example: HEAD, feature-branch
-  --exact         Export-surface LOC ranking (Exact). Loads classic TypeScript:
-                    1) local typescript-classic (node_modules; not a vendored file)
-                    2) jsDelivr typescript UMD  3) unpkg fallback
+  --estimate      Digest: skip Exact mass (estimate-only fileLoc / empty mass bins).
+  --exact         Digest: require Exact export-surface (fail-closed on engine error).
+                  Loads classic TypeScript: local → jsDelivr → unpkg.
                   Graph topology bins unchanged; fileLoc uses export-surface LOC.
                   Not a language server / not bundler tree-shake.
                   Ignored for impact (topology-only experiment).
   --exact-local   Like --exact but never hits CDN (local/inject only).
+  --tree-full     Tree: full verbose leaves (default is summary directory rolls).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.
   -h, --help      Show this help.
 
 Examples:
   arch-atlas digest . --omit fixtures
-  arch-atlas digest . --omit fixtures --omit '**/*.test.ts' --exact --out runtime.json
-  npm run atlas -- digest . --omit fixtures --exact-local
+  arch-atlas digest . --omit fixtures --estimate --out runtime.json
+  arch-atlas digest . --exact-local --out exact.json
+  npm run atlas -- digest . --omit fixtures
+  npm run atlas -- tree . --tree-full
   npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
-  npm run atlas -- impact . --base main --head HEAD --omit fixtures
 
 Exit codes: 0 success (including empty graph / empty delta with warnings);
-1 usage/IO/git/index failure. Impact never fails for "large" topology change.
+1 usage/IO/git/index failure. Explicit --exact engine failure exits 1.
+Default Exact soft-falls back to estimate (exit 0) with a warning.
 `);
 }
 
@@ -105,8 +117,12 @@ function parseArgs(argv: string[]): {
 		limit: CLI_LIMIT_DEFAULT,
 		maxDepth: DEFAULT_MAX_DEPTH,
 		omitRaw: [],
-		exact: false,
+		// Digest defaults Exact-on; resolved after command known
+		exact: true,
+		exactExplicit: false,
 		exactLocalOnly: false,
+		estimate: false,
+		treeFull: false,
 		help: false,
 	};
 	const positional: string[] = [];
@@ -117,13 +133,27 @@ function parseArgs(argv: string[]): {
 			opts.help = true;
 			continue;
 		}
+		if (a === '--estimate') {
+			opts.estimate = true;
+			opts.exact = false;
+			opts.exactExplicit = false;
+			continue;
+		}
 		if (a === '--exact') {
 			opts.exact = true;
+			opts.exactExplicit = true;
+			opts.estimate = false;
 			continue;
 		}
 		if (a === '--exact-local') {
 			opts.exact = true;
+			opts.exactExplicit = true;
 			opts.exactLocalOnly = true;
+			opts.estimate = false;
+			continue;
+		}
+		if (a === '--tree-full') {
+			opts.treeFull = true;
 			continue;
 		}
 		if (a === '--out') {
@@ -229,6 +259,11 @@ function parseArgs(argv: string[]): {
 		command = 'digest';
 	}
 
+	// Exact only meaningful for digest; tree/file/impact stay estimate topology
+	if (command !== 'digest') {
+		// Keep flags for warnings; do not force load
+	}
+
 	return { command, target, opts };
 }
 
@@ -285,6 +320,7 @@ export async function runCli(argv: string[]): Promise<number> {
 	}
 
 	const omit = parseOmitFlagValues(opts.omitRaw);
+	const shouldOmit = compileOmitMatcher(omit);
 
 	let feed;
 	try {
@@ -301,7 +337,10 @@ export async function runCli(argv: string[]): Promise<number> {
 	try {
 		const result = indexHostFeed(
 			{ files: feed.files },
-			{ catalog: { limit: opts.limit } },
+			{
+				catalog: { limit: opts.limit },
+				isOmittedPath: omit.length ? shouldOmit : undefined,
+			},
 		);
 		graph = result.graph;
 		catalog = result.catalog;
@@ -315,6 +354,13 @@ export async function runCli(argv: string[]): Promise<number> {
 	const source = feed.source;
 	const warnings = [...feed.warnings];
 
+	const scopeBase = {
+		omit,
+		includeTests: true as const,
+		exactRequested: command === 'digest' ? opts.exact : false,
+		feedKind: source.kind,
+	};
+
 	let exactInput:
 		| {
 				engineSource: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
@@ -323,26 +369,36 @@ export async function runCli(argv: string[]): Promise<number> {
 		  }
 		| undefined;
 
-	if (opts.exact && command === 'digest') {
+	const wantExact = command === 'digest' && opts.exact && !opts.estimate;
+
+	if (wantExact) {
 		const exact = await loadExactExportSurface(graph, {
 			localOnly: opts.exactLocalOnly,
 		});
 		if (!exact.ok) {
-			process.stderr.write(
-				`error: --exact failed: ${exact.error}` +
-					(exact.tried?.length ? ` (tried: ${exact.tried.join(', ')})` : '') +
-					'\n',
+			if (opts.exactExplicit) {
+				process.stderr.write(
+					`error: --exact failed: ${exact.error}` +
+						(exact.tried?.length ? ` (tried: ${exact.tried.join(', ')})` : '') +
+						'\n',
+				);
+				return 1;
+			}
+			// Soft-fallback: default Exact → estimate
+			warnings.push(
+				`Exact export-surface unavailable (${exact.error}); falling back to estimate` +
+					(exact.tried?.length ? ` (tried: ${exact.tried.join(', ')})` : ''),
 			);
-			return 1;
+		} else {
+			exactInput = {
+				engineSource: exact.source,
+				classicAst: exact.classicAst,
+				exportSurfaceLoc: exact.maps.exportSurfaceLoc,
+			};
 		}
-		exactInput = {
-			engineSource: exact.source,
-			classicAst: exact.classicAst,
-			exportSurfaceLoc: exact.maps.exportSurfaceLoc,
-		};
 	} else if (opts.exact && command !== 'digest') {
 		warnings.push(
-			'--exact currently applies to digest fileLoc only; ignored for this command.',
+			'--exact applies to digest mass/fileLoc only; ignored for this command (topology stays Estimate).',
 		);
 	}
 
@@ -354,13 +410,23 @@ export async function runCli(argv: string[]): Promise<number> {
 				source,
 				warnings,
 				exact: exactInput,
+				scope: {
+					...scopeBase,
+					exactRequested: opts.exact && !opts.estimate,
+					exactApplied: Boolean(exactInput),
+				},
 			});
 			emitJson(digest, opts.out);
 			return 0;
 		}
 
 		if (command === 'tree') {
-			const tree = buildAgentTree({ graph, source, warnings });
+			const tree = buildAgentTree({
+				graph,
+				source,
+				warnings,
+				mode: opts.treeFull ? 'full' : 'summary',
+			});
 			emitJson(tree, opts.out);
 			return 0;
 		}
@@ -372,6 +438,11 @@ export async function runCli(argv: string[]): Promise<number> {
 			source,
 			filePath: opts.file!,
 			warnings,
+			scope: {
+				...scopeBase,
+				exactRequested: false,
+				exactApplied: false,
+			},
 		});
 		emitJson(report, opts.out);
 		// Missing file is still valid JSON; exit 0 (agent can check exists)
@@ -393,9 +464,10 @@ export function runImpact(
 	opts: GlobalOpts,
 ): number {
 	const omit = parseOmitFlagValues(opts.omitRaw);
+	const shouldOmit = compileOmitMatcher(omit);
 	const warnings: string[] = [];
 
-	if (opts.exact) {
+	if (opts.exact && !opts.estimate) {
 		warnings.push(
 			'--exact ignored for impact (topology delta only; Exact mass not in this experiment).',
 		);
@@ -419,14 +491,12 @@ export function runImpact(
 	let baseIdx;
 	let headIdx;
 	try {
-		baseIdx = indexHostFeed(
-			{ files: baseFeed.files },
-			{ catalog: { limit: opts.limit } },
-		);
-		headIdx = indexHostFeed(
-			{ files: headFeed.files },
-			{ catalog: { limit: opts.limit } },
-		);
+		const indexOpts = {
+			catalog: { limit: opts.limit },
+			isOmittedPath: omit.length ? shouldOmit : undefined,
+		};
+		baseIdx = indexHostFeed({ files: baseFeed.files }, indexOpts);
+		headIdx = indexHostFeed({ files: headFeed.files }, indexOpts);
 	} catch (err) {
 		process.stderr.write(
 			`error: index failed: ${err instanceof Error ? err.message : String(err)}\n`,

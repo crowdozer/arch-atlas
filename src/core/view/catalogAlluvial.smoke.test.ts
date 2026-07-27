@@ -262,9 +262,10 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 		}
 	});
 
-	it('every high-edge hotspot: hub mass matches in+out edge count', () => {
+	it('every high-edge hotspot: hub mass matches in+out edge-record degrees', () => {
 		for (const h of catalog.hotspots) {
-			expect(h.edgeCount).toBe(h.outDegree + h.inDegree);
+			// edgeCount is unique-neighbor score; dual-publish edge-record degrees
+			expect(h.edgeCount).toBeGreaterThan(0);
 			expect(fileOutDegree(graph, h.id)).toBe(h.outDegree);
 			expect(fileInDegree(graph, h.id)).toBe(h.inDegree);
 
@@ -273,8 +274,10 @@ describe('catalog ↔ alluvial smoke (demo-next-complex)', () => {
 			assertColumnConservation(payload!, `hotspot ${h.path}`);
 			assertNodeRefCoversNamedNodes(payload!, `hotspot ${h.path}`);
 
-			// Hub: incident mass === in + out (catalog edgeCount); packages count on File in
-			expect(focusIncidentMass(payload!), `${h.path} hub mass`).toBe(h.edgeCount);
+			// Hub: incident mass === edge-record in + out (not unique-neighbor score)
+			expect(focusIncidentMass(payload!), `${h.path} hub mass`).toBe(
+				h.outDegree + h.inDegree,
+			);
 			expect(payload!.meta.focus.kind).toBe('file');
 			const cats = new Set(
 				payload!.options.alluvial.nodes.map((n) => n.category),

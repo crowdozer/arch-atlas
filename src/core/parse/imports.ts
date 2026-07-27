@@ -200,6 +200,7 @@ function scanStaticImports(
 		form: ExtractedImport['form'],
 		index: number,
 		bindings: ImportBinding[],
+		typeOnly?: boolean,
 	) => void,
 ): void {
 	const n = cleaned.length;
@@ -224,7 +225,9 @@ function scanStaticImports(
 		}
 
 		// Optional `type` (import type { … } / import type Foo); not `typeof`
+		let typeOnly = false;
 		if (cleaned.startsWith('type', j) && !isIdentChar(cleaned[j + 4])) {
+			typeOnly = true;
 			j = skipWs(cleaned, j + 4);
 		}
 
@@ -233,7 +236,8 @@ function scanStaticImports(
 			const quote = cleaned[j] as "'" | '"';
 			const end = findStringEnd(cleaned, j, quote);
 			if (end !== -1) {
-				push(cleaned.slice(j + 1, end), 'import', idx, [{ kind: 'side-effect' }]);
+				// Side-effect imports are never type-only
+				push(cleaned.slice(j + 1, end), 'import', idx, [{ kind: 'side-effect' }], false);
 				i = end + 1;
 				continue;
 			}
@@ -312,7 +316,7 @@ function scanStaticImports(
 		if (found && clauseEnd >= j && specOpen >= 0 && specClose > specOpen) {
 			const clause = cleaned.slice(j, clauseEnd).trim();
 			const specifier = cleaned.slice(specOpen, specClose);
-			push(specifier, 'import', idx, parseImportClause(clause || undefined));
+			push(specifier, 'import', idx, parseImportClause(clause || undefined), typeOnly);
 			i = specClose + 1;
 			continue;
 		}
@@ -327,41 +331,59 @@ function scanStaticImports(
 export function extractImports(source: string): ExtractedImport[] {
 	const cleaned = stripComments(source);
 	const found: ExtractedImport[] = [];
-	const seen = new Set<string>();
+	/** form\0spec → index in found (runtime wins over type-only on collide). */
+	const seen = new Map<string, number>();
 
 	const push = (
 		specifier: string,
 		form: ExtractedImport['form'],
 		index: number,
 		bindings: ImportBinding[],
+		typeOnly?: boolean,
 	) => {
 		const spec = specifier.trim();
 		if (!spec) return;
 		const key = `${form}\0${spec}`;
-		if (seen.has(key)) return;
-		seen.add(key);
+		const existingIdx = seen.get(key);
+		if (existingIdx !== undefined) {
+			const prev = found[existingIdx]!;
+			// Prefer runtime (non-typeOnly) when both forms exist
+			if (prev.typeOnly && !typeOnly) {
+				found[existingIdx] = {
+					specifier: spec,
+					form,
+					line: lineOf(cleaned, index),
+					bindings,
+					typeOnly: false,
+				};
+			}
+			return;
+		}
+		seen.set(key, found.length);
 		found.push({
 			specifier: spec,
 			form,
 			line: lineOf(cleaned, index),
 			bindings,
+			...(typeOnly ? { typeOnly: true } : {}),
 		});
 	};
 
 	// Static import [clause] from 'x' | import 'x' (brace-aware, multi-line OK)
 	scanStaticImports(cleaned, push);
 
-	// export ... from 'x'  |  export * from 'x'
+	// export ... from 'x'  |  export type … from 'x'  |  export * from 'x'
 	const exportFrom =
-		/\bexport\s+(?:type\s+)?(\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
+		/\bexport\s+(type\s+)?(\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
 	let m: RegExpExecArray | null;
 	while ((m = exportFrom.exec(cleaned)) !== null) {
-		const clause = m[1]!;
+		const typeOnly = Boolean(m[1]);
+		const clause = m[2]!;
 		const bindings =
 			clause === '*'
 				? ([{ kind: 'side-effect' }] as ImportBinding[])
 				: parseImportClause(clause);
-		push(m[2]!, 'export', m.index, bindings);
+		push(m[3]!, 'export', m.index, bindings, typeOnly);
 	}
 
 	// require('x') — binding lives on the left-hand side; not extracted here

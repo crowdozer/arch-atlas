@@ -24,7 +24,12 @@ import {
 	buildFileTree,
 	type FileTreeNode,
 } from '@core/tree/fileTree.ts';
-import { fileInDegree, fileOutDegree } from '@core/view/fileImporters.ts';
+import {
+	fileInDegree,
+	fileOutDegree,
+	fileUniqueInDegree,
+	fileUniqueOutDegree,
+} from '@core/view/fileImporters.ts';
 
 export const AGENT_DIGEST_SCHEMA = 'arch-atlas.agent-digest.v1' as const;
 export const AGENT_TREE_SCHEMA = 'arch-atlas.agent-tree.v1' as const;
@@ -35,12 +40,29 @@ export const ANALYSIS_HONESTY =
 
 /** Exact (export surface) honesty — same product contract as web Precision Exact. */
 export const ANALYSIS_HONESTY_EXACT =
-	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); Python stays estimate; not LSP / not bundler tree-shake';
+	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); surfaceLoc = export-declaration span coverage (not public-API member surface); Python/Astro stay estimate mass; not LSP / not bundler tree-shake';
+
+/** Note folded into analysis when Exact mass bins are present. */
+export const SURFACE_METRIC_NOTE =
+	'surfaceLoc counts lines covered by export declarations (span coverage), not public API surface area';
 
 export type AgentDigestSource = {
 	kind: 'directory' | 'zip';
 	/** Absolute or user-supplied path string (host-owned; not resolved by core). */
 	path: string;
+};
+
+export type AgentDigestScope = {
+	/** Normalized omit globs applied at feed (may be empty). */
+	omit: string[];
+	/** Whether tests were included (CLI default true). */
+	includeTests: boolean;
+	/** Host requested Exact mass overlay. */
+	exactRequested: boolean;
+	/** Exact overlay actually applied. */
+	exactApplied: boolean;
+	/** Feed origin kind. */
+	feedKind: 'directory' | 'zip' | string;
 };
 
 export type AgentDigestGraphFile = {
@@ -58,13 +80,19 @@ export type AgentDigestGraphPackage = {
 export type AgentDigestGraphEdge = {
 	from: string;
 	to: string;
-	toKind: 'file' | 'package' | 'unresolved';
+	toKind: 'file' | 'package' | 'unresolved' | 'omitted';
 	form: 'import' | 'export' | 'require' | 'dynamic';
 	line: number;
+	/** Present when true (import type / export type from). */
+	typeOnly?: boolean;
 };
 
 export type AgentDigestCatalog = {
 	starts: CatalogStart[];
+	/** Declared-ish entrypoints (additive split). */
+	entrypoints?: CatalogStart[];
+	/** Orphan roots (additive split). */
+	roots?: CatalogStart[];
 	ends: CatalogEnd[];
 	hotspots: CatalogHotspot[];
 	complex: CatalogComplex[];
@@ -84,6 +112,8 @@ export type AgentDigestAnalysis = {
 	honesty: string;
 	/** How fileLoc.loc was measured. */
 	locMetric: 'whole-file' | 'export-surface';
+	/** surfaceLoc honesty when Exact. */
+	surfaceMetricNote?: string;
 	/** Spine ranking formula used for catalog.spines. */
 	spineFormula?: SpineFormula;
 	/** Exact engine origin when tier is exact. */
@@ -94,12 +124,19 @@ export type AgentDigestAnalysis = {
 	};
 };
 
+export type AgentDigestSummary = MapCatalog['summary'] & {
+	/** External packages only (alias of packageCount). */
+	externalPackageCount?: number;
+};
+
 export type AgentDigest = {
 	schema: typeof AGENT_DIGEST_SCHEMA;
 	generatedAt: string;
 	source: AgentDigestSource;
 	analysis: AgentDigestAnalysis;
-	summary: MapCatalog['summary'];
+	/** Scope stamp for agent honesty (omit, Exact, feed). */
+	scope?: AgentDigestScope;
+	summary: AgentDigestSummary;
 	warnings: string[];
 	catalog: AgentDigestCatalog;
 	/**
@@ -134,6 +171,26 @@ export type BuildAgentDigestInput = {
 	 * LOC (graph topology / other bins unchanged — Exact is not a re-index).
 	 */
 	exact?: AgentExactSurfaceInput;
+	/** Optional scope stamp (CLI omit / Exact flags). */
+	scope?: Partial<AgentDigestScope>;
+};
+
+export type AgentTreeNode = {
+	name: string;
+	path: string;
+	kind: 'dir' | 'file';
+	/** Dir children (summary may omit deep leaves). */
+	children?: AgentTreeNode[];
+	isSource?: boolean;
+	unparseable?: boolean;
+	parseNote?: string;
+	/** Dir: descendant file count. */
+	fileCount?: number;
+	/** Dir: descendant import-parseable count. */
+	sourceCount?: number;
+	/** Dir: rolled edge counts (optional). */
+	edgeIn?: number;
+	edgeOut?: number;
 };
 
 export type AgentTreeOut = {
@@ -141,22 +198,26 @@ export type AgentTreeOut = {
 	generatedAt: string;
 	source: AgentDigestSource;
 	warnings: string[];
-	tree: FileTreeNode;
+	/** full = verbose file leaves; summary = directory rolls. */
+	mode?: 'full' | 'summary';
+	tree: AgentTreeNode | FileTreeNode;
 };
 
 export type AgentFileNeighbor = {
 	path: string;
-	/** Package label when toKind is package/unresolved. */
+	/** Package label when toKind is package/unresolved/omitted. */
 	label?: string;
-	toKind: 'file' | 'package' | 'unresolved';
+	toKind: 'file' | 'package' | 'unresolved' | 'omitted';
 	form: 'import' | 'export' | 'require' | 'dynamic';
 	line: number;
+	typeOnly?: boolean;
 };
 
 export type AgentFileImporter = {
 	path: string;
 	form: 'import' | 'export' | 'require' | 'dynamic';
 	line: number;
+	typeOnly?: boolean;
 };
 
 export type AgentFileCatalogHits = {
@@ -181,11 +242,20 @@ export type AgentFileReport = {
 	parseNote?: string;
 	outDegree?: number;
 	inDegree?: number;
+	uniqueOut?: number;
+	uniqueIn?: number;
+	scope?: AgentDigestScope;
 	catalogHits?: AgentFileCatalogHits;
 	/** Outgoing import edges (structural; no source text). */
 	imports?: AgentFileNeighbor[];
 	/** Incoming file→file import edges. */
 	importers?: AgentFileImporter[];
+	/** Total outgoing edges before truncation. */
+	importsTotal?: number;
+	/** Total incoming edges before truncation. */
+	importersTotal?: number;
+	/** True when imports or importers were capped. */
+	truncated?: boolean;
 	warnings: string[];
 };
 
@@ -196,7 +266,22 @@ function languageForPath(path: string, isSource: boolean): string | undefined {
 		return 'JavaScript';
 	}
 	if (/\.py$/i.test(path)) return 'Python';
+	if (/\.astro$/i.test(path)) return 'Astro';
 	return undefined;
+}
+
+function resolveScope(
+	source: AgentDigestSource,
+	partial: Partial<AgentDigestScope> | undefined,
+	exactApplied: boolean,
+): AgentDigestScope {
+	return {
+		omit: partial?.omit ?? [],
+		includeTests: partial?.includeTests ?? true,
+		exactRequested: partial?.exactRequested ?? false,
+		exactApplied,
+		feedKind: partial?.feedKind ?? source.kind,
+	};
 }
 
 /**
@@ -267,6 +352,7 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		toKind: e.toKind,
 		form: e.form,
 		line: e.line,
+		...(e.typeOnly ? { typeOnly: true } : {}),
 	}));
 
 	if (graph.stats.sourceCount === 0) {
@@ -304,6 +390,7 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			tier: 'exact',
 			honesty: ANALYSIS_HONESTY_EXACT,
 			locMetric: 'export-surface',
+			surfaceMetricNote: SURFACE_METRIC_NOTE,
 			spineFormula,
 			engine: {
 				source: exact.engineSource,
@@ -316,15 +403,26 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		);
 	}
 
+	const scope = resolveScope(source, input.scope, Boolean(exact));
+
+	const summary: AgentDigestSummary = {
+		...catalog.summary,
+		externalPackageCount:
+			catalog.summary.externalPackageCount ?? catalog.summary.packageCount,
+	};
+
 	return {
 		schema: AGENT_DIGEST_SCHEMA,
 		generatedAt,
 		source,
 		analysis,
-		summary: { ...catalog.summary },
+		scope,
+		summary,
 		warnings,
 		catalog: {
 			starts: catalog.starts,
+			entrypoints: catalog.entrypoints,
+			roots: catalog.roots,
 			ends: catalog.ends,
 			hotspots: catalog.hotspots,
 			complex: catalog.complex,
@@ -340,16 +438,108 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	};
 }
 
+/** Count descendant files / sources on a full tree. */
+function countTreeFiles(node: FileTreeNode): { fileCount: number; sourceCount: number } {
+	if (node.kind === 'file') {
+		return { fileCount: 1, sourceCount: node.isSource ? 1 : 0 };
+	}
+	let fileCount = 0;
+	let sourceCount = 0;
+	for (const c of node.children) {
+		const n = countTreeFiles(c);
+		fileCount += n.fileCount;
+		sourceCount += n.sourceCount;
+	}
+	return { fileCount, sourceCount };
+}
+
+/**
+ * Summary tree: keep directory structure; collapse deep file leaves into
+ * directory rolls (fileCount / sourceCount). Small folders keep leaves.
+ */
+function summarizeTree(
+	node: FileTreeNode,
+	depth: number,
+	opts: { maxLeafDepth: number; smallFolderMax: number },
+): AgentTreeNode {
+	if (node.kind === 'file') {
+		return {
+			name: node.name,
+			path: node.path,
+			kind: 'file',
+			isSource: node.isSource,
+			unparseable: node.unparseable,
+			parseNote: node.parseNote || undefined,
+		};
+	}
+
+	const counts = countTreeFiles(node);
+	const keepLeaves =
+		depth >= opts.maxLeafDepth || counts.fileCount <= opts.smallFolderMax;
+
+	const children: AgentTreeNode[] = [];
+	if (keepLeaves) {
+		for (const c of node.children) {
+			children.push(summarizeTree(c, depth + 1, opts));
+		}
+	} else {
+		// Keep subdirs (rolled); drop individual file leaves at this level
+		for (const c of node.children) {
+			if (c.kind === 'dir') {
+				children.push(summarizeTree(c, depth + 1, opts));
+			}
+		}
+	}
+
+	return {
+		name: node.name,
+		path: node.path,
+		kind: 'dir',
+		isSource: node.isSource,
+		unparseable: node.unparseable,
+		fileCount: counts.fileCount,
+		sourceCount: counts.sourceCount,
+		children,
+	};
+}
+
+function fullTreeNode(node: FileTreeNode): AgentTreeNode {
+	if (node.kind === 'file') {
+		return {
+			name: node.name,
+			path: node.path,
+			kind: 'file',
+			isSource: node.isSource,
+			unparseable: node.unparseable,
+			parseNote: node.parseNote || undefined,
+		};
+	}
+	const counts = countTreeFiles(node);
+	return {
+		name: node.name,
+		path: node.path,
+		kind: 'dir',
+		isSource: node.isSource,
+		unparseable: node.unparseable,
+		fileCount: counts.fileCount,
+		sourceCount: counts.sourceCount,
+		children: node.children.map(fullTreeNode),
+	};
+}
+
 /**
  * Hierarchical path tree with parse flags (same pure structure as the UI tree).
+ * mode `summary` (default for CLI) rolls dense folders; `full` keeps all leaves.
  */
 export function buildAgentTree(input: {
 	graph: CodeGraph;
 	source: AgentDigestSource;
 	warnings?: string[];
 	generatedAt?: string;
+	mode?: 'full' | 'summary';
 }): AgentTreeOut {
 	const { graph } = input;
+	const mode = input.mode ?? 'summary';
 	const importParseable = new Set<string>();
 	const parseNotes = new Map<string, string>();
 	for (const [path, entry] of graph.parseMap) {
@@ -361,16 +551,22 @@ export function buildAgentTree(input: {
 		if (f.parseNote) parseNotes.set(f.path, f.parseNote);
 	}
 
-	const tree = buildFileTree([...graph.files.keys()], {
+	const full = buildFileTree([...graph.files.keys()], {
 		importParseable,
 		parseNotes,
 	});
+
+	const tree =
+		mode === 'full'
+			? fullTreeNode(full)
+			: summarizeTree(full, 0, { maxLeafDepth: 3, smallFolderMax: 8 });
 
 	return {
 		schema: AGENT_TREE_SCHEMA,
 		generatedAt: input.generatedAt ?? new Date().toISOString(),
 		source: input.source,
 		warnings: [...(input.warnings ?? [])],
+		mode,
 		tree,
 	};
 }
@@ -387,12 +583,14 @@ export function buildAgentFileReport(input: {
 	generatedAt?: string;
 	/** Cap on listed import/importer neighbors (default 40). */
 	neighborLimit?: number;
+	scope?: Partial<AgentDigestScope>;
 }): AgentFileReport {
 	const path = input.filePath.replace(/\\/g, '/').replace(/^\.?\//, '');
 	const warnings = [...(input.warnings ?? [])];
 	const generatedAt = input.generatedAt ?? new Date().toISOString();
 	const limit = input.neighborLimit ?? 40;
 	const node = input.graph.files.get(path);
+	const scope = resolveScope(input.source, input.scope, false);
 
 	if (!node) {
 		return {
@@ -401,6 +599,7 @@ export function buildAgentFileReport(input: {
 			source: input.source,
 			path,
 			exists: false,
+			scope,
 			warnings: [...warnings, `File not in graph: ${path}`],
 		};
 	}
@@ -435,16 +634,20 @@ export function buildAgentFileReport(input: {
 						? (pkg?.name ?? e.to)
 						: e.toKind === 'unresolved'
 							? e.to.replace(/^unresolved:/, '')
-							: undefined,
+							: e.toKind === 'omitted'
+								? e.to.replace(/^omitted:/, '')
+								: undefined,
 				toKind: e.toKind,
 				form: e.form,
 				line: e.line,
+				...(e.typeOnly ? { typeOnly: true } : {}),
 			});
 		} else if (e.toKind === 'file' && e.to === path) {
 			importers.push({
 				path: e.from,
 				form: e.form,
 				line: e.line,
+				...(e.typeOnly ? { typeOnly: true } : {}),
 			});
 		}
 	}
@@ -456,6 +659,10 @@ export function buildAgentFileReport(input: {
 		(a, b) => a.path.localeCompare(b.path) || a.line - b.line,
 	);
 
+	const importsTotal = imports.length;
+	const importersTotal = importers.length;
+	const truncated = importsTotal > limit || importersTotal > limit;
+
 	return {
 		schema: AGENT_FILE_SCHEMA,
 		generatedAt,
@@ -466,9 +673,15 @@ export function buildAgentFileReport(input: {
 		parseNote: node.parseNote || undefined,
 		outDegree: fileOutDegree(input.graph, path),
 		inDegree: fileInDegree(input.graph, path),
+		uniqueOut: fileUniqueOutDegree(input.graph, path),
+		uniqueIn: fileUniqueInDegree(input.graph, path),
+		scope,
 		catalogHits: Object.keys(catalogHits).length ? catalogHits : undefined,
 		imports: imports.slice(0, limit),
 		importers: importers.slice(0, limit),
+		importsTotal,
+		importersTotal,
+		truncated,
 		warnings,
 	};
 }

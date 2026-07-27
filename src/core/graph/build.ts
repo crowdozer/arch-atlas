@@ -15,8 +15,11 @@ import { classifyFileParse, shouldKeepInGraph } from '@core/parse/capability.ts'
 import { extractAstroImports } from '@core/parse/astroImports.ts';
 import { extractImports } from '@core/parse/imports.ts';
 import { extractPythonImports } from '@core/parse/pythonImports.ts';
-import { resolveSpecifier } from '@core/parse/resolve.ts';
-import { parseTsconfigPaths, type PathAliasConfig } from '@core/parse/tsconfig.ts';
+import {
+	isRelativeSpecifier,
+	resolveSpecifier,
+} from '@core/parse/resolve.ts';
+import { expandAlias, joinPosix, parseTsconfigPaths, type PathAliasConfig } from '@core/parse/tsconfig.ts';
 
 function pickAliasConfig(files: Map<string, string>): PathAliasConfig | null {
 	const candidates = ['tsconfig.json', 'jsconfig.json', 'tsconfig.app.json', 'tsconfig.base.json'];
@@ -64,13 +67,62 @@ function collectPackageJsonDeps(text: string): string[] {
 	}
 }
 
-export function buildGraph(input: VirtualFile[]): CodeGraph {
+function dirnamePosix(path: string): string {
+	const i = path.lastIndexOf('/');
+	if (i <= 0) return '';
+	return path.slice(0, i);
+}
+
+/**
+ * Candidate paths a relative/alias specifier might resolve to (for omit stamping).
+ * Best-effort — does not invent membership; only used when isOmittedPath is set.
+ */
+function candidateOmitPaths(
+	fromPath: string,
+	specifier: string,
+	alias: PathAliasConfig | null,
+): string[] {
+	const out: string[] = [];
+	const push = (c: string) => {
+		const n = normalizePath(c);
+		if (n) out.push(n);
+	};
+	if (isRelativeSpecifier(specifier)) {
+		const joined = joinPosix(dirnamePosix(fromPath), specifier);
+		push(joined);
+		for (const ext of ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts', '.astro']) {
+			push(joined + ext);
+			push(joinPosix(joined, `index${ext}`));
+		}
+	}
+	if (specifier.startsWith('@/') || (alias && expandAlias(specifier, alias).length)) {
+		for (const cand of expandAlias(specifier, alias)) {
+			push(cand);
+			for (const ext of ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.astro']) {
+				push(cand + ext);
+				push(joinPosix(cand, `index${ext}`));
+			}
+		}
+	}
+	return out;
+}
+
+export type BuildGraphOpts = {
+	/**
+	 * When a specifier would resolve only to an omitted feed path, stamp
+	 * `toKind: 'omitted'` instead of `unresolved`. Host/CLI pass omit matcher.
+	 */
+	isOmittedPath?: (path: string) => boolean;
+};
+
+export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGraph {
 	const contents = new Map<string, string>();
 	const files = new Map<string, FileNode>();
 	const packages = new Map<string, PackageNode>();
 	const parseMap = new Map<string, ParseMapEntry>();
 	const edges: ImportEdge[] = [];
 	const packageJsonPaths: string[] = [];
+	const isOmittedPath = opts?.isOmittedPath;
 
 	for (const f of input) {
 		const path = normalizePath(f.path);
@@ -150,9 +202,24 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 					// keep existing
 				}
 			} else {
-				to = `unresolved:${imp.specifier}`;
-				toKind = 'unresolved';
-				unresolvedCount++;
+				// Unresolved — may be feed-omitted rather than true miss
+				let omitted = false;
+				if (isOmittedPath) {
+					for (const cand of candidateOmitPaths(path, imp.specifier, alias)) {
+						if (isOmittedPath(cand)) {
+							omitted = true;
+							break;
+						}
+					}
+				}
+				if (omitted) {
+					to = `omitted:${imp.specifier}`;
+					toKind = 'omitted';
+				} else {
+					to = `unresolved:${imp.specifier}`;
+					toKind = 'unresolved';
+					unresolvedCount++;
+				}
 			}
 
 			edgeSeq++;
@@ -167,6 +234,7 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 				form: imp.form,
 				line: imp.line,
 				bindings: imp.bindings,
+				...(imp.typeOnly ? { typeOnly: true } : {}),
 			});
 		}
 	}

@@ -9,7 +9,7 @@
  * `indexHostFeed` owns the index body; `indexFiles` is a thin alias over it.
  */
 
-import { buildGraph } from '@core/graph/build.ts';
+import { buildGraph, type BuildGraphOpts } from '@core/graph/build.ts';
 import {
 	buildMapCatalog,
 	type BuildMapCatalogOpts,
@@ -33,6 +33,11 @@ export type IndexResult = {
 export type IndexHostFeedOpts = {
 	/** Forwarded to {@link buildMapCatalog} (UI omits → default top-N). */
 	catalog?: BuildMapCatalogOpts;
+	/**
+	 * When set, unresolved relative/alias targets that match are stamped
+	 * `toKind: 'omitted'` instead of `unresolved`.
+	 */
+	isOmittedPath?: BuildGraphOpts['isOmittedPath'];
 };
 
 /**
@@ -40,7 +45,9 @@ export type IndexHostFeedOpts = {
  * Single owner of the index path; `indexFiles(files)` delegates here.
  */
 export function indexHostFeed(feed: HostFileFeed, opts?: IndexHostFeedOpts): IndexResult {
-	const graph = buildGraph(feed.files);
+	const graph = buildGraph(feed.files, {
+		isOmittedPath: opts?.isOmittedPath,
+	});
 	const catalog = buildMapCatalog(graph, opts?.catalog);
 	return { graph, catalog };
 }

@@ -49,6 +49,7 @@ describe('runCli', () => {
 			fixtureDir,
 			'--limit',
 			'20',
+			'--estimate', // keep estimate for speed/stability in unit test
 		]);
 		expect(code).toBe(0);
 		const out = logs.join('');
@@ -57,7 +58,31 @@ describe('runCli', () => {
 		expect(parsed.catalog).toBeDefined();
 		expect(parsed.graph.edges.length).toBeGreaterThan(0);
 		expect(parsed.summary.sourceCount).toBeGreaterThan(0);
+		expect(parsed.scope).toBeDefined();
+		expect(parsed.scope.exactRequested).toBe(false);
+		expect(parsed.summary.externalPackageCount).toBe(parsed.summary.packageCount);
 		expect(JSON.stringify(parsed)).not.toContain('"contents"');
+	});
+
+	it('digest default tries Exact (soft or applied)', async () => {
+		capture();
+		const code = await runCli(['digest', fixtureDir, '--limit', '5']);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
+		expect(parsed.scope?.exactRequested).toBe(true);
+		// Applied if engine loads; else estimate with warning — either is exit 0
+		if (parsed.analysis.tier === 'exact') {
+			expect(parsed.scope.exactApplied).toBe(true);
+			expect(parsed.analysis.locMetric).toBe('export-surface');
+		} else {
+			expect(parsed.analysis.tier).toBe('estimate');
+			expect(
+				parsed.warnings?.some((w: string) =>
+					/Exact|export-surface|fallback/i.test(w),
+				) || parsed.scope.exactApplied === false,
+			).toBe(true);
+		}
 	});
 
 	it('file report for hub', async () => {
@@ -75,13 +100,22 @@ describe('runCli', () => {
 		expect(parsed.path).toBe('src/god/hub.ts');
 	});
 
-	it('tree command returns tree schema', async () => {
+	it('tree command returns tree schema (summary default)', async () => {
 		capture();
 		const code = await runCli(['tree', fixtureDir]);
 		expect(code).toBe(0);
 		const parsed = JSON.parse(logs.join(''));
 		expect(parsed.schema).toBe('arch-atlas.agent-tree.v1');
+		expect(parsed.mode).toBe('summary');
 		expect(parsed.tree.children?.length).toBeGreaterThan(0);
+	});
+
+	it('tree --tree-full sets mode full', async () => {
+		capture();
+		const code = await runCli(['tree', fixtureDir, '--tree-full']);
+		expect(code).toBe(0);
+		const parsed = JSON.parse(logs.join(''));
+		expect(parsed.mode).toBe('full');
 	});
 
 	it('usage error without path exits 1', async () => {

@@ -1,52 +1,68 @@
 /**
  * High-edge file suggestions for the map catalog.
- * Ranked by observed import edges involving each source file (in + out).
+ * Ranked by unique runtime file neighbors (in + out); edge-record degrees dual-published.
  */
 
+import { isPureBarrel, inferFileRoles } from '@core/catalog/roles.ts';
 import type { CatalogHotspot, CodeGraph } from '@core/graph/types.ts';
+import { fileDegreeMaps } from '@core/view/fileImporters.ts';
 
 /**
- * Source files with the highest observed import edge activity.
- * edgeCount = outgoing edges + incoming file edges (packages count on the out side only).
+ * Source files with the highest unique-neighbor import activity.
+ * edgeCount = uniqueOut + uniqueIn (runtime edges when typeOnly present).
+ * Pure barrels are demoted in ranking (score × 0.35) but still listable.
  */
 export function catalogHotspots(graph: CodeGraph, limit = 15): CatalogHotspot[] {
-	const outDeg = new Map<string, number>();
-	const inDeg = new Map<string, number>();
-	const packageOut = new Map<string, number>();
+	// Edge-record degrees (all edges) for dual publish
+	const all = fileDegreeMaps(graph, { runtimeOnly: false });
+	// Ranking uses runtime-preferring unique neighbors
+	const runtime = fileDegreeMaps(graph, { runtimeOnly: true });
 
-	for (const e of graph.edges) {
-		outDeg.set(e.from, (outDeg.get(e.from) ?? 0) + 1);
-		if (e.toKind === 'package' || e.toKind === 'unresolved') {
-			packageOut.set(e.from, (packageOut.get(e.from) ?? 0) + 1);
-		}
-		if (e.toKind === 'file') {
-			inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
-		}
-	}
+	type Row = CatalogHotspot & { rankScore: number };
+	const hotspots: Row[] = [];
 
-	const hotspots: CatalogHotspot[] = [];
 	for (const [path, node] of graph.files) {
 		if (!node.isSource) continue;
-		const out = outDeg.get(path) ?? 0;
-		const inn = inDeg.get(path) ?? 0;
-		const edgeCount = out + inn;
-		if (edgeCount === 0) continue;
+		const uniqueOut = runtime.uniqueOut.get(path) ?? 0;
+		const uniqueIn = runtime.uniqueIn.get(path) ?? 0;
+		const edgeCount = uniqueOut + uniqueIn;
+		if (edgeCount === 0) {
+			// Still surface files with only package outs via edge records
+			const out = all.outDeg.get(path) ?? 0;
+			const inn = all.inDeg.get(path) ?? 0;
+			if (out + inn === 0) continue;
+		}
+		const out = all.outDeg.get(path) ?? 0;
+		const inn = all.inDeg.get(path) ?? 0;
+		const uniqueScore =
+			(runtime.uniqueOut.get(path) ?? 0) + (runtime.uniqueIn.get(path) ?? 0);
+		// Fallback to edge records when no unique file neighbors (package-only hubs)
+		const baseScore = uniqueScore > 0 ? uniqueScore : out + inn;
+		const barrel = isPureBarrel(graph, path);
+		const rankScore = barrel ? baseScore * 0.35 : baseScore;
+		const roles = inferFileRoles(graph, path);
+
 		hotspots.push({
 			id: path,
 			path,
-			edgeCount,
+			edgeCount: uniqueScore > 0 ? uniqueScore : out + inn,
 			outDegree: out,
 			inDegree: inn,
-			packageOut: packageOut.get(path) ?? 0,
+			uniqueOut: runtime.uniqueOut.get(path) ?? 0,
+			uniqueIn: runtime.uniqueIn.get(path) ?? 0,
+			packageOut: all.packageOut.get(path) ?? 0,
+			roles,
 			epistemic: 'observed',
+			rankScore,
 		});
 	}
 
 	hotspots.sort(
 		(a, b) =>
+			b.rankScore - a.rankScore ||
 			b.edgeCount - a.edgeCount ||
 			b.outDegree - a.outDegree ||
 			a.path.localeCompare(b.path),
 	);
-	return hotspots.slice(0, limit);
+	return hotspots.slice(0, limit).map(({ rankScore: _r, ...row }) => row);
 }

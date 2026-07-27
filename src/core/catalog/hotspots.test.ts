@@ -41,10 +41,39 @@ describe('catalogHotspots', () => {
 		expect(catalog.hotspots[0]!.edgeCount).toBe(hot[0]!.edgeCount);
 	});
 
-	it('edgeCount equals out + in for each hotspot', () => {
+	it('publishes unique neighbor degrees and edgeCount from unique score', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		for (const h of catalogHotspots(graph)) {
-			expect(h.edgeCount).toBe(h.outDegree + h.inDegree);
+			expect(h.uniqueOut ?? 0).toBeGreaterThanOrEqual(0);
+			expect(h.uniqueIn ?? 0).toBeGreaterThanOrEqual(0);
+			// edgeCount is unique-neighbor score (or edge-record fallback)
+			expect(h.edgeCount).toBeGreaterThan(0);
+			expect(h.edgeCount).toBeLessThanOrEqual(
+				Math.max(h.outDegree + h.inDegree, (h.uniqueOut ?? 0) + (h.uniqueIn ?? 0) + h.packageOut),
+			);
 		}
+	});
+
+	it('does not double-count import+export-from same target as two unique neighbors', () => {
+		const files: VirtualFile[] = [
+			{
+				path: 'src/barrel.ts',
+				content: `import { a } from './util';\nexport { a } from './util';\n`,
+				byteLength: 60,
+			},
+			{
+				path: 'src/util.ts',
+				content: `export const a = 1;\n`,
+				byteLength: 20,
+			},
+		];
+		const { graph } = indexFiles(files);
+		const hot = catalogHotspots(graph);
+		const barrel = hot.find((h) => h.path === 'src/barrel.ts');
+		expect(barrel).toBeDefined();
+		// two edge records out, one unique file neighbor
+		expect(barrel!.outDegree).toBe(2);
+		expect(barrel!.uniqueOut).toBe(1);
+		expect(barrel!.edgeCount).toBe(1); // uniqueOut + uniqueIn
 	});
 });

@@ -145,6 +145,46 @@ describe('buildAgentDigest', () => {
 				digest.catalog.complex.some((c) => c.path === 'src/god/hub.ts'),
 		).toBe(true);
 	});
+
+	it('stamps scope and externalPackageCount; entrypoints/roots split', () => {
+		const digest = buildAgentDigest({
+			graph,
+			catalog,
+			source: { kind: 'directory', path: '/tmp/demo' },
+			scope: {
+				omit: ['fixtures'],
+				includeTests: true,
+				exactRequested: false,
+				exactApplied: false,
+			},
+		});
+		expect(digest.scope?.omit).toEqual(['fixtures']);
+		expect(digest.scope?.exactApplied).toBe(false);
+		expect(digest.summary.externalPackageCount).toBe(digest.summary.packageCount);
+		expect(digest.catalog.entrypoints).toBeDefined();
+		expect(digest.catalog.roots).toBeDefined();
+		expect(digest.analysis.surfaceMetricNote).toBeUndefined();
+	});
+
+	it('exact analysis includes surfaceMetricNote', () => {
+		const exportSurfaceLoc = new Map<string, number>();
+		for (const f of graph.files.values()) {
+			if (f.isSource) exportSurfaceLoc.set(f.path, 5);
+		}
+		const digest = buildAgentDigest({
+			graph,
+			catalog,
+			source: { kind: 'directory', path: 'x' },
+			exact: {
+				engineSource: 'local',
+				classicAst: true,
+				exportSurfaceLoc,
+			},
+			scope: { exactRequested: true },
+		});
+		expect(digest.analysis.surfaceMetricNote).toMatch(/export declarations/i);
+		expect(digest.scope?.exactApplied).toBe(true);
+	});
 });
 
 describe('buildAgentFileReport', () => {
@@ -181,10 +221,24 @@ describe('buildAgentFileReport', () => {
 		expect(report.exists).toBe(false);
 		expect(report.warnings.some((w) => w.includes('not in graph'))).toBe(true);
 	});
+
+	it('reports neighbor totals and truncated flag', () => {
+		const report = buildAgentFileReport({
+			graph,
+			catalog,
+			source: { kind: 'directory', path: 'x' },
+			filePath: 'src/god/hub.ts',
+			neighborLimit: 1,
+		});
+		expect(report.importsTotal ?? 0).toBeGreaterThan(1);
+		expect(report.truncated).toBe(true);
+		expect(report.imports?.length).toBe(1);
+		expect(report.uniqueOut ?? 0).toBeGreaterThanOrEqual(0);
+	});
 });
 
 describe('buildAgentTree', () => {
-	it('builds hierarchical tree for spaghetti fixture', () => {
+	it('builds hierarchical tree for spaghetti fixture (summary default)', () => {
 		const files = walkFiles(path.join(fixturesRoot, 'demo-spaghetti-godfile'));
 		const { graph } = indexFiles(files);
 		const out = buildAgentTree({
@@ -192,7 +246,21 @@ describe('buildAgentTree', () => {
 			source: { kind: 'directory', path: 'demo' },
 		});
 		expect(out.schema).toBe('arch-atlas.agent-tree.v1');
+		expect(out.mode).toBe('summary');
 		expect(out.tree.kind).toBe('dir');
-		expect(out.tree.children.some((c) => c.name === 'src')).toBe(true);
+		expect(out.tree.children?.some((c) => c.name === 'src')).toBe(true);
+	});
+
+	it('full mode keeps verbose leaves', () => {
+		const files = walkFiles(path.join(fixturesRoot, 'demo-spaghetti-godfile'));
+		const { graph } = indexFiles(files);
+		const out = buildAgentTree({
+			graph,
+			source: { kind: 'directory', path: 'demo' },
+			mode: 'full',
+		});
+		expect(out.mode).toBe('full');
+		const json = JSON.stringify(out.tree);
+		expect(json).toContain('hub.ts');
 	});
 });
