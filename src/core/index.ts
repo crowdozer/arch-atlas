@@ -52,6 +52,7 @@ export {
 	resolveWeightRequest,
 	unitsForAxis,
 } from '@core/view/weight.ts';
+export type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {
@@ -96,6 +97,12 @@ export {
 	nodeMatchesFilter,
 } from '@core/tree/fileTree.ts';
 export type { FileTreeNode } from '@core/tree/fileTree.ts';
+export { indexHostFeed } from '@core/hostPipe.ts';
+export type {
+	AnalysisRequest,
+	HostFileFeed,
+	HostIndexResult,
+} from '@core/hostPipe.ts';
 
 import { buildGraph } from '@core/graph/build.ts';
 import { buildMapCatalog } from '@core/catalog/views.ts';
