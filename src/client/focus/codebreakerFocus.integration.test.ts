@@ -75,94 +75,54 @@ describe('codebreaker hub focus (integration)', () => {
 		expect(hookish.length).toBeGreaterThanOrEqual(1);
 	});
 
-	it('L-file-buffer-real: Buffer→hook→deps on; sibling index→hook cascade off', () => {
+	it('L-instance-local: Buffer→·hN on; primary Imports hook off', () => {
 		const plan = planFocus(g, { kind: 'file', name: BUFFER });
 
-		// path ancestors
 		expect(plan.activeLabels.has(PAGE)).toBe(true);
 		expect(plan.activeLabels.has(INDEX)).toBe(true);
 		expect(plan.activeLabels.has(BUFFER)).toBe(true);
 
-		// Expected forward: Buffer → useCodebreaker (any instance) → reducer/types/utils
+		// hop instance of hook, not primary
 		expect(
-			[...plan.activeLabels].some((n) => n.startsWith(HOOK)),
-			'hook label (primary or ·hN)',
+			[...plan.activeLabels].some((n) => n.startsWith(HOOK) && n.includes('·')),
 		).toBe(true);
-		expect(plan.activeLabels.has(REDUCER)).toBe(true);
-		expect(plan.activeLabels.has(TYPES)).toBe(true);
-		expect(plan.activeLabels.has(UTILS)).toBe(true);
+		expect(plan.activeLabels.has(HOOK)).toBe(false);
+		// deps hang off primary instance — not activated via ·hN id alias
+		expect(plan.activeLabels.has(REDUCER)).toBe(false);
 
-		// co-importer *siblings* of Buffer under index stay dim (labels)
 		for (const sib of [TIMER, FAQ, GAME, SEQ, STATUS]) {
 			expect(plan.activeLabels.has(sib), `sibling label ${sib}`).toBe(false);
 		}
 
-		// path bands + Buffer→hook
 		expect(plan.focusedBandKeys.has(fileBandKey(PAGE, INDEX))).toBe(true);
 		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, BUFFER))).toBe(true);
-		const bufferToHook = [...plan.focusedBandKeys].some((k) => {
+		const bufferToHop = [...plan.focusedBandKeys].some((k) => {
 			const [s, t] = k.split('\0');
-			return s === BUFFER && t.startsWith(HOOK);
+			return s === BUFFER && t.startsWith(HOOK) && t.includes('·');
 		});
-		expect(bufferToHook, 'Buffer→hook band focused').toBe(true);
+		expect(bufferToHop, 'Buffer→useCodebreaker · hN focused').toBe(true);
 
-		// hook→deps (via alias-closed forward through multi-instance)
-		const hookToDep = [...plan.focusedBandKeys].some((k) => {
-			const [s, t] = k.split('\0');
-			return (
-				s.startsWith(HOOK) &&
-				(t === REDUCER || t === TYPES || t === UTILS || t.startsWith(UTILS) || t.startsWith(TYPES) || t.startsWith(REDUCER))
-			);
-		});
-		expect(hookToDep, 'useCodebreaker→reducer|types|utils focused via Buffer forward').toBe(
-			true,
-		);
-
-		// Screenshot failure: sibling path index→useCodebreaker (Imports column)
-		// must stay dim — that is the cascade next to Buffer, not Buffer's path.
-		const indexToHook = [...plan.focusedBandKeys].some((k) => {
-			const [s, t] = k.split('\0');
-			return s === INDEX && t.startsWith(HOOK);
-		});
-		expect(
-			indexToHook,
-			'sibling index→useCodebreaker band must be dim (not Buffer→hook path)',
-		).toBe(false);
-
-		// other sibling outflows from index dim
-		for (const sib of [TIMER, FAQ, GAME, SEQ, STATUS]) {
-			expect(plan.focusedBandKeys.has(fileBandKey(INDEX, sib))).toBe(false);
-		}
+		// primary Imports track off
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(false);
 	});
 
-	it('L-file-hook-real: useCodebreaker hover dims co-importers', () => {
+	it('L-instance-local: primary useCodebreaker does not light hop consumers', () => {
 		const plan = planFocus(g, { kind: 'file', name: HOOK });
-		expect(plan.activeLabels.has(PAGE)).toBe(true);
-		expect(plan.activeLabels.has(INDEX)).toBe(true);
 		expect(plan.activeLabels.has(HOOK)).toBe(true);
-		for (const sib of [BUFFER, TIMER, FAQ, GAME, SEQ, STATUS]) {
-			expect(plan.activeLabels.has(sib), `co-importer ${sib}`).toBe(false);
-		}
-		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(true);
-		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, BUFFER))).toBe(false);
-		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, TIMER))).toBe(false);
-		// forward deps of primary hook
-		expect(plan.activeLabels.has(REDUCER) || plan.activeLabels.has(TYPES) || plan.activeLabels.has(UTILS)).toBe(
-			true,
-		);
-	});
-
-	it('L-file-timer-real: Timer hover does not focus index→hook', () => {
-		const plan = planFocus(g, { kind: 'file', name: TIMER });
-		expect(plan.activeLabels.has(TIMER)).toBe(true);
 		expect(plan.activeLabels.has(INDEX)).toBe(true);
-		const indexToHook = [...plan.focusedBandKeys].some((k) => {
-			const [s, t] = k.split('\0');
-			return s === INDEX && t.startsWith(HOOK);
-		});
-		expect(indexToHook).toBe(false);
-		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, TIMER))).toBe(true);
-		expect(plan.activeLabels.has(BUFFER)).toBe(false);
-		expect(plan.activeLabels.has(FAQ)).toBe(false);
+		// hop consumers import ·hN, not primary — stay dim under instance-local
+		for (const sib of [BUFFER, TIMER, FAQ, GAME, SEQ, STATUS]) {
+			expect(plan.activeLabels.has(sib), `hop consumer ${sib}`).toBe(false);
+		}
+		expect(
+			[...plan.activeLabels].some((n) => n.startsWith(HOOK) && n.includes('·')),
+		).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(true);
+		// forward deps of primary
+		expect(
+			plan.activeLabels.has(REDUCER) ||
+				plan.activeLabels.has(TYPES) ||
+				plan.activeLabels.has(UTILS),
+		).toBe(true);
 	});
 });

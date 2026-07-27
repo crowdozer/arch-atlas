@@ -35,8 +35,8 @@ connectivity for External is **`externalStraightPairs` only**.
 
 | Seed | When | Product law |
 | ---- | ---- | ----------- |
-| **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ aliases) |
-| **file** | Hover a file label | Ancestors = nodes on any **shortest path** File-spine→seed (forward on fileEdges; fallback reverseBFS if unreachable); ∪ forward descendants; packages only if pair parent ∈ hovered∪**forward** descendants |
+| **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ non-multi-instance aliases) |
+| **file** | Hover a file label | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
 | **package** | Hover External package / unresolved chip | Reverse-path **union** from all pair parents of that package |
 | **file-spine** | Hover the hub File column spine | Same as **file** for `meta.startId` / File focus label |
 
@@ -60,53 +60,39 @@ Straighten key: `ext:parent\0packageName`
 ### 3b. File label (`L-file-*`)
 
 ```text
-descendants = aliasClosedForwardBFS(hovered) on fileEdges   // includes hovered
-// alias-closed: when walk hits useCodebreaker·hN, continue from primary id too
-// so Buffer→hook·hN still reaches reducer/types/utils out-edges of the primary
-targets    = aliasExpand({ hovered })
-if fileSpineName known and some target reachable from spine (forward):
-  ancestors = nodes on any shortest path spine → target (forward on fileEdges)
-              ∪ targets
-              // multi-instance: D = min dist among reached goals; paths to
-              // goals with dist==D only; then aliasExpand so ·hN lights
-else:
-  ancestors = aliasClosedReverseBFS(hovered) on fileEdges   // fallback
+descendants = forwardBFS(hovered) on fileEdges   // includes hovered
+ancestors   = reverseBFS(hovered) on fileEdges   // includes hovered
 packageParentFiles = aliasExpand(descendants)    // NOT reverse-only ancestors
 activeFiles = ancestors ∪ descendants
 packages = { pkg | pair parent ∈ packageParentFiles }
 activeLabels = aliasExpand(activeFiles ∪ packages)
 focusedBands =
-  every fileEdge with both ends in ancestors (alias-aware)
-  ∪ every fileEdge with both ends in descendants (alias-aware)
+  every fileEdge with both ends in activeFiles (alias-aware, L-instance-local)
   ∪ every externalEdge whose parent ∈ packageParentFiles
-// NOT full induced on activeFiles — that would light cross-cut edges between
-// the reverse chain and the forward tree (e.g. index→useCodebreaker when
-// seed=Buffer/Timer: index is ancestor-only, primary hook is descendant-only).
-// That sibling path (index→hook→deps next to Buffer) is the codebreaker screenshot bug.
 ```
 
-**Expected vs forbidden (codebreaker Buffer hover):**
-- **On:** page→index→Buffer, Buffer→useCodebreaker·hN, useCodebreaker→reducer|types|utils
-  (forward through the hook, alias-closed).
-- **Off:** sibling **index→useCodebreaker** (Imports column next to Buffer) and any
-  band that only exists because both ends sit in ancestors∪descendants without
-  belonging to the same half (path vs forward).
-
-**Why shortest-path (not full reverseBFS):** shared hooks (e.g. `useCodebreaker`
-imported by many game components) must not light every co-importer. Only the
-hub start→seed chain (shortest paths) plus the seed’s forward deps light.
-Longer paths through sibling consumers stay dim. Radius-1 reverse would still
-light every direct consumer — wrong product.
-
-**Why induced(ancestors) ∪ induced(descendants), not induced(union):** active
-labels include both reverse-chain and forward-tree nodes, but a band is only
-on-path if both ends sit in the same half. Cross-cut edges (sibling forks from
-an ancestor into a descendant that is not on the reverse path of the seed)
-stay dim. Equivalently: no cross-cut edges between reverse chain and forward
-tree.
-
-**App vs main→react-dom:** hovering `App` lights spine-path ancestors (e.g. `main`)
+**App vs main→react-dom:** hovering `App` lights reverse ancestors (e.g. `main`)
 but **does not** light packages whose only parents are reverse-only (main→react-dom).
+
+### 3b′. Multi-instance local identity (`L-instance-local`) — interim
+
+Hub multi-hop paints the same path at several display names (`path` and
+`path · hN`). Until **instance fingerprinting**, focus must **not** treat those
+labels as one id for membership / BFS alias expand.
+
+| Rule | Behavior |
+| ---- | -------- |
+| `expandFileAliases` | Never maps `· hN` ↔ primary (or other hops) of the same path id |
+| `nameInFocus` | Multi-instance labels: **exact** active match only |
+| Walk | Reverse/forward BFS starts only at the hovered display name (+ non-multi aliases) |
+
+**Codebreaker:** Buffer → `useCodebreaker · h2` lights that hop instance and its
+incident bands only — **not** Imports-column primary `useCodebreaker` or
+primary→reducer/types/utils (those attach to the primary instance). Hovering
+primary does not light hop-2 consumers (Buffer/Timer).
+
+Ship spine-shortest-path / split-induction experiments were **rolled back** so
+this single interim is the load-bearing multi-hop pin.
 
 ### 3c. Package label — reverse-path law (`L-pkg-*`)
 
@@ -135,10 +121,12 @@ Paths through Layout/Home/useUser reverse into App/main **are** lit.
 Treat as file seed for the hub focus file (display name of File category /
 `meta.startId`).
 
-### 3e. Multi-instance aliases (`L-alias`)
+### 3e. Multi-instance aliases (`L-alias` / `L-instance-local`)
 
-`nodeRef` maps display name → `{ kind, id }`. File labels that share the same
-`id` expand together for both membership tests and band endpoint matching.
+`nodeRef` maps display name → `{ kind, id }`. **Non-multi-instance** file labels
+that share the same `id` may still expand together. Labels matching
+`path · hN` are **instance-local** (interim — see §3b′): they do **not** expand
+to other instances of that path id.
 
 ### 3f. Rails (`L-rails`)
 
@@ -172,9 +160,9 @@ oracle. Use `observeHubFocus` / `observeHubFocusApplied` in
 | Apply (MiniEl) | `atlas-alluvial-carbon-link-focus` / `-dim` on those paths |
 
 Invariant pin (`focusHarness.test.ts`, fixture `fixtures/codebreaker-focus`):
-Buffer hover → sibling **index→useCodebreaker** drawn band is **dim**;
-Buffer→hook and hook→deps are **focus**. FAQ is the control sibling (no hook
-import).
+Buffer hover → **primary** `index→useCodebreaker` drawn band is **dim**;
+Buffer→`useCodebreaker · hN` is **focus**. Hop instance must not activate the
+Imports-column primary (L-instance-local).
 
 ### 4b. Browser e2e (Artillery-style)
 
@@ -240,7 +228,7 @@ Pure plan (`logicalFocusGraph.test.ts`) cites these IDs in test names:
 | `L-pkg-react` | reverse-path union from all react parents |
 | `L-pkg-react-dom` | parents of react-dom only (main); not Layout/Home unless reverse-ancestors |
 | `L-pkg-zod` | multi-parent reverse unions |
-| `L-alias` | multi-instance `· hN` expand |
+| `L-instance-local` | multi-instance `· hN` does **not** id-alias to primary |
 | `L-spine` | File spine = file neighborhood of focus |
 | `L-rails` | rails never in activeLabels |
 

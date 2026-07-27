@@ -81,6 +81,25 @@ export function parseExternalBandKey(
 
 // —— aliases / membership ————————————————————————————————————————————————
 
+/**
+ * Multi-hop instance labels from fileHub (`path · hN`, middle-dot separator).
+ * Until per-instance fingerprinting, these must not share focus identity with
+ * other painted instances of the same path (see L-instance-local).
+ */
+export const MULTI_INSTANCE_LABEL_RE = /\s·\sh\d+$/u;
+
+export function isMultiInstanceLabel(name: string): boolean {
+	return MULTI_INSTANCE_LABEL_RE.test(name);
+}
+
+/**
+ * Expand file display names that share a nodeRef file id.
+ *
+ * **Interim (L-instance-local):** multi-instance labels (`… · hN`) do **not**
+ * expand to/from other instances of the same path. That stops hop-2
+ * `useCodebreaker · hN` from lighting the Imports-column primary instance
+ * (and vice versa). Proper fingerprinting should replace this.
+ */
 export function expandFileAliases(
 	seed: ReadonlySet<string>,
 	nodeRef: Record<string, FocusNodeRef> | undefined,
@@ -88,16 +107,23 @@ export function expandFileAliases(
 	const out = new Set(seed);
 	if (!nodeRef) return out;
 	for (const n of seed) {
+		if (isMultiInstanceLabel(n)) continue;
 		const r = nodeRef[n];
 		if (r?.kind !== 'file' || !r.id) continue;
 		for (const [k, rr] of Object.entries(nodeRef)) {
-			if (rr.kind === 'file' && rr.id === r.id) out.add(k);
+			if (rr.kind !== 'file' || rr.id !== r.id) continue;
+			if (isMultiInstanceLabel(k)) continue;
+			out.add(k);
 		}
 	}
 	return out;
 }
 
-/** True if display name is focused, or shares a file id with a focused label. */
+/**
+ * True if display name is focused.
+ * Multi-instance labels: exact active membership only.
+ * Other files: also true if a non-multi-instance active label shares file id.
+ */
 export function nameInFocus(
 	name: string,
 	active: ReadonlySet<string>,
@@ -106,9 +132,11 @@ export function nameInFocus(
 	if (!name) return false;
 	if (active.has(name)) return true;
 	if (!nodeRef) return false;
+	if (isMultiInstanceLabel(name)) return false;
 	const id = nodeRef[name]?.kind === 'file' ? nodeRef[name]!.id : null;
 	if (!id) return false;
 	for (const a of active) {
+		if (isMultiInstanceLabel(a)) continue;
 		const r = nodeRef[a];
 		if (r?.kind === 'file' && r.id === id) return true;
 	}
@@ -276,47 +304,20 @@ function bfs(adj: Map<string, string[]>, start: string): Set<string> {
 }
 
 /**
- * BFS on `adj`, re-expanding file aliases whenever new nodes are discovered.
- * Multi-instance labels share an id: Buffer→useCodebreaker·hN must continue
- * through the primary instance's out-edges (reducer/types/utils). A single
- * expand-after-BFS miss leaves the forward tree truncated at ·hN.
- */
-function aliasClosedBfs(
-	adj: Map<string, string[]>,
-	start: string,
-	nodeRef: Record<string, FocusNodeRef>,
-): Set<string> {
-	const out = new Set<string>();
-	const q: string[] = [];
-	const enqueue = (n: string) => {
-		if (out.has(n)) return;
-		out.add(n);
-		q.push(n);
-	};
-	for (const s of expandFileAliases(new Set([start]), nodeRef)) {
-		enqueue(s);
-	}
-	while (q.length) {
-		const cur = q.shift()!;
-		for (const n of adj.get(cur) ?? []) {
-			for (const a of expandFileAliases(new Set([n]), nodeRef)) {
-				enqueue(a);
-			}
-		}
-	}
-	return out;
-}
-
-/**
- * Reverse closure from a display name, expanding file aliases as alternate
- * walk entry points (multi-instance instances share reachability by id).
+ * Reverse closure from a display name, expanding non-multi-instance file
+ * aliases as alternate walk entry points (L-instance-local: ·hN stays local).
  */
 function reverseClosure(
 	graph: LogicalFocusGraph,
 	rev: Map<string, string[]>,
 	start: string,
 ): Set<string> {
-	return aliasClosedBfs(rev, start, graph.nodeRef);
+	const starts = expandFileAliases(new Set([start]), graph.nodeRef);
+	const out = new Set<string>();
+	for (const s of starts) {
+		for (const n of bfs(rev, s)) out.add(n);
+	}
+	return expandFileAliases(out, graph.nodeRef);
 }
 
 function forwardClosure(
@@ -324,71 +325,12 @@ function forwardClosure(
 	fwd: Map<string, string[]>,
 	start: string,
 ): Set<string> {
-	return aliasClosedBfs(fwd, start, graph.nodeRef);
-}
-
-/**
- * Nodes on any shortest path from spine → targets (forward on fileEdges).
- *
- * Multi-instance aliases: goals = targets; D = min distance among reached
- * goals; include nodes on all shortest paths to every goal with dist == D.
- * Returns null when spine is empty or no target is reachable from spine
- * (caller falls back to reverseBFS).
- *
- * Does not alias-expand the result — caller should expand so ·hN labels
- * light with the primary path.
- */
-function shortestPathNodesFromSpine(
-	fwd: Map<string, string[]>,
-	spine: string,
-	targets: ReadonlySet<string>,
-): Set<string> | null {
-	if (!spine || targets.size === 0) return null;
-
-	const dist = new Map<string, number>();
-	const parents = new Map<string, string[]>();
-	const q: string[] = [spine];
-	dist.set(spine, 0);
-
-	while (q.length) {
-		const cur = q.shift()!;
-		const d = dist.get(cur)!;
-		for (const n of fwd.get(cur) ?? []) {
-			const nd = dist.get(n);
-			if (nd === undefined) {
-				dist.set(n, d + 1);
-				parents.set(n, [cur]);
-				q.push(n);
-			} else if (nd === d + 1) {
-				const ps = parents.get(n)!;
-				if (!ps.includes(cur)) ps.push(cur);
-			}
-		}
-	}
-
-	let D = Infinity;
-	for (const t of targets) {
-		const d = dist.get(t);
-		if (d !== undefined && d < D) D = d;
-	}
-	if (D === Infinity) return null;
-
-	const goalsAtD: string[] = [];
-	for (const t of targets) {
-		if (dist.get(t) === D) goalsAtD.push(t);
-	}
-
+	const starts = expandFileAliases(new Set([start]), graph.nodeRef);
 	const out = new Set<string>();
-	const stack = [...goalsAtD];
-	while (stack.length) {
-		const cur = stack.pop()!;
-		if (out.has(cur)) continue;
-		out.add(cur);
-		for (const p of parents.get(cur) ?? []) {
-			if (!out.has(p)) stack.push(p);
-		}
+	for (const s of starts) {
+		for (const n of bfs(fwd, s)) out.add(n);
 	}
-	return out;
+	return expandFileAliases(out, graph.nodeRef);
 }
 
 function bothEndsIn(
@@ -440,27 +382,7 @@ function planFile(
 ): FocusPlan {
 	const { fwd, rev } = buildAdjacency(graph);
 	const descendants = forwardClosure(graph, fwd, name);
-
-	// Ancestors: nodes on any shortest path spine → seed (forward), not full
-	// reverseBFS — shared hooks must not light every co-importer.
-	// Fallback to reverseClosure when spine is null or seed unreachable.
-	const targets = expandFileAliases(new Set([name]), graph.nodeRef);
-	const spine = graph.fileSpineName;
-	let ancestors: Set<string>;
-	if (spine) {
-		const pathNodes = shortestPathNodesFromSpine(fwd, spine, targets);
-		if (pathNodes) {
-			ancestors = expandFileAliases(
-				new Set([...pathNodes, ...targets]),
-				graph.nodeRef,
-			);
-		} else {
-			ancestors = reverseClosure(graph, rev, name);
-		}
-	} else {
-		ancestors = reverseClosure(graph, rev, name);
-	}
-
+	const ancestors = reverseClosure(graph, rev, name);
 	const packageParentFiles = expandFileAliases(descendants, graph.nodeRef);
 	const activeFiles = expandFileAliases(
 		new Set([...ancestors, ...descendants]),
@@ -468,13 +390,7 @@ function planFile(
 	);
 
 	const activeLabels = new Set(activeFiles);
-	// Induced on ancestors and on descendants separately — not on their union.
-	// Cross-cut edges (e.g. index→hook when seed=Timer) stay dim even when both
-	// endpoints are active labels (one reverse-chain, one forward-tree).
-	const focusedBandKeys = new Set([
-		...fileBandsBothEnds(graph, ancestors),
-		...fileBandsBothEnds(graph, descendants),
-	]);
+	const focusedBandKeys = fileBandsBothEnds(graph, activeFiles);
 
 	for (const e of graph.externalEdges) {
 		if (nameInFocus(e.source, packageParentFiles, graph.nodeRef)) {

@@ -79,45 +79,37 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 			const bands = await dumpBandsInBrowser(page);
 			const labels = await dumpLabelsInBrowser(page);
 
-			// Expected path
+			// Buffer → hop instance of hook
 			expect(
 				bandFocused(bands, CODEBREAKER_BUFFER, CODEBREAKER_HOOK),
 				'FOCUS Buffer→useCodebreaker* on painted paths',
 			).toBe(true);
 
-			const hookToDep = bands.some(
+			// L-instance-local: primary Imports hook and its dep cascade stay off
+			expect(
+				bandFocused(bands, CODEBREAKER_INDEX, CODEBREAKER_HOOK),
+				'primary index→useCodebreaker must NOT focus',
+			).toBe(false);
+			const primaryDepFocus = bands.some(
 				(b) =>
 					!b.straight &&
-					b.source.startsWith(CODEBREAKER_HOOK) &&
+					b.source === CODEBREAKER_HOOK &&
+					!b.source.includes('·') &&
 					(b.target.includes('reducer') ||
 						b.target.includes('types') ||
 						b.target.includes('utils')) &&
 					b.focus,
 			);
-			expect(hookToDep, 'FOCUS hook→deps on painted paths').toBe(true);
+			expect(primaryDepFocus, 'primary hook→deps must stay dim').toBe(false);
 
-			// Forbidden sibling blue track (screenshot)
-			expect(
-				bandFocused(bands, CODEBREAKER_INDEX, CODEBREAKER_HOOK),
-				'sibling index→useCodebreaker must NOT be focus on painted paths',
-			).toBe(false);
-			expect(
-				bandDimmed(bands, CODEBREAKER_INDEX, CODEBREAKER_HOOK),
-				'sibling index→useCodebreaker must be dim on painted paths',
-			).toBe(true);
-
-			// Labels: Buffer + path + hook on; not all co-importers
 			const focusedLabels = labels.filter((l) => l.focus).map((l) => l.name);
 			expect(focusedLabels.some((n) => n.includes('Buffer'))).toBe(true);
-			expect(focusedLabels.some((n) => n.startsWith(CODEBREAKER_HOOK) || n.includes('useCodebreaker'))).toBe(
-				true,
-			);
-			expect(focusedLabels.some((n) => n.includes('FAQ'))).toBe(false);
-
-			// page spine label on path
+			// hop instance yes; exact primary label no
 			expect(
-				focusedLabels.some((n) => n === CODEBREAKER_PAGE || n.includes('page.tsx')),
+				focusedLabels.some((n) => n.startsWith(CODEBREAKER_HOOK) && n.includes('·')),
 			).toBe(true);
+			expect(focusedLabels.includes(CODEBREAKER_HOOK)).toBe(false);
+			expect(focusedLabels.some((n) => n.includes('FAQ'))).toBe(false);
 		} finally {
 			await context.close();
 		}
