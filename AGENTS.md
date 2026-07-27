@@ -53,10 +53,16 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
-### Impact workflow (architecture-affecting ships)
+### Impact / atlas workflow (architecture-affecting ships)
 
-- **Research:** if comparing git refs, run `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`), then write **5–10 lines** into research.md using the cheatsheet **read order** — do not paste full JSON.
-- **Czar:** after `git diff` stats, optional impact as **supplemental** topology signal; not a merge gate alone; still run tests.
+Global role pack wires arch-atlas (soft-fail if missing): see
+`~/git-personal/dotfiles/grok/skills/_shared/arch-atlas.md` and
+[.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md).
+
+- **Research:** architecture-heavy → `digest` and/or `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`); **5–10 lines** via cheatsheet **read order** — never paste full JSON.
+- **Czar:** after `git diff` stats, `impact` as **supplemental** topology signal (flow clobber / blast movers); not a merge gate alone; still run tests.
+- **Engineer:** awareness only — not primary toolkit.
+- **Confirmable CLI bugs:** `/catalog` in this repo (investigation + repro).
 
 ## Code areas (current layout)
 

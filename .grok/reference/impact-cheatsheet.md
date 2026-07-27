@@ -70,18 +70,31 @@ Then write **5–10 lines** of architectural signal into research.md / review no
 | Multi-import same pair | Collapsed to set presence (one key per side). |
 | Merge gate | Impact is **supplemental**. Does not replace tests, diff review, or czar judgment. |
 
-## Workflow hooks (arch-atlas only)
+## Workflow hooks (global role pack)
 
-- **Ship research** (architecture-affecting): if git refs available, run impact
-  base..head (or base vs branch tip), summarize via this read order into
-  `research.md` — never embed full JSON.
-- **Czar**: after `git diff` stats, optional impact for topology signal; does not
-  create merge blockers alone.
+Global Grok skills (`~/git-personal/dotfiles/grok/skills/`, especially
+`_shared/arch-atlas.md`) **do** call this CLI when available. Soft-fail if the
+arch-atlas checkout or `npm run atlas` is missing — agents continue with
+path/grep/`git` evidence.
 
-Global ship/czar skills are **not** hard-wired to impact (role purity; other repos).
+| Role / phase | When | Command shape |
+| ------------ | ---- | ------------- |
+| **Ship research** | Architecture-heavy tasks | `digest` and/or `impact` base..head; **Atlas lens** (5–10 lines) in `research.md` |
+| **Ship plan** | Research ran atlas, or reconstructive / multi-owner | **Atlas consulted** section |
+| **`/research`**, **`/docu`** | Structural claims (hubs, roots, blast/spines) | `digest` / `file` (+ `impact` if two refs matter) |
+| **`/engineer`** | Awareness only | Not primary toolkit; plan owns architecture |
+| **`/czar`** | Architecture-affecting review | `impact --base <base> --head <branch>` after git stats; **supplemental** only |
+
+**Still true:** impact is not a sole merge gate; never paste full JSON; Estimate
+honesty (not LSP / tree-shake / co-change / rename-aware).
+
+**Confirmable CLI bugs** (reproducible command + expected vs actual topology):
+file with `/catalog` in **this** repo so product fixes can land — do not only
+soft-fail forever in the calling project.
 
 ## Related
 
+- Global agent contract: `~/git-personal/dotfiles/grok/skills/_shared/arch-atlas.md`
 - [analysis-honesty.md](analysis-honesty.md) — Estimate / Exact / VS Code ladder
 - Catalog: `git-architectural-time-machine` — Evolution vision; this CLI is a thin
   two-ref topology slice, not full time-machine
