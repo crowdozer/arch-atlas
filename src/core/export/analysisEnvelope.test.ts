@@ -122,30 +122,114 @@ describe('buildAnalysisEnvelope', () => {
 		expect(env.capabilityDetail.importGraph).toBe('syntax');
 	});
 
-	it('stamps importGraph program + L2 when programApplied', () => {
-		const { graph } = indexFiles(artilleryFiles, { catalog: { limit: 10 } });
+	it('programApplied alone (0 resolves) does not force L2 or aliases program', () => {
+		// Relative-only graph: no tsconfig aliases → L1 topology only
+		const graph = buildGraph([
+			{
+				path: 'a.ts',
+				content: `import { b } from './b';\nexport const a = b;\n`,
+				byteLength: 40,
+			},
+			{
+				path: 'b.ts',
+				content: `export const b = 1;\n`,
+				byteLength: 20,
+			},
+		]);
 		const env = buildAnalysisEnvelope({
 			graph,
 			programApplied: true,
-			programCompleteness: { tsconfig: 'full', missingLibs: [] },
+			programResolvedCount: 0,
+			programResolvedAliasCount: 0,
+		});
+		expect(env.capabilities).toEqual(['L0', 'L1']);
+		expect(env.capabilities).not.toContain('L2');
+		expect(env.capabilityDetail.importGraph).toBe('syntax');
+		expect(env.capabilityDetail.aliases).toBe('none');
+	});
+
+	it('stamps L2 + importGraph program when programResolvedCount > 0', () => {
+		const graph = buildGraph([
+			{
+				path: 'a.ts',
+				content: `import { b } from './b';\nexport const a = b;\n`,
+				byteLength: 40,
+			},
+			{
+				path: 'b.ts',
+				content: `export const b = 1;\n`,
+				byteLength: 20,
+			},
+		]);
+		const env = buildAnalysisEnvelope({
+			graph,
+			programApplied: true,
+			programResolvedCount: 2,
+			programResolvedAliasCount: 0,
 		});
 		expect(env.capabilities).toEqual(
 			expect.arrayContaining(['L0', 'L1', 'L2']),
 		);
-		expect(env.capabilities).not.toContain('L3');
 		expect(env.capabilityDetail.importGraph).toBe('program');
-		expect(env.capabilityDetail.aliases).toBe('program');
+		// aliases:program only when alias edges re-resolved
+		expect(env.capabilityDetail.aliases).toBe('none');
 	});
 
-	it('stamps L3 only when thinL3Applied', () => {
-		const { graph } = indexFiles(sampleFiles, { catalog: { limit: 10 } });
+	it('stamps aliases program only when programResolvedAliasCount > 0', () => {
+		const { graph } = indexFiles(artilleryFiles, { catalog: { limit: 10 } });
 		const env = buildAnalysisEnvelope({
 			graph,
 			programApplied: true,
+			programResolvedCount: 1,
+			programResolvedAliasCount: 1,
+			programCompleteness: { tsconfig: 'full', missingLibs: [] },
+		});
+		expect(env.capabilityDetail.importGraph).toBe('program');
+		expect(env.capabilityDetail.aliases).toBe('program');
+		expect(env.capabilities).toContain('L2');
+	});
+
+	it('thin L3 alone: importGraph program, L3, no L2 without resolve help', () => {
+		const graph = buildGraph([
+			{
+				path: 'a.ts',
+				content: `import { b } from './b';\nexport const a = b;\n`,
+				byteLength: 40,
+			},
+			{
+				path: 'b.ts',
+				content: `export const b = 1;\n`,
+				byteLength: 20,
+			},
+		]);
+		const env = buildAnalysisEnvelope({
+			graph,
+			programApplied: true,
+			programResolvedCount: 0,
 			thinL3Applied: true,
 		});
-		expect(env.capabilities).toContain('L3');
+		expect(env.capabilities).toEqual(
+			expect.arrayContaining(['L0', 'L1', 'L3']),
+		);
+		expect(env.capabilities).not.toContain('L2');
 		expect(env.capabilityDetail.importGraph).toBe('program');
+		expect(env.capabilityDetail.aliases).toBe('none');
+	});
+
+	it('artillery + program 0 resolves: keeps L2 from tsconfig, not aliases program', () => {
+		const { graph } = indexFiles(artilleryFiles, { catalog: { limit: 10 } });
+		const env = buildAnalysisEnvelope({
+			graph,
+			programApplied: true,
+			programResolvedCount: 0,
+			thinL3Applied: true,
+		});
+		// L2 from existing tsconfig alias resolve, not from programResolvedCount
+		expect(env.capabilities).toEqual(
+			expect.arrayContaining(['L0', 'L1', 'L2', 'L3']),
+		);
+		expect(env.capabilityDetail.importGraph).toBe('program'); // thin L3 backend stamp
+		expect(env.capabilityDetail.aliases).toBe('tsconfig'); // not forced to program
 	});
 });
 

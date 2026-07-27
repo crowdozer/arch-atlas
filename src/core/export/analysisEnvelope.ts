@@ -89,13 +89,24 @@ export type BuildAnalysisEnvelopeInput = {
 	 */
 	nodeModules?: AnalysisCompleteness['nodeModules'];
 	/**
-	 * CLI `--program`: real createProgram enrichment ran (soft-fail not set).
-	 * Stamps importGraph `program`, ensures L2, aliases may become `program`.
+	 * CLI `--program`: createProgram enrichment pass completed (may be no-op).
+	 * Alone does **not** stamp L2 / importGraph program / aliases program —
+	 * need resolve or thin-L3 evidence (see programResolvedCount / thinL3).
 	 */
 	programApplied?: boolean;
 	/**
+	 * Unresolved edges Program rewrote to file (evidence for L2 + importGraph).
+	 */
+	programResolvedCount?: number;
+	/**
+	 * Subset of programResolvedCount whose prior reason was alias
+	 * (evidence for aliases: 'program').
+	 */
+	programResolvedAliasCount?: number;
+	/**
 	 * Thin L3: ≥1 file received exportSymbolCount from Program checker.
 	 * Only then is L3 claimed — never from export-declaration span alone.
+	 * Also allows importGraph `'program'` as backend stamp when resolve count is 0.
 	 */
 	thinL3Applied?: boolean;
 	/**
@@ -164,14 +175,21 @@ export function buildAnalysisEnvelope(
 
 	const programApplied = Boolean(input.programApplied);
 	const thinL3Applied = Boolean(input.thinL3Applied);
-
-	const aliases: CapabilityDetailAliases = programApplied
-		? 'program'
-		: hasRewrites
-			? 'rewrite-map'
-			: hasTsconfigPaths
-				? 'tsconfig'
-				: 'none';
+	const programResolvedCount = Math.max(0, input.programResolvedCount ?? 0);
+	const programResolvedAliasCount = Math.max(
+		0,
+		input.programResolvedAliasCount ?? 0,
+	);
+	/** Program actually improved module binding (not just loaded). */
+	const programResolveHelped = programApplied && programResolvedCount > 0;
+	/** Program rewrote at least one alias-reason edge. */
+	const programAliasHelped = programApplied && programResolvedAliasCount > 0;
+	/**
+	 * importGraph backend stamp: resolve help **or** thin L3 checker path.
+	 * Does not alone force L2 (L2 needs resolve/alias evidence).
+	 */
+	const programGraphStamp =
+		programApplied && (programResolveHelped || thinL3Applied);
 
 	// Same merge as graph build (rewrite wins on pattern)
 	const merged = mergePathAliases(
@@ -180,12 +198,22 @@ export function buildAnalysisEnvelope(
 	);
 	const l2Helped = aliasHelpedResolve(graph, merged);
 
+	// aliases: 'program' only when Program alias-resolved edges; else prior stamps
+	const aliases: CapabilityDetailAliases = programAliasHelped
+		? 'program'
+		: hasRewrites
+			? 'rewrite-map'
+			: hasTsconfigPaths
+				? 'tsconfig'
+				: 'none';
+
 	const capabilities: AnalysisCapability[] = ['L0'];
 	if (graph.stats.sourceCount > 0) {
 		capabilities.push('L1');
 	}
-	// L2: alias/tsconfig helped, or Program enrichment applied
-	if (l2Helped || programApplied) {
+	// L2: tsconfig/rewrite alias helped, or Program re-resolved ≥1 unresolved edge
+	// (thin L3 alone does not claim L2 — relative-only graphs stay L1 topology)
+	if (l2Helped || programResolveHelped) {
 		capabilities.push('L2');
 	}
 	// L3 only when thin Program export-symbol counts actually landed
@@ -198,7 +226,11 @@ export function buildAnalysisEnvelope(
 	const exactApplied = Boolean(input.exactApplied);
 
 	const capabilityDetail: CapabilityDetail = {
-		importGraph: programApplied ? 'program' : l2Helped ? 'resolved' : 'syntax',
+		importGraph: programGraphStamp
+			? 'program'
+			: l2Helped
+				? 'resolved'
+				: 'syntax',
 		mass: exactApplied ? 'export-declaration-span' : 'whole-file',
 		typeEdges: hasTypeOnly ? 'import-type-flag' : 'none',
 		aliases,

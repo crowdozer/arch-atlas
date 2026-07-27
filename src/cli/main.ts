@@ -133,10 +133,11 @@ Options:
   --exact-local   Like --exact but never hits CDN (local/inject only).
   --program       Digest: TypeScript createProgram over feed VFS (opt-in).
                   Re-resolves unresolved edges via resolveModuleName when the
-                  target is in the feed; rebuilds catalog; stamps
-                  importGraph=program + L2 (thin L3 exportSymbolCount when
-                  checker exports land). Local classic typescript only.
-                  Soft-fail on error. Incomplete without node_modules; not LSP.
+                  target is in the feed; rebuilds catalog. Stamps
+                  importGraph=program + L2 only when resolve actually helped
+                  (or thin L3 for importGraph); aliases=program only when
+                  alias edges re-resolved. Soft-fail on error. Local classic
+                  typescript only. Incomplete without node_modules; not LSP.
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write JSON to file instead of stdout.

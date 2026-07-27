@@ -247,8 +247,9 @@ export type BuildAgentDigestInput = {
 	/** Optional scope stamp (CLI omit / Exact flags). */
 	scope?: Partial<AgentDigestScope>;
 	/**
-	 * When set, analysis envelope stamps importGraph `program` + L2;
-	 * optional L3 when thinL3; optional exportSymbolCount on fileLoc rows.
+	 * When set, Program enrichment was attempted. Envelope stamps are **gated**:
+	 * L2 / aliases program only when resolve counts > 0; importGraph program when
+	 * resolve helped or thin L3; L3 only when thinL3; optional exportSymbolCount.
 	 */
 	program?: AgentProgramInput;
 };
@@ -508,16 +509,19 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		catalog.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	const scope = resolveScope(source, input.scope, Boolean(exact));
 
-	const programHonestySuffix = program
-		? ' Program L2 resolve (createProgram over feed VFS; incomplete without node_modules); not LSP.'
-		: '';
 	const baseHonesty = exact ? ANALYSIS_HONESTY_EXACT : ANALYSIS_HONESTY;
+	// Program suffix: sentence separator + no duplicate "not LSP" (base already states it)
+	const programHonestySuffix = program
+		? '; Program createProgram over feed VFS (incomplete without node_modules).'
+		: '';
 	const envelope = buildAnalysisEnvelope({
 		graph,
 		exactApplied: Boolean(exact),
 		aliasRewrites: scope.aliasRewrites,
 		honesty: baseHonesty + programHonestySuffix,
 		programApplied: Boolean(program?.applied),
+		programResolvedCount: program?.resolvedCount ?? 0,
+		programResolvedAliasCount: program?.resolvedAliasCount ?? 0,
 		thinL3Applied: Boolean(program?.thinL3),
 		programCompleteness: program
 			? {
@@ -577,11 +581,21 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	if (program?.applied) {
 		const rc = program.resolvedCount ?? 0;
 		const ac = program.resolvedAliasCount ?? 0;
-		warnings.push(
-			`Program enrichment applied (resolved ${rc} unresolved edge(s), ${ac} alias);` +
-				` incomplete without node_modules; not LSP` +
-				(program.thinL3 ? '; thin L3 exportSymbolCount on fileLoc' : ''),
-		);
+		if (rc === 0) {
+			warnings.push(
+				'Program loaded but no edges re-resolved' +
+					(program.thinL3
+						? '; thin L3 exportSymbolCount on fileLoc only'
+						: '') +
+					'; incomplete without node_modules; not LSP',
+			);
+		} else {
+			warnings.push(
+				`Program enrichment applied (resolved ${rc} unresolved edge(s), ${ac} alias);` +
+					` incomplete without node_modules; not LSP` +
+					(program.thinL3 ? '; thin L3 exportSymbolCount on fileLoc' : ''),
+			);
+		}
 	}
 
 	const summary: AgentDigestSummary = {

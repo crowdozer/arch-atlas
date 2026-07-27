@@ -233,7 +233,7 @@ describe('runCli', () => {
 		expect(parsed.analysis?.capabilityDetail?.aliases).toBe('rewrite-map');
 	});
 
-	it('digest --program stamps importGraph program + L2 (soft)', async () => {
+	it('digest --program stamps honestly (no L2 from zero resolves)', async () => {
 		capture();
 		const code = await runCli([
 			'digest',
@@ -246,20 +246,30 @@ describe('runCli', () => {
 		expect(code).toBe(0);
 		const parsed = JSON.parse(logs.join(''));
 		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
-		// Soft: either program applied or warning when engine missing
-		const programApplied =
-			parsed.analysis?.capabilityDetail?.importGraph === 'program';
 		const programWarn = (parsed.warnings ?? []).some((w: string) =>
 			/Program/i.test(w),
 		);
-		expect(programApplied || programWarn).toBe(true);
-		if (programApplied) {
+		expect(programWarn).toBe(true);
+		// Soft-fail path: may not load Program — then no program stamps
+		const ig = parsed.analysis?.capabilityDetail?.importGraph;
+		if (ig === 'program') {
+			// L2 ok via existing tsconfig alias (not forced by zero program resolves)
 			expect(parsed.analysis.capabilities).toEqual(
 				expect.arrayContaining(['L0', 'L1', 'L2']),
 			);
-			expect(parsed.analysis.capabilityDetail.aliases).toBe('program');
+			// aliases:program only if Program re-resolved alias edges
+			expect(['tsconfig', 'program', 'rewrite-map']).toContain(
+				parsed.analysis.capabilityDetail.aliases,
+			);
+			// Artillery already resolved via tsconfig → 0 program patches → not aliases:program
+			if (
+				(parsed.warnings ?? []).some((w: string) =>
+					/no edges re-resolved/i.test(w),
+				)
+			) {
+				expect(parsed.analysis.capabilityDetail.aliases).not.toBe('program');
+			}
 			expect(parsed.analysis.honesty).toMatch(/not LSP/i);
-			// Thin L3 only when exportSymbolCount landed
 			if (parsed.analysis.capabilities.includes('L3')) {
 				const withCount = (parsed.catalog?.fileLoc ?? []).some(
 					(r: { exportSymbolCount?: number }) =>
@@ -267,7 +277,6 @@ describe('runCli', () => {
 				);
 				expect(withCount).toBe(true);
 			}
-			// tsconfig paths resolve without --alias
 			const utilEdge = (parsed.graph?.edges ?? []).find(
 				(e: { from: string; to: string; toKind: string }) =>
 					e.from === 'client/main.ts' && e.to === 'client/util.ts',
