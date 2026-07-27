@@ -46,6 +46,49 @@ function minimalGraph(files: { path: string; content: string }[]): CodeGraph {
 }
 
 describe('sessionStore encode/parse', () => {
+	it('prefers full feed files over graph.contents when provided', () => {
+		// Graph may exclude tests; full feed must still persist for re-include
+		const graph = minimalGraph([{ path: 'src/a.ts', content: 'export const a = 1' }]);
+		const encoded = encodeSession({
+			graph,
+			catalog: {
+				starts: [],
+				ends: [],
+				hotspots: [],
+				complex: [],
+				deepest: [],
+				fileLoc: [],
+				blastRadius: [],
+				publicMass: [],
+				icebergs: [],
+				spines: [],
+				views: [],
+				summary: {
+					sourceCount: 1,
+					packageCount: 0,
+					edgeCount: 0,
+					unresolvedCount: 0,
+					languages: ['TypeScript'],
+				},
+			},
+			startId: 'src/a.ts',
+			warnings: [],
+			expanded: new Set(['src']),
+			files: [
+				{ path: 'src/a.ts', content: 'export const a = 1', byteLength: 18 },
+				{
+					path: 'src/a.test.ts',
+					content: 'import { a } from "./a"',
+					byteLength: 24,
+				},
+			],
+		});
+		expect(encoded.files.map((f) => f.path).sort()).toEqual([
+			'src/a.test.ts',
+			'src/a.ts',
+		]);
+	});
+
 	it('round-trips files and UI state', () => {
 		const graph = minimalGraph([
 			{ path: 'src/a.ts', content: 'export const a = 1' },

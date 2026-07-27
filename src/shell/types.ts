@@ -2,7 +2,7 @@
  * Shared shell types (host-agnostic session + interaction mode).
  * Web host may close over additional DOM-only state outside this type.
  */
-import type { CodeGraph, MapCatalog } from '@core/graph/types.ts';
+import type { CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
 
 /** Click behavior: drill navigates; inspect opens import evidence. */
 export type InteractionMode = 'drill' | 'inspect';
@@ -12,6 +12,7 @@ export type InteractionMode = 'drill' | 'inspect';
  * `expanded` is UI tree fold state (web host today; portable as string paths).
  * `startId` is **derived** from the nav stack nearest file-hub — not a parallel
  * navigation owner (see app commitNavigation / shell atlasView helpers).
+ * `files` is the full host feed (pre test-filter) for re-index when inclusion toggles.
  */
 export type Session = {
 	graph: CodeGraph;
@@ -20,4 +21,9 @@ export type Session = {
 	warnings: string[];
 	/** Dir paths currently expanded in the tree. */
 	expanded: Set<string>;
+	/**
+	 * Full VirtualFile feed from ZIP/demo/restore (includes tests even when the
+	 * graph currently excludes them). CLI hosts need not populate this.
+	 */
+	files: VirtualFile[];
 };

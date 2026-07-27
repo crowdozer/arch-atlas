@@ -35,6 +35,11 @@ export type WireUiDeps = {
 	setInteractionMode: (m: InteractionMode) => void;
 	currentView: () => AtlasView | null;
 	persistCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
+	includeTestsCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
+	getIncludeTests: () => boolean;
+	setIncludeTests: (on: boolean) => void;
+	/** Re-index session feed under current include-tests preference. */
+	reindexWithTestInclusion: () => void;
 	persistSessionIfEnabled: () => void;
 	syncWeightDropdown: (
 		el: HTMLElement & { value?: string },
@@ -76,9 +81,24 @@ function wirePersistCheckbox(deps: WireUiDeps): void {
 	});
 }
 
+function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
+	const box = deps.includeTestsCheckbox();
+	if (!box) return;
+	// Reflect module state (default true — matches CLI include-all)
+	box.checked = deps.getIncludeTests();
+	box.addEventListener('cds-checkbox-changed', () => {
+		const on = Boolean(box.checked);
+		deps.setIncludeTests(on);
+		if (deps.getSession()) {
+			deps.reindexWithTestInclusion();
+		}
+	});
+}
+
 /** Bind all workspace chrome controls; call once at bootstrap. */
 export function wireUi(deps: WireUiDeps): void {
 	wirePersistCheckbox(deps);
+	wireIncludeTestsCheckbox(deps);
 
 	const drop = $('atlas-drop');
 	// Carbon file-uploader drop container: click + drag both emit this event

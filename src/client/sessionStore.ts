@@ -13,6 +13,12 @@ export type SessionSnapshot = {
 	startId: string | null;
 	warnings: string[];
 	expanded: Set<string>;
+	/**
+	 * Full host feed when known (includes tests even if currently filtered from
+	 * the graph). Prefer this over reconstructing from graph.contents so a later
+	 * re-include can restore test paths.
+	 */
+	files?: VirtualFile[];
 };
 
 export type PersistedSessionV1 = {
@@ -45,14 +51,24 @@ export function writePersistPreference(on: boolean): void {
 
 /** Build storable payload from live session (source + config text). */
 export function encodeSession(session: SessionSnapshot): PersistedSessionV1 {
-	const files: VirtualFile[] = [];
-	for (const [path, content] of session.graph.contents) {
-		const node = session.graph.files.get(path);
-		files.push({
-			path,
-			content,
-			byteLength: node?.byteLength ?? new TextEncoder().encode(content).length,
-		});
+	let files: VirtualFile[];
+	if (session.files?.length) {
+		// Full feed (pre test-filter) so restore can re-apply inclusion prefs
+		files = session.files.map((f) => ({
+			path: f.path,
+			content: f.content,
+			byteLength: f.byteLength,
+		}));
+	} else {
+		files = [];
+		for (const [path, content] of session.graph.contents) {
+			const node = session.graph.files.get(path);
+			files.push({
+				path,
+				content,
+				byteLength: node?.byteLength ?? new TextEncoder().encode(content).length,
+			});
+		}
 	}
 	// Stable order for smaller diffs / easier debugging
 	files.sort((a, b) => a.path.localeCompare(b.path));

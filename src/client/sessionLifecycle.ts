@@ -9,6 +9,7 @@
 import {
 	HUB_DEFAULT_MAX_DEPTH,
 	expandPathsForFilter,
+	filterFilesByTestInclusion,
 	indexFiles,
 	ingestZip,
 	type MapCatalog,
@@ -44,6 +45,8 @@ export type SessionLifecycleDeps = {
 	) => boolean;
 	persistSessionIfEnabled: () => void;
 	isPersistEnabled: () => boolean;
+	/** Web inclusion toggle; default true (matches CLI default of not omitting tests). */
+	getIncludeTests: () => boolean;
 	setStatus: (msg: string) => void;
 	showWarnings: (warnings: string[]) => void;
 	updateCaption: (view: AtlasView | null) => void;
@@ -60,6 +63,11 @@ export type SessionLifecycle = {
 	selectStart: (startId: string, opts?: { skipPersist?: boolean }) => void;
 	/** Expand tree ancestors so `startId` is visible. */
 	expandToPath: (startId: string) => void;
+	/**
+	 * Re-index the full feed under the current include-tests preference.
+	 * No-op without an active session / feed.
+	 */
+	reindexWithTestInclusion: () => void;
 };
 
 /**
@@ -125,10 +133,23 @@ export function createSessionLifecycle(
 			deps.setStatus('No readable text files.');
 			return;
 		}
-		deps.setStatus(`Indexing ${files.length} files…`);
-		const { graph, catalog: cat } = indexFiles(files);
+		const includeTests = deps.getIncludeTests();
+		const indexed = filterFilesByTestInclusion(files, includeTests);
+		if (!indexed.length) {
+			deps.setStatus(
+				includeTests
+					? 'No readable text files.'
+					: 'No files left after excluding tests — turn Include tests back on.',
+			);
+			return;
+		}
+		deps.setStatus(`Indexing ${indexed.length} files…`);
+		const { graph, catalog: cat } = indexFiles(indexed);
 		const paths = [...graph.files.keys()];
 		const prefix = opts?.statusPrefix ?? 'Indexed';
+		const excluded = files.length - indexed.length;
+		const exclusionNote =
+			!includeTests && excluded > 0 ? ` · tests off (−${excluded})` : '';
 		activateSession(
 			{
 				graph,
@@ -136,8 +157,66 @@ export function createSessionLifecycle(
 				startId: cat.starts[0]?.id ?? null,
 				warnings: opts?.warnings ?? [],
 				expanded: expandPathsForFilter(paths, ''),
+				files,
 			},
-			`${prefix} ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.unparseableCount ?? 0} unparseable · ${graph.stats.edgeCount} edges`,
+			`${prefix} ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.unparseableCount ?? 0} unparseable · ${graph.stats.edgeCount} edges${exclusionNote}`,
+		);
+	}
+
+	/** Re-index full feed when Include tests toggles (preserves expanded when possible). */
+	function reindexWithTestInclusion(): void {
+		const prev = deps.getSession();
+		if (!prev?.files?.length) {
+			deps.setStatus('Load a project to toggle test inclusion.');
+			return;
+		}
+		const includeTests = deps.getIncludeTests();
+		const indexed = filterFilesByTestInclusion(prev.files, includeTests);
+		if (!indexed.length) {
+			deps.setStatus(
+				'No files left after excluding tests — turn Include tests back on.',
+			);
+			return;
+		}
+		const prevStart = prev.startId;
+		const prevExpanded = new Set(prev.expanded);
+		const prevWarnings = prev.warnings;
+		deps.setStatus(
+			includeTests
+				? `Re-indexing with tests (${indexed.length} files)…`
+				: `Re-indexing without tests (${indexed.length} files)…`,
+		);
+		const { graph, catalog: cat } = indexFiles(indexed);
+		const startId =
+			prevStart && graph.files.has(prevStart)
+				? prevStart
+				: (cat.starts[0]?.id ?? null);
+		// Drop expanded dirs that no longer exist under the filtered tree
+		const expanded = new Set<string>();
+		for (const p of prevExpanded) {
+			const still =
+				graph.files.has(p) ||
+				[...graph.files.keys()].some((f) => f === p || f.startsWith(`${p}/`));
+			if (still) expanded.add(p);
+		}
+		if (!expanded.size) {
+			for (const p of expandPathsForFilter([...graph.files.keys()], '')) {
+				expanded.add(p);
+			}
+		}
+		const excluded = prev.files.length - indexed.length;
+		const exclusionNote =
+			!includeTests && excluded > 0 ? ` · tests off (−${excluded})` : '';
+		activateSession(
+			{
+				graph,
+				catalog: cat,
+				startId,
+				warnings: prevWarnings,
+				expanded,
+				files: prev.files,
+			},
+			`Indexed ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.edgeCount} edges${exclusionNote}`,
 		);
 	}
 
@@ -181,13 +260,22 @@ export function createSessionLifecycle(
 		if (!stored) return false;
 		try {
 			deps.setStatus('Restoring remembered project…');
-			const { graph, catalog: cat } = indexFiles(stored.files);
+			// Apply current include-tests preference to the full stored feed
+			const includeTests = deps.getIncludeTests();
+			const feed = stored.files;
+			const indexed = filterFilesByTestInclusion(feed, includeTests);
+			if (!indexed.length) {
+				deps.setStatus(
+					'Remembered project has no files under current test inclusion — upload again.',
+				);
+				return false;
+			}
+			const { graph, catalog: cat } = indexFiles(indexed);
 			const startId =
 				stored.startId && graph.files.has(stored.startId)
 					? stored.startId
 					: (cat.starts[0]?.id ?? null);
 			const expanded = new Set(stored.expanded);
-			// Ensure tree has something open if nothing was stored
 			if (!expanded.size) {
 				for (const p of expandPathsForFilter([...graph.files.keys()], '')) {
 					expanded.add(p);
@@ -200,6 +288,7 @@ export function createSessionLifecycle(
 					startId,
 					warnings: stored.warnings,
 					expanded,
+					files: feed,
 				},
 				`Restored ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges (localStorage)`,
 				{ skipPersist: true },
@@ -243,5 +332,6 @@ export function createSessionLifecycle(
 		resetSession,
 		selectStart,
 		expandToPath,
+		reindexWithTestInclusion,
 	};
 }

@@ -378,6 +378,15 @@ import Tag from '../components/ui/Tag.astro';
 								<DropdownItem value="exact">Exact (export surface)</DropdownItem>
 							</Dropdown>
 						</div>
+						<div class="atlas-stage__control-group atlas-stage__control-group--tests">
+							<Checkbox
+								id="atlas-include-tests"
+								class="atlas-include-tests"
+								labelText="Include tests"
+								checked
+								title="When off, drop *.test/spec, __tests__, __mocks__ from the index. Does not change CLI defaults."
+							/>
+						</div>
 						<div
 							id="atlas-interaction-mode"
 							class="atlas-stage__mode"

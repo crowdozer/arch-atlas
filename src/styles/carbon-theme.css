@@ -1815,6 +1815,22 @@ cds-file-uploader-drop-container.atlas-file-drop::part(label) {
   line-height: 1.4;
 }
 
+/* Stage bar: include-tests checkbox (Carbon) */
+.atlas-stage__control-group--tests {
+  height: auto;
+  min-height: 2rem;
+}
+
+cds-checkbox.atlas-include-tests {
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-interactive: #14b8a6;
+  white-space: nowrap;
+}
+
 /* Persist checkbox spacing under upload form */
 .atlas-persist,
 cds-checkbox.atlas-persist {

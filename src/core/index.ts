@@ -145,7 +145,13 @@ export type {
 export { resolveSpecifier, barePackageName, isRelativeSpecifier } from '@core/parse/resolve.ts';
 export type { ResolveResult } from '@core/parse/resolve.ts';
 export { ingestZip, isTextPath } from '@core/ingest/zip.ts';
-export { isSourceFile, normalizePath, shouldIgnorePath } from '@core/ignore.ts';
+export {
+	filterFilesByTestInclusion,
+	isSourceFile,
+	isTestPath,
+	normalizePath,
+	shouldIgnorePath,
+} from '@core/ignore.ts';
 export {
 	buildFileTree,
 	expandPathsForFilter,

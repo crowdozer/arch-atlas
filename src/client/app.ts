@@ -107,6 +107,11 @@ let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 let depthUserSet = false;
 /** Click behavior: drill navigates; inspect opens import evidence. */
 let interactionMode: InteractionMode = 'drill';
+/**
+ * When false, drop test-like paths from the index (`isTestPath`).
+ * Default true so web matches CLI (no implicit --omit of tests).
+ */
+let includeTests = true;
 /** Spine ranking formula (session-local; not persisted). */
 let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
 /**
@@ -309,6 +314,10 @@ function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
 /** Carbon cds-checkbox host (checked is a property, not a native input). */
 function persistCheckbox(): (HTMLElement & { checked?: boolean }) | null {
 	return $('atlas-persist') as (HTMLElement & { checked?: boolean }) | null;
+}
+
+function includeTestsCheckbox(): (HTMLElement & { checked?: boolean }) | null {
+	return $('atlas-include-tests') as (HTMLElement & { checked?: boolean }) | null;
 }
 
 function isPersistEnabled(): boolean {
@@ -547,6 +556,7 @@ lifecycle = createSessionLifecycle({
 	navigateReplace: (view, opts) => navigateReplace(view, opts),
 	persistSessionIfEnabled,
 	isPersistEnabled,
+	getIncludeTests: () => includeTests,
 	setStatus,
 	showWarnings,
 	updateCaption,
@@ -593,6 +603,12 @@ wireUi({
 	},
 	currentView: () => currentView(),
 	persistCheckbox,
+	includeTestsCheckbox,
+	getIncludeTests: () => includeTests,
+	setIncludeTests: (on) => {
+		includeTests = on;
+	},
+	reindexWithTestInclusion: () => lifecycle.reindexWithTestInclusion(),
 	persistSessionIfEnabled,
 	syncWeightDropdown,
 	syncPrecisionDropdown,

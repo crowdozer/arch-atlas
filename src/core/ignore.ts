@@ -64,6 +64,37 @@ export function isSourceFile(path: string): boolean {
 	return /\.(m?[jt]sx?|cjs|mjs)$/i.test(path);
 }
 
+/**
+ * Heuristic: path looks like a unit/integration test (or colocated mock).
+ * Used by the web host inclusion toggle — **not** applied by CLI unless a host
+ * opts in. Does not treat bare `test/` product folders as tests.
+ */
+export function isTestPath(path: string): boolean {
+	const p = normalizePath(path);
+	if (!p) return false;
+	const parts = p.split('/');
+	for (const seg of parts) {
+		if (seg === '__tests__' || seg === '__mocks__') return true;
+	}
+	const base = parts[parts.length - 1] ?? '';
+	// foo.test.ts, foo.spec.tsx, foo.e2e.test.ts, foo.test.mts, …
+	if (/\.(?:test|spec)(?:\.[^.]+)*\.[cm]?[jt]sx?$/i.test(base)) return true;
+	if (/\.e2e\.[cm]?[jt]sx?$/i.test(base)) return true;
+	return false;
+}
+
+/**
+ * When `includeTests` is false, drop paths matching {@link isTestPath}.
+ * Default include (true) is identity — CLI / existing callers stay unchanged.
+ */
+export function filterFilesByTestInclusion<T extends { path: string }>(
+	files: readonly T[],
+	includeTests: boolean,
+): T[] {
+	if (includeTests) return [...files];
+	return files.filter((f) => !isTestPath(f.path));
+}
+
 export function isConfigFile(path: string): boolean {
 	const base = path.split('/').pop() ?? '';
 	return (
