@@ -36,7 +36,16 @@ export type AlluvialFocusApi = {
 	applySeed: (seed: FocusSeed, drillTarget: string | null) => void;
 	/** Re-apply last plan after polish (optional). */
 	reapply: () => void;
+	/**
+	 * Clear hover focus. When a default seed is set (package open intent),
+	 * restores that seed instead of neutral chart state.
+	 */
 	clearFocus: () => void;
+	/**
+	 * Sticky open-intent seed. New mounts start with null; host sets after
+	 * package-driven open. clearFocus restores this seed when non-null.
+	 */
+	setDefaultSeed: (seed: FocusSeed | null) => void;
 	/** Bind native handlers on straighten paths + External chips. */
 	bindExternal: () => void;
 };
@@ -58,6 +67,8 @@ export function createHubAlluvialFocus(
 	const nodeRef = payload.meta.nodeRef as Record<string, AlluvialNodeRef>;
 	let lastPlan: FocusPlan | null = null;
 	let lastDrill: string | null = null;
+	/** Open-intent seed (e.g. package after Export Roots); null = neutral clear. */
+	let defaultSeed: FocusSeed | null = null;
 
 	const paint = (plan: FocusPlan, drillTarget: string | null) => {
 		applyFocusPlan(holder, plan, { nodeRef, drillTarget });
@@ -74,7 +85,15 @@ export function createHubAlluvialFocus(
 		});
 	};
 
+	const setDefaultSeed = (seed: FocusSeed | null) => {
+		defaultSeed = seed;
+	};
+
 	const clearFocus = () => {
+		if (defaultSeed) {
+			applySeed(defaultSeed, null);
+			return;
+		}
 		lastPlan = null;
 		lastDrill = null;
 		clearFocusPlan(holder);
@@ -131,7 +150,7 @@ export function createHubAlluvialFocus(
 		}
 	};
 
-	return { graph, applySeed, reapply, clearFocus, bindExternal };
+	return { graph, applySeed, reapply, clearFocus, setDefaultSeed, bindExternal };
 }
 
 /**

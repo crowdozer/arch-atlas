@@ -121,6 +121,17 @@ let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
  * Filled when Exact is on; not a re-index.
  */
 let exportSurfaceLocCache: Map<string, number> | null = null;
+/**
+ * Sticky package open intent: painted External label (pair packageName) after
+ * Export Roots / package drill. Not on AtlasView; cleared on ordinary file/module nav.
+ * Not persisted.
+ */
+let pendingPackageFocusLabel: string | null = null;
+/**
+ * True while {@link openPackageAsHub} is navigating so replace/push do not
+ * clear the package intent they just set (selectStart/file nav still clear).
+ */
+let packageOpenInFlight = false;
 
 // ── Stage (Carbon chart + polish + focus; host injects outcomes) ─────────────
 
@@ -216,7 +227,31 @@ function paintCatalog(selectedStart?: string | null): void {
 		publicMass,
 		icebergs,
 	};
-	catalog.renderCatalog(cat, fileId, { massExactReady });
+	catalog.renderCatalog(cat, fileId, {
+		massExactReady,
+		selectedPackage: pendingPackageFocusLabel,
+	});
+}
+
+/** Apply sticky package FocusSeed on the current stage focus API (post-mount). */
+function applyPendingPackageFocus(): void {
+	const label = pendingPackageFocusLabel;
+	if (!label) return;
+	const api = stage.getFocusApi();
+	if (!api) return;
+	const seed = { kind: 'package' as const, name: label };
+	api.setDefaultSeed(seed);
+	api.applySeed(seed, null);
+}
+
+/** Drop package open intent (file/module nav, pop, reset). */
+function clearPackageFocusIntent(): void {
+	pendingPackageFocusLabel = null;
+	const api = stage.getFocusApi();
+	if (!api) return;
+	api.setDefaultSeed(null);
+	// Neutralize active plan when not remounting (e.g. sameView no-op file open).
+	api.clearFocus();
 }
 
 const exact = createExactPaintMode({
@@ -385,6 +420,7 @@ function updateCaption(view: AtlasView | null): void {
  * 1. Derive session.startId from stack
  * 2. Mount top view
  * 3. Paint tree/catalog selection
+ * 4. If package open intent is pending, sticky-seed package FocusPlan
  */
 function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 	if (!session) return false;
@@ -401,8 +437,15 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 
 	const payload = payloadForView(view);
 	const mounted = mountAlluvialGated(payload);
-	if (mounted) setStatus(statusForView(view));
-	else if (!payload) setStatus(emptyPayloadStatus(view));
+	if (mounted) {
+		if (pendingPackageFocusLabel) {
+			applyPendingPackageFocus();
+			const hub = fileId ?? (view.type === 'file-hub' ? view.fileId : '');
+			setStatus(`Package · ${pendingPackageFocusLabel} · hub ${hub}`);
+		} else {
+			setStatus(statusForView(view));
+		}
+	} else if (!payload) setStatus(emptyPayloadStatus(view));
 
 	tree.renderTree();
 	paintCatalog(fileId);
@@ -414,6 +457,8 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 /** Root open: replace stack with one view (catalog / tree / restore). */
 function navigateReplace(view: AtlasView, opts?: { skipPersist?: boolean }): boolean {
 	if (!session) return false;
+	// Ordinary replace (Import Roots / tree / restore) drops package open intent.
+	if (!packageOpenInFlight) clearPackageFocusIntent();
 	const payload = payloadForView(view);
 	if (!payload) {
 		setStatus(emptyPayloadStatus(view));
@@ -430,6 +475,9 @@ function navigatePush(view: AtlasView, opts?: { skipPersist?: boolean }): boolea
 	const top = currentView();
 	if (top && sameView(top, view)) return false;
 
+	// Ordinary push (file/module) drops package intent; package open sets inFlight.
+	if (!packageOpenInFlight) clearPackageFocusIntent();
+
 	const payload = payloadForView(view);
 	if (!payload) {
 		setStatus(emptyPayloadStatus(view));
@@ -444,6 +492,8 @@ function navigatePush(view: AtlasView, opts?: { skipPersist?: boolean }): boolea
 /** Back one level; restores file focus from remaining stack. */
 function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 	if (!session || viewStack.length <= 1) return false;
+	// Package intent is not stack-owned; clear on pop (no re-derive from view).
+	clearPackageFocusIntent();
 	viewStack.pop();
 	const view = currentView();
 	if (!view) return false;
@@ -454,6 +504,8 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 /**
  * Package / unresolved sink → file-hub on primary importer.
  * Catalog Export Roots use replace (like Import Roots); alluvial drill uses push.
+ * Retains painted package label as sticky FocusSeed after mount (hover restore).
+ * sameView no-op on push still re-seeds (shared primary importer, different package).
  */
 function openPackageAsHub(
 	packageId: string,
@@ -466,9 +518,24 @@ function openPackageAsHub(
 		setStatus(`No importers for ${label}`);
 		return;
 	}
+	// Display label matches pair packageName / External chip (not unresolved: id).
+	pendingPackageFocusLabel = label;
 	const view = viewForFileOpen(fileId);
-	if (mode === 'replace') navigateReplace(view);
-	else navigatePush(view);
+	packageOpenInFlight = true;
+	let navigated = false;
+	try {
+		navigated =
+			mode === 'replace' ? navigateReplace(view) : navigatePush(view);
+	} finally {
+		packageOpenInFlight = false;
+	}
+	// Push sameView early-return skips commit — still update sticky package seed.
+	if (!navigated && pendingPackageFocusLabel) {
+		applyPendingPackageFocus();
+		setStatus(`Package · ${label} · hub ${fileId}`);
+		tree.renderTree();
+		paintCatalog(fileId);
+	}
 }
 
 function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
@@ -477,6 +544,7 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'file') {
+		clearPackageFocusIntent();
 		navigatePush(viewForFileOpen(ref.id));
 		return;
 	}
@@ -485,6 +553,7 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'module') {
+		clearPackageFocusIntent();
 		navigatePush({ type: 'module', moduleId: ref.id });
 	}
 }
@@ -546,7 +615,9 @@ function handleLineClick(sourceName: string | null, targetName: string | null): 
 function remountCurrentView(): void {
 	const view = currentView();
 	if (!view || !session) return;
-	mountAlluvialGated(payloadForView(view));
+	const mounted = mountAlluvialGated(payloadForView(view));
+	// New focus API starts defaultSeed=null — re-apply sticky package if still pending.
+	if (mounted && pendingPackageFocusLabel) applyPendingPackageFocus();
 	paintCatalog();
 }
 
@@ -581,7 +652,10 @@ lifecycle = createSessionLifecycle({
 	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
 	syncExactChrome: () => exact.syncExactChrome(),
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
-	clearStage: () => stage.clear(),
+	clearStage: () => {
+		clearPackageFocusIntent();
+		stage.clear();
+	},
 	renderCatalog: (_cat, startId) => paintCatalog(startId),
 	renderTree: () => tree.renderTree(),
 	navigateReplace: (view, opts) => navigateReplace(view, opts),
@@ -597,12 +671,18 @@ lifecycle = createSessionLifecycle({
 
 tree = createTreeRenderer({
 	getSession: () => session,
-	selectStart: (path) => lifecycle.selectStart(path),
+	selectStart: (path) => {
+		clearPackageFocusIntent();
+		lifecycle.selectStart(path);
+	},
 	persistSessionIfEnabled,
 });
 
 catalog = createCatalogRenderer({
-	selectStart: (id) => lifecycle.selectStart(id),
+	selectStart: (id) => {
+		clearPackageFocusIntent();
+		lifecycle.selectStart(id);
+	},
 	openPackage: (packageId, label) =>
 		openPackageAsHub(packageId, label, 'replace'),
 	getSpineFormula: () => spineFormula,
