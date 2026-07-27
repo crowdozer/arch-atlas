@@ -152,7 +152,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 
 		const summary = $('atlas-catalog-summary');
 		if (summary) {
-			const langs = catalog.summary.languages.join(' · ') || 'JS/TS';
+			const langs = catalog.summary.languages.join(' · ') || 'source';
 			summary.textContent = `${langs} · ${catalog.summary.sourceCount} src · ${catalog.summary.edgeCount} edges · ${catalog.summary.packageCount} pkgs`;
 		}
 

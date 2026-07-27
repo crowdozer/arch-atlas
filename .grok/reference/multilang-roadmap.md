@@ -12,6 +12,7 @@ Phased plan after **Gate A** (foundation + Python Level-1 Estimate). Companion:
 | `languageTags` includes Python | done |
 | Exact `requiredEngines`: TS only for JS/TS; Python → missing engine | done |
 | Fixture `fixtures/sample-python-project/` | done |
+| Built-in UI demo `fixtures/demo-python-app/` | done |
 
 **Safe Estimate claims:** static observed import graph for JS/TS + Python.
 **Non-claims:** type-aware resolve, site-packages, importlib, pyright/Exact for Python.

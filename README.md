@@ -26,12 +26,13 @@ npm install
 npm run dev
 ```
 
-Open the app and either drop a ZIP of a TS/JS project, or click a **built-in
-demo**: React (low complexity), Next.js (high complexity), or **Spaghetti hub**
-(reverse-blast demo). Fixtures live under `fixtures/demo-react-simple/`,
-`fixtures/demo-next-complex/`, and `fixtures/demo-spaghetti-godfile/` (plus the
-older `fixtures/sample-ts-project/`). Optional localStorage remember keeps the
-session across refresh; **Clear session** resets.
+Open the app and either drop a ZIP of a project, or click a **built-in demo**:
+React (low complexity), Next.js (high complexity), **Spaghetti hub**
+(reverse-blast), or **Python app** (Level-1 Estimate import graph). Fixtures
+live under `fixtures/demo-react-simple/`, `fixtures/demo-next-complex/`,
+`fixtures/demo-spaghetti-godfile/`, and `fixtures/demo-python-app/` (plus
+`fixtures/sample-ts-project/` and `fixtures/sample-python-project/`). Optional
+localStorage remember keeps the session across refresh; **Clear session** resets.
 
 ```bash
 npm test    # pure core unit tests
@@ -41,7 +42,7 @@ npm run build
 ## Agent CLI (local lens)
 
 Third host over pure core: directory or ZIP → JSON (no raw source). Same
-Level-1 **Estimate** honesty as the web app (static JS/TS import graph; not
+Level-1 **Estimate** honesty as the web app (static JS/TS + Python import graph; not
 LSP / not tree-shake). Schemas: `arch-atlas.agent-digest.v1`,
 `arch-atlas.agent-tree.v1`, `arch-atlas.agent-file.v1`,
 `arch-atlas.agent-impact.v1` (two git refs → topology delta).

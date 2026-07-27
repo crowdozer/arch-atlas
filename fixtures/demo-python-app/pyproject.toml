@@ -1,0 +1,10 @@
+[project]
+name = "demo-python-app"
+version = "0.1.0"
+description = "Layered Python toy for Arch Atlas import-graph demos"
+requires-python = ">=3.11"
+dependencies = [
+  "flask",
+  "requests",
+  "sqlalchemy",
+]

@@ -18,6 +18,7 @@ import Java16 from '@carbon/icons/es/JAVA/16.js';
 import Jpg16 from '@carbon/icons/es/JPG/16.js';
 import Json16 from '@carbon/icons/es/JSON/16.js';
 import Key16 from '@carbon/icons/es/KEY/16.js';
+import LogoPython16 from '@carbon/icons/es/logo--python/16.js';
 import Package16 from '@carbon/icons/es/package/16.js';
 import Pdf16 from '@carbon/icons/es/PDF/16.js';
 import Png16 from '@carbon/icons/es/PNG/16.js';
@@ -65,6 +66,7 @@ const PNG_ICON = iconSvg(Png16 as IconDescriptor);
 const JPG_ICON = iconSvg(Jpg16 as IconDescriptor);
 const PDF_ICON = iconSvg(Pdf16 as IconDescriptor);
 const JAVA_ICON = iconSvg(Java16 as IconDescriptor);
+const PYTHON_ICON = iconSvg(LogoPython16 as IconDescriptor);
 const C_ICON = iconSvg(C16 as IconDescriptor);
 const CPP_ICON = iconSvg(CPlusPlus16 as IconDescriptor);
 const ASM_ICON = iconSvg(Asm16 as IconDescriptor);
@@ -76,6 +78,8 @@ const BASENAME_ICONS: Record<string, string> = {
 	'package-lock.json': PACKAGE,
 	'pnpm-lock.yaml': PACKAGE,
 	'yarn.lock': PACKAGE,
+	'pyproject.toml': PACKAGE,
+	'requirements.txt': PACKAGE,
 	'tsconfig.json': DOCUMENT_CONFIG,
 	'jsconfig.json': DOCUMENT_CONFIG,
 	'astro.config.mjs': DOCUMENT_CONFIG,
@@ -139,7 +143,9 @@ const EXT_ICONS: Record<string, string> = {
 	sh: SCRIPT,
 	bash: SCRIPT,
 	zsh: SCRIPT,
-	py: SCRIPT,
+	py: PYTHON_ICON,
+	pyi: PYTHON_ICON,
+	pyw: PYTHON_ICON,
 	rb: SCRIPT,
 	go: SCRIPT,
 	rs: SCRIPT,

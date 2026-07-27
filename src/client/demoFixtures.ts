@@ -4,7 +4,11 @@
  */
 import type { VirtualFile } from '@core/graph/types.ts';
 
-export type DemoId = 'react-simple' | 'next-complex' | 'spaghetti-godfile';
+export type DemoId =
+	| 'react-simple'
+	| 'next-complex'
+	| 'spaghetti-godfile'
+	| 'python-app';
 
 export type DemoMeta = {
 	id: DemoId;
@@ -32,6 +36,12 @@ export const DEMO_OPTIONS: DemoMeta[] = [
 		blurb: 'Cross-domain hub with reverse blast chains.',
 		complexity: 'high',
 	},
+	{
+		id: 'python-app',
+		title: 'Python app (Estimate)',
+		blurb: 'Layered Flask-style toy — routes → services → models + external packages.',
+		complexity: 'low',
+	},
 ];
 
 const reactModules = import.meta.glob('../../fixtures/demo-react-simple/**/*', {
@@ -55,6 +65,12 @@ const spaghettiModules = import.meta.glob(
 	},
 ) as Record<string, string>;
 
+const pythonModules = import.meta.glob('../../fixtures/demo-python-app/**/*', {
+	query: '?raw',
+	import: 'default',
+	eager: true,
+}) as Record<string, string>;
+
 const GLOBS: Record<DemoId, { modules: Record<string, string>; marker: string }> = {
 	'react-simple': {
 		modules: reactModules,
@@ -67,6 +83,10 @@ const GLOBS: Record<DemoId, { modules: Record<string, string>; marker: string }>
 	'spaghetti-godfile': {
 		modules: spaghettiModules,
 		marker: 'fixtures/demo-spaghetti-godfile/',
+	},
+	'python-app': {
+		modules: pythonModules,
+		marker: 'fixtures/demo-python-app/',
 	},
 };
 

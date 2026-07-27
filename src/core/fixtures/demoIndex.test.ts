@@ -65,4 +65,26 @@ describe('demo fixtures index', () => {
 		expect(catalog.blastRadius[0]!.reverseReachFiles).toBeGreaterThan(0);
 		expect(catalog.blastRadius.every((b) => b.epistemic === 'observed')).toBe(true);
 	});
+
+	it('python-app yields Python import graph with external packages', () => {
+		const files = walkFiles(path.join(root, 'demo-python-app'));
+		expect(files.length).toBeGreaterThan(10);
+		const { graph, catalog } = indexFiles(files);
+		expect(graph.stats.sourceCount).toBeGreaterThan(8);
+		expect(graph.stats.edgeCount).toBeGreaterThan(8);
+		expect(catalog.summary.languages).toContain('Python');
+		expect(graph.files.has('app/main.py')).toBe(true);
+		expect(graph.files.has('app/api/routes.py')).toBe(true);
+		// File-to-file edges from absolute package imports
+		const fileEdges = graph.edges.filter((e) => e.toKind === 'file');
+		expect(fileEdges.length).toBeGreaterThan(5);
+		const pkgNames = new Set(
+			[...graph.packages.values()].map((p) => p.name),
+		);
+		expect(
+			pkgNames.has('flask') ||
+				pkgNames.has('requests') ||
+				pkgNames.has('sqlalchemy'),
+		).toBe(true);
+	});
 });

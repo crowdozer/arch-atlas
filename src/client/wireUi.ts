@@ -226,6 +226,9 @@ export function wireUi(deps: WireUiDeps): void {
 	$('atlas-demo-spaghetti-godfile')?.addEventListener('click', () => {
 		deps.handleDemo('spaghetti-godfile');
 	});
+	$('atlas-demo-python-app')?.addEventListener('click', () => {
+		deps.handleDemo('python-app');
+	});
 
 	const treeFilter = $('atlas-tree-filter');
 	// Carbon search: cds-search-input; also listen for input if it bubbles
