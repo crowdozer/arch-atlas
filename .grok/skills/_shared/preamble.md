@@ -16,7 +16,7 @@ stay pure; ship only stitches them.
 ## Workspace
 
 - Repo: **arch-atlas**
-- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; client workspace in `src/client/`; later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned)
+- Stack: **Astro + TypeScript**; Level-1 pure core in `src/core/`; pure shell in `src/shell/` (`@shell`); web host in `src/client/` (composition root + paint modules); later: Tree-sitter WASM, workers, OPFS/IndexedDB (planned). **`src/stage` / `extension/` not landed** (dual-host partial — shell extract only)
 - Product: **Local-first architecture compiler** — ZIP/files → normalized semantic graph → catalog/heuristics → suggested alluvial atlas views (source stays on-device)
 - Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
 - Mode: local `npm run dev` (Astro static + client index); no remote source upload
@@ -90,7 +90,10 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | ---- | ------------ |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
-| Client workspace | `src/client/app.ts` |
+| Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
+| Web client workspace | `src/client/` — `app.ts` composition root (stage mount, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`; plus focus/ and alluvialPolish/ |
+| Stage (target) | `src/stage/` — **not landed**; alluvial mount/polish/clicks still in `app.ts` |
+| VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
 | UI / Carbon / alluvial | `src/components/ui/`, `src/styles/`, `@carbon/charts` |
 

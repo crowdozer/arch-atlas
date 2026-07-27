@@ -48,6 +48,18 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
 
+## Code areas (current layout)
+
+| Area | Path / focus |
+| ---- | ------------ |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest) |
+| Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
+| Web client workspace | `src/client/` — composition root `app.ts` (~stage mount + nav + `wireUi`); paint modules `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`; focus + alluvialPolish still client-side |
+| Astro app shell | `src/pages/`, `src/layouts/` |
+| UI / Carbon | `src/components/ui/`, `src/styles/` |
+
+**Not yet landed:** `src/stage` (alluvial mount extract), `extension/` (VS Code host). Dual-host plan is **partial** — shell slice + client paint modularization only. See [dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
+
 ## How to treat this repo
 
 This repository is a **working hypothesis**. Confirmed product intent and labeled

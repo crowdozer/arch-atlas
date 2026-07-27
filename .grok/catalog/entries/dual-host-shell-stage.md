@@ -1,7 +1,7 @@
 ---
 id: dual-host-shell-stage
 kind: plan
-state: active
+state: partial
 authority: advisory
 provenance: mixed
 
@@ -30,6 +30,10 @@ touches:
   - src/shell
   - src/stage
   - src/client/app.ts
+  - src/client/dom.ts
+  - src/client/renderTree.ts
+  - src/client/renderCatalog.ts
+  - src/client/inspectModal.ts
   - extension/
   - hosts as injectors
   - AlluvialChart mount
@@ -38,6 +42,7 @@ touches:
 invariants:
   - Graph (CodeGraph) remains source of record; hosts only feed VirtualFile[] and paint projections
   - src/core stays pure — no document, no vscode
+  - src/shell stays pure — no document, no Carbon, no chart
   - Level-1 static analysis remains default; Exact/LSP is a later vertical
   - Local-first — web ZIP and VS Code workspace both on-device
   - Astro remains the fast paint loop until stage is extract-stable
@@ -47,14 +52,27 @@ open_questions:
   - Exact surface via TS Program in-worker vs VS Code language features only
 related:
   - alluvial-top-pack-rename-split
-realized_by: []
+realized_by:
+  - f9d5bc7
+  - a8c9c2c
 superseded_by: null
 rationale_quality: full
 ---
 
 # Dual-host: shared engine + stage, injectable shells
 
-Approved ship plan (Gate A, run `3e810aae`) — **not yet implemented**.
+Approved ship plan (Gate A, run `3e810aae`) — **partially realized**.
+
+**Landed (ship `139cf7dc`, godfile shell extract):** pure `src/shell/`
+(types, atlasView, captions, project, controls + tests); `@shell` path alias
+(tsconfig / Vite / Vitest); client paint modularization
+(`dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`);
+`app.ts` remains composition root (~937 LOC) owning stage mount + nav commit +
+`wireUi`.
+
+**Still unrealized:** `src/stage` extract; VS Code `extension/` adapter;
+webview message loop; dual-host packaging. Do not treat dual-host as complete.
+
 Source research/plan: conversation dual-host research; ship plan dual-host
 minimal rewrite.
 
@@ -123,16 +141,19 @@ extension/    VS Code host adapter (workspace, commands, webview)
 Web: shell + stage **in-process**.  
 VS Code: shell on extension host; stage via **postMessage** (`messages.ts`).
 
-## Implementation slice (when realized)
+## Implementation slice
 
-1. `src/shell` — types, navigation, project, messages + unit tests  
-2. `src/stage` — mount/clicks; move `src/client/alluvialPolish/` (post-mount polish package; formerly `alluvialTopPack`)  
-3. Rewire `app.ts`; path aliases `@shell`, `@stage`  
-4. `extension/` — compile, Index Workspace → `indexFiles`, stage panel stub  
-5. Root scripts `extension:compile`; README/AGENTS docs  
+| Step | Status |
+| ---- | ------ |
+| 1. `src/shell` — types, nav/atlasView, project, captions, controls + unit tests | **Done** (`139cf7dc` / `f9d5bc7`) — messages types for webview not yet |
+| 2. Client paint out of godfile — `dom`, `renderTree`, `renderCatalog`, `inspectModal` | **Done** (same ship; web-only factories, not dual-host stage) |
+| 3. Rewire `app.ts`; `@shell` alias | **Done** — `@stage` not yet |
+| 4. `src/stage` — mount/clicks; move/share `alluvialPolish/` | **Not landed** — stage remains in `app.ts` |
+| 5. `extension/` — compile, Index Workspace → `indexFiles`, stage panel stub | **Not landed** |
+| 6. Root scripts `extension:compile`; dual-host docs | Docs note partial only |
 
-**Out of scope for first land:** TreeView catalog parity, Exact LSP, ZIP-in-
-extension, marketplace publish.
+**Out of scope for first land (still):** TreeView catalog parity, Exact LSP,
+ZIP-in-extension, marketplace publish.
 
 ## Open questions
 
@@ -143,8 +164,11 @@ extension, marketplace publish.
 
 ## Revisit when
 
-- First extension compile + web parity land → set `state: partial`, fill
-  `realized_by`.
+- ~~First shell extract lands → `state: partial`, fill `realized_by`.~~ **Done**
+  (shell + client paint; stage/extension still open).
+- `src/stage` extract lands → update partial notes / `realized_by`.
+- First extension compile + web parity land → keep partial or split entry if
+  dual-host packaging becomes the focus.
 - TreeView catalog or full stage message loop ships → update partial/implemented.
 - Product drops web or drops VS Code → supersede or reject with note.
 - Exact/LSP work starts → related entry; do not overload this plan.
