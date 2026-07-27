@@ -1,13 +1,23 @@
 /**
  * Map catalog paint (web Carbon shell). Injected callbacks — does not import app.ts.
  */
-import type { MapCatalog } from '@core/index.ts';
+import type { MapCatalog, SpineFormula } from '@core/index.ts';
 import type { AtlasView } from '@shell/atlasView.ts';
+import {
+	SPINE_FORMULA_HONESTY_FOOTER,
+	spineFormulaHelp,
+} from '@shell/index.ts';
 import { $, escapeHtml } from './dom.ts';
 
 export type CatalogRenderDeps = {
 	selectStart: (id: string) => void;
 	navigatePush: (view: AtlasView) => boolean | void;
+	/** Current spine formula (for select sync). */
+	getSpineFormula?: () => SpineFormula;
+	/** User changed formula select. */
+	onSpineFormulaChange?: (formula: string) => void;
+	/** Open formula help modal for current selection. */
+	onSpineFormulaInfo?: () => void;
 };
 
 /**
@@ -52,10 +62,51 @@ function setAccordionTitle(id: string, title: string): void {
 	el.title = title;
 }
 
+function ratioPct(ratio: number): string {
+	return `${Math.round(ratio * 100)}%`;
+}
+
 export function createCatalogRenderer(deps: CatalogRenderDeps): {
 	renderCatalog: (catalog: MapCatalog, selectedStart: string | null) => void;
+	wireSpineControls: () => void;
 } {
+	let spineControlsWired = false;
+
+	function wireSpineControls(): void {
+		if (spineControlsWired) return;
+		spineControlsWired = true;
+		const select = $('atlas-spine-formula') as HTMLSelectElement | null;
+		if (select && deps.onSpineFormulaChange) {
+			select.addEventListener('change', () => {
+				deps.onSpineFormulaChange?.(select.value);
+			});
+		}
+		const info = $('atlas-spine-formula-info');
+		if (info && deps.onSpineFormulaInfo) {
+			info.addEventListener('click', () => deps.onSpineFormulaInfo?.());
+		}
+		const close = $('atlas-spine-formula-close');
+		if (close) {
+			close.addEventListener('click', () => {
+				const modal = $('atlas-spine-formula-modal') as
+					| (HTMLElement & { open?: boolean })
+					| null;
+				if (modal) modal.open = false;
+			});
+		}
+	}
+
+	function syncSpineFormulaSelect(formula: SpineFormula): void {
+		const select = $('atlas-spine-formula') as HTMLSelectElement | null;
+		if (!select) return;
+		if (select.value !== formula) {
+			select.value = formula;
+		}
+	}
+
 	function renderCatalog(catalog: MapCatalog, selectedStart: string | null): void {
+		wireSpineControls();
+
 		const summary = $('atlas-catalog-summary');
 		if (summary) {
 			const langs = catalog.summary.languages.join(' · ') || 'JS/TS';
@@ -67,6 +118,9 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		const complexN = catalog.complex?.length ?? 0;
 		const deepN = catalog.deepest?.length ?? 0;
 		const fileLocN = catalog.fileLoc?.length ?? 0;
+		const publicMassN = catalog.publicMass?.length ?? 0;
+		const icebergsN = catalog.icebergs?.length ?? 0;
+		const spinesN = catalog.spines?.length ?? 0;
 		const blastN = catalog.blastRadius?.length ?? 0;
 		const viewsN = catalog.views.length;
 		const startsN = Math.min(catalog.starts.length, 25);
@@ -88,6 +142,18 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			`File LOC${fileLocN ? ` (${fileLocN})` : ''}`,
 		);
 		setAccordionTitle(
+			'atlas-acc-public-mass',
+			`Public mass${publicMassN ? ` (${publicMassN})` : ''}`,
+		);
+		setAccordionTitle(
+			'atlas-acc-icebergs',
+			`Icebergs${icebergsN ? ` (${icebergsN})` : ''}`,
+		);
+		setAccordionTitle(
+			'atlas-acc-spines',
+			`Spines${spinesN ? ` (${spinesN})` : ''}`,
+		);
+		setAccordionTitle(
 			'atlas-acc-blast',
 			`Blast radius${blastN ? ` (${blastN})` : ''}`,
 		);
@@ -100,6 +166,12 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			`Starts${startsN ? ` (${startsN})` : ''}`,
 		);
 		setAccordionTitle('atlas-acc-ends', `Ends${endsN ? ` (${endsN})` : ''}`);
+
+		const formula =
+			deps.getSpineFormula?.() ??
+			catalog.spineFormula ??
+			'modules-then-in';
+		syncSpineFormulaSelect(formula);
 
 		const tags = $('atlas-summary-tags');
 		if (tags) {
@@ -216,6 +288,84 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			}
 		}
 
+		const publicMassHost = $('atlas-public-mass');
+		if (publicMassHost) {
+			publicMassHost.innerHTML = '';
+			const list = catalog.publicMass ?? [];
+			for (const f of list.slice(0, 15)) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'atlas-list-btn';
+				if (selectedStart === f.id) btn.classList.add('is-selected');
+				const badge = `${f.surfaceLoc} surface`;
+				const detail = `whole ${f.wholeLoc} · ratio ${ratioPct(f.ratio)} · in ${f.inDegree}`;
+				btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(f.path)}</span>
+					${badgeTagHtml(badge, detail)}
+				</span>
+				<span class="meta">observed · export-surface · ${escapeHtml(detail)}</span>`;
+				btn.addEventListener('click', () => deps.selectStart(f.id));
+				publicMassHost.appendChild(btn);
+			}
+			if (!list.length) {
+				publicMassHost.innerHTML = `<p class="text-xs text-zinc-600">Needs Exact (export surface) — ratio of exported lines to whole file.</p>`;
+			}
+		}
+
+		const icebergsHost = $('atlas-icebergs');
+		if (icebergsHost) {
+			icebergsHost.innerHTML = '';
+			const list = catalog.icebergs ?? [];
+			for (const f of list.slice(0, 15)) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'atlas-list-btn';
+				if (selectedStart === f.id) btn.classList.add('is-selected');
+				const badge = `${f.privateLoc} private`;
+				const detail = `whole ${f.wholeLoc} · surface ${f.surfaceLoc} · ratio ${ratioPct(f.ratio)}`;
+				btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(f.path)}</span>
+					${badgeTagHtml(badge, detail)}
+				</span>
+				<span class="meta">observed · export-surface · ${escapeHtml(detail)}</span>`;
+				btn.addEventListener('click', () => deps.selectStart(f.id));
+				icebergsHost.appendChild(btn);
+			}
+			if (!list.length) {
+				icebergsHost.innerHTML = `<p class="text-xs text-zinc-600">Needs Exact (export surface) — large private body under smaller export surface.</p>`;
+			}
+		}
+
+		const spinesHost = $('atlas-spines');
+		if (spinesHost) {
+			spinesHost.innerHTML = '';
+			const list = catalog.spines ?? [];
+			for (const s of list.slice(0, 15)) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'atlas-list-btn';
+				if (selectedStart === s.id) btn.classList.add('is-selected');
+				const modulesLabel =
+					s.importerModuleCount === 1
+						? '1 module'
+						: `${s.importerModuleCount} modules`;
+				const detail = `in ${s.inDegree} · modules ${s.importerModuleCount} · reverse ${s.reverseReachFiles}`;
+				btn.innerHTML = `
+				<span class="atlas-list-btn__row">
+					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(s.path)}</span>
+					${badgeTagHtml(modulesLabel, detail)}
+				</span>
+				<span class="meta">observed · ${escapeHtml(detail)}</span>`;
+				btn.addEventListener('click', () => deps.selectStart(s.id));
+				spinesHost.appendChild(btn);
+			}
+			if (!list.length) {
+				spinesHost.innerHTML = `<p class="text-xs text-zinc-600">No cross-cutting spines yet.</p>`;
+			}
+		}
+
 		const blastHost = $('atlas-blast');
 		if (blastHost) {
 			blastHost.innerHTML = '';
@@ -258,6 +408,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				const complexMeta = catalog.complex?.find((c) => c.id === v.startId);
 				const fileLocMeta = catalog.fileLoc?.find((f) => f.id === v.startId);
 				const blastMeta = catalog.blastRadius?.find((b) => b.id === v.startId);
+				const spineMeta = catalog.spines?.find((s) => s.id === v.startId);
 				const outD =
 					startMeta?.outDegree ??
 					hotMeta?.outDegree ??
@@ -265,6 +416,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					deepMeta?.outDegree ??
 					fileLocMeta?.outDegree ??
 					blastMeta?.outDegree ??
+					spineMeta?.outDegree ??
 					v.edgeCount ??
 					0;
 				const inD =
@@ -274,6 +426,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					deepMeta?.inDegree ??
 					fileLocMeta?.inDegree ??
 					blastMeta?.inDegree ??
+					spineMeta?.inDegree ??
 					0;
 				const badge =
 					typeof v.edgeCount === 'number' ||
@@ -282,7 +435,8 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					complexMeta ||
 					deepMeta ||
 					fileLocMeta ||
-					blastMeta
+					blastMeta ||
+					spineMeta
 						? edgeBadge(outD, inD)
 						: '';
 				btn.innerHTML = `
@@ -351,5 +505,24 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		}
 	}
 
-	return { renderCatalog };
+	return { renderCatalog, wireSpineControls };
+}
+
+/** Open the spine formula help modal for the given mode. */
+export function openSpineFormulaHelpModal(formula: SpineFormula): void {
+	const help = spineFormulaHelp(formula);
+	const modal = $('atlas-spine-formula-modal') as
+		| (HTMLElement & { open?: boolean })
+		| null;
+	const heading = $('atlas-spine-formula-heading');
+	const label = $('atlas-spine-formula-label');
+	const body = $('atlas-spine-formula-body');
+	const keys = $('atlas-spine-formula-keys');
+	const honesty = $('atlas-spine-formula-honesty');
+	if (heading) heading.textContent = help.title;
+	if (label) label.textContent = 'Spine ranking';
+	if (body) body.textContent = help.body;
+	if (keys) keys.textContent = `Sort: ${help.sortKeys}`;
+	if (honesty) honesty.textContent = SPINE_FORMULA_HONESTY_FOOTER;
+	if (modal) modal.open = true;
 }

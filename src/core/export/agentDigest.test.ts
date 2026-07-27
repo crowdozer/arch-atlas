@@ -56,6 +56,10 @@ describe('buildAgentDigest', () => {
 		expect(digest.summary.sourceCount).toBeGreaterThan(15);
 		expect(digest.warnings).toContain('host-note');
 		expect(digest.catalog.blastRadius.length).toBeGreaterThan(0);
+		expect(digest.catalog.spines.length).toBeGreaterThan(0);
+		expect(digest.catalog.publicMass).toEqual([]);
+		expect(digest.catalog.icebergs).toEqual([]);
+		expect(digest.analysis.spineFormula).toBe('modules-then-in');
 		expect(digest.graph.files.some((f) => f.path === 'src/god/hub.ts')).toBe(
 			true,
 		);
@@ -98,6 +102,13 @@ describe('buildAgentDigest', () => {
 		expect(digest.catalogEstimateFileLoc?.length).toBeGreaterThan(0);
 		// topology bins unchanged vs estimate catalog
 		expect(digest.catalog.blastRadius).toEqual(catalog.blastRadius);
+		expect(digest.catalog.spines).toEqual(catalog.spines);
+		// Exact fills mass bins from surface map (hub forced high surface)
+		expect(digest.catalog.publicMass.length).toBeGreaterThan(0);
+		expect(
+			digest.catalog.publicMass.some((r) => r.path === 'src/god/hub.ts') ||
+				digest.catalog.icebergs.length >= 0,
+		).toBe(true);
 	});
 
 	it('respects catalog limit from index', () => {

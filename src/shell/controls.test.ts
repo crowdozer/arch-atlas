@@ -5,6 +5,7 @@ import {
 	isShakenWeightUi,
 	parseInteractionMode,
 	parseLocPrecision,
+	parseSpineFormula,
 	parseVizMaxDepth,
 	parseWeightAxis,
 } from '@shell/controls.ts';
@@ -35,6 +36,15 @@ describe('control parsers', () => {
 		expect(parseVizMaxDepth('abc')).toBe(HUB_DEFAULT_MAX_DEPTH);
 		expect(parseVizMaxDepth('99')).toBe(32);
 		expect(parseVizMaxDepth('3.9')).toBe(3);
+	});
+
+	it('parseSpineFormula accepts enum and falls back to default', () => {
+		expect(parseSpineFormula('modules-then-in')).toBe('modules-then-in');
+		expect(parseSpineFormula('fan-in')).toBe('fan-in');
+		expect(parseSpineFormula('composite')).toBe('composite');
+		expect(parseSpineFormula('share')).toBe('share');
+		expect(parseSpineFormula('')).toBe('modules-then-in');
+		expect(parseSpineFormula('config-boost')).toBe('modules-then-in');
 	});
 });
 

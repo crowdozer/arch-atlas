@@ -192,9 +192,67 @@ import Tag from '../components/ui/Tag.astro';
 								title="File LOC"
 							>
 								<p class="atlas-catalog-hint">
-									Which files are the largest by line count?
+									Which files are the largest by whole-file line count?
 								</p>
 								<div id="atlas-file-loc"></div>
+							</AccordionItem>
+							<AccordionItem
+								id="atlas-acc-public-mass"
+								class="atlas-catalog-acc-item"
+								title="Public mass"
+							>
+								<p class="atlas-catalog-hint" id="atlas-public-mass-hint">
+									Needs Exact (export surface) — large files where export
+									surface ≈ whole file.
+								</p>
+								<div id="atlas-public-mass"></div>
+							</AccordionItem>
+							<AccordionItem
+								id="atlas-acc-icebergs"
+								class="atlas-catalog-acc-item"
+								title="Icebergs"
+							>
+								<p class="atlas-catalog-hint" id="atlas-icebergs-hint">
+									Needs Exact (export surface) — large private body under a
+									smaller export surface.
+								</p>
+								<div id="atlas-icebergs"></div>
+							</AccordionItem>
+							<AccordionItem
+								id="atlas-acc-spines"
+								class="atlas-catalog-acc-item"
+								title="Spines"
+							>
+								<p class="atlas-catalog-hint">
+									Cross-cutting files: high direct fan-in across many modules.
+								</p>
+								<div class="atlas-spine-toolbar" id="atlas-spine-toolbar">
+									<label class="atlas-spine-toolbar__label" for="atlas-spine-formula"
+										>Formula</label
+									>
+									<select
+										id="atlas-spine-formula"
+										class="atlas-spine-formula"
+										aria-label="Spine ranking formula"
+									>
+										<option value="modules-then-in" selected
+											>Modules then fan-in</option
+										>
+										<option value="fan-in">Fan-in</option>
+										<option value="composite">Composite</option>
+										<option value="share">In-share</option>
+									</select>
+									<button
+										type="button"
+										id="atlas-spine-formula-info"
+										class="atlas-spine-info-btn"
+										aria-label="Explain spine formula"
+										title="Explain selected spine formula"
+									>
+										ⓘ
+									</button>
+								</div>
+								<div id="atlas-spines"></div>
 							</AccordionItem>
 							<AccordionItem
 								id="atlas-acc-blast"
@@ -370,6 +428,38 @@ import Tag from '../components/ui/Tag.astro';
 		</ModalBody>
 		<ModalFooter>
 			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-inspect-close">
+				Close
+			</ModalFooterButton>
+		</ModalFooter>
+	</Modal>
+
+	<!-- Spine formula help (selected ranking mode) -->
+	<Modal
+		id="atlas-spine-formula-modal"
+		class="atlas-spine-formula-modal"
+		size="sm"
+		aria-label="Spine formula"
+	>
+		<ModalHeader>
+			<ModalCloseButton />
+			<ModalLabel id="atlas-spine-formula-label">Spine ranking</ModalLabel>
+			<ModalHeading id="atlas-spine-formula-heading">Spine formula</ModalHeading>
+		</ModalHeader>
+		<ModalBody>
+			<p id="atlas-spine-formula-body" class="atlas-spine-formula-modal__body"></p>
+			<p
+				id="atlas-spine-formula-keys"
+				class="atlas-spine-formula-modal__keys text-xs text-zinc-400"
+			>
+			</p>
+			<p
+				id="atlas-spine-formula-honesty"
+				class="atlas-spine-formula-modal__honesty text-xs text-zinc-500 mt-3"
+			>
+			</p>
+		</ModalBody>
+		<ModalFooter>
+			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-spine-formula-close">
 				Close
 			</ModalFooterButton>
 		</ModalFooter>

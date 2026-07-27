@@ -215,6 +215,71 @@ export type CatalogBlast = {
 	epistemic: 'observed';
 };
 
+/**
+ * Spine ranking formula (user-selectable projection over observed fan-in geometry).
+ * Default: modules-then-in.
+ */
+export type SpineFormula =
+	| 'modules-then-in'
+	| 'fan-in'
+	| 'composite'
+	| 'share';
+
+/**
+ * Cross-cutting dependency plane: high direct fan-in + importer module diversity.
+ * Observed import graph + stable path folders (topFolder) — not a basename classifier.
+ */
+export type CatalogSpine = {
+	id: string;
+	path: string;
+	/** Distinct file→file importers. */
+	inDegree: number;
+	outDegree: number;
+	/** Distinct topFolder keys of direct importers. */
+	importerModuleCount: number;
+	/** Multi-hop reverse reach (exclude self); complement to blast bin. */
+	reverseReachFiles: number;
+	/** inDegree / sourceCount (0 when sourceCount is 0). */
+	inShare: number;
+	/** inDegree * importerModuleCount. */
+	composite: number;
+	epistemic: 'observed';
+};
+
+/**
+ * Large whole-file with export surface ≈ whole (Exact ratio).
+ * Empty until Exact overlay provides export-surface LOC.
+ */
+export type CatalogPublicMass = {
+	id: string;
+	path: string;
+	wholeLoc: number;
+	/** Export-declaration surface LOC (Exact). */
+	surfaceLoc: number;
+	/** surfaceLoc / wholeLoc when wholeLoc > 0. */
+	ratio: number;
+	outDegree: number;
+	inDegree: number;
+	epistemic: 'observed';
+};
+
+/**
+ * Large whole-file with substantial private body under smaller export surface.
+ * Empty until Exact overlay.
+ */
+export type CatalogIceberg = {
+	id: string;
+	path: string;
+	wholeLoc: number;
+	surfaceLoc: number;
+	/** max(0, wholeLoc - surfaceLoc). */
+	privateLoc: number;
+	ratio: number;
+	outDegree: number;
+	inDegree: number;
+	epistemic: 'observed';
+};
+
 export type SuggestedView = {
 	id: string;
 	title: string;
@@ -238,6 +303,18 @@ export type MapCatalog = {
 	fileLoc: CatalogFileLoc[];
 	/** Reverse-reach blast radius (import consumers). */
 	blastRadius: CatalogBlast[];
+	/**
+	 * Public-mass files (Exact ratio). Empty at estimate index; filled by Exact overlay.
+	 */
+	publicMass: CatalogPublicMass[];
+	/**
+	 * Iceberg files (Exact private mass). Empty at estimate index; filled by Exact overlay.
+	 */
+	icebergs: CatalogIceberg[];
+	/** Cross-cutting spines (topology; always from estimate graph). */
+	spines: CatalogSpine[];
+	/** Formula used to rank `spines` (optional stamp). */
+	spineFormula?: SpineFormula;
 	views: SuggestedView[];
 	summary: {
 		sourceCount: number;
