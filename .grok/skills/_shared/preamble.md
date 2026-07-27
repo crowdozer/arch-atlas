@@ -88,6 +88,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) | Scar tissue: diagnosis table + episode log for alluvial/Carbon mishaps |
 | [hub-focus-behavior.md](../../reference/hub-focus-behavior.md) | Hub hover focus/highlight (LogicalFocusGraph); orthogonal to column matrix |
 | [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code — do not claim LSP/tree-shake |
+| [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) | Two-ref import-topology impact CLI; large-JSON read order; research/czar recipes |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |
 
@@ -96,12 +97,12 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | Area | Path / focus |
 | ---- | ------------ |
 | Astro app shell | `src/pages/`, `src/layouts/` |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent digest builders in `export/agentDigest.ts` |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent builders in `export/agentDigest.ts`, `export/agentImpact.ts` |
 | Host-shared Exact | `src/exact/` (`@exact`) — export-surface load/provider; CDN fetch OK here, not in pure core |
 | Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
 | Alluvial stage | `src/stage/` (`@stage`) — `createAlluvialStage`, `polish/`, `focus/`, drill/carbonEvents/height; owns `@carbon/charts` |
 | Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts` — no Carbon/chart |
-| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `digest` / `tree` / `file` → JSON schemas `arch-atlas.agent-*.v1`; Exact via `@exact` |
+| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `loadGitRef` (git archive), `digest` / `tree` / `file` / `impact` → JSON schemas `arch-atlas.agent-*.v1`; Exact via `@exact` |
 | VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
 | UI / Carbon wrappers | `src/components/ui/`, `src/styles/` |
@@ -115,7 +116,8 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- digest\|tree\|file …` | Agent CLI lens (dir or ZIP → Estimate JSON; see README) |
+| `npm run atlas -- digest\|tree\|file\|impact …` | Agent CLI lens (dir/ZIP or two git refs → Estimate JSON; see README) |
+| `npm run atlas -- impact . --base <ref> --head <ref>` | Import-topology impact; cheatsheet [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 
 If a command is not in `package.json`, do not invent CI that depends on it —
