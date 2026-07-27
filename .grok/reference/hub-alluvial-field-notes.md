@@ -47,7 +47,6 @@ CodeGraph (observed edges)
 | Reverse free source missing cyan (e.g. dashboard→AdminFlags only) | `radiusL === 1` terminator gate | Fake multi-hop pads | Terminators = all reverse free sources, not only padded multi-hop |
 | Yellow-on-yellow / cyan-on-cyan terminator bars | Wrong class family | Invert colors again | Exports free sources **cyan**; Imports file leaves **yellow**; packages **purple** |
 | Bands drawn past node ends / through free-source pads | Out-rail free-source paint | Thicker stroke | Undraw out-rail free-source pad bands past terminators |
-| Soft edge bleed / seam on ordinary Carbon file→file bands | Carbon stroke-only ribbons + opacity 0.8 + AA (one path per pair) | Mass/pad rewrite; filled polygons; thicker stroke | CSS idle `stroke-opacity` ownership + `geometricPrecision` (E14) |
 | Package free-sourced on far **left** | Package with no inbound | Put package on Exports | Packages always sinks; attach from shallowest instance |
 | Tests green, UI wrong after Carbon change | Test uses payload categories only | Retcon goldens to cascade | Pipe through `layoutAlluvialLikeCarbon` |
 
@@ -172,18 +171,6 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Landed:** when `externalStraightPairs` present, undraw **any** Carbon link matching a pair `(parent, packageName)` (including direct attaches), then straighten once. Scaffold undraw unchanged for pairless / BFS fallback charts.
 - **Tests:** main.tsx react pairs length 4; direct useUser→react undrawn only with pairs; straighten plans for react length 4.
 
-### E14 — Ordinary Carbon band edge overdraw (stroke + AA)
-
-- **Symptom:** artillery hub e.g. `client/boot/loaders.ts` → `client/settings/settingsStore.ts` — soft fringe / seam past the geometric band edge on a normal file→file ribbon (idle, not only hover).
-- **Cause:** Carbon alluvial links are **stroke-only** centerlines (`fill: none`, `stroke-width = Math.max(1, width)`, default **`stroke-opacity: 0.8`**). Semi-transparent stroke + anti-alias bleeds past the geometric edge; adjacent AA fringes darken seams. Not double-paint (one `path.link` per pair); not pad scaffold; not External straighten.
-- **Rejected:** mass/pad/residual rewrite (matrix; pixel glitch ≠ membership); filled-area ribbon rewrite (non-surgical; breaks Carbon stroke/event model); thicker stroke (already wrong class for free-source past ends); `crispEdges` (stair-steps curves).
-- **Landed (paint CSS only):**
-  1. Idle `path.link` under `.ui-carbon-chart .cds--cc--alluvial` → `stroke-opacity: 0.72 !important` (beats Carbon inline 0.8; pad/rail undraw + FocusPlan dim 0.3 / focus 0.95 keep higher-specificity wins).
-  2. `shape-rendering: geometricPrecision` on Carbon links and external-straight ribbons.
-  3. Mild default `rect.node` stroke `1px` → `0.5px` (File spine / terminator thick chrome unchanged).
-  4. External-straight idle opacity matches the same 0.72 story.
-- **Home:** `src/styles/carbon-theme.css` — no hub topology, no polish pipeline reorder.
-
 ---
 
 ## 4. Stable “do not redo” list
@@ -209,10 +196,9 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 | Hub builder / residual / multi-instance / reverse rings | `src/core/view/fileHub.ts` |
 | Pad scaffold undraw | `src/core/view/alluvial.ts` (`isImportPadScaffoldLink`) |
 | Carbon-like layout for tests | `src/core/view/alluvialCarbonLayout.ts` |
-| Straighten + terminator / rails polish | `src/stage/polish/` |
-| Stage mount + polish wiring | `src/stage/mount.ts`, `src/stage/polish/polish.ts` |
-| Focus apply (clears inline stroke-opacity) | `src/stage/focus/focusApply.ts` |
-| Terminator / band paint CSS (idle opacity E14) | `src/styles/carbon-theme.css` |
+| Straighten + terminator polish | `src/client/alluvialPolish/` |
+| Polish wiring / meta | `src/client/app.ts` |
+| Terminator CSS | `src/styles/carbon-theme.css` |
 | Membership goldens | `src/core/view/hubOrientation.golden.test.ts` |
 | Matrix (law) | `.grok/reference/hub-alluvial-behavior.md` |
 

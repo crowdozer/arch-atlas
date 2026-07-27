@@ -568,8 +568,7 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart .cds--cc--alluvial rect.node {
   fill: rgb(39 39 42) !important;
   stroke: rgb(63 63 70) !important;
-  /* Hairline bar edge — softer meet with stroke ribbons (File/terminators keep thick chrome) */
-  stroke-width: 0.5px;
+  stroke-width: 1px;
 }
 
 .ui-carbon-chart .cds--cc--alluvial rect.node-text-bg {
@@ -672,21 +671,6 @@ cds-tag.ui-tag--yellow {
 }
 
 /*
- * Idle Carbon stroke bands (E14 / field notes):
- * Carbon paints alluvial links as stroke-only centerlines
- * (fill:none, stroke-width=max(1,width), default inline stroke-opacity 0.8).
- * Semi-transparent stroke + AA reads as soft edge overdraw / seam bleed.
- * Own idle opacity here (!important beats Carbon inline 0.8) — mild soften only.
- * Pad/rail undraw above wins (higher specificity, opacity 0).
- * Focus dim 0.3 / focus 0.95 under .ui-alluvial-label-dimming still win
- * (more classes than this idle rule). Do not use crispEdges (stair-steps curves).
- */
-.ui-carbon-chart .cds--cc--alluvial path.link {
-  stroke-opacity: 0.72 !important;
-  shape-rendering: geometricPrecision;
-}
-
-/*
  * Hub terminators — contrast with column family (not same-family fill):
  * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
  * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
@@ -778,9 +762,6 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart__holder path.link.atlas-alluvial-external-straight {
   pointer-events: stroke;
   transition: stroke-opacity 120ms ease;
-  /* Idle parity with Carbon path.link (0.72); focus/dim rules below still win */
-  stroke-opacity: 0.72 !important;
-  shape-rendering: geometricPrecision;
 }
 .ui-alluvial-label-dimming
   path.link.atlas-alluvial-external-straight:not(
