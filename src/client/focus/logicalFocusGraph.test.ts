@@ -74,9 +74,15 @@ function assertFocusedBandsSubsetOfLogical(
 }
 
 /**
- * Label-hover completeness: every file edge with both ends active, and every
- * external edge whose law includes it, appears in focusedBandKeys.
- * (Checked by re-deriving from plan labels for file/package seeds.)
+ * Label-hover completeness.
+ *
+ * Package seeds: every file edge with both ends active must be focused
+ * (full reverse-path induced).
+ *
+ * File seeds: focused bands are induced-on-ancestors ∪ induced-on-descendants
+ * — NOT full induced on activeLabels. Cross-cut edges between reverse chain
+ * and forward tree may have both ends active yet stay dim. Completeness for
+ * file seeds only checks external parents and subset-of-logical (elsewhere).
  */
 function assertLabelHoverCompleteness(
 	graph: LogicalFocusGraph,
@@ -93,13 +99,15 @@ function assertLabelHoverCompleteness(
 					graph.nodeRef[name]?.kind === 'file' &&
 					graph.nodeRef[a]?.id === graph.nodeRef[name]?.id),
 		);
-	for (const e of graph.fileEdges) {
-		if (aliasOn(e.source) && aliasOn(e.target)) {
-			const key = fileBandKey(e.source, e.target);
-			expect(
-				plan.focusedBandKeys.has(key),
-				`missing file band ${e.source}→${e.target}`,
-			).toBe(true);
+	if (mode === 'package') {
+		for (const e of graph.fileEdges) {
+			if (aliasOn(e.source) && aliasOn(e.target)) {
+				const key = fileBandKey(e.source, e.target);
+				expect(
+					plan.focusedBandKeys.has(key),
+					`missing file band ${e.source}→${e.target}`,
+				).toBe(true);
+			}
 		}
 	}
 	if (mode === 'package' && pkg) {
@@ -539,7 +547,41 @@ describe('LogicalFocusGraph L-file-hook (shared-hook shortest-path ancestors)', 
 		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(true);
 		expect(plan.focusedBandKeys.has(fileBandKey(BUFFER, HOOK))).toBe(false);
 		expect(plan.focusedBandKeys.has(fileBandKey(TIMER, HOOK))).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, TIMER))).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, BUFFER))).toBe(false);
 		expect(plan.focusedBandKeys.has(fileBandKey(HOOK, REDUCER))).toBe(true);
+	});
+
+	it('L-file-timer-crosscut: hover Timer — path+forward lit; index→hook cross-cut dim', () => {
+		// Topology: spine→index→Timer and index→hook and Timer→hook.
+		// Seed=Timer: ancestors={page,index,Timer}, descendants={Timer,hook,…}.
+		// index→hook is a cross-cut (index ancestor-only, hook descendant-only)
+		// and must NOT be focused even though both ends are active labels.
+		const graph = makeHookGraph();
+		const plan = planFocus(graph, { kind: 'file', name: TIMER });
+		assertNoRails(plan);
+		assertFocusedBandsSubsetOfLogical(graph, plan);
+
+		// reverse spine path
+		expect(plan.activeLabels.has(PAGE)).toBe(true);
+		expect(plan.activeLabels.has(INDEX)).toBe(true);
+		expect(plan.activeLabels.has(TIMER)).toBe(true);
+		// forward dep of Timer (hook) — label may be active
+		expect(plan.activeLabels.has(HOOK)).toBe(true);
+		expect(plan.activeLabels.has(REDUCER)).toBe(true);
+		// sibling co-importer Buffer not on path or forward of Timer
+		expect(plan.activeLabels.has(BUFFER)).toBe(false);
+
+		// on-path / forward bands focused
+		expect(plan.focusedBandKeys.has(fileBandKey(PAGE, INDEX))).toBe(true);
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, TIMER))).toBe(true);
+		expect(plan.focusedBandKeys.has(fileBandKey(TIMER, HOOK))).toBe(true);
+		expect(plan.focusedBandKeys.has(fileBandKey(HOOK, REDUCER))).toBe(true);
+		// cross-cut: both ends active, but not induced within one half
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(false);
+		// sibling fork from index
+		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, BUFFER))).toBe(false);
+		expect(plan.focusedBandKeys.has(fileBandKey(BUFFER, HOOK))).toBe(false);
 	});
 
 	it('L-file-hook: multi-instance ·hN seed still alias-expands path membership', () => {

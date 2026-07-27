@@ -73,8 +73,12 @@ activeFiles = ancestors ∪ descendants
 packages = { pkg | pair parent ∈ packageParentFiles }
 activeLabels = aliasExpand(activeFiles ∪ packages)
 focusedBands =
-  every fileEdge with both ends in activeFiles (alias-aware)
+  every fileEdge with both ends in ancestors (alias-aware)
+  ∪ every fileEdge with both ends in descendants (alias-aware)
   ∪ every externalEdge whose parent ∈ packageParentFiles
+// NOT full induced on activeFiles — that would light cross-cut edges between
+// the reverse chain and the forward tree (e.g. index→useCodebreaker when
+// seed=Timer, where index is ancestor-only and hook is descendant-only).
 ```
 
 **Why shortest-path (not full reverseBFS):** shared hooks (e.g. `useCodebreaker`
@@ -82,6 +86,13 @@ imported by many game components) must not light every co-importer. Only the
 hub start→seed chain (shortest paths) plus the seed’s forward deps light.
 Longer paths through sibling consumers stay dim. Radius-1 reverse would still
 light every direct consumer — wrong product.
+
+**Why induced(ancestors) ∪ induced(descendants), not induced(union):** active
+labels include both reverse-chain and forward-tree nodes, but a band is only
+on-path if both ends sit in the same half. Cross-cut edges (sibling forks from
+an ancestor into a descendant that is not on the reverse path of the seed)
+stay dim. Equivalently: no cross-cut edges between reverse chain and forward
+tree.
 
 **App vs main→react-dom:** hovering `App` lights spine-path ancestors (e.g. `main`)
 but **does not** light packages whose only parents are reverse-only (main→react-dom).
@@ -182,6 +193,7 @@ Pure plan (`logicalFocusGraph.test.ts`) cites these IDs in test names:
 | `L-file-main` | main label: full forward + main’s packages |
 | `L-file-app` | App: spine-shortest-path ancestors∪descendants; not logger; not main→react-dom |
 | `L-file-hook` | shared-hook shape: spine→shell→hook shortest path; co-importers dim |
+| `L-file-timer-crosscut` | Timer-like: induced halves only; index→hook cross-cut band dim |
 | `L-pkg-react` | reverse-path union from all react parents |
 | `L-pkg-react-dom` | parents of react-dom only (main); not Layout/Home unless reverse-ancestors |
 | `L-pkg-zod` | multi-parent reverse unions |

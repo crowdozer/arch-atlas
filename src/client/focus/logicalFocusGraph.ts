@@ -446,7 +446,13 @@ function planFile(
 	);
 
 	const activeLabels = new Set(activeFiles);
-	const focusedBandKeys = fileBandsBothEnds(graph, activeFiles);
+	// Induced on ancestors and on descendants separately — not on their union.
+	// Cross-cut edges (e.g. index→hook when seed=Timer) stay dim even when both
+	// endpoints are active labels (one reverse-chain, one forward-tree).
+	const focusedBandKeys = new Set([
+		...fileBandsBothEnds(graph, ancestors),
+		...fileBandsBothEnds(graph, descendants),
+	]);
 
 	for (const e of graph.externalEdges) {
 		if (nameInFocus(e.source, packageParentFiles, graph.nodeRef)) {
