@@ -45,6 +45,7 @@ type MiniPath = {
 	style?: {
 		removeProperty?: (p: string) => void;
 		strokeOpacity?: string;
+		fillOpacity?: string;
 		opacity?: string;
 	};
 	__data__?: unknown;
@@ -142,7 +143,9 @@ export function applyFocusPlan(
 			: fileBandKey(sn, tn);
 		const on = sn !== '' && tn !== '' && focused.has(key);
 
+		// Clear inline opacity so CSS fill-opacity / stroke-opacity under dimming win
 		p.style?.removeProperty?.('stroke-opacity');
+		p.style?.removeProperty?.('fill-opacity');
 		p.style?.removeProperty?.('opacity');
 
 		if (isStraight) {
@@ -166,6 +169,7 @@ export function applyFocusPlan(
 		const key = externalBandKey(sn, tn);
 		const on = sn !== '' && tn !== '' && focused.has(key);
 		p.style?.removeProperty?.('stroke-opacity');
+		p.style?.removeProperty?.('fill-opacity');
 		p.style?.removeProperty?.('opacity');
 		toggleClass(p, CLASS_STRAIGHT_FOCUS, on);
 	}
@@ -194,6 +198,7 @@ export function clearFocusPlan(holder: MiniLike | HTMLElement): void {
 			CLASS_STRAIGHT_FOCUS,
 		);
 		p.style?.removeProperty?.('stroke-opacity');
+		p.style?.removeProperty?.('fill-opacity');
 		p.style?.removeProperty?.('opacity');
 	}
 	for (const p of h.querySelectorAll(
@@ -201,6 +206,7 @@ export function clearFocusPlan(holder: MiniLike | HTMLElement): void {
 	) as Iterable<MiniPath>) {
 		p.classList.remove(CLASS_STRAIGHT_FOCUS);
 		p.style?.removeProperty?.('stroke-opacity');
+		p.style?.removeProperty?.('fill-opacity');
 		p.style?.removeProperty?.('opacity');
 	}
 }

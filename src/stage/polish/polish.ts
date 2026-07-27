@@ -2,7 +2,7 @@
  * Ordered post-mount polish facade for Carbon alluvial holders.
  *
  * Pipeline (exact order — do not reorder):
- * center spine → truncate labels (undraw without pairs) → hide rails with pairs
+ * center spine → **link ribbons** → truncate labels → hide rails with pairs
  * → straighten → terminators → File chrome → export recolor → svg overflow
  */
 
@@ -18,13 +18,15 @@ import {
 	rightTruncateAlluvialLabels,
 } from './labels.ts';
 import { hideAlluvialRails } from './rails.ts';
+import { rewriteLinkRibbons } from './sankeyDom.ts';
 import {
 	markAlluvialExportTerminators,
 	markAlluvialTerminators,
 } from './terminators.ts';
 
 /**
- * Center hub File spine, highlight File column, right-truncate labels, recolor exports.
+ * Center hub File spine, rewrite bands as filled ribbons, highlight File column,
+ * right-truncate labels, recolor exports.
  * Hides pad rails / pad bands; marks hub terminators from meta.
  */
 export function polishAlluvialHolder(
@@ -53,10 +55,12 @@ export function polishAlluvialHolder(
 	},
 ): void {
 	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
+	// Always ribbon-ize Carbon path.link (not only when File moved) — mass in fill
+	rewriteLinkRibbons(holder);
 	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
 	// Undraw scaffolds + any pair-covered parent→package (incl. direct deepest attaches)
 	hideAlluvialRails(holder, { pairs: opts?.externalStraightPairs });
-	// Then paint one straight parent→package band per construction pair
+	// Then paint one straight parent→package band per construction pair (also ribbons)
 	straightenExternalPackageBands(holder, {
 		pairs: opts?.externalStraightPairs,
 	});

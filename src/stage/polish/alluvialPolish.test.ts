@@ -10,6 +10,8 @@ import {
 	carbonAlluvialLabelTitleOffset,
 	centerHubFileSpine,
 	hideAlluvialRails,
+	horizontalLinkPath,
+	horizontalLinkRibbonPath,
 	isExportSideCategory,
 	isExternalStraightPairLink,
 	isFileCategory,
@@ -19,6 +21,7 @@ import {
 	markAlluvialTerminators,
 	polishAlluvialHolder,
 	recomputeLinkBreadths,
+	rewriteLinkRibbons,
 	rightTruncateAlluvialLabels,
 	rightTruncateLabel,
 	planExternalStraightBands,
@@ -204,6 +207,108 @@ describe('recomputeLinkBreadths', () => {
 	});
 });
 
+describe('horizontalLinkRibbonPath', () => {
+	/** Parse numeric x,y tokens from an SVG path d string. */
+	function pathCoords(d: string): { x: number; y: number }[] {
+		const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+		const out: { x: number; y: number }[] = [];
+		for (let i = 0; i + 1 < nums.length; i += 2) {
+			out.push({ x: nums[i]!, y: nums[i + 1]! });
+		}
+		return out;
+	}
+
+	it('keeps thin centerline form as M…C… (reference)', () => {
+		const d = horizontalLinkPath(100, 50, 400, 200);
+		expect(d).toMatch(/^M100,50C/);
+		expect(d.includes('Z')).toBe(false);
+	});
+
+	it('closed Z ribbon; faces at y0±w/2; no x < x0 for thick+Δy', () => {
+		// Worst-case: width ≈ node height, large vertical drop (loaders→settingsStore class)
+		const x0 = 100;
+		const y0 = 50;
+		const x1 = 400;
+		const y1 = 200;
+		const width = 90;
+		const w = Math.max(1, width);
+		const d = horizontalLinkRibbonPath(x0, y0, x1, y1, width);
+
+		expect(d.endsWith('Z') || d.includes('Z')).toBe(true);
+		expect(d.startsWith(`M${x0},${y0 - w / 2}`)).toBe(true);
+
+		const coords = pathCoords(d);
+		expect(coords.length).toBeGreaterThanOrEqual(4);
+		// Vertical face at source: top and bottom y
+		const atSource = coords.filter((c) => Math.abs(c.x - x0) < 1e-9);
+		const ys = atSource.map((c) => c.y).sort((a, b) => a - b);
+		expect(ys[0]).toBeCloseTo(y0 - w / 2, 5);
+		expect(ys[ys.length - 1]).toBeCloseTo(y0 + w / 2, 5);
+		// No left overshoot past source face (stroke-offset cusps went x < x0)
+		for (const c of coords) {
+			expect(c.x).toBeGreaterThanOrEqual(x0 - 1e-9);
+		}
+		// Target face
+		const atTarget = coords.filter((c) => Math.abs(c.x - x1) < 1e-9);
+		const yst = atTarget.map((c) => c.y).sort((a, b) => a - b);
+		expect(yst[0]).toBeCloseTo(y1 - w / 2, 5);
+		expect(yst[yst.length - 1]).toBeCloseTo(y1 + w / 2, 5);
+	});
+
+	it('clamps width to at least 1 (Carbon min stroke parity)', () => {
+		const d = horizontalLinkRibbonPath(0, 10, 100, 10, 0);
+		const coords = pathCoords(d);
+		const at0 = coords.filter((c) => c.x === 0).map((c) => c.y);
+		expect(Math.min(...at0)).toBeCloseTo(10 - 0.5, 5);
+		expect(Math.max(...at0)).toBeCloseTo(10 + 0.5, 5);
+	});
+});
+
+describe('rewriteLinkRibbons', () => {
+	it('rewrites path.link d to closed ribbon + fill mass (MiniEl)', () => {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+		const path = new MiniEl('path', ['link']);
+		path.__data__ = {
+			source: { name: 'loaders.ts', category: 'File', x0: 100, x1: 104, y0: 10, y1: 100 },
+			target: {
+				name: 'settingsStore.ts',
+				category: 'Imports',
+				x0: 300,
+				x1: 304,
+				y0: 40,
+				y1: 130,
+			},
+			y0: 55,
+			y1: 85,
+			width: 90,
+		};
+		path.style.stroke = '#14b8a6';
+		path.setAttribute('stroke', '#14b8a6');
+		path.setAttribute('stroke-width', '90');
+		path.setAttribute('fill', 'none');
+		path.setAttribute(
+			'd',
+			horizontalLinkPath(104, 55, 300, 85),
+		);
+		svg.appendChild(path);
+
+		rewriteLinkRibbons(holder as unknown as HTMLElement);
+
+		const d = path.getAttribute('d') ?? '';
+		expect(d.includes('Z')).toBe(true);
+		expect(d.startsWith('M104,')).toBe(true);
+		expect(path.getAttribute('fill')).toBe('#14b8a6');
+		expect(path.getAttribute('stroke')).toBe('none');
+		expect(path.getAttribute('stroke-width')).toBe('0');
+		expect(path.getAttribute('fill-opacity')).toBe('0.8');
+		// Preserve class + __data__
+		expect(path.classList.contains('link')).toBe(true);
+		expect((path.__data__ as { width?: number }).width).toBe(90);
+	});
+});
+
 describe('centerHubFileSpine', () => {
 	it('centers File with both in and out in the y-extent of side columns', () => {
 		// Asymmetric hops: tall import stack left, short export right; File floated high
@@ -296,7 +401,15 @@ class MiniEl {
 	children: MiniEl[] = [];
 	parentElement: MiniEl | null = null;
 	textContent = '';
-	style: { display?: string; overflow?: string; fill?: string; stroke?: string } = {};
+	style: {
+		display?: string;
+		overflow?: string;
+		fill?: string;
+		stroke?: string;
+		strokeWidth?: string;
+		strokeOpacity?: string;
+		fillOpacity?: string;
+	} = {};
 	attrs = new Map<string, string>();
 	__data__?: unknown;
 	id = '';

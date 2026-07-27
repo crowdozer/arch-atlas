@@ -47,6 +47,7 @@ CodeGraph (observed edges)
 | Reverse free source missing cyan (e.g. dashboard→AdminFlags only) | `radiusL === 1` terminator gate | Fake multi-hop pads | Terminators = all reverse free sources, not only padded multi-hop |
 | Yellow-on-yellow / cyan-on-cyan terminator bars | Wrong class family | Invert colors again | Exports free sources **cyan**; Imports file leaves **yellow**; packages **purple** |
 | Bands drawn past node ends / through free-source pads | Out-rail free-source paint | Thicker stroke | Undraw out-rail free-source pad bands past terminators |
+| Pointed cusps / spikes past File on thick teal bands | Stroke centerline + huge stroke-width | CSS idle opacity / AA (E14 — wrong) | Filled ribbon path (E15); mass in fill not stroke-offset |
 | Package free-sourced on far **left** | Package with no inbound | Put package on Exports | Packages always sinks; attach from shallowest instance |
 | Tests green, UI wrong after Carbon change | Test uses payload categories only | Retcon goldens to cascade | Pipe through `layoutAlluvialLikeCarbon` |
 
@@ -171,6 +172,23 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Landed:** when `externalStraightPairs` present, undraw **any** Carbon link matching a pair `(parent, packageName)` (including direct attaches), then straighten once. Scaffold undraw unchanged for pairless / BFS fallback charts.
 - **Tests:** main.tsx react pairs length 4; direct useUser→react undrawn only with pairs; straighten plans for react length 4.
 
+### E14 — Thick-band cusps misdiagnosed as opacity / AA (reverted)
+
+- **Symptom:** hub File→settingsStore (and similar) showed **sharp teal cusps** past purple File spine and pointed bottom lobes on nearly full-height bands.
+- **Wrong diagnosis:** Carbon stroke opacity / antialiasing “overdraw.”
+- **Wrong fix:** CSS idle opacity ≈ 0.72 on alluvial links (ship merge `64f0b66`).
+- **Outcome:** user confirmed **no visual fix**; main **reverted** (`cf6fa17`). Opacity only blends edge pixels; it cannot remove a geometric stroke-offset cusp.
+- **Do not redo:** opacity-as-overdraw-fix for pointed thick bands.
+
+### E15 — Thick bands: filled ribbon geometry (not stroke-width mass)
+
+- **True cause:** Carbon + our polish painted bands as **centerline cubic**  
+  `M x0,y0 C mx,y0 mx,y1 x1,y1` with `fill:none` and `stroke-width = link.width`.  
+  When width ≈ node height and |Δy| ≠ 0, SVG stroke offset hits high-curvature evolute → cusps past the File face.
+- **Rejected:** opacity CSS (E14); mass/membership rewrite; vendor Carbon fork; linecap/linejoin only; clip-only; fix only when File spine moves.
+- **Landed:** `horizontalLinkRibbonPath` closed fill (top cubic y−w/2, bottom reverse y+w/2); unconditional `rewriteLinkRibbons` after File center; External straighten injects ribbons + `pointer-events: fill`; focus/pad CSS uses **fill-opacity** parity (0 / 0.3 / 0.95); recolor sets fill.
+- **Keep:** hub mass matrix untouched; same `__data__` / class hooks; idle fill-opacity ~0.8.
+
 ---
 
 ## 4. Stable “do not redo” list
@@ -185,7 +203,8 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 8. **Do not** gate reverse terminator chrome on multi-hop pads only.
 9. **Do not** retcon the matrix document to match an accidental cascade.
 10. **Do not** leave pair-covered direct parent→package Carbon links painted when straighten will redraw them.
-10. **Do not** duplicate External package nodes for dual-path (files may multi-instance; packages collapse).
+11. **Do not** duplicate External package nodes for dual-path (files may multi-instance; packages collapse).
+12. **Do not** “fix” thick-band cusps with CSS opacity / AA — use filled ribbon geometry (E14/E15).
 
 ---
 
@@ -196,7 +215,7 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 | Hub builder / residual / multi-instance / reverse rings | `src/core/view/fileHub.ts` |
 | Pad scaffold undraw | `src/core/view/alluvial.ts` (`isImportPadScaffoldLink`) |
 | Carbon-like layout for tests | `src/core/view/alluvialCarbonLayout.ts` |
-| Straighten + terminator polish | `src/client/alluvialPolish/` |
+| Straighten + terminator polish + link ribbons | `src/stage/polish/` (`@stage`) |
 | Polish wiring / meta | `src/client/app.ts` |
 | Terminator CSS | `src/styles/carbon-theme.css` |
 | Membership goldens | `src/core/view/hubOrientation.golden.test.ts` |

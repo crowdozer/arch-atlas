@@ -7,7 +7,7 @@ import {
 	isInRailName,
 } from '@core/view/alluvial.ts';
 import {
-	horizontalLinkPath,
+	horizontalLinkRibbonPath,
 	readData,
 	type SankeyNode,
 } from './sankeyDom.ts';
@@ -295,15 +295,22 @@ export function straightenExternalPackageBands(
 				: typeof d.value === 'number'
 					? d.value
 					: 1;
+		// After rewriteLinkRibbons, mass is fill (stroke none) — prefer fill color
 		let stroke = el.style?.stroke || el.getAttribute?.('stroke') || '';
-		if (!stroke && typeof getComputedStyle === 'function') {
+		if (!stroke || stroke === 'none') {
+			stroke = el.style?.fill || el.getAttribute?.('fill') || '';
+		}
+		if ((!stroke || stroke === 'none') && typeof getComputedStyle === 'function') {
 			try {
-				stroke = getComputedStyle(el).stroke;
+				const cs = getComputedStyle(el);
+				stroke = cs.stroke && cs.stroke !== 'none' ? cs.stroke : cs.fill;
 			} catch {
 				stroke = '';
 			}
 		}
 		const opacity =
+			el.style?.fillOpacity ||
+			el.getAttribute?.('fill-opacity') ||
 			el.style?.strokeOpacity ||
 			el.getAttribute?.('stroke-opacity') ||
 			'0.5';
@@ -311,7 +318,7 @@ export function straightenExternalPackageBands(
 			source: sn,
 			target: tn,
 			width,
-			stroke: stroke || '#0d9488',
+			stroke: stroke && stroke !== 'none' ? stroke : '#0d9488',
 			opacity,
 		});
 	}
@@ -342,16 +349,27 @@ export function straightenExternalPackageBands(
 		path.setAttribute('class', 'link atlas-alluvial-external-straight');
 		path.setAttribute(
 			'd',
-			horizontalLinkPath(plan.x0, plan.y0, plan.x1, plan.y1),
+			horizontalLinkRibbonPath(
+				plan.x0,
+				plan.y0,
+				plan.x1,
+				plan.y1,
+				plan.width,
+			),
 		);
-		path.setAttribute('fill', 'none');
-		path.setAttribute('stroke-width', String(Math.max(1, plan.width)));
-		// Hit-testable: undrawn Carbon pair links have pointer-events none;
+		// Filled ribbon (mass in geometry) — same model as rewriteLinkRibbons
+		path.setAttribute('fill', plan.stroke);
+		path.setAttribute('stroke', 'none');
+		path.setAttribute('stroke-width', '0');
+		// Hit-testable on fill area: undrawn Carbon pair links have pointer-events none;
 		// straighten is the only interactive ribbon for External package hops.
-		path.style.pointerEvents = 'stroke';
-		path.style.stroke = plan.stroke;
+		path.style.pointerEvents = 'fill';
+		path.style.fill = plan.stroke;
+		path.style.stroke = 'none';
+		path.style.strokeWidth = '0';
 		const op = plan.opacity || '0.5';
-		path.style.strokeOpacity = op;
+		path.style.fillOpacity = op;
+		path.setAttribute('fill-opacity', op);
 		path.dataset.baseOpacity = op;
 		path.setAttribute('aria-label', `${plan.parent} → ${plan.packageName}`);
 		(path as unknown as { __data__?: unknown }).__data__ = {

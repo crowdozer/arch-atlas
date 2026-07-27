@@ -56,6 +56,7 @@ class MiniEl {
 	style: {
 		display?: string;
 		strokeOpacity?: string;
+		fillOpacity?: string;
 		opacity?: string;
 		removeProperty?: (p: string) => void;
 	};
@@ -70,6 +71,7 @@ class MiniEl {
 		const style: MiniEl['style'] = {};
 		style.removeProperty = (p: string) => {
 			if (p === 'stroke-opacity') delete style.strokeOpacity;
+			if (p === 'fill-opacity') delete style.fillOpacity;
 			if (p === 'opacity') delete style.opacity;
 		};
 		this.style = style;
@@ -308,6 +310,28 @@ describe('focusApply MiniEl matrix', () => {
 		expect(pad).toBeTruthy();
 		expect(pad!.classList.contains(CLASS_CARBON_FOCUS)).toBe(false);
 		expect(pad!.classList.contains(CLASS_STRAIGHT_FOCUS)).toBe(false);
+	});
+
+	it('clears inline fill-opacity with stroke-opacity so CSS focus wins', () => {
+		const holder = polishedHolder();
+		const carbon = holder
+			.querySelectorAll('path.link')
+			.find((p) => !p.classList.contains(CLASS_PAD_BAND))!;
+		carbon.style.strokeOpacity = '0.8';
+		carbon.style.fillOpacity = '0.8';
+		const plan = planOf(
+			{
+				kind: 'band',
+				source: 'src/main.tsx',
+				target: 'src/App.tsx',
+				display: 'carbon',
+			},
+			['src/main.tsx', 'src/App.tsx'],
+			[fileBandKey('src/main.tsx', 'src/App.tsx')],
+		);
+		applyFocusPlan(holder as unknown as HTMLElement, plan);
+		expect(carbon.style.strokeOpacity).toBeUndefined();
+		expect(carbon.style.fillOpacity).toBeUndefined();
 	});
 
 	it('D3: package reverse-path plan — carbon on path focused; off-path dim', () => {
