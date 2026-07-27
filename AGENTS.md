@@ -60,7 +60,7 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | Agent CLI host | `src/cli/` — dir/ZIP feed + `digest`/`tree`/`file` JSON lens; Exact via `@exact` (no `src/client/` imports) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
 | Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
-| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `wireUi.ts` — no `@carbon/charts` |
+| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `sessionLifecycle.ts`, `wireUi.ts` — no `@carbon/charts` |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | UI / Carbon | `src/components/ui/`, `src/styles/` |
 

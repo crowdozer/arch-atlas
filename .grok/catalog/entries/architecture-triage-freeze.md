@@ -21,6 +21,7 @@ touches:
   - src/exact
   - src/client/app.ts
   - src/client/exactPaintMode.ts
+  - src/client/sessionLifecycle.ts
   - src/client/wireUi.ts
   - src/cli/exactSurface.ts
   - src/core/view
@@ -53,11 +54,17 @@ hub/types/barrels.
 | Thin `app.ts` | `exactPaintMode.ts` + `wireUi.ts` extracts; composition root stays |
 | Hub / types / barrels | **Freeze** — document only |
 
+## Phase 2-A (landed)
+
+| Target | Action |
+| ------ | ------ |
+| Session lifecycle | `src/client/sessionLifecycle.ts` — zip/demo/open/restore/reset/activate via param-object deps; viewStack ownership stays in `app.ts` |
+
 ## Deferred
 
 | Phase | Work |
 | ----- | ---- |
-| 2 | Optional `sessionLifecycle` extract; hub helper dedupe only with goldens |
+| 2 (remainder) | Hub helper dedupe only with goldens |
 | 3+ | Dual projector deprecate if product picks one; `types.ts` split when churn forced; public API docs for agents |
 
 ## Do not

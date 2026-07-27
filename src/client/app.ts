@@ -3,19 +3,16 @@
  * Analysis is local-only; optional localStorage remember (upload checkbox).
  *
  * Shell pure helpers: `@shell/*`. Web paint: `dom`, `renderTree`, `renderCatalog`,
- * `inspectModal`. Exact paint orchestration: `exactPaintMode`. Control wiring:
- * `wireUi`. Host-shared Exact engines: `@exact/*`. Alluvial stage: `@stage/*`.
+ * `inspectModal`. Exact paint: `exactPaintMode`. Session open/restore/reset:
+ * `sessionLifecycle`. Control wiring: `wireUi`. Host-shared Exact: `@exact/*`.
+ * Alluvial stage: `@stage/*`.
  */
 import {
 	HUB_DEFAULT_MAX_DEPTH,
-	expandPathsForFilter,
-	indexFiles,
-	ingestZip,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
-	type VirtualFile,
 	type WeightAxis,
 } from '@core/index.ts';
 import {
@@ -41,14 +38,15 @@ import {
 	isDrillableRef,
 } from '@stage/index.ts';
 import { $, setStatus, showWarnings } from './dom.ts';
-import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
 import { createExactPaintMode } from './exactPaintMode.ts';
 import { createInspectModals } from './inspectModal.ts';
 import { createCatalogRenderer } from './renderCatalog.ts';
 import { createTreeRenderer } from './renderTree.ts';
 import {
-	clearPersistedSession,
-	loadPersistedSession,
+	createSessionLifecycle,
+	type SessionLifecycle,
+} from './sessionLifecycle.ts';
+import {
 	readPersistPreference,
 	savePersistedSession,
 } from './sessionStore.ts';
@@ -105,24 +103,17 @@ const stage = createAlluvialStage({
 	onLineClick: (source, target) => handleLineClick(source, target),
 });
 
-// ── Paint modules (injected deps; one-way ← app) ─────────────────────────────
+// ── Paint modules (late-bound; assigned after lifecycle for selectStart) ──────
+
+let tree!: ReturnType<typeof createTreeRenderer>;
+let catalog!: ReturnType<typeof createCatalogRenderer>;
+let lifecycle!: SessionLifecycle;
 
 const inspect = createInspectModals({
 	getLocPrecision: () => locPrecision,
 	getSession: () => session,
 	getSurface: () => (locPrecision === 'exact' ? surfaceProvider : null),
 	refForName: (name) => stage.refForName(name),
-});
-
-const tree = createTreeRenderer({
-	getSession: () => session,
-	selectStart,
-	persistSessionIfEnabled,
-});
-
-const catalog = createCatalogRenderer({
-	selectStart,
-	navigatePush,
 });
 
 // ── Exact paint (injected deps; state bag stays in composition root) ─────────
@@ -311,7 +302,7 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 
 	const fileId = nearestFileFocus(viewStack);
 	session.startId = fileId;
-	if (fileId) expandToPath(fileId);
+	if (fileId) lifecycle.expandToPath(fileId);
 
 	updateCaption(view);
 	updateBackButton();
@@ -447,168 +438,47 @@ function remountCurrentView(): void {
 	mountAlluvialGated(payloadForView(view));
 }
 
-function showWorkspaceShell(): void {
-	$('atlas-upload')?.classList.add('hidden');
-	// CSS: .atlas-workspace is display:flex; .atlas-workspace.hidden is none
-	$('atlas-workspace')?.classList.remove('hidden');
-	$('atlas-subbar')?.classList.remove('hidden');
-	$('atlas-subbar')?.classList.add('flex');
-}
+// ── Session lifecycle (zip / demo / open / restore / reset) ──────────────────
 
-function activateSession(
-	next: Session,
-	statusLine: string,
-	opts?: { skipPersist?: boolean },
-): void {
-	// New graph → rebuild Exact provider on next enable (contents snapshot)
-	exact.resetExactState();
-	session = next;
-	showWarnings(session.warnings);
-	showWorkspaceShell();
-	catalog.renderCatalog(session.catalog, session.startId);
-	if (session.startId) selectStart(session.startId, { skipPersist: true });
-	else {
-		tree.renderTree();
-		setStatus(statusLine);
-	}
-	setStatus(statusLine);
-	if (!opts?.skipPersist) persistSessionIfEnabled();
-	// Prefer Exact when local classic TS / host inject is already available (no CDN)
-	void exact.tryAutoExactWhenLocalAvailable();
-}
+lifecycle = createSessionLifecycle({
+	getSession: () => session,
+	setSession: (s) => {
+		session = s;
+	},
+	setViewStack: (stack) => {
+		viewStack = stack;
+	},
+	setDepthUserSet: (v) => {
+		depthUserSet = v;
+	},
+	setVizMaxDepth: (d) => {
+		vizMaxDepth = d;
+	},
+	resetExactState: () => exact.resetExactState(),
+	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
+	clearStage: () => stage.clear(),
+	renderCatalog: (cat, startId) => catalog.renderCatalog(cat, startId),
+	renderTree: () => tree.renderTree(),
+	navigateReplace: (view, opts) => navigateReplace(view, opts),
+	persistSessionIfEnabled,
+	isPersistEnabled,
+	setStatus,
+	showWarnings,
+	updateCaption,
+	updateBackButton,
+	syncDepthDropdown,
+});
 
-function expandToPath(startId: string): void {
-	if (!session) return;
-	const parts = startId.split('/');
-	for (let i = 1; i < parts.length; i++) {
-		session.expanded.add(parts.slice(0, i).join('/'));
-	}
-}
+tree = createTreeRenderer({
+	getSession: () => session,
+	selectStart: (path) => lifecycle.selectStart(path),
+	persistSessionIfEnabled,
+});
 
-/** Catalog / tree / restore: replace stack with file-hub at startId. */
-function selectStart(startId: string, opts?: { skipPersist?: boolean }) {
-	if (!session) return;
-	navigateReplace(viewForFileOpen(startId), opts);
-}
-
-function openFromFiles(
-	files: VirtualFile[],
-	opts?: { warnings?: string[]; statusPrefix?: string },
-): void {
-	if (!files.length) {
-		setStatus('No readable text files.');
-		return;
-	}
-	setStatus(`Indexing ${files.length} files…`);
-	const { graph, catalog: cat } = indexFiles(files);
-	const paths = [...graph.files.keys()];
-	const prefix = opts?.statusPrefix ?? 'Indexed';
-	activateSession(
-		{
-			graph,
-			catalog: cat,
-			startId: cat.starts[0]?.id ?? null,
-			warnings: opts?.warnings ?? [],
-			expanded: expandPathsForFilter(paths, ''),
-		},
-		`${prefix} ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.unparseableCount ?? 0} unparseable · ${graph.stats.edgeCount} edges`,
-	);
-}
-
-async function handleZip(file: File) {
-	setStatus(`Reading ${file.name}…`);
-	showWarnings([]);
-	try {
-		const buf = await file.arrayBuffer();
-		setStatus('Unpacking ZIP…');
-		const { files, skipped, warnings } = ingestZip(buf);
-		openFromFiles(files, {
-			warnings: [
-				...warnings,
-				skipped ? `Skipped ${skipped} ignored/binary paths.` : '',
-			].filter(Boolean),
-		});
-	} catch (err) {
-		console.error(err);
-		setStatus(err instanceof Error ? err.message : String(err));
-	}
-}
-
-function handleDemo(id: DemoId) {
-	showWarnings([]);
-	try {
-		setStatus(`Loading demo “${id}”…`);
-		const files = loadDemoFiles(id);
-		openFromFiles(files, {
-			statusPrefix: `Demo ${id} ·`,
-			warnings: [`Loaded built-in demo: ${id}`],
-		});
-	} catch (err) {
-		console.error(err);
-		setStatus(err instanceof Error ? err.message : String(err));
-	}
-}
-
-function tryRestoreSession(): boolean {
-	if (!isPersistEnabled()) return false;
-	const stored = loadPersistedSession();
-	if (!stored) return false;
-	try {
-		setStatus('Restoring remembered project…');
-		const { graph, catalog: cat } = indexFiles(stored.files);
-		const startId =
-			stored.startId && graph.files.has(stored.startId)
-				? stored.startId
-				: (cat.starts[0]?.id ?? null);
-		const expanded = new Set(stored.expanded);
-		// Ensure tree has something open if nothing was stored
-		if (!expanded.size) {
-			for (const p of expandPathsForFilter([...graph.files.keys()], '')) {
-				expanded.add(p);
-			}
-		}
-		activateSession(
-			{
-				graph,
-				catalog: cat,
-				startId,
-				warnings: stored.warnings,
-				expanded,
-			},
-			`Restored ${graph.stats.sourceCount} sources · ${graph.stats.edgeCount} edges (localStorage)`,
-			{ skipPersist: true },
-		);
-		return true;
-	} catch (err) {
-		console.error('[atlas] restore failed', err);
-		clearPersistedSession();
-		setStatus('Could not restore remembered project — upload again.');
-		return false;
-	}
-}
-
-function resetSession() {
-	session = null;
-	viewStack = [];
-	// Fresh session gets hub depth default again
-	depthUserSet = false;
-	vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
-	exact.resetExactState();
-	clearPersistedSession();
-	stage.clear();
-	updateCaption(null);
-	updateBackButton();
-	syncDepthDropdown();
-
-	$('atlas-workspace')?.classList.add('hidden');
-	$('atlas-subbar')?.classList.add('hidden');
-	$('atlas-subbar')?.classList.remove('flex');
-	$('atlas-upload')?.classList.remove('hidden');
-	setStatus('');
-	const uploadStatus = $('atlas-upload-status');
-	if (uploadStatus) uploadStatus.textContent = '';
-	showWarnings([]);
-}
+catalog = createCatalogRenderer({
+	selectStart: (id) => lifecycle.selectStart(id),
+	navigatePush: (view) => navigatePush(view),
+});
 
 // ── Bootstrap: bind chrome once ──────────────────────────────────────────────
 
@@ -641,12 +511,12 @@ wireUi({
 	disableExactPaintMode: () => exact.disableExactPaintMode(),
 	remountCurrentView,
 	navigatePop: () => navigatePop(),
-	resetSession,
-	handleZip,
-	handleDemo,
+	resetSession: () => lifecycle.resetSession(),
+	handleZip: (f) => lifecycle.handleZip(f),
+	handleDemo: (id) => lifecycle.handleDemo(id),
 	renderTree: () => tree.renderTree(),
 	closeUnavailableModal: () => inspect.closeUnavailableModal(),
 	closeInspectModal: () => inspect.closeInspectModal(),
 	updateBackButton,
-	tryRestoreSession,
+	tryRestoreSession: () => lifecycle.tryRestoreSession(),
 });
