@@ -3,11 +3,8 @@
  * Analysis is local-only; optional localStorage remember (upload checkbox).
  *
  * Shell pure helpers: `@shell/*`. Web paint: `dom`, `renderTree`, `renderCatalog`,
- * `inspectModal`. Stage mount (Carbon alluvial + polish + focus) stays here until
- * a follow-up `src/stage` extract.
+ * `inspectModal`. Alluvial stage (Carbon + polish + focus): `@stage/*`.
  */
-import { AlluvialChart, ChartEvent } from '@carbon/charts';
-import '@carbon/charts/styles.css';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	HUB_DEFAULT_MAX_DEPTH,
@@ -42,13 +39,12 @@ import {
 	type InteractionMode,
 	type Session,
 } from '@shell/index.ts';
-import { polishAlluvialHolder } from './alluvialPolish/index.ts';
-import { $, setStatus, showWarnings } from './dom.ts';
 import {
-	bindHubAlluvialFocusEvents,
-	createHubAlluvialFocus,
-	type DrillResolvers,
-} from './focus/bindAlluvialFocus.ts';
+	createAlluvialStage,
+	drillTargetFromLine,
+	isDrillableRef,
+} from '@stage/index.ts';
+import { $, setStatus, showWarnings } from './dom.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
 import { createInspectModals } from './inspectModal.ts';
 import { createCatalogRenderer } from './renderCatalog.ts';
@@ -64,7 +60,6 @@ import {
 // ── Module state (web host bag) ──────────────────────────────────────────────
 
 let session: Session | null = null;
-let chart: InstanceType<typeof AlluvialChart> | null = null;
 /**
  * Nested alluvial focus (top of stack = current view).
  * File opens are always file-hub traversal; package/module are drill-only.
@@ -77,8 +72,6 @@ let chart: InstanceType<typeof AlluvialChart> | null = null;
  * which commit chrome via {@link commitNavigation}.
  */
 let viewStack: AtlasView[] = [];
-/** Last mounted payload (for click resolution). */
-let currentPayload: AlluvialPayload | null = null;
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'target-loc';
 /** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
@@ -93,12 +86,21 @@ let depthUserSet = false;
 /** Click behavior: drill navigates; inspect opens import evidence. */
 let interactionMode: InteractionMode = 'drill';
 
+// ── Stage (Carbon chart + polish + focus; host injects outcomes) ─────────────
+
+const stage = createAlluvialStage({
+	getRoot: () => $('atlas-alluvial'),
+	getInteractionMode: () => interactionMode,
+	onNodeClick: (name) => handleNodeClick(name),
+	onLineClick: (source, target) => handleLineClick(source, target),
+});
+
 // ── Paint modules (injected deps; one-way ← app) ─────────────────────────────
 
 const inspect = createInspectModals({
 	getLocPrecision: () => locPrecision,
 	getSession: () => session,
-	refForName,
+	refForName: (name) => stage.refForName(name),
 });
 
 const tree = createTreeRenderer({
@@ -170,7 +172,7 @@ function mountAlluvialGated(payload: AlluvialPayload | null): boolean {
 		setStatus(gate.message);
 		return false;
 	}
-	mountAlluvial(payload);
+	stage.mount(payload);
 	return true;
 }
 
@@ -190,16 +192,6 @@ function persistSessionIfEnabled(): void {
 	if (!session || !isPersistEnabled()) return;
 	const result = savePersistedSession(session);
 	if (!result.ok) setStatus(result.reason);
-}
-
-function destroyChart(): void {
-	if (!chart) return;
-	try {
-		chart.destroy();
-	} catch {
-		/* Carbon can throw if holder already gone */
-	}
-	chart = null;
 }
 
 function currentView(): AtlasView | null {
@@ -243,206 +235,6 @@ function updateCaption(view: AtlasView | null): void {
 			typeEl.textContent = '';
 		}
 	}
-}
-
-/**
- * Pixel height available for the alluvial inside the stage.
- * Caps to remaining viewport under the chart top so dense multi-hop
- * projections cannot paint below the fold.
- */
-function alluvialHeightPx(root: HTMLElement): number {
-	const rect = root.getBoundingClientRect();
-	const boxH = Math.floor(rect.height);
-	// Space from chart top to viewport bottom (small bottom pad for OS chrome)
-	const roomBelow = Math.floor(window.innerHeight - rect.top - 12);
-	const capped = Math.min(
-		boxH > 0 ? boxH : roomBelow,
-		roomBelow > 0 ? roomBelow : boxH,
-	);
-	// Prefer measured stage; fall back if layout not settled yet
-	const h = capped > 0 ? capped : Math.max(boxH, 360);
-	return Math.max(240, h);
-}
-
-/**
- * Mount (or remount) alluvial. Always replaces the holder DOM node —
- * Carbon Charts leave residual SVG/state if you only clear innerHTML.
- * Binds node/line click handlers after construct.
- *
- * Post-process (File spine purple + document icon, label truncate, export
- * recolor) must run after every Carbon paint: the chart's ResizeObserver
- * re-renders on first layout settle (workspace unhide) and wipes SVG.
- */
-function mountAlluvial(payload: AlluvialPayload | null) {
-	const root = $('atlas-alluvial');
-	if (!root) return;
-
-	destroyChart();
-	root.replaceChildren();
-	currentPayload = payload;
-
-	const holder = document.createElement('div');
-	holder.className = 'ui-carbon-chart__holder atlas-stage__holder';
-	holder.setAttribute('data-carbon-chart-holder', '');
-	root.appendChild(holder);
-
-	if (!payload) {
-		holder.innerHTML = `<p class="ui-carbon-chart__loading">No import flow for this start.</p>`;
-		return;
-	}
-
-	// Prefer model update path when possible; full remount is the reliable fallback.
-	try {
-		const heightPx = alluvialHeightPx(root);
-		const options = {
-			...payload.options,
-			height: `${heightPx}px`,
-			animations: false,
-		};
-		chart = new AlluvialChart(holder, {
-			data: payload.data,
-			options,
-		});
-		const colorScale = payload.options.color.scale;
-		const terminators = payload.meta.terminators;
-		const exportTerminators = payload.meta.exportTerminators;
-		const externalStraightPairs = payload.meta.externalStraightPairs;
-		/** LogicalFocusGraph once per payload; events → planFocus → apply. */
-		const drill: DrillResolvers = {
-			drillTargetFromNode,
-			drillTargetFromLine,
-			handleLineClick,
-		};
-		const focusApi = createHubAlluvialFocus(holder, payload, drill);
-		const applyPolish = () => {
-			// Chart may have been destroyed between schedule and fire.
-			if (!chart) return;
-			polishAlluvialHolder(holder, {
-				colorScale,
-				terminators,
-				exportTerminators,
-				externalStraightPairs,
-			});
-			// Straighten paths are re-injected each polish — rebind hit targets.
-			focusApi.bindExternal();
-			// Re-apply active plan if hover survived polish.
-			focusApi.reapply();
-		};
-		// Immediate pass for the constructor paint; re-apply on every later paint.
-		applyPolish();
-		bindAlluvialRenderPolish(chart, applyPolish);
-		bindAlluvialClicks(chart);
-		bindHubAlluvialFocusEvents(chart, focusApi, drill);
-	} catch (err) {
-		console.error('[atlas] alluvial mount failed', err);
-		holder.innerHTML = `<p class="ui-carbon-chart__loading">Chart failed to load.</p>`;
-		chart = null;
-	}
-}
-
-/** Re-polish after Carbon repaints (resize / model update wipe our DOM classes). */
-function bindAlluvialRenderPolish(
-	instance: InstanceType<typeof AlluvialChart>,
-	applyPolish: () => void,
-): void {
-	const events = (
-		instance as unknown as {
-			services?: { events?: EventTarget };
-		}
-	).services?.events;
-	if (!events?.addEventListener) return;
-	events.addEventListener(ChartEvent.RENDER_FINISHED, applyPolish);
-}
-
-/** Extract node display name from Carbon alluvial event datum. */
-function datumName(raw: unknown): string | null {
-	if (typeof raw === 'string') return raw;
-	if (raw && typeof raw === 'object') {
-		const o = raw as Record<string, unknown>;
-		if (typeof o.name === 'string') return o.name;
-	}
-	return null;
-}
-
-function linkEndpointName(end: unknown): string | null {
-	if (typeof end === 'string') return end;
-	if (end && typeof end === 'object') {
-		const o = end as Record<string, unknown>;
-		if (typeof o.name === 'string') return o.name;
-		// sankey may nest source/target as node objects
-		if (o.source !== undefined || o.target !== undefined) return null;
-	}
-	return null;
-}
-
-function bindAlluvialClicks(instance: InstanceType<typeof AlluvialChart>): void {
-	const events = (
-		instance as unknown as {
-			services?: { events?: EventTarget };
-		}
-	).services?.events;
-	if (!events?.addEventListener) return;
-
-	events.addEventListener('alluvial-node-click', ((e: Event) => {
-		const detail = (e as CustomEvent).detail as {
-			datum?: { name?: string };
-		} | null;
-		const name = datumName(detail?.datum);
-		if (name) handleNodeClick(name);
-	}) as EventListener);
-
-	events.addEventListener('alluvial-line-click', ((e: Event) => {
-		const detail = (e as CustomEvent).detail as {
-			datum?: { source?: unknown; target?: unknown };
-		} | null;
-		const source = linkEndpointName(detail?.datum?.source);
-		const target = linkEndpointName(detail?.datum?.target);
-		if (source || target) handleLineClick(source, target);
-	}) as EventListener);
-}
-
-function refForName(name: string): AlluvialNodeRef | null {
-	return currentPayload?.meta.nodeRef[name] ?? null;
-}
-
-function isDrillableRef(ref: AlluvialNodeRef | null | undefined): boolean {
-	return !!ref && ref.kind !== 'bucket';
-}
-
-/**
- * Node click drill target: the node itself when it has a non-bucket ref.
- * Inspect mode never drills.
- */
-function drillTargetFromNode(name: string): string | null {
-	if (interactionMode !== 'drill') return null;
-	return isDrillableRef(refForName(name)) ? name : null;
-}
-
-/**
- * Line click drill target — same priority as handleLineClick:
- * file target → package/unresolved/module source → package/unresolved/module
- * target → file source.
- */
-function drillTargetFromLine(
-	sourceName: string | null,
-	targetName: string | null,
-): string | null {
-	if (interactionMode !== 'drill') return null;
-
-	const sourceRef = sourceName ? refForName(sourceName) : null;
-	const targetRef = targetName ? refForName(targetName) : null;
-
-	if (targetRef?.kind === 'file') return targetName;
-	if (sourceRef?.kind === 'package' || sourceRef?.kind === 'unresolved') {
-		return sourceName;
-	}
-	if (sourceRef?.kind === 'module') return sourceName;
-	if (targetRef?.kind === 'package' || targetRef?.kind === 'unresolved') {
-		return targetName;
-	}
-	if (targetRef?.kind === 'module') return targetName;
-	if (sourceRef?.kind === 'file') return sourceName;
-	return null;
 }
 
 /**
@@ -551,7 +343,7 @@ function syncPrecisionDropdown(
 }
 
 function handleNodeClick(name: string): void {
-	const ref = refForName(name);
+	const ref = stage.refForName(name);
 	if (!ref) {
 		setStatus(
 			interactionMode === 'inspect'
@@ -582,15 +374,20 @@ function handleLineClick(sourceName: string | null, targetName: string | null): 
 		return;
 	}
 
-	const drillName = drillTargetFromLine(sourceName, targetName);
+	const drillName = drillTargetFromLine(
+		sourceName,
+		targetName,
+		interactionMode,
+		(n) => stage.refForName(n),
+	);
 	if (drillName) {
-		const ref = refForName(drillName);
+		const ref = stage.refForName(drillName);
 		if (ref) drillFromRef(ref, drillName);
 		return;
 	}
 
-	const sourceRef = sourceName ? refForName(sourceName) : null;
-	const targetRef = targetName ? refForName(targetName) : null;
+	const sourceRef = sourceName ? stage.refForName(sourceName) : null;
+	const targetRef = targetName ? stage.refForName(targetName) : null;
 	if (sourceRef?.kind === 'bucket' || targetRef?.kind === 'bucket') {
 		setStatus("Can't drill into aggregate band");
 		return;
@@ -744,14 +541,11 @@ function tryRestoreSession(): boolean {
 function resetSession() {
 	session = null;
 	viewStack = [];
-	currentPayload = null;
 	// Fresh session gets hub depth default again
 	depthUserSet = false;
 	vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 	clearPersistedSession();
-	destroyChart();
-	const alluvial = $('atlas-alluvial');
-	if (alluvial) alluvial.replaceChildren();
+	stage.clear();
 	updateCaption(null);
 	updateBackButton();
 	syncDepthDropdown();

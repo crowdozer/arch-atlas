@@ -1,16 +1,11 @@
 /**
  * Browser boot for focus e2e (Artillery-style hook).
- * Mounts real Carbon Alluvial + polish + LogicalFocusGraph apply.
+ * Mounts real Carbon Alluvial + polish + LogicalFocusGraph apply via shared stage.
  * Exposed as window.__ATLAS_FOCUS_E2E__ from /focus-e2e.
  */
-import { AlluvialChart, ChartEvent } from '@carbon/charts';
-import '@carbon/charts/styles.css';
 import type { AlluvialPayload } from '@core/graph/types.ts';
-import { polishAlluvialHolder } from '../../alluvialPolish/index.ts';
-import {
-	createHubAlluvialFocus,
-	type AlluvialFocusApi,
-} from '../bindAlluvialFocus.ts';
+import { createAlluvialStage } from '../../mount.ts';
+import type { AlluvialFocusApi } from '../bindAlluvialFocus.ts';
 import type { FocusSeed } from '../logicalFocusGraph.ts';
 
 export type FocusE2EBandDump = {
@@ -55,17 +50,19 @@ function endName(end: unknown): string {
 	return '';
 }
 
-function noopDrill() {
-	return {
-		drillTargetFromNode: () => null,
-		drillTargetFromLine: () => null,
-		handleLineClick: () => {},
-	};
-}
+const stage = createAlluvialStage({
+	getRoot: () => document.getElementById('focus-e2e-root'),
+	getInteractionMode: () => 'drill',
+	onNodeClick: () => {},
+	onLineClick: () => {},
+	// Deterministic layout for Playwright dumps (matches prior fixed mount).
+	getHeightPx: () => 700,
+	prepareHolder: (h) => {
+		h.style.width = '1200px';
+		h.style.height = '720px';
+	},
+});
 
-let chart: InstanceType<typeof AlluvialChart> | null = null;
-let focusApi: AlluvialFocusApi | null = null;
-let holder: HTMLElement | null = null;
 let lastKeys: string[] = [];
 
 async function nextFrame(): Promise<void> {
@@ -73,7 +70,16 @@ async function nextFrame(): Promise<void> {
 	await new Promise<void>((r) => requestAnimationFrame(() => r()));
 }
 
+function focusApi(): AlluvialFocusApi | null {
+	return stage.getFocusApi();
+}
+
+function holderEl(): HTMLElement | null {
+	return stage.getHolder();
+}
+
 function dumpBands(): FocusE2EBandDump[] {
+	const holder = holderEl();
 	if (!holder) return [];
 	const out: FocusE2EBandDump[] = [];
 	for (const p of holder.querySelectorAll<SVGPathElement>('path.link')) {
@@ -103,6 +109,7 @@ function dumpBands(): FocusE2EBandDump[] {
 }
 
 function dumpLabels(): FocusE2ELabelDump[] {
+	const holder = holderEl();
 	if (!holder) return [];
 	const out: FocusE2ELabelDump[] = [];
 	for (const g of holder.querySelectorAll<SVGGElement>('g.node-group')) {
@@ -121,66 +128,23 @@ async function loadPayload(payload: AlluvialPayload): Promise<void> {
 	const root = document.getElementById('focus-e2e-root');
 	if (!root) throw new Error('#focus-e2e-root missing');
 
-	if (chart) {
-		try {
-			(chart as unknown as { destroy?: () => void }).destroy?.();
-		} catch {
-			/* ignore */
-		}
-		chart = null;
-	}
-	focusApi = null;
-	root.replaceChildren();
+	stage.mount(payload);
 
-	holder = document.createElement('div');
-	holder.className = 'ui-carbon-chart__holder atlas-stage__holder';
-	holder.style.width = '1200px';
-	holder.style.height = '720px';
-	root.appendChild(holder);
-
-	const options = {
-		...payload.options,
-		height: '700px',
-		animations: false,
-	};
-
-	chart = new AlluvialChart(holder, {
-		data: payload.data,
-		options,
-	});
-
-	const drill = noopDrill();
-	focusApi = createHubAlluvialFocus(holder, payload, drill);
-
-	const applyPolish = () => {
-		if (!holder || !chart) return;
-		polishAlluvialHolder(holder, {
-			colorScale: payload.options.color.scale,
-			terminators: payload.meta.terminators,
-			exportTerminators: payload.meta.exportTerminators,
-			externalStraightPairs: payload.meta.externalStraightPairs,
-		});
-		focusApi?.bindExternal();
-		focusApi?.reapply();
-	};
-
-	applyPolish();
-	const events = (
-		chart as unknown as { services?: { events?: EventTarget } }
-	).services?.events;
-	events?.addEventListener?.(ChartEvent.RENDER_FINISHED, applyPolish);
-
-	// Wait for Carbon layout settle + polish
+	// Wait for Carbon layout settle + polish (RENDER_FINISHED may re-polish)
 	await nextFrame();
 	await new Promise((r) => setTimeout(r, 100));
-	applyPolish();
+	// Force one more polish pass via remount-stable reapply path if focus exists
+	const api = focusApi();
+	api?.bindExternal();
+	api?.reapply();
 	await nextFrame();
 }
 
 async function hoverFile(name: string): Promise<void> {
-	if (!focusApi) throw new Error('loadPayload first');
+	const api = focusApi();
+	if (!api) throw new Error('loadPayload first');
 	const seed: FocusSeed = { kind: 'file', name };
-	focusApi.applySeed(seed, null);
+	api.applySeed(seed, null);
 	// capture keys from plan via dump after rAF re-paint
 	await nextFrame();
 	const bands = dumpBands();
@@ -188,8 +152,9 @@ async function hoverFile(name: string): Promise<void> {
 }
 
 async function hoverBand(source: string, target: string): Promise<void> {
-	if (!focusApi) throw new Error('loadPayload first');
-	focusApi.applySeed(
+	const api = focusApi();
+	if (!api) throw new Error('loadPayload first');
+	api.applySeed(
 		{ kind: 'band', source, target, display: 'carbon' },
 		null,
 	);
@@ -203,7 +168,7 @@ function boot(): void {
 		loadPayload,
 		hoverFile,
 		hoverBand,
-		clearFocus: () => focusApi?.clearFocus(),
+		clearFocus: () => focusApi()?.clearFocus(),
 		dumpBands,
 		dumpLabels,
 		lastFocusedKeys: () => lastKeys,

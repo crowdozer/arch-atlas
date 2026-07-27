@@ -9,6 +9,7 @@ export default defineConfig({
 		alias: {
 			'@core': path.join(root, 'src/core'),
 			'@shell': path.join(root, 'src/shell'),
+			'@stage': path.join(root, 'src/stage'),
 		},
 	},
 	test: {
