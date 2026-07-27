@@ -4,10 +4,13 @@
  *
  * Imported-surface precision:
  * - estimate — whole-file target LOC (no LSP); labeled as estimate
- * - exact — not implemented (needs language server / program analysis)
+ * - exact — requires {@link ImportedSurfaceProvider}; fails closed when absent
+ *   (no silent fallback to estimate numbers). Chart mass via provider is
+ *   deferred — `edgeWeight` stays estimate-only this ship.
  */
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 
 /** Selectable band-width axes. Default is whole-file imported (target) LOC. */
 export type WeightAxis = 'import-edges' | 'importer-loc' | 'target-loc';
@@ -137,16 +140,22 @@ export function resolveLocPrecision(precision?: LocPrecision): LocPrecision {
 
 /**
  * Gate weight requests that claim exact imported surface.
- * exact + target-loc → fail (no silent fallback to estimate numbers).
+ * exact + target-loc → ok only when an {@link ImportedSurfaceProvider} is
+ * supplied (presence check; mass not used by projectors yet). Without a
+ * provider → fail closed (no silent fallback to estimate numbers).
  * Other axes are ok under exact (they do not claim imported-surface truth).
  */
 export function resolveWeightRequest(
 	axis?: WeightAxis,
 	precision?: LocPrecision,
+	surface?: ImportedSurfaceProvider | null,
 ): WeightResolution {
 	const a = resolveWeightAxis(axis);
 	const p = resolveLocPrecision(precision);
 	if (p === 'exact' && axisNeedsImportedSurface(a)) {
+		if (surface) {
+			return { ok: true, axis: a, precision: p };
+		}
 		return {
 			ok: false,
 			reason: 'exact-not-implemented',

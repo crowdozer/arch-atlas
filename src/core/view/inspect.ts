@@ -2,7 +2,9 @@
  * Inspect-mode evidence: map alluvial clicks → observed imports + estimate
  * imported-code / callsite snippets. Projection helper only; graph stays SoR.
  *
- * Exact precision does not invent tree-shaken surface — callers get blockers.
+ * Exact precision: without {@link ImportedSurfaceProvider}, fail closed
+ * (blockers; no invented tree-shaken surface). With a provider, use its
+ * optional `importedSurface` / `callSites` when present.
  */
 
 import type {
@@ -12,6 +14,7 @@ import type {
 	ImportEdge,
 } from '@core/graph/types.ts';
 import { localNamesFromBindings } from '@core/parse/imports.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
 import { pathInImporterGroup } from '@core/view/fileImporters.ts';
 import {
@@ -239,31 +242,81 @@ function escapeRegExp(s: string): string {
 	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Map provider surface text into inspect snippet shape.
+ * Path/line range are best-effort from the edge + excerpt length.
+ */
+function exactImportedCodeFromProvider(
+	e: ImportEdge,
+	surface: { text: string; note: string },
+): ImportedCodeSnippet {
+	const lines = sourceLines(surface.text);
+	const endLine = lines.length > 0 ? lines.length : 1;
+	return {
+		epistemic: 'observed',
+		path: e.toKind === 'file' ? e.to : toLabel(e),
+		startLine: 1,
+		endLine,
+		text: surface.text,
+		note: surface.note,
+	};
+}
+
 function evidenceForEdge(
 	graph: CodeGraph,
 	e: ImportEdge,
 	precision: LocPrecision,
+	surface?: ImportedSurfaceProvider | null,
 ): ImportEvidence {
 	const blockers: EvidenceBlocker[] = [];
 	const imp = snippetForEdge(graph, e);
 
 	if (precision === 'exact') {
-		blockers.push({
-			code: 'exact-not-implemented',
-			message: EXACT_NOT_IMPLEMENTED_MESSAGE,
-		});
-		// Observed import lines remain; exact imported surface / callsites withheld
+		// Observed import lines always remain under exact.
+		if (!surface) {
+			blockers.push({
+				code: 'exact-not-implemented',
+				message: EXACT_NOT_IMPLEMENTED_MESSAGE,
+			});
+			return {
+				precision,
+				edgeId: e.id,
+				import: imp,
+				callsites: [],
+				blockers,
+			};
+		}
+
+		let importedCode: ImportedCodeSnippet | undefined;
+		if (surface.importedSurface) {
+			const s = surface.importedSurface(graph, e);
+			if (s) importedCode = exactImportedCodeFromProvider(e, s);
+		}
+		if (!importedCode) {
+			blockers.push({
+				code: 'exact-not-implemented',
+				message: EXACT_NOT_IMPLEMENTED_MESSAGE,
+			});
+		}
+
+		let callsites: CallSiteSnippet[] = [];
+		if (surface.callSites) {
+			const sites = surface.callSites(graph, e);
+			if (sites) callsites = sites;
+		}
+
 		return {
 			precision,
 			edgeId: e.id,
 			import: imp,
-			callsites: [],
+			importedCode,
+			callsites,
 			blockers,
 		};
 	}
 
 	// estimate
-	let importedCode = importedCodeForEdge(graph, e);
+	const importedCode = importedCodeForEdge(graph, e);
 	if (e.toKind !== 'file') {
 		blockers.push({
 			code: 'package-target',
@@ -306,6 +359,7 @@ export function evidenceForEdges(
 	graph: CodeGraph,
 	edges: ImportEdge[],
 	precision?: LocPrecision,
+	surface?: ImportedSurfaceProvider | null,
 ): ImportEvidence[] {
 	const p = resolveLocPrecision(precision);
 	const sorted = [...edges].sort(
@@ -314,7 +368,7 @@ export function evidenceForEdges(
 	const out: ImportEvidence[] = [];
 	for (const e of sorted) {
 		if (out.length >= MAX_SNIPPETS) break;
-		out.push(evidenceForEdge(graph, e, p));
+		out.push(evidenceForEdge(graph, e, p, surface));
 	}
 	return out;
 }

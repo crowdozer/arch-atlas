@@ -153,13 +153,31 @@ describe('resolveWeightRequest', () => {
 		}
 	});
 
-	it('exact + target-loc is not implemented', () => {
+	it('exact + target-loc is not implemented without provider', () => {
 		const r = resolveWeightRequest('target-loc', 'exact');
 		expect(r.ok).toBe(false);
 		if (!r.ok) {
 			expect(r.reason).toBe('exact-not-implemented');
 			expect(r.message).toMatch(/language server/i);
 		}
+	});
+
+	it('exact + target-loc is ok when ImportedSurfaceProvider present', () => {
+		const surface = {
+			targetSurfaceMass: () => 3,
+		};
+		const r = resolveWeightRequest('target-loc', 'exact', surface);
+		expect(r.ok).toBe(true);
+		if (r.ok) {
+			expect(r.axis).toBe('target-loc');
+			expect(r.precision).toBe('exact');
+		}
+	});
+
+	it('exact + target-loc still fails when surface is null', () => {
+		const r = resolveWeightRequest('target-loc', 'exact', null);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.reason).toBe('exact-not-implemented');
 	});
 
 	it('exact + import-edges is ok (no imported-surface claim)', () => {

@@ -113,6 +113,64 @@ describe('inspect evidence', () => {
 		expect(ev!.callsites).toHaveLength(0);
 		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(true);
 	});
+
+	it('evidenceForEdges exact with mock provider returns surface and callsites', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const mock = {
+			targetSurfaceMass: () => 2,
+			importedSurface: () => ({
+				text: 'export const x = 1; // exact surface',
+				note: 'exact imported surface (mock)',
+			}),
+			callSites: () => [
+				{
+					epistemic: 'inferred' as const,
+					path: 'src/main.ts',
+					line: 3,
+					text: 'const y = x + 1;',
+					symbol: 'x',
+				},
+			],
+		};
+		const [ev] = evidenceForEdges(graph, [util], 'exact', mock);
+		expect(ev!.import.text).toContain('util');
+		expect(ev!.importedCode?.text).toContain('exact surface');
+		expect(ev!.importedCode?.note).toMatch(/exact/i);
+		expect(ev!.callsites).toHaveLength(1);
+		expect(ev!.callsites[0]!.symbol).toBe('x');
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+			false,
+		);
+	});
+
+	it('evidenceForEdges exact with mass-only provider still fails closed on surface', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const massOnly = {
+			targetSurfaceMass: () => 2,
+			// no importedSurface / callSites — withhold, do not invent estimate surface
+		};
+		const [ev] = evidenceForEdges(graph, [util], 'exact', massOnly);
+		expect(ev!.import.text).toContain('util');
+		expect(ev!.importedCode).toBeUndefined();
+		expect(ev!.callsites).toHaveLength(0);
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+			true,
+		);
+	});
+
+	it('evidenceForEdges exact with null importedSurface withholds surface', () => {
+		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
+		const nullSurface = {
+			targetSurfaceMass: () => 2,
+			importedSurface: () => null,
+		};
+		const [ev] = evidenceForEdges(graph, [util], 'exact', nullSurface);
+		expect(ev!.import.text).toContain('util');
+		expect(ev!.importedCode).toBeUndefined();
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+			true,
+		);
+	});
 });
 
 describe('inspect module keys match importerGroupKey deepen', () => {
