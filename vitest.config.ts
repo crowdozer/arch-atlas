@@ -10,6 +10,7 @@ export default defineConfig({
 			'@core': path.join(root, 'src/core'),
 			'@shell': path.join(root, 'src/shell'),
 			'@stage': path.join(root, 'src/stage'),
+			'@exact': path.join(root, 'src/exact'),
 		},
 	},
 	test: {

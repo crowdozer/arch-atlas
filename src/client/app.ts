@@ -3,7 +3,8 @@
  * Analysis is local-only; optional localStorage remember (upload checkbox).
  *
  * Shell pure helpers: `@shell/*`. Web paint: `dom`, `renderTree`, `renderCatalog`,
- * `inspectModal`. Alluvial stage (Carbon + polish + focus): `@stage/*`.
+ * `inspectModal`. Exact paint orchestration: `exactPaintMode`. Control wiring:
+ * `wireUi`. Host-shared Exact engines: `@exact/*`. Alluvial stage: `@stage/*`.
  */
 import {
 	HUB_DEFAULT_MAX_DEPTH,
@@ -16,19 +17,14 @@ import {
 	type LocPrecision,
 	type VirtualFile,
 	type WeightAxis,
-	graphNeedsTypescript,
 } from '@core/index.ts';
 import {
 	canMountWeight,
 	captionForView,
 	defaultDepthForView,
 	emptyPayloadStatus,
-	isShakenWeightUi,
 	nearestFileFocus,
 	parseInteractionMode,
-	parseLocPrecision,
-	parseVizMaxDepth,
-	parseWeightAxis,
 	payloadForView as projectPayloadForView,
 	sameView,
 	statusForView,
@@ -46,11 +42,7 @@ import {
 } from '@stage/index.ts';
 import { $, setStatus, showWarnings } from './dom.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
-import {
-	ensureExactForGraph,
-	ensureExactLocalOnly,
-	isLocalExactSource,
-} from './exact/ensureExact.ts';
+import { createExactPaintMode } from './exactPaintMode.ts';
 import { createInspectModals } from './inspectModal.ts';
 import { createCatalogRenderer } from './renderCatalog.ts';
 import { createTreeRenderer } from './renderTree.ts';
@@ -59,8 +51,8 @@ import {
 	loadPersistedSession,
 	readPersistPreference,
 	savePersistedSession,
-	writePersistPreference,
 } from './sessionStore.ts';
+import { wireUi } from './wireUi.ts';
 
 // ── Module state (web host bag) ──────────────────────────────────────────────
 
@@ -131,6 +123,54 @@ const tree = createTreeRenderer({
 const catalog = createCatalogRenderer({
 	selectStart,
 	navigatePush,
+});
+
+// ── Exact paint (injected deps; state bag stays in composition root) ─────────
+
+function syncWeightDropdown(
+	el: HTMLElement & { value?: string },
+	axis: WeightAxis,
+): void {
+	el.value = axis;
+	el.setAttribute('value', axis);
+}
+
+function syncPrecisionDropdown(
+	el: HTMLElement & { value?: string },
+	precision: LocPrecision,
+): void {
+	el.value = precision;
+	el.setAttribute('value', precision);
+}
+
+const exact = createExactPaintMode({
+	getSession: () => session,
+	getSurfaceProvider: () => surfaceProvider,
+	setSurfaceProvider: (p) => {
+		surfaceProvider = p;
+	},
+	getLocPrecision: () => locPrecision,
+	setLocPrecision: (p) => {
+		locPrecision = p;
+	},
+	getWeightAxis: () => weightAxis,
+	setWeightAxis: (a) => {
+		weightAxis = a;
+	},
+	getExactEnableInFlight: () => exactEnableInFlight,
+	setExactEnableInFlight: (v) => {
+		exactEnableInFlight = v;
+	},
+	getExactMixedWarningShown: () => exactMixedWarningShown,
+	setExactMixedWarningShown: (v) => {
+		exactMixedWarningShown = v;
+	},
+	remountCurrentView: () => remountCurrentView(),
+	setStatus,
+	openUnavailableModal: (opts) => inspect.openUnavailableModal(opts),
+	syncPrecisionDropdown,
+	syncWeightDropdown,
+	currentView: () => currentView(),
 });
 
 // ── Host chrome helpers (DOM-coupled, stay with composition root) ────────────
@@ -225,173 +265,6 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 		precision: locPrecision,
 		surface: locPrecision === 'exact' ? surfaceProvider : null,
 	});
-}
-
-/**
- * Enter Exact surface mode (Precision Exact or Weight Shaken).
- * Loads TS engine if needed, installs provider, syncs controls, remounts.
- * Does **not** re-index the graph.
- */
-async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<void> {
-	if (!session) {
-		setStatus('Open a project before enabling Exact mode');
-		return;
-	}
-	if (exactEnableInFlight) return;
-	exactEnableInFlight = true;
-
-	const precisionDropdown = $('atlas-loc-precision') as
-		| (HTMLElement & { value?: string })
-		| null;
-	const weightDropdown = $('atlas-weight-axis') as
-		| (HTMLElement & { value?: string })
-		| null;
-
-	const revertUi = () => {
-		locPrecision = 'estimate';
-		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
-		if (weightDropdown) {
-			// Keep real axis (not shaken UI value) under estimate
-			syncWeightDropdown(weightDropdown, weightAxis);
-		}
-	};
-
-	try {
-		setStatus('Loading JS/TS export-surface engine…');
-		const result = await ensureExactForGraph(session.graph, {
-			cachedProvider: surfaceProvider,
-		});
-
-		if (!result.ok) {
-			revertUi();
-			inspect.openUnavailableModal({
-				label: trigger === 'shaken' ? 'Weight' : 'Precision',
-				heading: 'Export surface unavailable',
-				body:
-					result.error +
-					' Charts stay on estimate (whole-file / dual-side estimate) weights. Exact is not a language server.',
-			});
-			setStatus(result.error);
-			return;
-		}
-
-		surfaceProvider = result.provider;
-		locPrecision = 'exact';
-		// UI “Export surface (Exact)” maps to target-loc + exact precision
-		weightAxis = 'target-loc';
-
-		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'exact');
-		if (weightDropdown) {
-			// Prefer export-surface UI value when that was the entry; else keep target-loc
-			if (trigger === 'shaken') {
-				weightDropdown.value = 'imported-loc';
-				weightDropdown.setAttribute('value', 'imported-loc');
-			} else {
-				syncWeightDropdown(weightDropdown, 'target-loc');
-			}
-		}
-
-		const missing = result.engines.missing;
-		if (missing.length && !exactMixedWarningShown) {
-			exactMixedWarningShown = true;
-			const langs = missing.map((m) => m.language).join(', ');
-			inspect.openUnavailableModal({
-				label: 'Export surface (partial)',
-				heading: 'Only JavaScript/TypeScript use Exact',
-				body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
-			});
-		}
-
-		const srcNote =
-			result.source === 'jsdelivr' || result.source === 'unpkg'
-				? ` · engine ${result.source} (CDN)`
-				: result.source === 'local' || result.source === 'inject'
-					? ` · engine ${result.source}`
-					: result.source === 'cached'
-						? ' · engine cached'
-						: '';
-		remountCurrentView();
-		setStatus(`Export-surface Exact on (JS/TS export decls)${srcNote}`);
-	} catch (e) {
-		const msg = e instanceof Error ? e.message : String(e);
-		revertUi();
-		inspect.openUnavailableModal({
-			label: trigger === 'shaken' ? 'Weight' : 'Precision',
-			heading: 'Export surface failed',
-			body: msg + ' Charts stay on estimate weights.',
-		});
-		setStatus(msg);
-	} finally {
-		exactEnableInFlight = false;
-	}
-}
-
-/** Leave Exact paint mode (keep provider cached for re-entry). */
-function disableExactPaintMode(): void {
-	locPrecision = 'estimate';
-	const precisionDropdown = $('atlas-loc-precision') as
-		| (HTMLElement & { value?: string })
-		| null;
-	if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
-	remountCurrentView();
-}
-
-/**
- * Default Exact **on** when a local/injected analysis engine is already available.
- * Never triggers CDN download — production web stays estimate until user opts in.
- * Silent no-op when local classic TS is missing (dev without dep, pure CDN hosts).
- */
-async function tryAutoExactWhenLocalAvailable(): Promise<void> {
-	if (!session || exactEnableInFlight) return;
-	if (locPrecision === 'exact' && surfaceProvider) return;
-
-	const needsTs = graphNeedsTypescript(session.graph);
-	const hasSurfaceInject = (() => {
-		try {
-			return !!(
-				globalThis as typeof globalThis & {
-					__ARCH_ATLAS_SURFACE__?: ImportedSurfaceProvider;
-				}
-			).__ARCH_ATLAS_SURFACE__;
-		} catch {
-			return false;
-		}
-	})();
-	// No JS/TS and no host inject → stay estimate (empty provider is not auto)
-	if (!needsTs && !hasSurfaceInject) return;
-
-	exactEnableInFlight = true;
-	const precisionDropdown = $('atlas-loc-precision') as
-		| (HTMLElement & { value?: string })
-		| null;
-	const weightDropdown = $('atlas-weight-axis') as
-		| (HTMLElement & { value?: string })
-		| null;
-
-	try {
-		const result = await ensureExactLocalOnly(session.graph, {
-			cachedProvider: surfaceProvider,
-		});
-		if (!result.ok || !isLocalExactSource(result.source)) return;
-		// Synthetic empty provider is not a real local engine
-		if (result.source === 'empty') return;
-
-		surfaceProvider = result.provider;
-		locPrecision = 'exact';
-		weightAxis = 'target-loc';
-		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'exact');
-		if (weightDropdown) syncWeightDropdown(weightDropdown, 'target-loc');
-		// No mixed-language modal on auto — user can still open Exact explicitly later
-		remountCurrentView();
-		const base = statusForView(session, currentView());
-		setStatus(
-			`${base} · export-surface Exact (${result.source})`,
-		);
-	} catch {
-		// stay estimate
-	} finally {
-		exactEnableInFlight = false;
-	}
 }
 
 function updateBackButton(): void {
@@ -514,22 +387,6 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 	}
 }
 
-function syncWeightDropdown(
-	el: HTMLElement & { value?: string },
-	axis: WeightAxis,
-): void {
-	el.value = axis;
-	el.setAttribute('value', axis);
-}
-
-function syncPrecisionDropdown(
-	el: HTMLElement & { value?: string },
-	precision: LocPrecision,
-): void {
-	el.value = precision;
-	el.setAttribute('value', precision);
-}
-
 function handleNodeClick(name: string): void {
 	const ref = stage.refForName(name);
 	if (!ref) {
@@ -598,25 +455,13 @@ function showWorkspaceShell(): void {
 	$('atlas-subbar')?.classList.add('flex');
 }
 
-/** Drop Exact paint + provider cache when graph identity changes. */
-function resetExactState(): void {
-	surfaceProvider = null;
-	locPrecision = 'estimate';
-	exactMixedWarningShown = false;
-	exactEnableInFlight = false;
-	const precisionDropdown = $('atlas-loc-precision') as
-		| (HTMLElement & { value?: string })
-		| null;
-	if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
-}
-
 function activateSession(
 	next: Session,
 	statusLine: string,
 	opts?: { skipPersist?: boolean },
 ): void {
 	// New graph → rebuild Exact provider on next enable (contents snapshot)
-	resetExactState();
+	exact.resetExactState();
 	session = next;
 	showWarnings(session.warnings);
 	showWorkspaceShell();
@@ -629,7 +474,7 @@ function activateSession(
 	setStatus(statusLine);
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 	// Prefer Exact when local classic TS / host inject is already available (no CDN)
-	void tryAutoExactWhenLocalAvailable();
+	void exact.tryAutoExactWhenLocalAvailable();
 }
 
 function expandToPath(startId: string): void {
@@ -748,7 +593,7 @@ function resetSession() {
 	// Fresh session gets hub depth default again
 	depthUserSet = false;
 	vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
-	resetExactState();
+	exact.resetExactState();
 	clearPersistedSession();
 	stage.clear();
 	updateCaption(null);
@@ -765,164 +610,43 @@ function resetSession() {
 	showWarnings([]);
 }
 
-function wirePersistCheckbox(): void {
-	const box = persistCheckbox();
-	if (!box) return;
-	box.checked = readPersistPreference();
-	// Carbon checkbox fires cds-checkbox-changed (not native change alone)
-	box.addEventListener('cds-checkbox-changed', () => {
-		const on = Boolean(box.checked);
-		writePersistPreference(on);
-		if (on) {
-			if (session) persistSessionIfEnabled();
-		} else {
-			clearPersistedSession();
-		}
-	});
-}
+// ── Bootstrap: bind chrome once ──────────────────────────────────────────────
 
-function wireUi() {
-	wirePersistCheckbox();
-
-	const drop = $('atlas-drop');
-	// Carbon file-uploader drop container: click + drag both emit this event
-	drop?.addEventListener('cds-file-uploader-drop-container-changed', ((e: Event) => {
-		const files = (e as CustomEvent<{ addedFiles?: File[] }>).detail?.addedFiles;
-		const f = files?.[0];
-		if (f) void handleZip(f);
-	}) as EventListener);
-
-	$('atlas-reset')?.addEventListener('click', resetSession);
-
-	$('atlas-alluvial-back')?.addEventListener('click', () => {
-		navigatePop();
-	});
-
-	const weightDropdown = $('atlas-weight-axis') as (HTMLElement & { value?: string }) | null;
-	if (weightDropdown) {
-		syncWeightDropdown(weightDropdown, weightAxis);
-		weightDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
-			const detail = (e as CustomEvent).detail as {
-				item?: { value?: string };
-			} | null;
-			const next =
-				detail?.item?.value ??
-				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
-			// Shaken → Exact surface mode entry (same engine path as Precision Exact)
-			if (isShakenWeightUi(next)) {
-				void enableExactSurfaceMode('shaken');
-				return;
-			}
-			weightAxis = parseWeightAxis(next);
-			// Leaving surface claim while exact: if axis no longer needs surface, keep precision
-			// but remount; user can still inspect under exact. If they pick non-target while exact,
-			// keep provider cached; paint uses axis estimate path for non-target axes.
-			syncWeightDropdown(weightDropdown, weightAxis);
-			remountCurrentView();
-		}) as EventListener);
-	}
-
-	const depthDropdown = $('atlas-max-depth') as (HTMLElement & { value?: string }) | null;
-	if (depthDropdown) {
-		syncDepthDropdown();
-		depthDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
-			const detail = (e as CustomEvent).detail as {
-				item?: { value?: string };
-			} | null;
-			const next =
-				detail?.item?.value ??
-				(typeof depthDropdown.value === 'string' ? depthDropdown.value : '');
-			vizMaxDepth = parseVizMaxDepth(next);
-			depthUserSet = true;
-			remountCurrentView();
-		}) as EventListener);
-	}
-
-	const precisionDropdown = $('atlas-loc-precision') as (HTMLElement & {
-		value?: string;
-	}) | null;
-	if (precisionDropdown) {
-		syncPrecisionDropdown(precisionDropdown, locPrecision);
-		precisionDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
-			const detail = (e as CustomEvent).detail as {
-				item?: { value?: string };
-			} | null;
-			const next =
-				detail?.item?.value ??
-				(typeof precisionDropdown.value === 'string'
-					? precisionDropdown.value
-					: 'estimate');
-			const parsed = parseLocPrecision(next);
-			if (parsed === 'exact') {
-				void enableExactSurfaceMode('precision');
-				return;
-			}
-			// Estimate: leave provider cached; paint estimate mass again
-			disableExactPaintMode();
-			setStatus('Estimate mode (whole-file imported LOC)');
-		}) as EventListener);
-	}
-
-	$('atlas-unavailable-close')?.addEventListener('click', () => {
-		inspect.closeUnavailableModal();
-	});
-
-	const modeHost = $('atlas-interaction-mode');
-	if (modeHost) {
-		syncInteractionModeUi();
-		modeHost.addEventListener('click', (e: Event) => {
-			const target = (e.target as Element | null)?.closest?.('[data-mode]') as
-				| HTMLElement
-				| null;
-			if (!target || !modeHost.contains(target)) return;
-			const next = parseInteractionMode(target.getAttribute('data-mode') ?? 'drill');
-			if (next === interactionMode) return;
-			interactionMode = next;
-			syncInteractionModeUi();
-			setStatus(
-				interactionMode === 'inspect'
-					? 'Inspect mode — click for import evidence'
-					: 'Drill mode',
-			);
-		});
-	}
-
-	$('atlas-inspect-close')?.addEventListener('click', () => {
-		inspect.closeInspectModal();
-	});
-
-	$('atlas-demo-react-simple')?.addEventListener('click', () => {
-		handleDemo('react-simple');
-	});
-	$('atlas-demo-next-complex')?.addEventListener('click', () => {
-		handleDemo('next-complex');
-	});
-	$('atlas-demo-spaghetti-godfile')?.addEventListener('click', () => {
-		handleDemo('spaghetti-godfile');
-	});
-
-	const treeFilter = $('atlas-tree-filter');
-	// Carbon search: cds-search-input; also listen for input if it bubbles
-	const onTreeFilter = () => {
-		if (!session) return;
-		tree.renderTree();
-	};
-	treeFilter?.addEventListener('cds-search-input', onTreeFilter);
-	treeFilter?.addEventListener('input', onTreeFilter);
-
-	// Remount chart on resize so height tracks stage (keep current drill view)
-	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-	window.addEventListener('resize', () => {
-		if (!currentView()) return;
-		if (resizeTimer) clearTimeout(resizeTimer);
-		resizeTimer = setTimeout(() => {
-			if (!currentView()) return;
-			remountCurrentView();
-		}, 150);
-	});
-
-	updateBackButton();
-	tryRestoreSession();
-}
-
-wireUi();
+wireUi({
+	getSession: () => session,
+	getWeightAxis: () => weightAxis,
+	setWeightAxis: (a) => {
+		weightAxis = a;
+	},
+	getLocPrecision: () => locPrecision,
+	getVizMaxDepth: () => vizMaxDepth,
+	setVizMaxDepth: (d) => {
+		vizMaxDepth = d;
+	},
+	setDepthUserSet: (v) => {
+		depthUserSet = v;
+	},
+	getInteractionMode: () => interactionMode,
+	setInteractionMode: (m) => {
+		interactionMode = m;
+	},
+	currentView: () => currentView(),
+	persistCheckbox,
+	persistSessionIfEnabled,
+	syncWeightDropdown,
+	syncPrecisionDropdown,
+	syncDepthDropdown,
+	syncInteractionModeUi,
+	enableExactSurfaceMode: (t) => exact.enableExactSurfaceMode(t),
+	disableExactPaintMode: () => exact.disableExactPaintMode(),
+	remountCurrentView,
+	navigatePop: () => navigatePop(),
+	resetSession,
+	handleZip,
+	handleDemo,
+	renderTree: () => tree.renderTree(),
+	closeUnavailableModal: () => inspect.closeUnavailableModal(),
+	closeInspectModal: () => inspect.closeInspectModal(),
+	updateBackButton,
+	tryRestoreSession,
+});

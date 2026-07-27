@@ -3,7 +3,7 @@ import {
 	coveredExportLines,
 	loadExactExportSurface,
 } from './exactSurface.ts';
-import type { ExportSpan } from '../client/exact/exportSurface.ts';
+import type { ExportSpan } from '@exact/index.ts';
 import { indexFiles, type VirtualFile } from '@core/index.ts';
 
 describe('coveredExportLines', () => {

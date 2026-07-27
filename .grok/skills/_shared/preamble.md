@@ -97,10 +97,11 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | ---- | ------------ |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent digest builders in `export/agentDigest.ts` |
+| Host-shared Exact | `src/exact/` (`@exact`) — export-surface load/provider; CDN fetch OK here, not in pure core |
 | Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
 | Alluvial stage | `src/stage/` (`@stage`) — `createAlluvialStage`, `polish/`, `focus/`, drill/carbonEvents/height; owns `@carbon/charts` |
-| Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no Carbon/chart |
-| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `digest` / `tree` / `file` → JSON schemas `arch-atlas.agent-*.v1` |
+| Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts` — no Carbon/chart |
+| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `digest` / `tree` / `file` → JSON schemas `arch-atlas.agent-*.v1`; Exact via `@exact` |
 | VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
 | UI / Carbon wrappers | `src/components/ui/`, `src/styles/` |

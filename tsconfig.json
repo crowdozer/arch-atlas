@@ -7,7 +7,8 @@
     "paths": {
       "@core/*": ["src/core/*"],
       "@shell/*": ["src/shell/*"],
-      "@stage/*": ["src/stage/*"]
+      "@stage/*": ["src/stage/*"],
+      "@exact/*": ["src/exact/*"]
     }
   }
 }

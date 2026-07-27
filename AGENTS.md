@@ -56,10 +56,11 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | Area | Path / focus |
 | ---- | ------------ |
 | Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent JSON builders in `export/agentDigest.ts` |
-| Agent CLI host | `src/cli/` — dir/ZIP feed + `digest`/`tree`/`file` JSON lens (Estimate only; no raw source) |
+| Host-shared Exact | `src/exact/` via `@exact` — export-surface engine load + provider (CDN/local OK); **not** pure core; CLI + web share this |
+| Agent CLI host | `src/cli/` — dir/ZIP feed + `digest`/`tree`/`file` JSON lens; Exact via `@exact` (no `src/client/` imports) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
 | Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
-| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint modules `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts` — no `@carbon/charts` |
+| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `wireUi.ts` — no `@carbon/charts` |
 | Astro app shell | `src/pages/`, `src/layouts/` |
 | UI / Carbon | `src/components/ui/`, `src/styles/` |
 
