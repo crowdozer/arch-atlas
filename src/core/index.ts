@@ -98,28 +98,16 @@ export {
 } from '@core/tree/fileTree.ts';
 export type { FileTreeNode } from '@core/tree/fileTree.ts';
 export { indexHostFeed } from '@core/hostPipe.ts';
-export type {
-	AnalysisRequest,
-	HostFileFeed,
-	HostIndexResult,
-} from '@core/hostPipe.ts';
+export type { HostFileFeed, IndexResult } from '@core/hostPipe.ts';
 
-import { buildGraph } from '@core/graph/build.ts';
-import { buildMapCatalog } from '@core/catalog/views.ts';
+import { indexHostFeed, type IndexResult } from '@core/hostPipe.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
 import type { WeightAxis } from '@core/view/weight.ts';
-import type { AlluvialPayload, CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
+import type { AlluvialPayload, CodeGraph, VirtualFile } from '@core/graph/types.ts';
 
-export type IndexResult = {
-	graph: CodeGraph;
-	catalog: MapCatalog;
-};
-
-/** Index virtual files into graph + map catalog. */
+/** Index virtual files into graph + map catalog (thin alias of indexHostFeed). */
 export function indexFiles(files: VirtualFile[]): IndexResult {
-	const graph = buildGraph(files);
-	const catalog = buildMapCatalog(graph);
-	return { graph, catalog };
+	return indexHostFeed({ files });
 }
 
 /** Convenience: catalog primary start → alluvial. */

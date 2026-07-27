@@ -5,13 +5,13 @@
  * {@link HostFileFeed} → {@link indexHostFeed} / `indexFiles` → graph + catalog →
  * projectors / weights / inspect. Hosts produce files; core never imports `vscode`
  * or `document`.
+ *
+ * `indexHostFeed` owns the index body; `indexFiles` is a thin alias over it.
  */
 
 import { buildGraph } from '@core/graph/build.ts';
 import { buildMapCatalog } from '@core/catalog/views.ts';
 import type { CodeGraph, MapCatalog, VirtualFile } from '@core/graph/types.ts';
-import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
-import type { LocPrecision, WeightAxis } from '@core/view/weight.ts';
 
 /**
  * Host-produced file index. ZIP, workspace walk, demos, and session restore
@@ -21,28 +21,17 @@ export type HostFileFeed = {
 	files: VirtualFile[];
 };
 
-/** Same shape as `indexFiles` result — graph SoR + map catalog. */
-export type HostIndexResult = {
+/** Graph SoR + map catalog — single result shape for host feed and `indexFiles`. */
+export type IndexResult = {
 	graph: CodeGraph;
 	catalog: MapCatalog;
 };
 
 /**
- * Optional analysis knobs for weight/inspect gates.
- * `importedSurface` is Exact-only; ignored under estimate.
- */
-export type AnalysisRequest = {
-	weightAxis?: WeightAxis;
-	precision?: LocPrecision;
-	/** Exact-only; ignored for estimate. Null/absent → Exact fails closed. */
-	importedSurface?: ImportedSurfaceProvider | null;
-};
-
-/**
  * Stable engine entry: host feed → graph + catalog.
- * Semantics match `indexFiles(feed.files)` — thin named boundary for hosts.
+ * Single owner of the index path; `indexFiles(files)` delegates here.
  */
-export function indexHostFeed(feed: HostFileFeed): HostIndexResult {
+export function indexHostFeed(feed: HostFileFeed): IndexResult {
 	const graph = buildGraph(feed.files);
 	const catalog = buildMapCatalog(graph);
 	return { graph, catalog };
