@@ -289,7 +289,7 @@ export function projectFileHub(
 		addExportTreePackageImports({
 			graph,
 			importTree: importTreeResult.tree,
-			/** Hub mass still at each parent after file→file routing (Kirchhoff). */
+			/** Reserved package share after reserve-then-route (Kirchhoff when possible). */
 			residualMass: importTreeResult.residualMass,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
