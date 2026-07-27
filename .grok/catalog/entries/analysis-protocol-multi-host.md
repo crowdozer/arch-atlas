@@ -68,6 +68,8 @@ realized_by:
   - 59f7674
   - 305c49d
   - eda4bb3
+  - fcd2cb2  # Ship A P0 honesty
+  - b1c8b35  # protocol docs
 superseded_by: null
 rationale_quality: full
 ---

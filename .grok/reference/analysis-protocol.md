@@ -145,7 +145,7 @@ first.” Prefer **honest packs + one IR protocol + CLI TS reference**, then por
 
 | Phase | Theme | Outcome |
 | ----- | ----- | ------- |
-| **P0** | Pack honesty residuals | Rename/alias exportDeclarationLoc; unsupported null surface; uniform truncation; file-lens capability matrix; complex/blast aliases |
+| **P0** | Pack honesty residuals | **Landed (Ship A):** `exportDeclarationLoc` dual-publish; `surfaceSupport` on mass rows; file `*Shown` truncation; fileLens matrix; `downwindReach`/`reverseReach` aliases |
 | **P1** | Graph interpretation | Alias rewrite + unresolved taxonomy; runtime/type SCC; boundary crossings; scope presets; façade roles; synthetic acceptance |
 | **P2** | Analysis protocol v2 + portable artifact | Capabilities envelope; single pipeline; CLI artifact browser/extension can open |
 | **P3** | CLI TypeScript Program | L2 resolve + optional L3 members; completeness stamps |

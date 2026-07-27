@@ -130,6 +130,9 @@ Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
 | Graph edges `typeOnly` | Present when `import type` / `export type … from` (best-effort; `import { type X }` may still be value form). Ranking prefers runtime edges. |
 | Edge `toKind: 'omitted'` | Target missing because feed `--omit`, not true unresolved. |
 | Hotspot `rankScore` | Sort key after role adjustments (e.g. barrel demotion). Prefer over raw `edgeCount`. Dual degrees: edge-record `inDegree`/`outDegree` + unique `uniqueIn`/`uniqueOut`. |
+| `exportDeclarationLoc` | Alias of Exact `surfaceLoc` (export-declaration span). Prefer this name in agents. Mass rows may stamp `surfaceSupport: 'supported'`. |
+| `downwindReach` / `reverseReach` | Agent aliases of `complex` / `blastRadius` (same arrays). |
+| File `importsShown` / `importersShown` | Cap window length with totals + `truncated`. File `analysis.fileLens` stamps mass=false (topology-only). |
 | Catalog `roles` | **Inferred** only (`test` / `debug` / `barrel` / `entrypoint` / `module`) — never observed topology. |
 | File report neighbors | Arrays kept + `importsTotal` / `importersTotal` / `truncated` when capped by `--limit`. |
 
