@@ -46,12 +46,19 @@ related:
   - dual-host-shell-stage
   - segmented-relative-path-labels
   - analysis-capability-honesty
+  - analysis-protocol-multi-host
 realized_by: []
 superseded_by: null
 rationale_quality: full
 ---
 
 # Exact surface mode — landed on-ramp + futures checklist
+
+**Program / multi-host protocol supersedes this entry for long-range Exact
+planning.** Canonical direction:
+[analysis-protocol.md](../../reference/analysis-protocol.md) and catalog
+[analysis-protocol-multi-host](./analysis-protocol-multi-host.md). This entry
+remains useful for the **landed export-surface on-ramp** and short checklist.
 
 Ship plan (lazy Exact / engine load): **web host on-ramp landed** — default
 estimate stays offline; Precision → Exact **or** Weight → Imported LOC (Shaken)
@@ -87,8 +94,8 @@ Checklist of **advisory** follow-ups from Gate A / plan:
 5. **VS Code extension Exact inject** — host language features → same
    `ImportedSurfaceProvider` (no CDN). Must not couple Exact consumers to
    CDN-only APIs.
-6. **Program-informed re-index** — if Program improves import/export topology,
-   optional re-`buildGraph` under Exact (not mass-only remount).
+6. **Program-informed re-index** — owned by analysis-protocol phases **P3–P4**
+   (CLI Program first, then browser worker); not mass-only remount.
 7. **Progressive stage / `src/stage`** — dual-host extract (see
    `dual-host-shell-stage`); orthogonal to Exact mass.
 

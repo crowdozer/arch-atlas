@@ -14,8 +14,9 @@ Agents: start here, then load playbooks from the preamble.
 5. **Hub alluvial work:** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) — column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
 6. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) — try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
 7. **Hub focus / highlight:** [.grok/reference/hub-focus-behavior.md](.grok/reference/hub-focus-behavior.md) — LogicalFocusGraph FocusPlan (band-only, file reverse∪forward, package reverse-path); orthogonal to geometry matrix
-8. **Analysis honesty (Estimate / Exact / VS Code):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
-9. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
+8. **Analysis protocol (canonical multi-host L0–L4):** [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md) — one IR, capability stamps, ship phases; catalog [analysis-protocol-multi-host](.grok/catalog/entries/analysis-protocol-multi-host.md)
+9. **Analysis honesty (Estimate / Exact / VS Code today):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
+10. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
 
 ## Role skills
 

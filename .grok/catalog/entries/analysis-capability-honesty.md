@@ -38,6 +38,7 @@ touches:
   - .grok/reference/analysis-honesty.md
   - exact-surface-mode-futures
   - dual-host-shell-stage
+  - analysis-protocol-multi-host
 invariants:
   - Estimate is Level-1 static JS/TS import topology + estimate mass — not type-aware
   - In-tab Exact is export-declaration surface via classic createSourceFile (or text) — not LSP

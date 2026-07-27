@@ -54,8 +54,11 @@ open_questions:
   - How deep TreeView catalog parity goes after scaffold (not required for first land)
   - Whether stage eventually owns controls DOM fully vs web-only Carbon dropdown IDs
   - Exact surface via TS Program in-worker vs VS Code language features only
+    (see analysis-protocol: CLI Program first, then browser worker, VS Code thin)
 related:
   - alluvial-top-pack-rename-split
+  - analysis-protocol-multi-host
+  - analysis-capability-honesty
 realized_by:
   - f9d5bc7
   - a8c9c2c

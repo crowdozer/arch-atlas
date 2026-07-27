@@ -50,6 +50,7 @@ related:
   - dependency-structure-matrix
   - hierarchical-heatmap-lens
   - analysis-capability-honesty
+  - analysis-protocol-multi-host
   - geometric-vs-knot-architecture
 realized_by: []
 superseded_by: null
@@ -57,6 +58,11 @@ rationale_quality: full
 ---
 
 # Automated Mermaid structure graph (dependency + folder)
+
+Portable structure sketches sit under the multi-host **analysis protocol**
+([analysis-protocol.md](../../reference/analysis-protocol.md)) as a projection —
+not a second analyzer. Prefer L1+ graph interpretation (roles, SCC) before
+pretty diagrams.
 
 ## Problem
 

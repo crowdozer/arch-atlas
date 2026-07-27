@@ -3,6 +3,10 @@
 Phased plan after **Gate A** (foundation + Python Level-1 Estimate). Companion:
 [analysis-honesty.md](./analysis-honesty.md).
 
+**Subordinate to** the canonical multi-host analyzer direction:
+[analysis-protocol.md](./analysis-protocol.md) (L0–L4 stamps; Tree-sitter is
+**syntax L1 breadth**, not universal semantics; Program is CLI-first for JS/TS).
+
 ## Shipped (Phase 0–1)
 
 | Capability | Status |

@@ -1,10 +1,17 @@
 # Analysis honesty ladder
 
-Product-facing contract for **what each precision tier means**. Companion catalog:
+Product-facing contract for **what each precision tier means** **today**.
+
+**Canonical multi-host direction (L0–L4, Program, phases):**
+[analysis-protocol.md](./analysis-protocol.md) · catalog
+[analysis-protocol-multi-host](../catalog/entries/analysis-protocol-multi-host.md).
+
+Companion catalog (Estimate / Exact scorecard detail):
 [analysis-capability-honesty](../catalog/entries/analysis-capability-honesty.md).
 
 UI and docs must not claim full **LSP**, **LanguageService**, or **bundler
-tree-shake** for the current in-tab Exact path.
+tree-shake** for the current in-tab Exact path. Never market L1 syntax as L3
+semantic analysis (see capability ladder in analysis-protocol).
 
 ## One-sentence contracts
 
@@ -92,9 +99,10 @@ re-deriving meaning from bare counts:
 | **Neighbor truncation** | File report: arrays + `importsTotal` / `importersTotal` / `truncated`. |
 | **`summary.externalPackageCount`** | Alias of external package leaf count — not monorepo package inventory. |
 
-CLI Exact default does **not** flip web Precision. Program Exact (alias rewrite,
-`createProgram`, graph re-index) and full SCC / boundary / mermaid lenses remain
-catalog futures — not claimed by this ladder.
+CLI Exact default does **not** flip web Precision. **Program**, alias rewrite,
+SCC / boundary lenses, and analysis-envelope `capabilities[]` are product
+direction under [analysis-protocol.md](./analysis-protocol.md) (phases P1–P3+) —
+**not** claimed by the current Exact path on this ladder.
 
 ## UI copy rules
 
@@ -109,9 +117,11 @@ catalog futures — not claimed by this ladder.
 
 ## Related
 
+- [analysis-protocol.md](./analysis-protocol.md) — **canonical** multi-host L0–L4 direction  
 - [scope.md](./scope.md) — product contracts  
-- [multilang-roadmap.md](./multilang-roadmap.md) — phased multi-lang Estimate/Exact after Python L1  
+- [multilang-roadmap.md](./multilang-roadmap.md) — L1 extractor breadth (subordinate to protocol)  
 - [hub-alluvial-behavior.md](./hub-alluvial-behavior.md) — reverse mass dual-side  
 - [impact-cheatsheet.md](./impact-cheatsheet.md) — agent impact read order  
-- Catalog futures: [exact-surface-mode-futures](../catalog/entries/exact-surface-mode-futures.md)  
+- Catalog: [analysis-protocol-multi-host](../catalog/entries/analysis-protocol-multi-host.md),
+  [exact-surface-mode-futures](../catalog/entries/exact-surface-mode-futures.md) 
 

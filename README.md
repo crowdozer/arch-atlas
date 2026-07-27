@@ -47,8 +47,10 @@ tree-shake. **`digest` defaults Exact (export-surface mass)** when the engine
 loads; topology bins stay Estimate either way. Schemas:
 `arch-atlas.agent-digest.v1`, `arch-atlas.agent-tree.v1`,
 `arch-atlas.agent-file.v1`, `arch-atlas.agent-impact.v1` (two git refs →
-topology delta). Full honesty:
+topology delta). Full honesty (current tiers):
 [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md).
+**Multi-host capability direction (L0–L4, Program phases):**
+[.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md).
 
 ```bash
 # via npm script (recommended in-repo)

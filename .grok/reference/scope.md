@@ -32,13 +32,14 @@ from becoming merely a prettier dependency graph.
 
 ## Core contracts (draft)
 
-1. **Local-first** — parsing and graph build run in-browser/local (web) or on-device CLI; no source upload to remote servers by default. Optional export of a **sanitized graph** only (agent CLI: Estimate JSON schemas, no raw source).
+1. **Local-first** — parsing and graph build run in-browser/local (web) or on-device CLI; no source upload to remote servers by default. Optional export of a **sanitized graph** only (agent CLI: agent JSON schemas, no raw source).
 2. **Graph is SoR** — durable model is nodes + edges; views are projections.
 3. **Epistemic honesty** — Observed vs Inferred vs Declared stay distinct; user category corrections propagate.
 4. **Suggested views** — adapters propose toolkits (API architecture, DB access, externals, god-files, layer violations, blast radius, …).
 5. **Directed graph reality** — rooted route views may look tree-like; shared deps, cycles, dynamic imports mean alluvial merges matter.
-6. **Capability ladder** — useful output at Level 1 before perfect symbol/call resolution.
-7. **Design language tracks Sentinel** — Carbon wrappers, zinc/**teal** shell (not emerald), alluvial/Sankey as signature; do not fork Sentinel product domain.
+6. **Capability ladder** — useful L1 before L3; **stamp what actually ran** ([analysis-protocol.md](./analysis-protocol.md)).
+7. **One analyzer protocol, multiple hosts** — browser / CLI / VS Code share IR; no three independent analyzers ([analysis-protocol.md](./analysis-protocol.md)).
+8. **Design language tracks Sentinel** — Carbon wrappers, zinc/**teal** shell (not emerald), alluvial/Sankey as signature; do not fork Sentinel product domain.
 
 ## Normalized graph (sketch)
 
@@ -104,6 +105,21 @@ goldens) to match unintended cascade side effects on other columns.
 
 ## Capability ladder
 
+**Canonical analyzer ladder (L0–L4, multi-host protocol):**
+[analysis-protocol.md](./analysis-protocol.md) — product direction for what
+backends may claim. Summary:
+
+| Cap | Capability |
+| --- | ---------- |
+| **L0** | Files + languages present |
+| **L1** | Syntax import/export graph (current MVP for JS/TS + Python + Astro islands) |
+| **L2** | Resolved modules / aliases (partial today; Program + rewrite maps planned) |
+| **L3** | Symbols / types / public members (not landed; export-span mass is **not** L3) |
+| **L4** | Build / bundle / runtime |
+
+Historical product view ladder (projections / adapters — not the same as L0–L4
+backend stamps):
+
 | Level | Capability |
 | ----- | ---------- |
 | 1 | Files, imports, packages, routes |
@@ -111,6 +127,8 @@ goldens) to match unintended cascade side effects on other columns.
 | 3 | Calls, DB entities, external services |
 | 4 | Framework-specific runtime semantics |
 | 5 | Optional trace/test coverage overlays |
+
+Agent CLI + Exact export-surface honesty: [analysis-honesty.md](./analysis-honesty.md).
 
 ## Design language (Sentinel-tracking)
 

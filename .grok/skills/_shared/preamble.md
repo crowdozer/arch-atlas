@@ -26,6 +26,8 @@ stay pure; ship only stitches them.
 - Hub alluvial matrix: [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
 - Hub alluvial field notes: [reference/hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) — try/fail journal (Carbon free-source, residual, straighten cross-product, terminators); not product law
 - Hub focus matrix: [reference/hub-focus-behavior.md](../../reference/hub-focus-behavior.md) — hover FocusPlan (logical graph ≠ Carbon sourceLinks); do not rewrite pads for focus
+- **Analysis protocol (canonical):** [reference/analysis-protocol.md](../../reference/analysis-protocol.md) — L0–L4 multi-host direction; phases P0–P6
+- Analysis honesty (current Exact): [reference/analysis-honesty.md](../../reference/analysis-honesty.md)
 
 ## Product contracts (draft — from design conversation)
 
@@ -34,9 +36,10 @@ stay pure; ship only stitches them.
 3. **Epistemic layers stay distinct** — **Observed** (AST/import proof) vs **Inferred** (classifiers) vs **Declared** (user corrections). Corrections propagate across projections.
 4. **Suggested toolkit, not blank canvas** — detect stack → offer useful views (API surface, route→DB, externals, god-files, layer violations, …). Users should not design Sankey stages from scratch.
 5. **Framework adapters are first-class** — detect, classify, enrich, suggestViews, inspect; imperfect analysis is OK when confidence is honest.
-6. **Capability ladder** — ship useful Level 1 (files/imports/packages/routes) before deep call/DB/runtime semantics.
-7. **Minimal invention** — do not invent product features beyond confirmed intent in scope/conversation.
-8. **Provisional layout** — file paths are current materialization until labeled invariant.
+6. **Capability ladder** — ship useful L1 before L3; stamp capabilities that actually ran ([analysis-protocol.md](../../reference/analysis-protocol.md)).
+7. **One analyzer protocol, multi-host** — browser / CLI / VS Code share CodeGraph IR; CLI is Program reference home; no three independent analyzers.
+8. **Minimal invention** — do not invent product features beyond confirmed intent in scope/conversation/protocol.
+9. **Provisional layout** — file paths are current materialization until labeled invariant.
 
 ## Architecture (target sketch)
 
@@ -87,7 +90,8 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) | File-hub columns, mass, pads; **before any alluvial/hub change** |
 | [hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) | Scar tissue: diagnosis table + episode log for alluvial/Carbon mishaps |
 | [hub-focus-behavior.md](../../reference/hub-focus-behavior.md) | Hub hover focus/highlight (LogicalFocusGraph); orthogonal to column matrix |
-| [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code — do not claim LSP/tree-shake |
+| [analysis-protocol.md](../../reference/analysis-protocol.md) | **Canonical** multi-host L0–L4 analyzer direction + ship phases |
+| [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code **today** — do not claim LSP/tree-shake |
 | [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) | Two-ref import-topology impact CLI; large-JSON read order; research/czar recipes |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |

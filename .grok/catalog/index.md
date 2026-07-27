@@ -1,8 +1,8 @@
 # Catalog index (generated)
 
-_Generated 2026-07-27T17:18:34Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-27T18:16:52Z — do not hand-edit; run `catalog-index`._
 
-**12** records.
+**13** records.
 
 | id | kind | state | authority | consult when |
 | -- | ---- | ----- | --------- | ------------ |
@@ -18,4 +18,5 @@ _Generated 2026-07-27T17:18:34Z — do not hand-edit; run `catalog-index`._
 | `hierarchical-heatmap-lens` | idea | active | exploratory | Consult when: hierarchical heatmap or treemap for codebase mass; LOC geometry with switchable color heat; coupling heat fan-in fan-out overlay; catalog hotspots spatialized not only ranked lists |
 | `mermaid-structure-graph` | idea | active | exploratory | Consult when: automated mermaid graph or flowchart export; dependency + folder structure diagram (not domain map); agent lens or ChatGPT-portable architecture sketch; structural overview without inferred features/domains |
 | `segmented-relative-path-labels` | idea | active | exploratory | Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels |
+| `analysis-protocol-multi-host` | decision | partial | normative | Consult when: analysis protocol or capability ladder L0 L1 L2 L3 L4; multi-host analyzer design browser CLI VS Code; Exact vs Program vs Estimate naming; agent pack honesty schema envelope |
 

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T17:18:34Z",
+  "generated_at": "2026-07-27T18:16:52Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 12,
+  "count": 13,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -92,7 +92,8 @@
         "README.md",
         ".grok/reference/analysis-honesty.md",
         "exact-surface-mode-futures",
-        "dual-host-shell-stage"
+        "dual-host-shell-stage",
+        "analysis-protocol-multi-host"
       ],
       "related": [
         "exact-surface-mode-futures",
@@ -192,7 +193,9 @@
         "indexFiles"
       ],
       "related": [
-        "alluvial-top-pack-rename-split"
+        "alluvial-top-pack-rename-split",
+        "analysis-protocol-multi-host",
+        "analysis-capability-honesty"
       ],
       "rationale_quality": "full",
       "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
@@ -237,7 +240,8 @@
       "related": [
         "dual-host-shell-stage",
         "segmented-relative-path-labels",
-        "analysis-capability-honesty"
+        "analysis-capability-honesty",
+        "analysis-protocol-multi-host"
       ],
       "rationale_quality": "full",
       "consult": "Consult when: Exact or Imported LOC (Shaken) precision work; mixed estimate/exact band UI; pinning TypeScript engine version; multi-language engines (pyright, gopls)"
@@ -520,6 +524,7 @@
         "dependency-structure-matrix",
         "hierarchical-heatmap-lens",
         "analysis-capability-honesty",
+        "analysis-protocol-multi-host",
         "geometric-vs-knot-architecture"
       ],
       "rationale_quality": "full",
@@ -566,6 +571,65 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels"
+    },
+    {
+      "id": "analysis-protocol-multi-host",
+      "kind": "decision",
+      "state": "partial",
+      "authority": "normative",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/analysis-protocol-multi-host.md",
+      "scope": [
+        "analysis-protocol",
+        "capability-ladder",
+        "multi-host",
+        "agent-export",
+        "typescript-program",
+        "tree-sitter",
+        "vscode-extension",
+        "cli-host",
+        "browser-worker",
+        "graph-interpretation",
+        "epistemic-honesty"
+      ],
+      "applies_when": [
+        "analysis protocol or capability ladder L0 L1 L2 L3 L4",
+        "multi-host analyzer design browser CLI VS Code",
+        "Exact vs Program vs Estimate naming",
+        "agent pack honesty schema envelope",
+        "TypeScript createProgram CompilerHost worker",
+        "Tree-sitter multi-language baseline",
+        "portable atlas artifact",
+        "alias rewrite isolated ZIP",
+        "SCC cycle boundary lenses",
+        "exportDeclarationLoc surfaceLoc public API mass",
+        "planning next analysis ships after agent lens signal",
+        "claiming LSP or universal semantic analysis"
+      ],
+      "touches": [
+        ".grok/reference/analysis-protocol.md",
+        ".grok/reference/analysis-honesty.md",
+        ".grok/reference/scope.md",
+        "src/core graph + export + catalog",
+        "src/cli",
+        "src/exact",
+        "src/client",
+        "extension/ (future)",
+        "analysis-capability-honesty",
+        "exact-surface-mode-futures",
+        "dual-host-shell-stage"
+      ],
+      "related": [
+        "analysis-capability-honesty",
+        "exact-surface-mode-futures",
+        "dual-host-shell-stage",
+        "mermaid-structure-graph",
+        "interchangeable-atlas-lenses",
+        "hierarchical-heatmap-lens",
+        "dependency-structure-matrix"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: analysis protocol or capability ladder L0 L1 L2 L3 L4; multi-host analyzer design browser CLI VS Code; Exact vs Program vs Estimate naming; agent pack honesty schema envelope"
     }
   ]
 }
