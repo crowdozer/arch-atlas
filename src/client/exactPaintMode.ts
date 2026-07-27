@@ -16,6 +16,7 @@ import {
 	ensureExactForGraph,
 	ensureExactLocalOnly,
 	isLocalExactSource,
+	type EnsureExactResult,
 } from '@exact/index.ts';
 import {
 	statusForView,
@@ -58,7 +59,49 @@ export type ExactPaintMode = {
 	enableExactSurfaceMode: (trigger: 'precision' | 'shaken') => Promise<void>;
 	disableExactPaintMode: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
+	/** Full Exact chrome reset (new ZIP/demo/open). Forces Estimate. */
 	resetExactState: () => void;
+	/**
+	 * Graph contents changed (e.g. include-tests reindex): drop provider so
+	 * Exact mass cannot bind to a stale file set. Does **not** change
+	 * locPrecision / weightAxis (caller rehydrates or stays Estimate).
+	 * Bumps graph generation so in-flight rehydrate installs are discarded.
+	 */
+	invalidateExactProvider: () => void;
+	/**
+	 * Rebuild Exact provider for the current session graph after invalidate.
+	 * On failure: fall back to Estimate with honest status (same as enable).
+	 * Preserves weightAxis; syncs Precision dropdown to exact on success.
+	 * Stale after a later invalidate (generation token).
+	 */
+	rehydrateExactForGraph: () => Promise<void>;
+	/** Sync Precision / Weight Carbon dropdowns to current module state. */
+	syncExactChrome: () => void;
+};
+
+/** Shared install path after ensureExact succeeds or fails. */
+type InstallExactOpts = {
+	/** Unavailable / failed modal chrome label. */
+	modalLabel: string;
+	/** Status while ensureExact is in flight. */
+	loadingStatus: string;
+	/**
+	 * `force-target-loc` — enable path (Exact always pairs with target-loc mass).
+	 * `preserve` — reindex rehydrate keeps weightAxis chrome.
+	 */
+	weight: 'force-target-loc' | 'preserve';
+	/**
+	 * After force-target-loc: Carbon control value.
+	 * Shaken entry shows `imported-loc` UI while axis stays target-loc.
+	 */
+	weightUi?: 'target-loc' | 'imported-loc';
+	/** Appended to success status (e.g. ` · reindexed`). */
+	statusSuffix?: string;
+	/**
+	 * When set, discard ensure result if graph generation moved (rapid reindex).
+	 * Caller snapshots generation before await.
+	 */
+	generation?: number;
 };
 
 /**
@@ -67,12 +110,175 @@ export type ExactPaintMode = {
  * Does **not** re-index the graph.
  */
 export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
+	/**
+	 * Bumped on graph-file-set invalidate. In-flight rehydrate captures the
+	 * value at start and drops the result when it no longer matches.
+	 */
+	let exactGraphGeneration = 0;
+
 	function precisionDropdown(): (HTMLElement & { value?: string }) | null {
 		return $('atlas-loc-precision') as (HTMLElement & { value?: string }) | null;
 	}
 
 	function weightDropdown(): (HTMLElement & { value?: string }) | null {
 		return $('atlas-weight-axis') as (HTMLElement & { value?: string }) | null;
+	}
+
+	function engineSrcNote(source: string): string {
+		if (source === 'jsdelivr' || source === 'unpkg') {
+			return ` · engine ${source} (CDN)`;
+		}
+		if (source === 'local' || source === 'inject') {
+			return ` · engine ${source}`;
+		}
+		if (source === 'cached') return ' · engine cached';
+		return '';
+	}
+
+	/** Fall back to Estimate chrome + remount (honesty after ensure failure). */
+	function fallBackEstimate(opts: {
+		msg: string;
+		modalLabel: string;
+		heading: string;
+		body: string;
+	}): void {
+		const precEl = precisionDropdown();
+		const weightEl = weightDropdown();
+		deps.setLocPrecision('estimate');
+		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
+		if (weightEl) {
+			deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+		}
+		deps.openUnavailableModal({
+			label: opts.modalLabel,
+			heading: opts.heading,
+			body: opts.body,
+		});
+		deps.remountCurrentView();
+		deps.setStatus(opts.msg);
+	}
+
+	/**
+	 * Install Exact chrome from an ensureExact result (shared by enable + rehydrate).
+	 * Returns whether install applied (`stale` when generation advanced).
+	 */
+	function applyEnsureResult(
+		result: EnsureExactResult,
+		opts: InstallExactOpts,
+	): 'ok' | 'fail' | 'stale' {
+		if (
+			opts.generation !== undefined &&
+			opts.generation !== exactGraphGeneration
+		) {
+			return 'stale';
+		}
+
+		if (!result.ok) {
+			fallBackEstimate({
+				msg: result.error,
+				modalLabel: opts.modalLabel,
+				heading: 'Export surface unavailable',
+				body:
+					result.error +
+					' Charts stay on estimate (whole-file / dual-side estimate) weights. Exact is not a language server.',
+			});
+			return 'fail';
+		}
+
+		deps.setSurfaceProvider(result.provider);
+		deps.setLocPrecision('exact');
+
+		const precEl = precisionDropdown();
+		const weightEl = weightDropdown();
+
+		if (opts.weight === 'force-target-loc') {
+			deps.setWeightAxis('target-loc');
+			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
+			if (weightEl) {
+				const ui = opts.weightUi ?? 'target-loc';
+				if (ui === 'imported-loc') {
+					// Shaken entry: control shows export-surface UI value; axis is target-loc
+					weightEl.value = 'imported-loc';
+					weightEl.setAttribute('value', 'imported-loc');
+				} else {
+					deps.syncWeightDropdown(weightEl, 'target-loc');
+				}
+			}
+		} else {
+			// preserve weightAxis (reindex chrome)
+			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
+			if (weightEl) {
+				deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+			}
+		}
+
+		const missing = result.engines.missing;
+		if (missing.length && !deps.getExactMixedWarningShown()) {
+			deps.setExactMixedWarningShown(true);
+			const langs = missing.map((m) => m.language).join(', ');
+			deps.openUnavailableModal({
+				label: 'Export surface (partial)',
+				heading: 'Only JavaScript/TypeScript use Exact',
+				body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
+			});
+		}
+
+		const srcNote = engineSrcNote(result.source);
+		const suffix = opts.statusSuffix ?? '';
+		deps.remountCurrentView();
+		deps.setStatus(
+			`Export-surface Exact on (JS/TS export decls)${srcNote}${suffix}`,
+		);
+		return 'ok';
+	}
+
+	/**
+	 * Shared ensure → install pipeline for user enable and reindex rehydrate.
+	 * Generation discard only when `opts.generation` is set (rehydrate).
+	 */
+	async function installExactFromEnsure(
+		opts: InstallExactOpts,
+	): Promise<'ok' | 'fail' | 'stale' | 'busy' | 'nosession'> {
+		const session = deps.getSession();
+		if (!session) return 'nosession';
+
+		// Exclusive for user enable; rehydrate may overlap after invalidate resets flight
+		if (opts.generation === undefined && deps.getExactEnableInFlight()) {
+			return 'busy';
+		}
+
+		deps.setExactEnableInFlight(true);
+		const myGen = opts.generation;
+
+		try {
+			deps.setStatus(opts.loadingStatus);
+			const result = await ensureExactForGraph(session.graph, {
+				cachedProvider: deps.getSurfaceProvider(),
+			});
+
+			if (myGen !== undefined && myGen !== exactGraphGeneration) {
+				return 'stale';
+			}
+
+			return applyEnsureResult(result, opts);
+		} catch (e) {
+			if (myGen !== undefined && myGen !== exactGraphGeneration) {
+				return 'stale';
+			}
+			const msg = e instanceof Error ? e.message : String(e);
+			fallBackEstimate({
+				msg,
+				modalLabel: opts.modalLabel,
+				heading: 'Export surface failed',
+				body: msg + ' Charts stay on estimate weights.',
+			});
+			return 'fail';
+		} finally {
+			// Only clear flight if we still own this generation (or no gen = enable)
+			if (myGen === undefined || myGen === exactGraphGeneration) {
+				deps.setExactEnableInFlight(false);
+			}
+		}
 	}
 
 	async function enableExactSurfaceMode(
@@ -83,88 +289,15 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			deps.setStatus('Open a project before enabling Exact mode');
 			return;
 		}
-		if (deps.getExactEnableInFlight()) return;
-		deps.setExactEnableInFlight(true);
 
-		const precEl = precisionDropdown();
-		const weightEl = weightDropdown();
-
-		const revertUi = () => {
-			deps.setLocPrecision('estimate');
-			if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
-			if (weightEl) {
-				// Keep real axis (not shaken UI value) under estimate
-				deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
-			}
-		};
-
-		try {
-			deps.setStatus('Loading JS/TS export-surface engine…');
-			const result = await ensureExactForGraph(session.graph, {
-				cachedProvider: deps.getSurfaceProvider(),
-			});
-
-			if (!result.ok) {
-				revertUi();
-				deps.openUnavailableModal({
-					label: trigger === 'shaken' ? 'Weight' : 'Precision',
-					heading: 'Export surface unavailable',
-					body:
-						result.error +
-						' Charts stay on estimate (whole-file / dual-side estimate) weights. Exact is not a language server.',
-				});
-				deps.setStatus(result.error);
-				return;
-			}
-
-			deps.setSurfaceProvider(result.provider);
-			deps.setLocPrecision('exact');
-			// UI “Export surface (Exact)” maps to target-loc + exact precision
-			deps.setWeightAxis('target-loc');
-
-			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
-			if (weightEl) {
-				// Prefer export-surface UI value when that was the entry; else keep target-loc
-				if (trigger === 'shaken') {
-					weightEl.value = 'imported-loc';
-					weightEl.setAttribute('value', 'imported-loc');
-				} else {
-					deps.syncWeightDropdown(weightEl, 'target-loc');
-				}
-			}
-
-			const missing = result.engines.missing;
-			if (missing.length && !deps.getExactMixedWarningShown()) {
-				deps.setExactMixedWarningShown(true);
-				const langs = missing.map((m) => m.language).join(', ');
-				deps.openUnavailableModal({
-					label: 'Export surface (partial)',
-					heading: 'Only JavaScript/TypeScript use Exact',
-					body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
-				});
-			}
-
-			const srcNote =
-				result.source === 'jsdelivr' || result.source === 'unpkg'
-					? ` · engine ${result.source} (CDN)`
-					: result.source === 'local' || result.source === 'inject'
-						? ` · engine ${result.source}`
-						: result.source === 'cached'
-							? ' · engine cached'
-							: '';
-			deps.remountCurrentView();
-			deps.setStatus(`Export-surface Exact on (JS/TS export decls)${srcNote}`);
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			revertUi();
-			deps.openUnavailableModal({
-				label: trigger === 'shaken' ? 'Weight' : 'Precision',
-				heading: 'Export surface failed',
-				body: msg + ' Charts stay on estimate weights.',
-			});
-			deps.setStatus(msg);
-		} finally {
-			deps.setExactEnableInFlight(false);
+		const outcome = await installExactFromEnsure({
+			modalLabel: trigger === 'shaken' ? 'Weight' : 'Precision',
+			loadingStatus: 'Loading JS/TS export-surface engine…',
+			weight: 'force-target-loc',
+			weightUi: trigger === 'shaken' ? 'imported-loc' : 'target-loc',
+		});
+		if (outcome === 'nosession') {
+			deps.setStatus('Open a project before enabling Exact mode');
 		}
 	}
 
@@ -230,8 +363,9 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		}
 	}
 
-	/** Drop Exact paint + provider cache when graph identity changes. */
+	/** Drop Exact paint + provider cache when graph identity changes (new open). */
 	function resetExactState(): void {
+		exactGraphGeneration += 1;
 		deps.setSurfaceProvider(null);
 		deps.setLocPrecision('estimate');
 		deps.setExactMixedWarningShown(false);
@@ -240,10 +374,50 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 	}
 
+	/**
+	 * Clear surface provider after graph file-set change without forcing Estimate.
+	 * Mass cache is cleared via host setSurfaceProvider side-effect.
+	 * Generation bump discards any in-flight rehydrate for a prior file set.
+	 */
+	function invalidateExactProvider(): void {
+		exactGraphGeneration += 1;
+		deps.setSurfaceProvider(null);
+		deps.setExactEnableInFlight(false);
+	}
+
+	/** Align Precision / Weight controls with JS state (post-reindex chrome truth). */
+	function syncExactChrome(): void {
+		const precEl = precisionDropdown();
+		const weightEl = weightDropdown();
+		if (precEl) deps.syncPrecisionDropdown(precEl, deps.getLocPrecision());
+		if (weightEl) deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+	}
+
+	/**
+	 * Rebuild Exact for the current graph after {@link invalidateExactProvider}.
+	 * Reuses shared ensure→install pipeline; preserves weightAxis.
+	 * Late completions after a further invalidate are discarded (generation).
+	 */
+	async function rehydrateExactForGraph(): Promise<void> {
+		const session = deps.getSession();
+		if (!session) return;
+		const generation = exactGraphGeneration;
+		await installExactFromEnsure({
+			modalLabel: 'Precision',
+			loadingStatus: 'Rebuilding export-surface Exact for updated graph…',
+			weight: 'preserve',
+			statusSuffix: ' · reindexed',
+			generation,
+		});
+	}
+
 	return {
 		enableExactSurfaceMode,
 		disableExactPaintMode,
 		tryAutoExactWhenLocalAvailable,
 		resetExactState,
+		invalidateExactProvider,
+		rehydrateExactForGraph,
+		syncExactChrome,
 	};
 }
