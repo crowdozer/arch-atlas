@@ -20,7 +20,7 @@ semantic analysis (see capability ladder in analysis-protocol).
 | **Estimate** | Observed static import graph for **JS/TS + Python + Astro script islands (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
 | **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python and Astro stay estimate mass (no island Exact surface yet). Web remains estimate-first / opt-in. |
 | **Exact (CLI digest)** | Same export-surface overlay as web. **`digest` defaults Exact-on** (soft-fallback → estimate + warning on engine miss). `--estimate` opts out; `--exact` / `--exact-local` are fail-closed. Tree/file/impact stay topology-only. |
-| **Program (CLI `--program`)** | Optional digest path: TypeScript `createProgram` over feed VFS — may re-resolve in-feed modules and attach thin `exportSymbolCount`. Soft-fail keeps L1 graph. Evidence-gated L2/L3 stamps. **Not** LSP / not full monorepo. Distinct from Exact export-surface spans. |
+| **Program (CLI `--program`)** | CLI `--program` or browser Precision **Program** (Web Worker): TypeScript `createProgram` over feed VFS — may re-resolve in-feed modules and attach thin `exportSymbolCount`. Soft-fail keeps L1 graph. Evidence-gated L2/L3 stamps. **Not** LSP / not full monorepo. Distinct from Exact export-surface spans. |
 | **VS Code host (future)** | Same `ImportedSurfaceProvider` port; host may use workspace language features / multi-LSP — still not automatic tree-shake. |
 
 ## Capability scorecard

@@ -76,6 +76,8 @@ realized_by:
   - 587926b  # Ship C pickAliasConfig single owner
   - 41889f8  # P3 createProgram
   - 49c6cf0  # P3 L2 stamp honesty
+  - 8708a72  # P4 browser Program worker
+  - 609807c  # P4 chrome honesty fixes
 superseded_by: null
 rationale_quality: full
 ---

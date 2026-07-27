@@ -149,11 +149,11 @@ first.” Prefer **honest packs + one IR protocol + CLI TS reference**, then por
 | **P1** | Graph interpretation | **Landed (Ship B):** `--alias` rewrites; `unresolvedReason`; `catalog.cycles` runtime/type; `boundaryCrossings`; `--scope product`; `facade` role; `fixtures/agent-artillery-shaped` laws |
 | **P2** | Analysis protocol v2 + portable artifact | **Landed (Ship C):** `analysis.capabilities` L0–L2 stamps; `capabilityDetail`/`completeness`; `digest --artifact` → `arch-atlas.artifact.v1` |
 | **P3** | CLI TypeScript Program | **Landed:** CLI `--program` createProgram over feed VFS; L2 re-resolve when it helps; thin L3 `exportSymbolCount`; soft-fail; evidence-gated capability stamps |
-| **P4** | Browser Program worker | Port P3 host interface; stream enrichment; fail soft to L1 |
+| **P4** | Browser Program worker | **Landed:** Web Worker `program.worker` + Precision **Program**; serialize graph; soft-fail chrome honesty; reindex re-enrich; skipDefaultLib |
 | **P5** | Tree-sitter multi-lang L1 breadth | Syntax baseline; always stamp L1 only |
 | **P6** | VS Code thin host + LSP enrich | Workspace inject; live updates; LSP annotations not full graph replace |
 
-**Landed through P3:** L0–L1 IR; agent ranking honesty (P0); graph interpretation (P1); capabilities envelope + portable artifact (P2); CLI `--program` createProgram (P3). **Open:** P4 browser worker, P5 Tree-sitter breadth, P6 VS Code thin host.
+**Landed through P3:** L0–L1 IR; agent ranking honesty (P0); graph interpretation (P1); capabilities envelope + portable artifact (P2); CLI `--program` createProgram (P3). **Open:** P5 Tree-sitter breadth, P6 VS Code thin host. **P4 browser Program worker landed.**
 
 
 ## Acceptance style (artillery-shaped)
