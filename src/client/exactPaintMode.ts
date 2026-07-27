@@ -58,7 +58,22 @@ export type ExactPaintMode = {
 	enableExactSurfaceMode: (trigger: 'precision' | 'shaken') => Promise<void>;
 	disableExactPaintMode: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
+	/** Full Exact chrome reset (new ZIP/demo/open). Forces Estimate. */
 	resetExactState: () => void;
+	/**
+	 * Graph contents changed (e.g. include-tests reindex): drop provider so
+	 * Exact mass cannot bind to a stale file set. Does **not** change
+	 * locPrecision / weightAxis (caller rehydrates or stays Estimate).
+	 */
+	invalidateExactProvider: () => void;
+	/**
+	 * Rebuild Exact provider for the current session graph after invalidate.
+	 * On failure: fall back to Estimate with honest status (same as enable).
+	 * Preserves weightAxis; syncs Precision dropdown to exact on success.
+	 */
+	rehydrateExactForGraph: () => Promise<void>;
+	/** Sync Precision / Weight Carbon dropdowns to current module state. */
+	syncExactChrome: () => void;
 };
 
 /**
@@ -230,7 +245,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		}
 	}
 
-	/** Drop Exact paint + provider cache when graph identity changes. */
+	/** Drop Exact paint + provider cache when graph identity changes (new open). */
 	function resetExactState(): void {
 		deps.setSurfaceProvider(null);
 		deps.setLocPrecision('estimate');
@@ -240,10 +255,117 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 	}
 
+	/**
+	 * Clear surface provider after graph file-set change without forcing Estimate.
+	 * Mass cache is cleared via host setSurfaceProvider side-effect.
+	 */
+	function invalidateExactProvider(): void {
+		deps.setSurfaceProvider(null);
+		deps.setExactEnableInFlight(false);
+	}
+
+	/** Align Precision / Weight controls with JS state (post-reindex chrome truth). */
+	function syncExactChrome(): void {
+		const precEl = precisionDropdown();
+		const weightEl = weightDropdown();
+		if (precEl) deps.syncPrecisionDropdown(precEl, deps.getLocPrecision());
+		if (weightEl) deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+	}
+
+	/**
+	 * Rebuild Exact for the current graph after {@link invalidateExactProvider}.
+	 * Reuses ensureExactForGraph (same pipeline as enableExactSurfaceMode).
+	 * Does not auto-change weightAxis (chrome preserve on reindex).
+	 */
+	async function rehydrateExactForGraph(): Promise<void> {
+		const session = deps.getSession();
+		if (!session) return;
+		if (deps.getExactEnableInFlight()) return;
+		deps.setExactEnableInFlight(true);
+
+		const precEl = precisionDropdown();
+		const weightEl = weightDropdown();
+
+		const fallBackEstimate = (msg: string) => {
+			deps.setLocPrecision('estimate');
+			if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
+			if (weightEl) {
+				deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+			}
+			deps.remountCurrentView();
+			deps.setStatus(msg);
+		};
+
+		try {
+			deps.setStatus('Rebuilding export-surface Exact for updated graph…');
+			const result = await ensureExactForGraph(session.graph, {
+				cachedProvider: deps.getSurfaceProvider(),
+			});
+
+			if (!result.ok) {
+				deps.openUnavailableModal({
+					label: 'Precision',
+					heading: 'Export surface unavailable',
+					body:
+						result.error +
+						' Charts stay on estimate (whole-file / dual-side estimate) weights. Exact is not a language server.',
+				});
+				fallBackEstimate(result.error);
+				return;
+			}
+
+			deps.setSurfaceProvider(result.provider);
+			deps.setLocPrecision('exact');
+			// weightAxis preserved (reindex chrome contract)
+
+			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
+			if (weightEl) {
+				deps.syncWeightDropdown(weightEl, deps.getWeightAxis());
+			}
+
+			const missing = result.engines.missing;
+			if (missing.length && !deps.getExactMixedWarningShown()) {
+				deps.setExactMixedWarningShown(true);
+				const langs = missing.map((m) => m.language).join(', ');
+				deps.openUnavailableModal({
+					label: 'Export surface (partial)',
+					heading: 'Only JavaScript/TypeScript use Exact',
+					body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
+				});
+			}
+
+			const srcNote =
+				result.source === 'jsdelivr' || result.source === 'unpkg'
+					? ` · engine ${result.source} (CDN)`
+					: result.source === 'local' || result.source === 'inject'
+						? ` · engine ${result.source}`
+						: result.source === 'cached'
+							? ' · engine cached'
+							: '';
+			deps.remountCurrentView();
+			deps.setStatus(
+				`Export-surface Exact on (JS/TS export decls)${srcNote} · reindexed`,
+			);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			deps.openUnavailableModal({
+				label: 'Precision',
+				heading: 'Export surface failed',
+				body: msg + ' Charts stay on estimate weights.',
+			});
+			fallBackEstimate(msg);
+		} finally {
+			deps.setExactEnableInFlight(false);
+		}
+	}
+
 	return {
 		enableExactSurfaceMode,
 		disableExactPaintMode,
 		tryAutoExactWhenLocalAvailable,
 		resetExactState,
+		invalidateExactProvider,
+		rehydrateExactForGraph,
+		syncExactChrome,
 	};
 }

@@ -12,6 +12,7 @@ import {
 	filterFilesByTestInclusion,
 	indexFiles,
 	ingestZip,
+	type LocPrecision,
 	type MapCatalog,
 	type VirtualFile,
 } from '@core/index.ts';
@@ -27,6 +28,9 @@ import {
 	loadPersistedSession,
 } from './sessionStore.ts';
 
+/** How the session is being activated — open resets Exact; reindex preserves chrome. */
+export type ActivateSessionKind = 'open' | 'reindex';
+
 export type SessionLifecycleDeps = {
 	getSession: () => Session | null;
 	setSession: (s: Session | null) => void;
@@ -34,7 +38,19 @@ export type SessionLifecycleDeps = {
 	setViewStack: (stack: AtlasView[]) => void;
 	setDepthUserSet: (v: boolean) => void;
 	setVizMaxDepth: (d: number) => void;
+	/** Precision before graph swap (reindex snapshot). */
+	getLocPrecision: () => LocPrecision;
+	/** Full Exact reset (ZIP/demo/open/reset). Forces Estimate + clears spine at app layer. */
 	resetExactState: () => void;
+	/**
+	 * Graph file-set changed: drop Exact provider + mass cache only.
+	 * Must not force Estimate or clear spine formula / weight axis.
+	 */
+	invalidateExactProvider: () => void;
+	/** Rebuild Exact for the new graph when user was on Exact before reindex. */
+	rehydrateExactForGraph: () => Promise<void>;
+	/** Align Precision / Weight dropdowns to current module state. */
+	syncExactChrome: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
 	clearStage: () => void;
 	renderCatalog: (catalog: MapCatalog, startId: string | null) => void;
@@ -106,10 +122,21 @@ export function createSessionLifecycle(
 	function activateSession(
 		next: Session,
 		statusLine: string,
-		opts?: { skipPersist?: boolean },
+		opts?: { skipPersist?: boolean; kind?: ActivateSessionKind },
 	): void {
-		// New graph → rebuild Exact provider on next enable (contents snapshot)
-		deps.resetExactState();
+		const kind: ActivateSessionKind = opts?.kind ?? 'open';
+		// Snapshot before any Exact invalidate/reset
+		const wasExact =
+			kind === 'reindex' && deps.getLocPrecision() === 'exact';
+
+		if (kind === 'reindex') {
+			// Same project, new file set — drop stale provider/mass; keep precision chrome
+			deps.invalidateExactProvider();
+		} else {
+			// New ZIP/demo/restore open — full Exact + spine chrome reset
+			deps.resetExactState();
+		}
+
 		deps.setSession(next);
 		deps.showWarnings(next.warnings);
 		showWorkspaceShell();
@@ -121,6 +148,18 @@ export function createSessionLifecycle(
 		}
 		deps.setStatus(statusLine);
 		if (!opts?.skipPersist) deps.persistSessionIfEnabled();
+
+		if (kind === 'reindex') {
+			// Carbon dropdowns must match preserved JS state (not forced Estimate)
+			deps.syncExactChrome();
+			if (wasExact) {
+				// Rebuild provider for new graph; on fail falls back to Estimate honestly
+				void deps.rehydrateExactForGraph();
+			}
+			// Estimate stays Estimate — do not tryAutoExact (avoids surprise flip)
+			return;
+		}
+
 		// Prefer Exact when local classic TS / host inject is already available (no CDN)
 		void deps.tryAutoExactWhenLocalAvailable();
 	}
@@ -217,6 +256,7 @@ export function createSessionLifecycle(
 				files: prev.files,
 			},
 			`Indexed ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.edgeCount} edges${exclusionNote}`,
+			{ kind: 'reindex' },
 		);
 	}
 

@@ -544,11 +544,20 @@ lifecycle = createSessionLifecycle({
 	setVizMaxDepth: (d) => {
 		vizMaxDepth = d;
 	},
+	getLocPrecision: () => locPrecision,
 	resetExactState: () => {
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
+		// New open/reset: spine formula is session chrome for a fresh project
 		spineFormula = DEFAULT_SPINE_FORMULA;
 	},
+	invalidateExactProvider: () => {
+		// Provider null → setSurfaceProvider clears exportSurfaceLocCache
+		exact.invalidateExactProvider();
+		// Do **not** reset spineFormula / weightAxis / locPrecision (reindex preserve)
+	},
+	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
+	syncExactChrome: () => exact.syncExactChrome(),
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
 	clearStage: () => stage.clear(),
 	renderCatalog: (_cat, startId) => paintCatalog(startId),
