@@ -38,6 +38,29 @@ function appendCodeBlock(
 	parent.append(path, code);
 }
 
+/** Header label from precision + provider presence (not hard-coded unavailable). */
+function evidenceHeaderLabel(
+	precision: LocPrecision,
+	surfaceLive: boolean,
+): string {
+	if (precision !== 'exact') return 'Import evidence · estimate';
+	return surfaceLive
+		? 'Import evidence · exact'
+		: 'Import evidence · exact unavailable';
+}
+
+function callsitesTitle(
+	precision: LocPrecision,
+	surfaceLive: boolean,
+): string {
+	if (precision !== 'exact') {
+		return 'Possible callsites (estimate — not type-checked)';
+	}
+	return surfaceLive
+		? 'Callsites (exact — best-effort)'
+		: 'Callsites (exact unavailable)';
+}
+
 export function createInspectModals(deps: InspectModalDeps): {
 	closeInspectModal: () => void;
 	openInspectModal: (
@@ -103,13 +126,11 @@ export function createInspectModals(deps: InspectModalDeps): {
 		if (!modal || !heading || !body) return;
 
 		const locPrecision = deps.getLocPrecision();
+		const surfaceLive = Boolean(deps.getSurface?.());
 
 		heading.textContent = title;
 		if (label) {
-			label.textContent =
-				locPrecision === 'exact'
-					? 'Import evidence · exact unavailable'
-					: 'Import evidence · estimate';
+			label.textContent = evidenceHeaderLabel(locPrecision, surfaceLive);
 		}
 		body.replaceChildren();
 
@@ -130,10 +151,11 @@ export function createInspectModals(deps: InspectModalDeps): {
 				: `${evidence.length} observed import statements`;
 		body.appendChild(meta);
 
-		const anyExactBlocker = evidence.some((ev) =>
+		// Banner only when engine is truly missing (not per-edge unresolved)
+		const anyEngineMissing = evidence.some((ev) =>
 			ev.blockers.some((b) => b.code === 'exact-not-implemented'),
 		);
-		if (anyExactBlocker) {
+		if (anyEngineMissing) {
 			const banner = document.createElement('cds-inline-notification');
 			banner.setAttribute('kind', 'warning');
 			banner.setAttribute('title', 'Exact mode');
@@ -165,7 +187,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 			);
 			li.appendChild(impSec);
 
-			// Imported code (estimate only)
+			// Imported code
 			const codeSec = document.createElement('div');
 			codeSec.className = 'atlas-inspect__section';
 			const codeH = document.createElement('div');
@@ -182,6 +204,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 				const note = document.createElement('p');
 				note.className = 'atlas-inspect__section-empty';
 				const blocker =
+					ev.blockers.find((b) => b.code === 'exact-surface-unresolved') ??
 					ev.blockers.find((b) => b.code === 'exact-not-implemented') ??
 					ev.blockers.find(
 						(b) => b.code === 'package-target' || b.code === 'no-source',
@@ -192,15 +215,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 			}
 			li.appendChild(codeSec);
 
-			// Callsites (estimate only)
+			// Callsites
 			const callSec = document.createElement('div');
 			callSec.className = 'atlas-inspect__section';
 			const callH = document.createElement('div');
 			callH.className = 'atlas-inspect__section-title';
-			callH.textContent =
-				locPrecision === 'exact'
-					? 'Callsites (exact unavailable)'
-					: 'Possible callsites (estimate — not type-checked)';
+			callH.textContent = callsitesTitle(locPrecision, surfaceLive);
 			callSec.appendChild(callH);
 			if (ev.callsites.length) {
 				for (const cs of ev.callsites) {
@@ -214,11 +234,16 @@ export function createInspectModals(deps: InspectModalDeps): {
 				const note = document.createElement('p');
 				note.className = 'atlas-inspect__section-empty';
 				const blocker = ev.blockers.find(
-					(b) => b.code === 'exact-not-implemented' || b.code === 'no-bindings',
+					(b) =>
+						b.code === 'exact-not-implemented' ||
+						b.code === 'exact-surface-unresolved' ||
+						b.code === 'no-bindings',
 				);
 				note.textContent =
 					blocker?.message ??
-					'No estimated callsites found for import bindings.';
+					(surfaceLive && locPrecision === 'exact'
+						? 'No exact callsites found for import bindings.'
+						: 'No estimated callsites found for import bindings.');
 				callSec.appendChild(note);
 			}
 			li.appendChild(callSec);

@@ -51,6 +51,7 @@ export type {
 } from '@core/view/weight.ts';
 export {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	EXACT_SURFACE_UNRESOLVED_MESSAGE,
 	IMPORTED_SURFACE_LOC_MESSAGE,
 	IMPORTED_SURFACE_LOC_UI,
 	axisNeedsImportedSurface,

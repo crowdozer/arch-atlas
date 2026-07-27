@@ -1,9 +1,37 @@
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript-classic';
 import { indexFiles } from '@core/index.ts';
-import { createTsProgramProvider } from './tsProgramProvider.ts';
+import {
+	collectExportSpansFromTs,
+	createTsProgramProvider,
+	isClassicTypescriptModule,
+} from './tsProgramProvider.ts';
 
-describe('createTsProgramProvider', () => {
-	it('measures named export surface LOC (not whole file)', () => {
+describe('isClassicTypescriptModule', () => {
+	it('detects createSourceFile', () => {
+		expect(isClassicTypescriptModule(ts)).toBe(true);
+		expect(isClassicTypescriptModule({ version: '7' })).toBe(false);
+	});
+});
+
+describe('collectExportSpansFromTs', () => {
+	it('uses classic AST for named exports', () => {
+		const content = [
+			'export function used() {',
+			'  return 1;',
+			'}',
+			'export const x = 2;',
+		].join('\n');
+		const spans = collectExportSpansFromTs(ts as never, 'b.ts', content);
+		expect(spans).not.toBeNull();
+		const names = spans!.map((s) => s.name).sort();
+		expect(names).toContain('used');
+		expect(names).toContain('x');
+	});
+});
+
+describe('createTsProgramProvider (Program-backed)', () => {
+	it('measures named export surface LOC via classic TS AST', () => {
 		const target = [
 			'export function used() {',
 			'  return 1;',
@@ -26,15 +54,41 @@ describe('createTsProgramProvider', () => {
 			},
 			{ path: 'b.ts', content: target + '\n', byteLength: target.length + 1 },
 		]);
-		const provider = createTsProgramProvider({ contents: graph.contents });
+		const provider = createTsProgramProvider({
+			ts: ts as never,
+			contents: graph.contents,
+		});
 		const edge = graph.edges.find((e) => e.to === 'b.ts');
 		expect(edge).toBeTruthy();
 		const mass = provider.targetSurfaceMass(graph, edge!);
 		expect(mass).not.toBeNull();
 		expect(mass!).toBeLessThan(target.split('\n').length);
 		expect(mass!).toBeGreaterThanOrEqual(1);
-		// used() spans ~3 lines
 		expect(mass!).toBeLessThanOrEqual(5);
+
+		const surf = provider.importedSurface?.(graph, edge!);
+		expect(surf?.note).toMatch(/Program|createSourceFile/i);
+		expect(surf?.text).toMatch(/used/);
+	});
+
+	it('falls back to text surface when ts is missing', () => {
+		const { graph } = indexFiles([
+			{
+				path: 'a.ts',
+				content: "import { foo } from './b';\n",
+				byteLength: 28,
+			},
+			{
+				path: 'b.ts',
+				content: 'export function foo() { return 1; }\n',
+				byteLength: 36,
+			},
+		]);
+		const provider = createTsProgramProvider({ contents: graph.contents });
+		const edge = graph.edges.find((e) => e.to === 'b.ts');
+		expect(provider.targetSurfaceMass(graph, edge!)).not.toBeNull();
+		const surf = provider.importedSurface?.(graph, edge!);
+		expect(surf?.note).toMatch(/fallback/i);
 	});
 
 	it('side-effect import returns mass 1', () => {
@@ -50,12 +104,15 @@ describe('createTsProgramProvider', () => {
 				byteLength: 40,
 			},
 		]);
-		const provider = createTsProgramProvider({ contents: graph.contents });
+		const provider = createTsProgramProvider({
+			ts: ts as never,
+			contents: graph.contents,
+		});
 		const edge = graph.edges.find((e) => e.to === 'b.ts');
 		expect(provider.targetSurfaceMass(graph, edge!)).toBe(1);
 	});
 
-	it('unresolved named binding returns null (fail closed to whole-file)', () => {
+	it('unresolved named binding returns null', () => {
 		const { graph } = indexFiles([
 			{
 				path: 'a.ts',
@@ -68,27 +125,11 @@ describe('createTsProgramProvider', () => {
 				byteLength: 24,
 			},
 		]);
-		const provider = createTsProgramProvider({ contents: graph.contents });
+		const provider = createTsProgramProvider({
+			ts: ts as never,
+			contents: graph.contents,
+		});
 		const edge = graph.edges.find((e) => e.to === 'b.ts');
 		expect(provider.targetSurfaceMass(graph, edge!)).toBeNull();
-	});
-
-	it('importedSurface returns export snippet when bindings match', () => {
-		const { graph } = indexFiles([
-			{
-				path: 'a.ts',
-				content: "import { foo } from './b';\n",
-				byteLength: 28,
-			},
-			{
-				path: 'b.ts',
-				content: 'export function foo() { return 1; }\n',
-				byteLength: 36,
-			},
-		]);
-		const provider = createTsProgramProvider({ contents: graph.contents });
-		const edge = graph.edges.find((e) => e.to === 'b.ts');
-		const surf = provider.importedSurface?.(graph, edge!);
-		expect(surf?.text).toMatch(/foo/);
 	});
 });

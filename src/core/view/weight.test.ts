@@ -160,6 +160,22 @@ describe('edgeWeight matrix', () => {
 			}),
 		).toBe(bLoc);
 	});
+
+	it('exact without surface never uses whole-file (defense-in-depth → 1)', () => {
+		const bLoc = fileLineCount(graph, 'b.ts');
+		expect(bLoc).toBeGreaterThan(1);
+		expect(
+			edgeWeight(fileEdge, graph, 'target-loc', {
+				precision: 'exact',
+			}),
+		).toBe(1);
+		expect(
+			edgeWeight(fileEdge, graph, 'target-loc', {
+				precision: 'exact',
+				surface: null,
+			}),
+		).toBe(1);
+	});
 });
 
 describe('normalizeExactSurfaceMass', () => {

@@ -44,6 +44,10 @@ const DEFAULT_PRECISION: LocPrecision = 'estimate';
 export const EXACT_NOT_IMPLEMENTED_MESSAGE =
 	'Exact imported LOC requires an analysis engine (TypeScript Program or language server). Enable Exact or Imported LOC (Shaken) after the engine loads, or inject a provider.';
 
+/** Provider present but export surface could not be resolved for this edge. */
+export const EXACT_SURFACE_UNRESOLVED_MESSAGE =
+	'Export surface not resolved for imported bindings (Exact — no silent whole-file fallback).';
+
 /** Axes that claim imported-surface size (not raw edge counts or importer file size). */
 export function axisNeedsImportedSurface(axis: WeightAxis): boolean {
 	return axis === 'target-loc';
@@ -106,11 +110,15 @@ export function edgeWeight(
 		case 'target-loc': {
 			const precision = opts?.precision ?? DEFAULT_PRECISION;
 			const surface = opts?.surface;
-			if (precision === 'exact' && surface) {
-				// Package / unresolved: no file surface — same fallback as estimate
+			// Exact mode: never emit whole-file estimate numbers (defense-in-depth).
+			// With surface → provider mass (null → 1). Without surface → 1.
+			if (precision === 'exact') {
 				if (e.toKind !== 'file') return 1;
-				const mass = surface.targetSurfaceMass(graph, e);
-				return normalizeExactSurfaceMass(mass);
+				if (surface) {
+					const mass = surface.targetSurfaceMass(graph, e);
+					return normalizeExactSurfaceMass(mass);
+				}
+				return 1;
 			}
 			if (e.toKind === 'file') {
 				const n = fileLineCount(graph, e.to);

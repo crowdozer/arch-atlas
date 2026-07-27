@@ -19,6 +19,7 @@ import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
 import { pathInImporterGroup } from '@core/view/fileImporters.ts';
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
+	EXACT_SURFACE_UNRESOLVED_MESSAGE,
 	type LocPrecision,
 	resolveLocPrecision,
 } from '@core/view/weight.ts';
@@ -89,7 +90,12 @@ export type CallSiteSnippet = {
 };
 
 export type EvidenceBlocker = {
-	code: 'exact-not-implemented' | 'no-source' | 'no-bindings' | 'package-target';
+	code:
+		| 'exact-not-implemented'
+		| 'exact-surface-unresolved'
+		| 'no-source'
+		| 'no-bindings'
+		| 'package-target';
 	message: string;
 };
 
@@ -292,10 +298,11 @@ function evidenceForEdge(
 			const s = surface.importedSurface(graph, e);
 			if (s) importedCode = exactImportedCodeFromProvider(e, s);
 		}
+		// Provider is live but this edge has no resolvable export surface
 		if (!importedCode) {
 			blockers.push({
-				code: 'exact-not-implemented',
-				message: EXACT_NOT_IMPLEMENTED_MESSAGE,
+				code: 'exact-surface-unresolved',
+				message: EXACT_SURFACE_UNRESOLVED_MESSAGE,
 			});
 		}
 
