@@ -227,18 +227,15 @@ import Tag from '../components/ui/Tag.astro';
 									Cross-cutting files: high direct fan-in across many modules.
 								</p>
 								<div class="atlas-spine-toolbar" id="atlas-spine-toolbar">
-									<span class="atlas-spine-toolbar__label" id="atlas-spine-formula-label-text"
-										>Formula</span
-									>
 									<Dropdown
 										id="atlas-spine-formula"
 										class="atlas-spine-formula"
 										size="sm"
 										hideLabel
-										labelText="Formula"
+										labelText="Spine ranking formula"
 										titleText="Spine ranking formula"
 										value="modules-then-in"
-										aria-labelledby="atlas-spine-formula-label-text"
+										aria-label="Spine ranking formula"
 									>
 										<DropdownItem value="modules-then-in"
 											>Modules then fan-in</DropdownItem

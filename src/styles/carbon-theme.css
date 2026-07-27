@@ -1685,38 +1685,33 @@ cds-inline-notification.atlas-warning-notification {
   color: #71717a;
 }
 
-/* Spine formula toolbar — Carbon dropdown + ghost info (square shell) */
+/* Spine formula toolbar — single row: dropdown + ghost info (no field label) */
 .atlas-spine-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.25rem;
   margin: 0 0 0.5rem;
   position: relative;
   z-index: 2; /* open list above catalog rows */
 }
-.atlas-spine-toolbar__label {
-  flex: 0 0 auto;
-  font-size: 0.7rem;
-  color: #a1a1aa;
-  line-height: 2rem;
-  user-select: none;
-}
+/* width:0 + flex-grow: share row with the info button (Carbon wants 100% width) */
 cds-dropdown.atlas-spine-formula,
 .atlas-spine-formula {
   box-sizing: border-box;
   display: block !important;
-  flex: 1 1 10rem !important;
+  flex: 1 1 0 !important;
   flex-direction: row !important;
-  width: auto !important;
-  max-width: 100% !important;
+  width: 0 !important;
+  max-width: none !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
 }
 cds-button.atlas-spine-info-btn,
 .atlas-spine-info-btn {
-  flex: 0 0 auto;
+  flex: 0 0 2rem;
+  flex-shrink: 0;
   box-sizing: border-box;
   min-inline-size: 2rem !important;
   max-inline-size: 2rem;
@@ -1727,6 +1722,7 @@ cds-button.atlas-spine-info-btn,
   color: #2dd4bf;
   font-size: 0.95rem;
   line-height: 1;
+  align-self: center;
 }
 
 /* Spine formula help modal — match inspect/unavailable air + zinc type */
