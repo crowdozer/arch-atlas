@@ -453,6 +453,17 @@ import Tag from '../components/ui/Tag.astro';
 
 	<Modal id="atlas-inspect-modal" class="atlas-inspect-modal" size="lg" aria-label="Import evidence">
 		<ModalHeader class="atlas-inspect-modal__header">
+			<Button
+				type="button"
+				id="atlas-inspect-fullscreen"
+				class="atlas-inspect-modal__fullscreen-btn"
+				variant="ghost"
+				size="sm"
+				aria-pressed="false"
+				aria-label="Toggle fullscreen"
+			>
+				Fullscreen
+			</Button>
 			<ModalCloseButton />
 			<ModalLabel id="atlas-inspect-label">Import evidence · estimate</ModalLabel>
 			<ModalHeading id="atlas-inspect-heading">Import evidence</ModalHeading>
