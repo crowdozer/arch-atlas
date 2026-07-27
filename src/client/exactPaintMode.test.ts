@@ -1,5 +1,6 @@
 /**
  * Exact paint: rehydrate failure honesty + generation discard after invalidate.
+ * Program enableProgramMode orchestration (soft-fail / apply / Exact rehydrate).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LocPrecision, WeightAxis } from '@core/index.ts';
@@ -8,10 +9,13 @@ import type { ImportedSurfaceProvider } from '@core/index.ts';
 import type { Session } from '@shell/index.ts';
 import {
 	createExactPaintMode,
+	programStatusHonesty,
 	type ExactPaintModeDeps,
 } from './exactPaintMode.ts';
 
 const ensureExactForGraph = vi.fn();
+const runProgramEnrichment = vi.fn();
+const cancelProgramEnrichment = vi.fn();
 
 vi.mock('@exact/index.ts', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@exact/index.ts')>();
@@ -20,6 +24,24 @@ vi.mock('@exact/index.ts', async (importOriginal) => {
 		ensureExactForGraph: (...args: unknown[]) => ensureExactForGraph(...args),
 	};
 });
+
+vi.mock('./programWorkerClient.ts', () => ({
+	runProgramEnrichment: (...args: unknown[]) => runProgramEnrichment(...args),
+	cancelProgramEnrichment: (...args: unknown[]) =>
+		cancelProgramEnrichment(...args),
+	createProgramWorkerClient: () => ({
+		runProgramEnrichment: (...args: unknown[]) =>
+			runProgramEnrichment(...args),
+		cancel: () => cancelProgramEnrichment(),
+		generation: () => 0,
+	}),
+	programWorkerClient: {
+		runProgramEnrichment: (...args: unknown[]) =>
+			runProgramEnrichment(...args),
+		cancel: () => cancelProgramEnrichment(),
+		generation: () => 0,
+	},
+}));
 
 function installDomStub(): void {
 	const el = (id: string) => {
@@ -67,12 +89,15 @@ function mockPaintDeps(session: Session): {
 		surfaceProvider: ImportedSurfaceProvider | null;
 		exactEnableInFlight: boolean;
 		exactMixedWarningShown: boolean;
+		programExactMass: boolean;
+		programMetaCleared: number;
 	};
 	calls: {
 		remount: number;
 		modals: { label: string; heading: string; body: string }[];
 		statuses: string[];
 		precisionSyncs: LocPrecision[];
+		programApplies: number;
 	};
 } {
 	const state = {
@@ -82,6 +107,7 @@ function mockPaintDeps(session: Session): {
 		exactEnableInFlight: false,
 		exactMixedWarningShown: false,
 		programExactMass: false,
+		programMetaCleared: 0,
 	};
 	const calls = {
 		remount: 0,
@@ -120,6 +146,9 @@ function mockPaintDeps(session: Session): {
 		applyProgramGraph: () => {
 			calls.programApplies += 1;
 		},
+		clearProgramMeta: () => {
+			state.programMetaCleared += 1;
+		},
 		remountCurrentView: () => {
 			calls.remount += 1;
 		},
@@ -139,10 +168,29 @@ function mockPaintDeps(session: Session): {
 	return { deps, state, calls };
 }
 
+function okProgramResult(session: Session) {
+	return {
+		ok: true as const,
+		graph: session.graph,
+		stats: {
+			resolvedCount: 2,
+			resolvedAliasCount: 1,
+			exportSymbolFileCount: 0,
+			rootFileCount: 1,
+			tsconfig: 'partial' as const,
+			missingLibs: [] as string[],
+		},
+		thinL3: false,
+		exportSymbolCount: new Map<string, number>(),
+	};
+}
+
 describe('exactPaintMode rehydrate honesty', () => {
 	beforeEach(() => {
 		installDomStub();
 		ensureExactForGraph.mockReset();
+		runProgramEnrichment.mockReset();
+		cancelProgramEnrichment.mockReset();
 	});
 
 	it('rehydrate failure falls back to Estimate + modal + remount; weightAxis preserved', async () => {
@@ -259,5 +307,178 @@ describe('exactPaintMode rehydrate honesty', () => {
 		expect(state.surfaceProvider).toBe(provider);
 		expect(calls.remount).toBe(1);
 		expect(calls.statuses.at(-1)).toMatch(/Export-surface Exact on/);
+	});
+});
+
+describe('enableProgramMode orchestration', () => {
+	beforeEach(() => {
+		installDomStub();
+		ensureExactForGraph.mockReset();
+		runProgramEnrichment.mockReset();
+		cancelProgramEnrichment.mockReset();
+	});
+
+	it('soft-fail restores prior precision, no apply, clears programMeta, L1 status', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue({
+			ok: false,
+			error: 'no createProgram in worker',
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(0);
+		expect(state.locPrecision).toBe('estimate');
+		expect(state.programExactMass).toBe(false);
+		expect(state.programMetaCleared).toBe(1);
+		expect(calls.precisionSyncs).toContain('estimate');
+		expect(calls.statuses.at(-1)).toMatch(/graph left at L1/);
+		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
+		expect(state.exactEnableInFlight).toBe(false);
+		expect(ensureExactForGraph).not.toHaveBeenCalled();
+	});
+
+	it('soft-fail from Exact restores exact chrome without apply', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		const provider = { targetSurfaceMass: () => 3 };
+		state.locPrecision = 'exact';
+		state.surfaceProvider = provider;
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue({
+			ok: false,
+			error: 'timeout',
+			timeout: true,
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(0);
+		expect(state.locPrecision).toBe('exact');
+		expect(state.surfaceProvider).toBe(provider);
+		expect(calls.statuses.at(-1)).toMatch(/Program unavailable/);
+	});
+
+	it('success from estimate applies once, remounts, no Exact rehydrate', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(1);
+		expect(state.locPrecision).toBe('program');
+		expect(state.programExactMass).toBe(false);
+		expect(ensureExactForGraph).not.toHaveBeenCalled();
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
+		expect(calls.statuses.at(-1)).toMatch(/Program: resolved 2/);
+		expect(calls.statuses.at(-1)).toMatch(/L2 re-resolve/);
+		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
+		expect(state.exactEnableInFlight).toBe(false);
+	});
+
+	it('success from Exact applies + rehydrates Exact mass (programExactMass)', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'exact';
+		state.surfaceProvider = { targetSurfaceMass: () => 1 };
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+		const newProvider = { targetSurfaceMass: () => 9 };
+		ensureExactForGraph.mockResolvedValue({
+			ok: true,
+			provider: newProvider,
+			engines: { loadable: ['typescript'], missing: [] },
+			source: 'local',
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(1);
+		expect(state.locPrecision).toBe('program');
+		expect(state.programExactMass).toBe(true);
+		expect(state.surfaceProvider).toBe(newProvider);
+		expect(ensureExactForGraph).toHaveBeenCalledTimes(1);
+		expect(calls.statuses.at(-1)).toMatch(/Exact mass rehydrated/);
+	});
+
+	it('preferExactMass rehydrates Exact even when chrome already program', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'program';
+		state.surfaceProvider = null;
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
+		const provider = { targetSurfaceMass: () => 4 };
+		ensureExactForGraph.mockResolvedValue({
+			ok: true,
+			provider,
+			engines: { loadable: ['typescript'], missing: [] },
+			source: 'local',
+		});
+
+		await paint.enableProgramMode({ preferExactMass: true });
+
+		expect(calls.programApplies).toBe(1);
+		expect(state.programExactMass).toBe(true);
+		expect(state.surfaceProvider).toBe(provider);
+		expect(ensureExactForGraph).toHaveBeenCalled();
+	});
+
+	it('cancelled result is silent (no soft-fail toast / no apply)', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue({
+			ok: false,
+			error: 'Program enrich cancelled (stale generation)',
+			cancelled: true,
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(0);
+		// Loading status may have been set; must not clobber with soft-fail L1 line
+		expect(calls.statuses.some((s) => s.includes('graph left at L1'))).toBe(
+			false,
+		);
+		expect(state.programMetaCleared).toBe(0);
+		expect(state.exactEnableInFlight).toBe(false);
+	});
+
+	it('programStatusHonesty evidence-gates L2/L3', () => {
+		const noResolve = programStatusHonesty({
+			resolvedCount: 0,
+			resolvedAliasCount: 0,
+			thinL3: false,
+			tsconfig: 'none',
+			missingLibs: [],
+		});
+		expect(noResolve).not.toMatch(/L2/);
+		expect(noResolve).not.toMatch(/thin L3/);
+		expect(noResolve).toMatch(/not LSP/);
+
+		const withL2 = programStatusHonesty({
+			resolvedCount: 3,
+			resolvedAliasCount: 2,
+			thinL3: true,
+			tsconfig: 'partial',
+			missingLibs: [],
+		});
+		expect(withL2).toMatch(/L2 re-resolve/);
+		expect(withL2).toMatch(/thin L3/);
+		expect(withL2).toMatch(/alias 2/);
 	});
 });

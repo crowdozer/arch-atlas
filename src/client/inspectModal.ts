@@ -42,8 +42,13 @@ function appendCodeBlock(
 function evidenceHeaderLabel(
 	precision: LocPrecision,
 	surfaceLive: boolean,
+	/** True only when Program enrich applied for the current graph (session.programMeta). */
+	programApplied = false,
 ): string {
 	if (precision === 'program') {
+		if (!programApplied) {
+			return 'Import evidence · Program selected (topology not applied; L1 · not LSP)';
+		}
 		return surfaceLive
 			? 'Import evidence · Program topology + export surface (not LSP)'
 			: 'Import evidence · Program topology (estimate mass; not LSP)';
@@ -132,10 +137,15 @@ export function createInspectModals(deps: InspectModalDeps): {
 
 		const locPrecision = deps.getLocPrecision();
 		const surfaceLive = Boolean(deps.getSurface?.());
+		const programApplied = Boolean(deps.getSession()?.programMeta);
 
 		heading.textContent = title;
 		if (label) {
-			label.textContent = evidenceHeaderLabel(locPrecision, surfaceLive);
+			label.textContent = evidenceHeaderLabel(
+				locPrecision,
+				surfaceLive,
+				programApplied,
+			);
 		}
 		body.replaceChildren();
 

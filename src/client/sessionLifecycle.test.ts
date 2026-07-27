@@ -44,6 +44,8 @@ type CallLog = {
 	resetExactState: number;
 	invalidateExactProvider: number;
 	rehydrateExactForGraph: number;
+	enableProgramMode: number;
+	enableProgramModePreferExact: boolean[];
 	tryAutoExactWhenLocalAvailable: number;
 	syncExactChrome: number;
 	clearStage: number;
@@ -62,11 +64,14 @@ function mockDeps(opts: {
 	setIncludeTests: (on: boolean) => void;
 	getLocPrecision: () => LocPrecision;
 	setRehydrateFails: (v: boolean) => void;
+	setProgramExactMass: (v: boolean) => void;
 } {
 	const log: CallLog = {
 		resetExactState: 0,
 		invalidateExactProvider: 0,
 		rehydrateExactForGraph: 0,
+		enableProgramMode: 0,
+		enableProgramModePreferExact: [],
 		tryAutoExactWhenLocalAvailable: 0,
 		syncExactChrome: 0,
 		clearStage: 0,
@@ -76,6 +81,7 @@ function mockDeps(opts: {
 	let locPrecision: LocPrecision = opts.locPrecision ?? 'estimate';
 	let includeTests = opts.includeTests ?? true;
 	let rehydrateFails = false;
+	let programExactMass = false;
 
 	const deps: SessionLifecycleDeps = {
 		getSession: () => session,
@@ -86,14 +92,17 @@ function mockDeps(opts: {
 		setDepthUserSet: vi.fn(),
 		setVizMaxDepth: vi.fn(),
 		getLocPrecision: () => locPrecision,
+		getProgramExactMass: () => programExactMass,
 		resetExactState: () => {
 			log.resetExactState += 1;
 			locPrecision = 'estimate';
+			programExactMass = false;
 			// Mirrors app.ts: spineFormula only wiped on full reset, not invalidate
 			log.spineWiped += 1;
 		},
 		invalidateExactProvider: () => {
 			log.invalidateExactProvider += 1;
+			programExactMass = false;
 		},
 		rehydrateExactForGraph: async () => {
 			log.rehydrateExactForGraph += 1;
@@ -103,6 +112,11 @@ function mockDeps(opts: {
 				return;
 			}
 			locPrecision = 'exact';
+		},
+		enableProgramMode: async (opts) => {
+			log.enableProgramMode += 1;
+			log.enableProgramModePreferExact.push(Boolean(opts?.preferExactMass));
+			locPrecision = 'program';
 		},
 		syncExactChrome: () => {
 			log.syncExactChrome += 1;
@@ -139,6 +153,9 @@ function mockDeps(opts: {
 		getLocPrecision: () => locPrecision,
 		setRehydrateFails: (v: boolean) => {
 			rehydrateFails = v;
+		},
+		setProgramExactMass: (v: boolean) => {
+			programExactMass = v;
 		},
 	};
 }
@@ -272,5 +289,37 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(log.rehydrateExactForGraph).toBe(1);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(ctx.getLocPrecision()).toBe('estimate');
+	});
+
+	it('reindex with Program re-invokes enableProgramMode (Exact parity)', async () => {
+		const ctx = mockDeps({ locPrecision: 'estimate', includeTests: true });
+		const life = createSessionLifecycle(ctx.deps);
+		await seedSessionFromFeed(ctx.deps, true);
+		ctx.setLocPrecision('program');
+		ctx.setProgramExactMass(true);
+		const log = ctx.log;
+		log.resetExactState = 0;
+		log.invalidateExactProvider = 0;
+		log.rehydrateExactForGraph = 0;
+		log.enableProgramMode = 0;
+		log.enableProgramModePreferExact = [];
+		log.tryAutoExactWhenLocalAvailable = 0;
+		log.syncExactChrome = 0;
+		log.clearStage = 0;
+		log.spineWiped = 0;
+
+		ctx.setIncludeTests(false);
+		life.reindexWithTestInclusion();
+		await Promise.resolve();
+
+		expect(log.resetExactState).toBe(0);
+		expect(log.invalidateExactProvider).toBe(1);
+		expect(log.enableProgramMode).toBe(1);
+		// Snapshot preferExactMass before invalidate cleared the flag
+		expect(log.enableProgramModePreferExact).toEqual([true]);
+		expect(log.rehydrateExactForGraph).toBe(0);
+		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
+		expect(log.syncExactChrome).toBe(1);
+		expect(ctx.getLocPrecision()).toBe('program');
 	});
 });

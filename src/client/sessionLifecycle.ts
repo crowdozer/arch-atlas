@@ -54,6 +54,13 @@ export type SessionLifecycleDeps = {
 	invalidateExactProvider: () => void;
 	/** Rebuild Exact for the new graph when user was on Exact before reindex. */
 	rehydrateExactForGraph: () => Promise<void>;
+	/**
+	 * Re-run Program enrich for the new graph when user was on Program before
+	 * reindex (Exact parity). Optional preferExactMass when prior programExactMass.
+	 */
+	enableProgramMode?: (opts?: { preferExactMass?: boolean }) => Promise<void>;
+	/** Prior Program had Exact mass rehydrated (snapshot before invalidate). */
+	getProgramExactMass?: () => boolean;
 	/** Align Precision / Weight dropdowns to current module state. */
 	syncExactChrome: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
@@ -130,9 +137,13 @@ export function createSessionLifecycle(
 		opts?: { skipPersist?: boolean; kind?: ActivateSessionKind },
 	): void {
 		const kind: ActivateSessionKind = opts?.kind ?? 'open';
-		// Snapshot before any Exact invalidate/reset
+		// Snapshot before any Exact invalidate/reset / Program cancel
 		const wasExact =
 			kind === 'reindex' && deps.getLocPrecision() === 'exact';
+		const wasProgram =
+			kind === 'reindex' && deps.getLocPrecision() === 'program';
+		const programHadExactMass =
+			wasProgram && Boolean(deps.getProgramExactMass?.());
 
 		// Drop in-flight Program enrich (stale graph after open/reindex)
 		deps.cancelProgramEnrichment?.();
@@ -161,15 +172,23 @@ export function createSessionLifecycle(
 			deps.setStatus(statusLine);
 		}
 		// Reassert status after navigate (gate may have written a fail-closed line)
-		deps.setStatus(
-			wasExact ? `${statusLine} · rebuilding Exact…` : statusLine,
-		);
+		const rebuildNote = wasProgram
+			? ' · rebuilding Program…'
+			: wasExact
+				? ' · rebuilding Exact…'
+				: '';
+		deps.setStatus(`${statusLine}${rebuildNote}`);
 		if (!opts?.skipPersist) deps.persistSessionIfEnabled();
 
 		if (kind === 'reindex') {
 			// Carbon dropdowns must match preserved JS state (not forced Estimate)
 			deps.syncExactChrome();
-			if (wasExact) {
+			if (wasProgram && deps.enableProgramMode) {
+				// Exact parity: re-apply createProgram topology on the new L1 graph
+				void deps.enableProgramMode({
+					preferExactMass: programHadExactMass,
+				});
+			} else if (wasExact) {
 				// Rebuild provider for new graph; on fail falls back to Estimate honestly.
 				// Generation token inside rehydrate discards stale rapid-toggle races.
 				void deps.rehydrateExactForGraph();

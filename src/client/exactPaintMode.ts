@@ -54,6 +54,8 @@ export type ExactPaintModeDeps = {
 	 * Apply enriched graph + catalog rebuild + programMeta (host owns session).
 	 */
 	applyProgramGraph: (graph: CodeGraph, meta: SessionProgramMeta) => void;
+	/** Drop session.programMeta (soft-fail / new graph without applied Program). */
+	clearProgramMeta: () => void;
 	remountCurrentView: () => void;
 	setStatus: (msg: string) => void;
 	openUnavailableModal: (opts: {
@@ -72,10 +74,19 @@ export type ExactPaintModeDeps = {
 	currentView: () => AtlasView | null;
 };
 
+/** Options for {@link ExactPaintMode.enableProgramMode}. */
+export type EnableProgramModeOpts = {
+	/**
+	 * Rehydrate Exact mass after successful Program enrich even when chrome is
+	 * already `program` (include-tests reindex re-run; prior programExactMass).
+	 */
+	preferExactMass?: boolean;
+};
+
 export type ExactPaintMode = {
 	enableExactSurfaceMode: (trigger: 'precision' | 'shaken') => Promise<void>;
 	/** Opt-in Program (createProgram) topology enrich via Web Worker. */
-	enableProgramMode: () => Promise<void>;
+	enableProgramMode: (opts?: EnableProgramModeOpts) => Promise<void>;
 	disableExactPaintMode: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
 	/** Full Exact chrome reset (new ZIP/demo/open). Forces Estimate. */
@@ -427,11 +438,27 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 	}
 
 	/**
-	 * Precision → Program: async createProgram enrich in a Web Worker.
-	 * Soft-fail keeps prior graph + warning. Topology only; Exact mass path
-	 * rehydrates when the user was already on Exact (programExactMass).
+	 * Soft-fail honesty: restore chrome to prior non-program tier so Precision
+	 * does not claim createProgram topology when enrich never applied.
+	 * Prior `program` (re-run) → estimate.
 	 */
-	async function enableProgramMode(): Promise<void> {
+	function restorePrecisionAfterProgramFail(prior: LocPrecision): void {
+		const restore: LocPrecision = prior === 'exact' ? 'exact' : 'estimate';
+		deps.setLocPrecision(restore);
+		deps.setProgramExactMass(false);
+		deps.clearProgramMeta();
+		const precEl = precisionDropdown();
+		if (precEl) deps.syncPrecisionDropdown(precEl, restore);
+	}
+
+	/**
+	 * Precision → Program: async createProgram enrich in a Web Worker.
+	 * Soft-fail keeps prior graph + restores prior precision chrome. Topology
+	 * only; Exact mass rehydrates when user was Exact (or preferExactMass).
+	 */
+	async function enableProgramMode(
+		opts: EnableProgramModeOpts = {},
+	): Promise<void> {
 		const session = deps.getSession();
 		if (!session) {
 			deps.setStatus('Open a project before enabling Program mode');
@@ -439,8 +466,11 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		}
 		if (deps.getExactEnableInFlight()) return;
 
-		const wasExact =
-			deps.getLocPrecision() === 'exact' && Boolean(deps.getSurfaceProvider());
+		const priorPrecision = deps.getLocPrecision();
+		const wasExactMass =
+			(priorPrecision === 'exact' && Boolean(deps.getSurfaceProvider())) ||
+			Boolean(opts.preferExactMass) ||
+			(priorPrecision === 'program' && deps.getProgramExactMass());
 		const precEl = precisionDropdown();
 
 		deps.setExactEnableInFlight(true);
@@ -467,8 +497,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 					// New session / supersede — do not toast over open status
 					return;
 				}
-				// Soft-fail: prior graph unchanged; stay on program chrome with warning
-				deps.setProgramExactMass(false);
+				// Soft-fail: prior graph unchanged; restore prior precision chrome
+				restorePrecisionAfterProgramFail(priorPrecision);
 				deps.setStatus(
 					`Program unavailable — ${result.error} · graph left at L1 (not LSP)`,
 				);
@@ -487,8 +517,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			};
 			deps.applyProgramGraph(result.graph, meta);
 
-			// Product: if was Exact, rehydrate Exact mass after graph swap
-			if (wasExact) {
+			// Product: if was Exact (or reindex preferExactMass), rehydrate Exact mass
+			if (wasExactMass) {
 				deps.setStatus(
 					'Program topology applied · rebuilding export-surface Exact…',
 				);
@@ -516,7 +546,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			}
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
-			deps.setProgramExactMass(false);
+			restorePrecisionAfterProgramFail(priorPrecision);
 			deps.setStatus(
 				`Program failed soft: ${msg} · graph left at L1 (not LSP)`,
 			);

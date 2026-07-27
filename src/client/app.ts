@@ -302,6 +302,12 @@ function applyProgramGraph(graph: CodeGraph, meta: SessionProgramMeta): void {
 	exportSurfaceLocCache = null;
 }
 
+function clearProgramMeta(): void {
+	if (!session?.programMeta) return;
+	const { programMeta: _drop, ...rest } = session;
+	session = rest;
+}
+
 const exact = createExactPaintMode({
 	getSession: () => session,
 	getSurfaceProvider: () => surfaceProvider,
@@ -331,6 +337,7 @@ const exact = createExactPaintMode({
 		programExactMass = v;
 	},
 	applyProgramGraph,
+	clearProgramMeta,
 	remountCurrentView: () => remountCurrentView(),
 	setStatus,
 	openUnavailableModal: (opts) => inspect.openUnavailableModal(opts),
@@ -709,6 +716,8 @@ lifecycle = createSessionLifecycle({
 	},
 	getLocPrecision: () => locPrecision,
 	cancelProgramEnrichment: () => cancelProgramEnrichment(),
+	getProgramExactMass: () => programExactMass,
+	enableProgramMode: (opts) => exact.enableProgramMode(opts),
 	resetExactState: () => {
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
