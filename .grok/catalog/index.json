@@ -1,8 +1,54 @@
 {
-  "generated_at": "2026-07-26T23:48:38Z",
+  "generated_at": "2026-07-27T01:52:45Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 2,
+  "count": 4,
   "entries": [
+    {
+      "id": "alluvial-top-pack-rename-split",
+      "kind": "proposal",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/alluvial-top-pack-rename-split.md",
+      "scope": [
+        "client-rendering",
+        "alluvial-polish",
+        "stage-extract",
+        "dual-host",
+        "naming",
+        "godfile",
+        "carbon-charts",
+        "hub-alluvial"
+      ],
+      "applies_when": [
+        "refactoring src/client/alluvialTopPack.ts",
+        "renaming alluvialTopPack or polishAlluvialHolder",
+        "extracting stage from client",
+        "dual-host stage bundle for webview",
+        "Carbon alluvial post-mount polish",
+        "External straighten or pad-rail DOM surgery",
+        "terminator chrome on hub alluvial",
+        "File spine center highlight label truncate",
+        "client rendering godfile cleanup",
+        "src/stage ownership of chart paint",
+        "alluvialTopPack.test.ts geometry suite"
+      ],
+      "touches": [
+        "src/client/alluvialTopPack.ts",
+        "src/client/alluvialTopPack.test.ts",
+        "src/client/app.ts (polishAlluvialHolder call site)",
+        "src/client/focus/displayInventory.ts",
+        "src/client/focus/e2e/focusE2eBoot.ts",
+        "future src/stage/*",
+        "dual-host-shell-stage catalog plan"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "geometric-vs-knot-architecture"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: refactoring src/client/alluvialTopPack.ts; renaming alluvialTopPack or polishAlluvialHolder; extracting stage from client; dual-host stage bundle for webview"
+    },
     {
       "id": "dual-host-shell-stage",
       "kind": "plan",
@@ -43,7 +89,9 @@
         "viewStack navigation",
         "indexFiles"
       ],
-      "related": [],
+      "related": [
+        "alluvial-top-pack-rename-split"
+      ],
       "rationale_quality": "full",
       "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
     },
@@ -90,6 +138,48 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer"
+    },
+    {
+      "id": "segmented-relative-path-labels",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/segmented-relative-path-labels.md",
+      "scope": [
+        "path-labels",
+        "file-tree",
+        "path-resolution",
+        "alluvial-labels",
+        "catalog-ui",
+        "inspect",
+        "navigation-context"
+      ],
+      "applies_when": [
+        "intelligent path resolution without LSP",
+        "displaying file paths in tree catalog or alluvial",
+        "relative path labels from current focus node",
+        "path segment walk or breadcrumb-style labels",
+        "basename-only labels feel too lossy",
+        "full absolute paths clutter hub or catalog chrome",
+        "labeling imports after resolve-to-tree",
+        "FileLoc / catalog list path display polish",
+        "truncating long paths with tree-aware segments"
+      ],
+      "touches": [
+        "src/core/tree/fileTree.ts",
+        "src/core/view/alluvial.ts (basename / fileLabels)",
+        "src/client/app.ts (tree name paint, catalog rows)",
+        "alluvial label truncate polish",
+        "future path resolution / import resolve (sans-LSP)",
+        "graph file ids as tree paths"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "alluvial-top-pack-rename-split"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels"
     }
   ]
 }
