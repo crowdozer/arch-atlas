@@ -70,6 +70,8 @@ realized_by:
   - eda4bb3
   - fcd2cb2  # Ship A P0 honesty
   - b1c8b35  # protocol docs
+  - 7792882  # Ship B P1 graph interpretation
+  - 2859d22  # Ship B czar fixes
 superseded_by: null
 rationale_quality: full
 ---
