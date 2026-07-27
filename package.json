@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e:focus": "vitest run --config vitest.focus-e2e.config.ts"
   },
   "dependencies": {
     "@carbon/charts": "^1.27.17",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/d3-sankey": "^0.12.5",
     "@types/node": "^26.1.1",
+    "playwright": "^1.62.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }

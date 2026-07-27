@@ -176,6 +176,20 @@ Buffer hover → sibling **index→useCodebreaker** drawn band is **dim**;
 Buffer→hook and hook→deps are **focus**. FAQ is the control sibling (no hook
 import).
 
+### 4b. Browser e2e (Artillery-style)
+
+When MiniEl is not enough, run **real Carbon** under Playwright:
+
+| Piece | Path |
+| ----- | ---- |
+| Mount page | `/focus-e2e` (`src/pages/focus-e2e.astro`) |
+| Boot hook | `window.__ATLAS_FOCUS_E2E__` (`focus/e2e/focusE2eBoot.ts`) |
+| Spec | `src/client/focus/e2e/focusCarbon.e2e.test.ts` |
+| Command | `npm run test:e2e:focus` (not in default `npm test`) |
+
+Observable: `dumpBands()` reads `atlas-alluvial-carbon-link-focus` / `-dim` on
+live `path.link` after `hoverFile(Buffer)`. Same Buffer sibling invariant as §4a.
+
 ---
 
 ## 5. CSS class contract
