@@ -90,3 +90,31 @@ describe('buildGraph fixture', () => {
 		expect(r.has('src/routes/api.ts')).toBe(true);
 	});
 });
+
+describe('buildGraph codebreaker-focus aliases', () => {
+	const codebreakerRoot = path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		'../../../fixtures/codebreaker-focus',
+	);
+	const files = loadFixtureDir(codebreakerRoot);
+	const graph = buildGraph(files);
+
+	it('does not invent a fake package node for @/app', () => {
+		expect(graph.packages.has('@/app')).toBe(false);
+		const packageEdges = graph.edges.filter(
+			(e) => e.toKind === 'package' && e.to === '@/app',
+		);
+		expect(packageEdges).toHaveLength(0);
+	});
+
+	it('resolves @/app/components/ui to a file under app/components/ui', () => {
+		const edge = graph.edges.find(
+			(e) =>
+				e.from === 'app/components/codebreaker/components/Buffer.tsx' &&
+				e.specifier === '@/app/components/ui',
+		);
+		expect(edge).toBeDefined();
+		expect(edge!.toKind).toBe('file');
+		expect(edge!.to).toMatch(/^app\/components\/ui(\/|$)/);
+	});
+});
