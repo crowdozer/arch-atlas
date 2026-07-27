@@ -60,7 +60,6 @@ describe('sessionStore encode/parse', () => {
 				complex: [],
 				deepest: [],
 				fileLoc: [],
-				godfiles: [],
 				blastRadius: [],
 				views: [],
 				summary: {

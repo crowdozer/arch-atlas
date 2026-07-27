@@ -26,7 +26,7 @@ from becoming merely a prettier dependency graph.
 | ----- | ----- | ------ |
 | **0** | Repo scaffold (Astro + `.grok`, AGENTS) | Done |
 | **1** | Graph model + Level-1 static analysis (files, imports, packages) | **MVP done** (routes = file heuristics only) |
-| **2** | Framework adapters + richer map catalog | Partial — catalog + first alluvial without full adapter interface; L1 heuristics for godfile candidates + blast radius in map catalog (not a full adapter `inspect`/findings interface) |
+| **2** | Framework adapters + richer map catalog | Partial — catalog + first alluvial without full adapter interface; L1 reverse blast-radius catalog bin (not a full adapter `inspect`/findings interface; godfile classifier deferred) |
 | **3** | Progressive expansion, weights, epistemic layers in UI | Partial — weight axes + estimate/exact gate + inspect evidence; progressive stage insert later |
 | **4+** | Deeper adapters, optional runtime overlays, diff mode | Later |
 

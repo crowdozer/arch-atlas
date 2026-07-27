@@ -28,8 +28,8 @@ export const DEMO_OPTIONS: DemoMeta[] = [
 	},
 	{
 		id: 'spaghetti-godfile',
-		title: 'Spaghetti hub (godfile demo)',
-		blurb: 'Cross-domain hub with high fan-in/out and reverse blast chains.',
+		title: 'Spaghetti hub (blast demo)',
+		blurb: 'Cross-domain hub with reverse blast chains.',
 		complexity: 'high',
 	},
 ];

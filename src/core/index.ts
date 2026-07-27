@@ -14,7 +14,6 @@ export type {
 	CatalogDeep,
 	CatalogEnd,
 	CatalogFileLoc,
-	CatalogGodfile,
 	CatalogHotspot,
 	CatalogStart,
 	CodeGraph,
@@ -36,7 +35,6 @@ export { catalogStarts } from '@core/catalog/starts.ts';
 export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
 export { catalogFileLoc } from '@core/catalog/fileLoc.ts';
-export { catalogGodfiles } from '@core/catalog/godfiles.ts';
 export { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
 export {
 	catalogComplex,

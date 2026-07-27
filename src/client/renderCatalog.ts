@@ -67,7 +67,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		const complexN = catalog.complex?.length ?? 0;
 		const deepN = catalog.deepest?.length ?? 0;
 		const fileLocN = catalog.fileLoc?.length ?? 0;
-		const godfileN = catalog.godfiles?.length ?? 0;
 		const blastN = catalog.blastRadius?.length ?? 0;
 		const viewsN = catalog.views.length;
 		const startsN = Math.min(catalog.starts.length, 25);
@@ -87,10 +86,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		setAccordionTitle(
 			'atlas-acc-file-loc',
 			`File LOC${fileLocN ? ` (${fileLocN})` : ''}`,
-		);
-		setAccordionTitle(
-			'atlas-acc-godfiles',
-			`Godfile candidates${godfileN ? ` (${godfileN})` : ''}`,
 		);
 		setAccordionTitle(
 			'atlas-acc-blast',
@@ -221,31 +216,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			}
 		}
 
-		const godfilesHost = $('atlas-godfiles');
-		if (godfilesHost) {
-			godfilesHost.innerHTML = '';
-			const list = catalog.godfiles ?? [];
-			for (const g of list.slice(0, 15)) {
-				const btn = document.createElement('button');
-				btn.type = 'button';
-				btn.className = 'atlas-list-btn';
-				if (selectedStart === g.id) btn.classList.add('is-selected');
-				const scoreLabel = `score ${g.score}`;
-				const detail = `in ${g.inDegree} · out ${g.outDegree} · ${g.loc} LOC · ${g.domainsTouched} domains · pkg ${g.packageOut}`;
-				btn.innerHTML = `
-				<span class="atlas-list-btn__row">
-					<span class="text-sm font-medium text-zinc-100 break-all">${escapeHtml(g.path)}</span>
-					${badgeTagHtml(scoreLabel, detail)}
-				</span>
-				<span class="meta">inferred · ${escapeHtml(detail)}</span>`;
-				btn.addEventListener('click', () => deps.selectStart(g.id));
-				godfilesHost.appendChild(btn);
-			}
-			if (!list.length) {
-				godfilesHost.innerHTML = `<p class="text-xs text-zinc-600">No godfile candidates (need edges + LOC).</p>`;
-			}
-		}
-
 		const blastHost = $('atlas-blast');
 		if (blastHost) {
 			blastHost.innerHTML = '';
@@ -287,7 +257,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				const deepMeta = catalog.deepest?.find((d) => d.id === v.startId);
 				const complexMeta = catalog.complex?.find((c) => c.id === v.startId);
 				const fileLocMeta = catalog.fileLoc?.find((f) => f.id === v.startId);
-				const godMeta = catalog.godfiles?.find((g) => g.id === v.startId);
 				const blastMeta = catalog.blastRadius?.find((b) => b.id === v.startId);
 				const outD =
 					startMeta?.outDegree ??
@@ -295,7 +264,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					complexMeta?.outDegree ??
 					deepMeta?.outDegree ??
 					fileLocMeta?.outDegree ??
-					godMeta?.outDegree ??
 					blastMeta?.outDegree ??
 					v.edgeCount ??
 					0;
@@ -305,7 +273,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					complexMeta?.inDegree ??
 					deepMeta?.inDegree ??
 					fileLocMeta?.inDegree ??
-					godMeta?.inDegree ??
 					blastMeta?.inDegree ??
 					0;
 				const badge =
@@ -315,7 +282,6 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 					complexMeta ||
 					deepMeta ||
 					fileLocMeta ||
-					godMeta ||
 					blastMeta
 						? edgeBadge(outD, inD)
 						: '';

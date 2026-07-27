@@ -26,7 +26,7 @@ applies_when:
   - connection validity vs system topology
   - incidental complexity vs architectural complexity
   - boundaries that prohibit invalid connections
-  - Level-1 map catalog topology findings (godfiles, blast radius)
+  - Level-1 map catalog topology findings (blast radius)
 touches:
   - hub alluvial import graph
   - weighted dependency edges
@@ -34,7 +34,6 @@ touches:
   - agent findings projection
   - topology diff after edit
   - .grok agent personality formulations
-  - src/core/catalog/godfiles.ts
   - src/core/catalog/blastRadius.ts
   - fixtures/demo-spaghetti-godfile
 invariants: []
@@ -44,17 +43,17 @@ open_questions:
   - What is the minimal machine-readable projection agents need vs full visual alluvial?
   - Can topology-diff scoring be productized as an architectural loss function, or stay human-interpreted?
   - Where does this live in the pipeline (core analysis only vs agent-facing findings layer)?
+  - Should a godfile/concentration catalog bin return, and with what non-opinionated signals?
 related:
   - dual-host-shell-stage
 realized_by:
-  - src/core/catalog/godfiles.ts
   - src/core/catalog/blastRadius.ts
   - src/core/catalog/views.ts
-  - src/core/graph/types.ts (CatalogGodfile, CatalogBlast)
+  - src/core/graph/types.ts (CatalogBlast)
   - src/client/renderCatalog.ts
   - src/client/demoFixtures.ts (spaghetti-godfile)
   - fixtures/demo-spaghetti-godfile/
-  - src/pages/index.astro (Godfile candidates + Blast radius + Spaghetti hub demo)
+  - src/pages/index.astro (Blast radius + Spaghetti hub demo)
 superseded_by: null
 rationale_quality: full
 ---
@@ -63,7 +62,7 @@ rationale_quality: full
 
 Conversation direction: why AI-produced systems feel wrong despite solid edges, and why a weighted alluvial import graph can give agents the missing global perception—and eventually an architectural loss function.
 
-**Landed so far (partial, thin catalog only):** Level-1 map catalog surfaces multi-signal **godfile candidates** (`catalogGodfiles`) and reverse **blast radius** ranks (`catalogBlastRadius`), plus a deliberate **Spaghetti hub** demo fixture. This is **not** an agent loss function, topology-diff after edit, betweenness/weighted findings schema, or full geometric thesis productized—exploratory idea still mostly open.
+**Landed so far (partial, thin catalog only):** Level-1 map catalog surfaces reverse **blast radius** ranks (`catalogBlastRadius`) plus a deliberate **Spaghetti hub** demo fixture. A multi-signal **godfile candidates** bin was tried and **removed** (opinionated / noisy). This is **not** an agent loss function, topology-diff after edit, betweenness/weighted findings schema, or full geometric thesis productized—exploratory idea still mostly open.
 
 ## Problem
 

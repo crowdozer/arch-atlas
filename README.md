@@ -10,10 +10,9 @@ JavaScript (Level-1: files, imports, packages).
 ## Status
 
 **MVP vertical slice (Level-1).** Upload a TS/JS ZIP → file tree + map catalog
-(starts/ends, hotspots, file LOC, **godfile candidates**, **blast radius**,
-suggested views) → file-hub traversal alluvial (catalog only picks the start
-file). Stack: **Astro + TypeScript**, pure core under `src/core/`, client index
-in `src/client/`.
+(starts/ends, hotspots, file LOC, **blast radius**, suggested views) → file-hub
+traversal alluvial (catalog only picks the start file). Stack: **Astro +
+TypeScript**, pure core under `src/core/`, client index in `src/client/`.
 
 UI design language tracks **Sentinel** grammar (Carbon, zinc shell) with
 **teal** interactive brand — not emerald.
@@ -28,11 +27,10 @@ npm run dev
 
 Open the app and either drop a ZIP of a TS/JS project, or click a **built-in
 demo**: React (low complexity), Next.js (high complexity), or **Spaghetti hub**
-(godfile / reverse-blast demo). Fixtures live under
-`fixtures/demo-react-simple/`, `fixtures/demo-next-complex/`, and
-`fixtures/demo-spaghetti-godfile/` (plus the older
-`fixtures/sample-ts-project/`). Optional localStorage remember keeps the session
-across refresh; **Clear session** resets.
+(reverse-blast demo). Fixtures live under `fixtures/demo-react-simple/`,
+`fixtures/demo-next-complex/`, and `fixtures/demo-spaghetti-godfile/` (plus the
+older `fixtures/sample-ts-project/`). Optional localStorage remember keeps the
+session across refresh; **Clear session** resets.
 
 ```bash
 npm test    # pure core unit tests
@@ -57,7 +55,7 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 | Static import/require/export edges | Type-aware resolution / LSP |
 | `tsconfig` `paths` / `baseUrl` (best-effort) | Full monorepo workspace semantics |
 | Inferred entrypoints + package ends | Call graph, symbols, DB entities |
-| Catalog heuristics: godfile candidates ((in+1)×(out+1)×domains×LOC) + reverse blast radius | Full framework adapters / agent loss function / topology-diff |
+| Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
 | Weight axes (edges / importer LOC / **estimated** target file LOC) | Exact tree-shaken imported LOC (Precision → Exact requires LSP — not implemented) |
 | Inspect evidence (import + target excerpt + estimated callsites) | Type-checked references / multi-language exact surface |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |

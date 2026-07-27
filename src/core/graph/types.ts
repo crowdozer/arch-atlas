@@ -200,29 +200,6 @@ export type CatalogFileLoc = {
 };
 
 /**
- * Multi-signal godfile candidate (inferred rank).
- * score = (in+1) * (out+1) * max(1, domainsTouched) * max(1, loc)
- * so composition roots (high out + long file, low in) still rank.
- * domainsTouched = unique topFolder over self ∪ 1-hop file neighbors.
- * Eligible when (in+out) ≥ 1 and loc ≥ 1. packageOut is meta only.
- */
-export type CatalogGodfile = {
-	id: string;
-	path: string;
-	/** Composite rank: (in+1)*(out+1)*max(1,domains)*max(1,loc). */
-	score: number;
-	inDegree: number;
-	outDegree: number;
-	/** Whole-file LOC estimate (same as File LOC bin). */
-	loc: number;
-	/** Outgoing edges to packages / unresolved (display only). */
-	packageOut: number;
-	/** Unique path-prefix domains (topFolder) on self + 1-hop neighbors. */
-	domainsTouched: number;
-	epistemic: 'inferred';
-};
-
-/**
  * Reverse blast radius: consumers that can reach this file via import chains.
  * reverseReachFiles excludes self; ranking is pure observed counts.
  */
@@ -259,8 +236,6 @@ export type MapCatalog = {
 	deepest: CatalogDeep[];
 	/** Largest source files by whole-file LOC (high → low). */
 	fileLoc: CatalogFileLoc[];
-	/** Multi-signal godfile candidates (fan-in × fan-out × domains). */
-	godfiles: CatalogGodfile[];
 	/** Reverse-reach blast radius (import consumers). */
 	blastRadius: CatalogBlast[];
 	views: SuggestedView[];

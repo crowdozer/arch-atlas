@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-27T02:57:59Z",
+  "generated_at": "2026-07-27T03:13:54Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 4,
   "entries": [
@@ -131,7 +131,7 @@
         "connection validity vs system topology",
         "incidental complexity vs architectural complexity",
         "boundaries that prohibit invalid connections",
-        "Level-1 map catalog topology findings (godfiles, blast radius)"
+        "Level-1 map catalog topology findings (blast radius)"
       ],
       "touches": [
         "hub alluvial import graph",
@@ -140,7 +140,6 @@
         "agent findings projection",
         "topology diff after edit",
         ".grok agent personality formulations",
-        "src/core/catalog/godfiles.ts",
         "src/core/catalog/blastRadius.ts",
         "fixtures/demo-spaghetti-godfile"
       ],
