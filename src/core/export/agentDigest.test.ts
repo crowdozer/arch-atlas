@@ -8,9 +8,12 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENT_DIGEST_SCHEMA,
 	AGENT_FILE_SCHEMA,
+	MIN_WHOLE,
+	PUBLIC_MIN_RATIO,
 	buildAgentDigest,
 	buildAgentFileReport,
 	buildAgentTree,
+	fileLineCount,
 	indexFiles,
 	type VirtualFile,
 } from '@core/index.ts';
@@ -75,14 +78,16 @@ describe('buildAgentDigest', () => {
 	});
 
 	it('exact mode re-ranks fileLoc by export-surface LOC', () => {
+		const hubPath = 'src/god/hub.ts';
+		const hubWhole = fileLineCount(graph, hubPath);
+		// Deliberate law: hub whole ≥ floor and surface = whole → public mass
+		expect(hubWhole).toBeGreaterThanOrEqual(MIN_WHOLE);
+		const hubSurface = hubWhole; // ratio 1.0 ≥ PUBLIC_MIN_RATIO
 		const exportSurfaceLoc = new Map<string, number>();
 		for (const f of graph.files.values()) {
 			if (!f.isSource) continue;
-			// Force hub to dominate export-surface ranking
-			exportSurfaceLoc.set(
-				f.path,
-				f.path === 'src/god/hub.ts' ? 999 : 1,
-			);
+			// Hub dominates export-surface ranking; surface = whole for public-mass membership
+			exportSurfaceLoc.set(f.path, f.path === hubPath ? hubSurface : 1);
 		}
 		const digest = buildAgentDigest({
 			graph,
@@ -97,18 +102,20 @@ describe('buildAgentDigest', () => {
 		expect(digest.analysis.tier).toBe('exact');
 		expect(digest.analysis.locMetric).toBe('export-surface');
 		expect(digest.analysis.engine?.source).toBe('local');
-		expect(digest.catalog.fileLoc[0]?.path).toBe('src/god/hub.ts');
-		expect(digest.catalog.fileLoc[0]?.loc).toBe(999);
+		expect(digest.catalog.fileLoc[0]?.path).toBe(hubPath);
+		expect(digest.catalog.fileLoc[0]?.loc).toBe(hubSurface);
 		expect(digest.catalogEstimateFileLoc?.length).toBeGreaterThan(0);
 		// topology bins unchanged vs estimate catalog
 		expect(digest.catalog.blastRadius).toEqual(catalog.blastRadius);
 		expect(digest.catalog.spines).toEqual(catalog.spines);
-		// Exact fills mass bins from surface map (hub forced high surface)
-		expect(digest.catalog.publicMass.length).toBeGreaterThan(0);
-		expect(
-			digest.catalog.publicMass.some((r) => r.path === 'src/god/hub.ts') ||
-				digest.catalog.icebergs.length >= 0,
-		).toBe(true);
+		// Exact fills mass bins: hub is public mass under forced ratio = 1
+		const hubMass = digest.catalog.publicMass.find((r) => r.path === hubPath);
+		expect(hubMass).toBeDefined();
+		expect(hubMass!.surfaceLoc).toBe(hubSurface);
+		expect(hubMass!.wholeLoc).toBe(hubWhole);
+		expect(hubMass!.ratio).toBeGreaterThanOrEqual(PUBLIC_MIN_RATIO);
+		// Hub is not an iceberg at ratio 1.0
+		expect(digest.catalog.icebergs.some((r) => r.path === hubPath)).toBe(false);
 	});
 
 	it('respects catalog limit from index', () => {

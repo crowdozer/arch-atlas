@@ -189,7 +189,8 @@ function paintCatalog(selectedStart?: string | null): void {
 
 	let publicMass = base.publicMass ?? [];
 	let icebergs = base.icebergs ?? [];
-	if (locPrecision === 'exact' && surfaceProvider) {
+	const massExactReady = locPrecision === 'exact' && Boolean(surfaceProvider);
+	if (massExactReady) {
 		if (!exportSurfaceLocCache) {
 			exportSurfaceLocCache = exportSurfaceLocMapFromGraph(session.graph);
 		}
@@ -208,7 +209,7 @@ function paintCatalog(selectedStart?: string | null): void {
 		publicMass,
 		icebergs,
 	};
-	catalog.renderCatalog(cat, fileId);
+	catalog.renderCatalog(cat, fileId, { massExactReady });
 }
 
 const exact = createExactPaintMode({

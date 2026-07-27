@@ -1,7 +1,14 @@
 /**
  * Map catalog paint (web Carbon shell). Injected callbacks — does not import app.ts.
  */
-import type { MapCatalog, SpineFormula } from '@core/index.ts';
+import {
+	ICEBERG_MAX_RATIO,
+	MIN_PRIVATE,
+	MIN_WHOLE,
+	PUBLIC_MIN_RATIO,
+	type MapCatalog,
+	type SpineFormula,
+} from '@core/index.ts';
 import type { AtlasView } from '@shell/atlasView.ts';
 import {
 	SPINE_FORMULA_HONESTY_FOOTER,
@@ -18,6 +25,15 @@ export type CatalogRenderDeps = {
 	onSpineFormulaChange?: (formula: string) => void;
 	/** Open formula help modal for current selection. */
 	onSpineFormulaInfo?: () => void;
+};
+
+/** Paint-only flags (not stored on MapCatalog / session). */
+export type CatalogPaintOpts = {
+	/**
+	 * True when Exact surface overlay was applied (precision exact + provider).
+	 * Distinguishes “Needs Exact” empty from “no files under floors.”
+	 */
+	massExactReady?: boolean;
 };
 
 /**
@@ -67,7 +83,11 @@ function ratioPct(ratio: number): string {
 }
 
 export function createCatalogRenderer(deps: CatalogRenderDeps): {
-	renderCatalog: (catalog: MapCatalog, selectedStart: string | null) => void;
+	renderCatalog: (
+		catalog: MapCatalog,
+		selectedStart: string | null,
+		opts?: CatalogPaintOpts,
+	) => void;
 	wireSpineControls: () => void;
 } {
 	let spineControlsWired = false;
@@ -104,8 +124,13 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 		}
 	}
 
-	function renderCatalog(catalog: MapCatalog, selectedStart: string | null): void {
+	function renderCatalog(
+		catalog: MapCatalog,
+		selectedStart: string | null,
+		opts?: CatalogPaintOpts,
+	): void {
 		wireSpineControls();
+		const massExactReady = opts?.massExactReady === true;
 
 		const summary = $('atlas-catalog-summary');
 		if (summary) {
@@ -309,7 +334,9 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				publicMassHost.appendChild(btn);
 			}
 			if (!list.length) {
-				publicMassHost.innerHTML = `<p class="text-xs text-zinc-600">Needs Exact (export surface) — ratio of exported lines to whole file.</p>`;
+				publicMassHost.innerHTML = massExactReady
+					? `<p class="text-xs text-zinc-600">No public-mass files under current floors (whole ≥ ${MIN_WHOLE}, ratio ≥ ${PUBLIC_MIN_RATIO}).</p>`
+					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) — ratio of exported lines to whole file.</p>`;
 			}
 		}
 
@@ -334,7 +361,9 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				icebergsHost.appendChild(btn);
 			}
 			if (!list.length) {
-				icebergsHost.innerHTML = `<p class="text-xs text-zinc-600">Needs Exact (export surface) — large private body under smaller export surface.</p>`;
+				icebergsHost.innerHTML = massExactReady
+					? `<p class="text-xs text-zinc-600">No iceberg files under current floors (whole ≥ ${MIN_WHOLE}, ratio ≤ ${ICEBERG_MAX_RATIO}, private ≥ ${MIN_PRIVATE}).</p>`
+					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) — large private body under smaller export surface.</p>`;
 			}
 		}
 
