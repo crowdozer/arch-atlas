@@ -143,7 +143,7 @@ describe('inspect evidence', () => {
 		);
 	});
 
-	it('evidenceForEdges exact with mass-only provider still fails closed on surface', () => {
+	it('evidenceForEdges exact with mass-only provider uses surface-unresolved (not engine-missing)', () => {
 		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
 		const massOnly = {
 			targetSurfaceMass: () => 2,
@@ -153,12 +153,18 @@ describe('inspect evidence', () => {
 		expect(ev!.import.text).toContain('util');
 		expect(ev!.importedCode).toBeUndefined();
 		expect(ev!.callsites).toHaveLength(0);
-		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+		expect(ev!.blockers.some((b) => b.code === 'exact-surface-unresolved')).toBe(
 			true,
+		);
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+			false,
+		);
+		expect(ev!.blockers.find((b) => b.code === 'exact-surface-unresolved')?.message).toMatch(
+			/export surface not resolved/i,
 		);
 	});
 
-	it('evidenceForEdges exact with null importedSurface withholds surface', () => {
+	it('evidenceForEdges exact with null importedSurface uses surface-unresolved', () => {
 		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
 		const nullSurface = {
 			targetSurfaceMass: () => 2,
@@ -167,8 +173,11 @@ describe('inspect evidence', () => {
 		const [ev] = evidenceForEdges(graph, [util], 'exact', nullSurface);
 		expect(ev!.import.text).toContain('util');
 		expect(ev!.importedCode).toBeUndefined();
-		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+		expect(ev!.blockers.some((b) => b.code === 'exact-surface-unresolved')).toBe(
 			true,
+		);
+		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(
+			false,
 		);
 	});
 });

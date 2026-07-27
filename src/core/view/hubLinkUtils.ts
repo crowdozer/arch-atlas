@@ -8,11 +8,16 @@ import type {
 	CodeGraph,
 } from '@core/graph/types.ts';
 import type { WeightAxis } from '@core/view/alluvial.ts';
-import { edgeWeight } from '@core/view/weight.ts';
+import {
+	edgeWeight,
+	type EdgeWeightOpts,
+} from '@core/view/weight.ts';
 
 export type LinkBuilder = {
 	graph: CodeGraph;
 	weightAxis: WeightAxis;
+	/** Exact mass opts (precision + surface); optional for estimate path. */
+	edgeWeightOpts?: EdgeWeightOpts;
 	fileLabel: string;
 	addLink: (source: string, target: string, value: number) => void;
 	nodeRef: Record<string, AlluvialNodeRef>;
@@ -50,13 +55,14 @@ export function edgeWeightIntoSet(
 	from: string,
 	targets: ReadonlySet<string>,
 	weightAxis: WeightAxis,
+	edgeWeightOpts?: EdgeWeightOpts,
 ): number {
 	if (!targets.size) return 0;
 	let n = 0;
 	for (const e of graph.edges) {
 		if (e.from !== from || e.toKind !== 'file') continue;
 		if (!targets.has(e.to)) continue;
-		n += edgeWeight(e, graph, weightAxis);
+		n += edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 	}
 	return n;
 }
@@ -67,13 +73,14 @@ export function edgeWeightFromSet(
 	froms: ReadonlySet<string>,
 	to: string,
 	weightAxis: WeightAxis,
+	edgeWeightOpts?: EdgeWeightOpts,
 ): number {
 	if (!froms.size) return 0;
 	let n = 0;
 	for (const e of graph.edges) {
 		if (e.toKind !== 'file' || e.to !== to) continue;
 		if (!froms.has(e.from)) continue;
-		n += edgeWeight(e, graph, weightAxis);
+		n += edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 	}
 	return n;
 }

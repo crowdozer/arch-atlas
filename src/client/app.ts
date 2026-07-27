@@ -6,15 +6,13 @@
  * `inspectModal`. Alluvial stage (Carbon + polish + focus): `@stage/*`.
  */
 import {
-	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	HUB_DEFAULT_MAX_DEPTH,
-	IMPORTED_SURFACE_LOC_MESSAGE,
-	IMPORTED_SURFACE_LOC_UI,
 	expandPathsForFilter,
 	indexFiles,
 	ingestZip,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
+	type ImportedSurfaceProvider,
 	type LocPrecision,
 	type VirtualFile,
 	type WeightAxis,
@@ -24,6 +22,7 @@ import {
 	captionForView,
 	defaultDepthForView,
 	emptyPayloadStatus,
+	isShakenWeightUi,
 	nearestFileFocus,
 	parseInteractionMode,
 	parseLocPrecision,
@@ -46,6 +45,7 @@ import {
 } from '@stage/index.ts';
 import { $, setStatus, showWarnings } from './dom.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
+import { ensureExactForGraph } from './exact/ensureExact.ts';
 import { createInspectModals } from './inspectModal.ts';
 import { createCatalogRenderer } from './renderCatalog.ts';
 import { createTreeRenderer } from './renderTree.ts';
@@ -74,8 +74,20 @@ let session: Session | null = null;
 let viewStack: AtlasView[] = [];
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'target-loc';
-/** Imported-surface honesty: estimate (Level-1) vs exact (LSP — not implemented). */
+/**
+ * Imported-surface honesty: estimate (Level-1) vs exact (Program/LSP provider).
+ * Exact/Shaken entry loads engines and installs {@link surfaceProvider}.
+ */
 let locPrecision: LocPrecision = 'estimate';
+/**
+ * Exact surface provider when engines are ready (web: TS Program; host inject).
+ * Cached across estimate↔exact toggles; not unloaded on Estimate.
+ */
+let surfaceProvider: ImportedSurfaceProvider | null = null;
+/** True while ensureExact is in flight (ignore re-entrant control events). */
+let exactEnableInFlight = false;
+/** Once per enable: mixed-language warning already shown. */
+let exactMixedWarningShown = false;
 /**
  * Viz-only dual BFS hop radius for file-hub (does not bound graph scan).
  * Default {@link HUB_DEFAULT_MAX_DEPTH} (3); package/module ignore depth.
@@ -100,6 +112,7 @@ const stage = createAlluvialStage({
 const inspect = createInspectModals({
 	getLocPrecision: () => locPrecision,
 	getSession: () => session,
+	getSurface: () => (locPrecision === 'exact' ? surfaceProvider : null),
 	refForName: (name) => stage.refForName(name),
 });
 
@@ -162,7 +175,7 @@ function applyDepthDefaultForView(view: AtlasView): void {
 
 /** When exact + target-loc, refuse remount with estimate numbers. */
 function gateWeight(): { ok: true } | { ok: false; message: string } {
-	return canMountWeight(weightAxis, locPrecision);
+	return canMountWeight(weightAxis, locPrecision, surfaceProvider);
 }
 
 /** Mount payload only when weight precision allows; never fake exact target-loc. */
@@ -203,7 +216,114 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 	return projectPayloadForView(session.graph, view, {
 		weightAxis,
 		maxDepth: vizMaxDepth,
+		precision: locPrecision,
+		surface: locPrecision === 'exact' ? surfaceProvider : null,
 	});
+}
+
+/**
+ * Enter Exact surface mode (Precision Exact or Weight Shaken).
+ * Loads TS engine if needed, installs provider, syncs controls, remounts.
+ * Does **not** re-index the graph.
+ */
+async function enableExactSurfaceMode(trigger: 'precision' | 'shaken'): Promise<void> {
+	if (!session) {
+		setStatus('Open a project before enabling Exact mode');
+		return;
+	}
+	if (exactEnableInFlight) return;
+	exactEnableInFlight = true;
+
+	const precisionDropdown = $('atlas-loc-precision') as
+		| (HTMLElement & { value?: string })
+		| null;
+	const weightDropdown = $('atlas-weight-axis') as
+		| (HTMLElement & { value?: string })
+		| null;
+
+	const revertUi = () => {
+		locPrecision = 'estimate';
+		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
+		if (weightDropdown) {
+			// Keep real axis (not shaken UI value) under estimate
+			syncWeightDropdown(weightDropdown, weightAxis);
+		}
+	};
+
+	try {
+		setStatus('Loading analysis engine…');
+		const result = await ensureExactForGraph(session.graph, {
+			cachedProvider: surfaceProvider,
+		});
+
+		if (!result.ok) {
+			revertUi();
+			inspect.openUnavailableModal({
+				label: trigger === 'shaken' ? 'Weight' : 'Precision',
+				heading: 'Exact mode unavailable',
+				body: result.error + ' Charts stay on estimate (whole-file) weights.',
+			});
+			setStatus(result.error);
+			return;
+		}
+
+		surfaceProvider = result.provider;
+		locPrecision = 'exact';
+		// Shaken is the UI name for exact surface mass on target-loc
+		weightAxis = 'target-loc';
+
+		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'exact');
+		if (weightDropdown) {
+			// Prefer Shaken UI value when that was the entry; else keep target-loc
+			if (trigger === 'shaken') {
+				weightDropdown.value = 'imported-loc';
+				weightDropdown.setAttribute('value', 'imported-loc');
+			} else {
+				syncWeightDropdown(weightDropdown, 'target-loc');
+			}
+		}
+
+		const missing = result.engines.missing;
+		if (missing.length && !exactMixedWarningShown) {
+			exactMixedWarningShown = true;
+			const langs = missing.map((m) => m.language).join(', ');
+			inspect.openUnavailableModal({
+				label: 'Exact (partial)',
+				heading: 'Some languages stay on estimate',
+				body: `Exact surface mass is available for JavaScript/TypeScript. Other languages in this project (${langs}) stay estimate-honest until engines exist.`,
+			});
+		}
+
+		const srcNote =
+			result.source === 'jsdelivr' || result.source === 'unpkg'
+				? ` (engine: ${result.source})`
+				: result.source === 'local' || result.source === 'inject'
+					? ` (engine: ${result.source})`
+					: '';
+		remountCurrentView();
+		setStatus(`Exact surface mode on${srcNote}`);
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		revertUi();
+		inspect.openUnavailableModal({
+			label: trigger === 'shaken' ? 'Weight' : 'Precision',
+			heading: 'Exact mode failed',
+			body: msg + ' Charts stay on estimate (whole-file) weights.',
+		});
+		setStatus(msg);
+	} finally {
+		exactEnableInFlight = false;
+	}
+}
+
+/** Leave Exact paint mode (keep provider cached for re-entry). */
+function disableExactPaintMode(): void {
+	locPrecision = 'estimate';
+	const precisionDropdown = $('atlas-loc-precision') as
+		| (HTMLElement & { value?: string })
+		| null;
+	if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
+	remountCurrentView();
 }
 
 function updateBackButton(): void {
@@ -410,11 +530,25 @@ function showWorkspaceShell(): void {
 	$('atlas-subbar')?.classList.add('flex');
 }
 
+/** Drop Exact paint + provider cache when graph identity changes. */
+function resetExactState(): void {
+	surfaceProvider = null;
+	locPrecision = 'estimate';
+	exactMixedWarningShown = false;
+	exactEnableInFlight = false;
+	const precisionDropdown = $('atlas-loc-precision') as
+		| (HTMLElement & { value?: string })
+		| null;
+	if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'estimate');
+}
+
 function activateSession(
 	next: Session,
 	statusLine: string,
 	opts?: { skipPersist?: boolean },
 ): void {
+	// New graph → rebuild Exact provider on next enable (contents snapshot)
+	resetExactState();
 	session = next;
 	showWarnings(session.warnings);
 	showWorkspaceShell();
@@ -544,6 +678,7 @@ function resetSession() {
 	// Fresh session gets hub depth default again
 	depthUserSet = false;
 	vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
+	resetExactState();
 	clearPersistedSession();
 	stage.clear();
 	updateCaption(null);
@@ -603,17 +738,15 @@ function wireUi() {
 			const next =
 				detail?.item?.value ??
 				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
-			// UI-only gated option (not a real WeightAxis)
-			if (next === IMPORTED_SURFACE_LOC_UI || next === 'imported-loc') {
-				syncWeightDropdown(weightDropdown, weightAxis);
-				inspect.openUnavailableModal({
-					label: 'Weight',
-					heading: 'Imported LOC (Shaken) not available',
-					body: IMPORTED_SURFACE_LOC_MESSAGE,
-				});
+			// Shaken → Exact surface mode entry (same engine path as Precision Exact)
+			if (isShakenWeightUi(next)) {
+				void enableExactSurfaceMode('shaken');
 				return;
 			}
 			weightAxis = parseWeightAxis(next);
+			// Leaving surface claim while exact: if axis no longer needs surface, keep precision
+			// but remount; user can still inspect under exact. If they pick non-target while exact,
+			// keep provider cached; paint uses axis estimate path for non-target axes.
 			syncWeightDropdown(weightDropdown, weightAxis);
 			remountCurrentView();
 		}) as EventListener);
@@ -651,21 +784,12 @@ function wireUi() {
 					: 'estimate');
 			const parsed = parseLocPrecision(next);
 			if (parsed === 'exact') {
-				// Exact imported surface is not implemented — block with modal, stay on estimate
-				syncPrecisionDropdown(precisionDropdown, 'estimate');
-				locPrecision = 'estimate';
-				inspect.openUnavailableModal({
-					label: 'Precision',
-					heading: 'Exact mode not available',
-					body:
-						EXACT_NOT_IMPLEMENTED_MESSAGE +
-						' Charts stay on estimate (whole-file) weights.',
-				});
+				void enableExactSurfaceMode('precision');
 				return;
 			}
-			locPrecision = 'estimate';
-			syncPrecisionDropdown(precisionDropdown, 'estimate');
-			remountCurrentView();
+			// Estimate: leave provider cached; paint estimate mass again
+			disableExactPaintMode();
+			setStatus('Estimate mode (whole-file imported LOC)');
 		}) as EventListener);
 	}
 

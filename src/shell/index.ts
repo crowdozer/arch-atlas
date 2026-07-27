@@ -23,6 +23,7 @@ export { payloadForView } from '@shell/project.ts';
 
 export {
 	canMountWeight,
+	isShakenWeightUi,
 	parseInteractionMode,
 	parseLocPrecision,
 	parseVizMaxDepth,

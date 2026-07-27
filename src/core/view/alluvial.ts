@@ -15,14 +15,17 @@ import type {
 	AlluvialPayload,
 	CodeGraph,
 } from '@core/graph/types.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type LocPrecision,
 	type WeightAxis,
 } from '@core/view/weight.ts';
 
-export type { WeightAxis };
+export type { WeightAxis, LocPrecision };
 
 export const TEAL = {
 	start: '#14b8a6', // teal-500
@@ -424,6 +427,8 @@ export function projectAlluvial(
 		maxModules?: number;
 		maxEnds?: number;
 		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
@@ -432,7 +437,8 @@ export function projectAlluvial(
 	const maxEnds = opts?.maxEnds ?? 16;
 	const heightPx = opts?.heightPx ?? 360;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'package-mass');
+	const edgeWeightOpts = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
 
 	const reachable = reachableFiles(graph, startId);
 	const startLabel = startId;
@@ -466,7 +472,7 @@ export function projectAlluvial(
 		const info: EndInfo = { label, kind: e.toKind };
 		const fileKey = e.from === startId ? '__code__' : e.from;
 		if (fileKey !== '__code__') importerPaths.add(fileKey);
-		bump(e.to, fileKey, info, edgeWeight(e, graph, weightAxis));
+		bump(e.to, fileKey, info, edgeWeight(e, graph, weightAxis, edgeWeightOpts));
 	}
 
 	const nodeRef: Record<string, AlluvialNodeRef> = {

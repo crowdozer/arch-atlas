@@ -27,10 +27,14 @@ import {
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type EdgeWeightOpts,
+	type LocPrecision,
 } from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
@@ -124,6 +128,8 @@ export function projectFileImporters(
 		maxModules?: number;
 		maxDepth?: number;
 		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
@@ -135,7 +141,8 @@ export function projectFileImporters(
 	const maxImporters = Math.min(48, baseMax + Math.max(0, maxDepth - 1) * 4);
 	const maxModules = opts?.maxModules ?? 12;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'import-edges');
+	const edgeWeightOpts = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'import-edges', opts?.precision);
 
 	const edges = graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId);
 	if (!edges.length) return null;
@@ -161,6 +168,7 @@ export function projectFileImporters(
 			heightPx,
 			maxLeaves: maxImporters,
 			weightAxis,
+			edgeWeightOpts,
 			units,
 		});
 	}
@@ -175,6 +183,7 @@ export function projectFileImporters(
 		heightPx,
 		maxLeaves: maxModules,
 		weightAxis,
+		edgeWeightOpts,
 		units,
 	});
 }
@@ -189,6 +198,7 @@ function projectImportsColumn(args: {
 	heightPx: number;
 	maxLeaves: number;
 	weightAxis: WeightAxis;
+	edgeWeightOpts?: EdgeWeightOpts;
 	units: string;
 }): AlluvialPayload | null {
 	const {
@@ -201,6 +211,7 @@ function projectImportsColumn(args: {
 		heightPx,
 		maxLeaves,
 		weightAxis,
+		edgeWeightOpts,
 		units,
 	} = args;
 
@@ -212,7 +223,10 @@ function projectImportsColumn(args: {
 		const labels = uniqueFileLabels(paths);
 		for (const e of edges) {
 			const label = labels.get(e.from) ?? basename(e.from);
-			weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
+			weights.set(
+				label,
+				(weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+			);
 			leafRef.set(label, { kind: 'file', id: e.from });
 		}
 	} else {
@@ -220,7 +234,10 @@ function projectImportsColumn(args: {
 		const groupKey = importerGroupKey(paths);
 		for (const e of edges) {
 			const mod = groupKey(e.from);
-			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
+			weights.set(
+				mod,
+				(weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+			);
 			if (!leafRef.has(mod)) {
 				leafRef.set(mod, { kind: 'module', id: mod });
 			}
