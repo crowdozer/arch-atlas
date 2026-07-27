@@ -12,8 +12,9 @@ function files(entries: Array<[string, string]>): VirtualFile[] {
 }
 
 describe('catalogBlastRadius', () => {
-	it('counts reverse consumers on A→B→C chain (C has blast ≥2, A has 0)', () => {
+	it('counts reverse consumers on A→B→C chain (exact reach, self excluded)', () => {
 		// Imports: A imports B, B imports C  ⇒ reverse: C ← B ← A
+		// reverseReachFiles = dist.size - 1 (self not counted)
 		const { graph, catalog } = indexFiles(
 			files([
 				['src/a.ts', "import { b } from './b';\nexport const a = b;\n"],
@@ -25,27 +26,21 @@ describe('catalogBlastRadius', () => {
 		const ranked = catalogBlastRadius(graph);
 		const byPath = new Map(ranked.map((r) => [r.path, r]));
 
-		// A is a root importer: no reverse consumers
+		// A is a root importer: 0 reverse consumers → absent from blast list
 		expect(byPath.has('src/a.ts')).toBe(false);
 
-		// C: reverse reaches B and A
+		// C: reverse reaches B and A (not self)
 		const c = byPath.get('src/c.ts');
 		expect(c).toBeDefined();
-		expect(c!.reverseReachFiles).toBeGreaterThanOrEqual(2);
-		expect(c!.reverseMaxHops).toBeGreaterThanOrEqual(2);
+		expect(c!.reverseReachFiles).toBe(2);
+		expect(c!.reverseMaxHops).toBe(2);
 		expect(c!.epistemic).toBe('observed');
 
-		// B: reverse reaches at least A
+		// B: reverse reaches A only
 		const b = byPath.get('src/b.ts');
 		expect(b).toBeDefined();
-		expect(b!.reverseReachFiles).toBeGreaterThanOrEqual(1);
-		expect(c!.reverseReachFiles).toBeGreaterThan(b!.reverseReachFiles);
-
-		// Self not counted: reverseReachFiles is dist.size - 1
-		expect(c!.reverseReachFiles).toBeLessThan(
-			// dist would be 3 with self; we only expose consumers
-			c!.reverseReachFiles + 1,
-		);
+		expect(b!.reverseReachFiles).toBe(1);
+		expect(b!.reverseMaxHops).toBe(1);
 
 		// Wired into map catalog
 		expect(catalog.blastRadius.length).toBeGreaterThan(0);

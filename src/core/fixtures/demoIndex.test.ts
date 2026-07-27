@@ -75,12 +75,9 @@ describe('demo fixtures index', () => {
 		expect(catalog.blastRadius[0]!.reverseReachFiles).toBeGreaterThan(0);
 		expect(catalog.blastRadius.every((b) => b.epistemic === 'observed')).toBe(true);
 
-		// Suggested views may include godfile/blast shortcuts
+		// Suggested views include godfile:/blast: shortcuts (not just bin presence)
 		const viewIds = catalog.views.map((v) => v.id);
-		const hasTopologyShortcut =
-			viewIds.some((id) => id.startsWith('godfile:')) ||
-			viewIds.some((id) => id.startsWith('blast:')) ||
-			catalog.godfiles.length > 0;
-		expect(hasTopologyShortcut).toBe(true);
+		expect(viewIds.some((id) => id.startsWith('godfile:'))).toBe(true);
+		expect(viewIds.some((id) => id.startsWith('blast:'))).toBe(true);
 	});
 });
