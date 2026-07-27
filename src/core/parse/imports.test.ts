@@ -5,8 +5,15 @@ import {
 	stripComments,
 } from '@core/parse/imports.ts';
 
+/** Map specifier → { form, bindings } for golden snapshots (first win if dup). */
+function bySpecifier(imps: ReturnType<typeof extractImports>) {
+	return Object.fromEntries(
+		imps.map((i) => [i.specifier, { form: i.form, bindings: i.bindings }]),
+	);
+}
+
 describe('extractImports', () => {
-	it('finds static import, export-from, require, and dynamic import', () => {
+	it('finds static import, export-from, require, and dynamic import (full golden)', () => {
 		const src = `
 import { a } from './a';
 import type { B } from "./b";
@@ -19,33 +26,209 @@ const d = import('node:fs');
 /* import { no2 } from './block'; */
 `;
 		const imps = extractImports(src);
+		const by = bySpecifier(imps);
+
+		expect(by['./a']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'a', local: 'a' }],
+		});
+		expect(by['./b']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'B', local: 'B' }],
+		});
+		expect(by['side-effect']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+		expect(by['../x']).toEqual({
+			form: 'export',
+			bindings: [{ kind: 'named', imported: 'x', local: 'x' }],
+		});
+		expect(by['../y']).toEqual({
+			form: 'export',
+			bindings: [{ kind: 'side-effect' }],
+		});
+		expect(by['zod']).toEqual({
+			form: 'require',
+			bindings: [{ kind: 'side-effect' }],
+		});
+		expect(by['node:fs']).toEqual({
+			form: 'dynamic',
+			bindings: [{ kind: 'side-effect' }],
+		});
+		expect(by['./commented']).toBeUndefined();
+		expect(by['./block']).toBeUndefined();
+
 		const specs = imps.map((i) => i.specifier).sort();
-		expect(specs).toContain('./a');
-		expect(specs).toContain('./b');
-		expect(specs).toContain('side-effect');
-		expect(specs).toContain('../x');
-		expect(specs).toContain('../y');
-		expect(specs).toContain('zod');
-		expect(specs).toContain('node:fs');
-		expect(specs).not.toContain('./commented');
-		expect(specs).not.toContain('./block');
+		expect(specs).toEqual(
+			['../x', '../y', './a', './b', 'node:fs', 'side-effect', 'zod'].sort(),
+		);
 	});
 
-	it('extracts named, default, namespace, and side-effect bindings', () => {
+	it('extracts named, default, namespace, and side-effect bindings (full golden)', () => {
 		const imps = extractImports(`
 import { a, b as c } from './named';
 import def from './def';
 import * as ns from './ns';
 import './side';
 `);
-		const by = Object.fromEntries(imps.map((i) => [i.specifier, i.bindings]));
-		expect(by['./named']).toEqual([
-			{ kind: 'named', imported: 'a', local: 'a' },
-			{ kind: 'named', imported: 'b', local: 'c' },
-		]);
-		expect(by['./def']).toEqual([{ kind: 'default', local: 'def' }]);
-		expect(by['./ns']).toEqual([{ kind: 'namespace', local: 'ns' }]);
-		expect(by['./side']).toEqual([{ kind: 'side-effect' }]);
+		const by = bySpecifier(imps);
+		expect(by['./named']).toEqual({
+			form: 'import',
+			bindings: [
+				{ kind: 'named', imported: 'a', local: 'a' },
+				{ kind: 'named', imported: 'b', local: 'c' },
+			],
+		});
+		expect(by['./def']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'default', local: 'def' }],
+		});
+		expect(by['./ns']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'namespace', local: 'ns' }],
+		});
+		expect(by['./side']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+	});
+
+	it('extracts multi-line named import with bindings', () => {
+		const imps = extractImports(`
+import {
+  a,
+  b as c
+} from './named';
+`);
+		expect(bySpecifier(imps)['./named']).toEqual({
+			form: 'import',
+			bindings: [
+				{ kind: 'named', imported: 'a', local: 'a' },
+				{ kind: 'named', imported: 'b', local: 'c' },
+			],
+		});
+	});
+
+	it('extracts multi-line import type', () => {
+		const imps = extractImports(`
+import type {
+  B
+} from "./b";
+`);
+		expect(bySpecifier(imps)['./b']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'B', local: 'B' }],
+		});
+	});
+
+	it('extracts multi-line default + named', () => {
+		const imps = extractImports(`
+import def,
+{
+  x
+} from './mixed';
+`);
+		expect(bySpecifier(imps)['./mixed']).toEqual({
+			form: 'import',
+			bindings: [
+				{ kind: 'default', local: 'def' },
+				{ kind: 'named', imported: 'x', local: 'x' },
+			],
+		});
+	});
+
+	it('extracts multi-line namespace import', () => {
+		const imps = extractImports(`
+import * as ns
+  from './ns';
+`);
+		expect(bySpecifier(imps)['./ns']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'namespace', local: 'ns' }],
+		});
+	});
+
+	it('keeps side-effect import (same-line and after import keyword)', () => {
+		const same = extractImports(`import 'side-effect';`);
+		expect(bySpecifier(same)['side-effect']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+
+		const split = extractImports(`import
+'side-effect';`);
+		expect(bySpecifier(split)['side-effect']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'side-effect' }],
+		});
+	});
+
+	it('does not treat from inside braces as the module from', () => {
+		const imps = extractImports(`
+import {
+  from as f
+} from './a';
+`);
+		expect(bySpecifier(imps)['./a']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'from', local: 'f' }],
+		});
+		// same-line form of the footgun
+		const sameLine = extractImports(`import { from as f } from './a';`);
+		expect(bySpecifier(sameLine)['./a']).toEqual({
+			form: 'import',
+			bindings: [{ kind: 'named', imported: 'from', local: 'f' }],
+		});
+	});
+
+	it('extracts multi-line export-from (regression)', () => {
+		const imps = extractImports(`
+export {
+  x,
+  y as z
+} from '../x';
+`);
+		expect(bySpecifier(imps)['../x']).toEqual({
+			form: 'export',
+			bindings: [
+				{ kind: 'named', imported: 'x', local: 'x' },
+				{ kind: 'named', imported: 'y', local: 'z' },
+			],
+		});
+	});
+
+	it('multi-line vs same-line static import parity (specifier + form + bindings)', () => {
+		const sameLine = `
+import { a, b as c } from './named';
+import type { B } from "./b";
+import def, { x } from './mixed';
+import * as ns from './ns';
+import './side';
+import { from as f } from './from-bind';
+`;
+		const multiLine = `
+import {
+  a,
+  b as c
+} from './named';
+import type {
+  B
+} from "./b";
+import def,
+{
+  x
+} from './mixed';
+import * as ns
+  from './ns';
+import './side';
+import {
+  from as f
+} from './from-bind';
+`;
+		const a = bySpecifier(extractImports(sameLine));
+		const b = bySpecifier(extractImports(multiLine));
+		expect(b).toEqual(a);
 	});
 
 	it('stripComments preserves strings with //', () => {

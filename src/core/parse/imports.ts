@@ -160,6 +160,167 @@ export function localNamesFromBindings(bindings: ImportBinding[]): string[] {
 	return names;
 }
 
+/** Soft cap so pathological text cannot hang the brace-aware static import scan. */
+const STATIC_IMPORT_SCAN_CAP = 4000;
+
+function isIdentChar(c: string | undefined): boolean {
+	return c != null && /[A-Za-z0-9_$]/.test(c);
+}
+
+function skipWs(s: string, i: number): number {
+	while (i < s.length && /\s/.test(s[i]!)) i++;
+	return i;
+}
+
+/** Index of closing quote for a string starting at `open` (the quote char), or -1. */
+function findStringEnd(s: string, open: number, quote: "'" | '"'): number {
+	let i = open + 1;
+	while (i < s.length) {
+		const c = s[i]!;
+		if (c === '\\') {
+			i += 2;
+			continue;
+		}
+		if (c === quote) return i;
+		if (c === '\n') return -1; // unclosed single-line string
+		i++;
+	}
+	return -1;
+}
+
+/**
+ * Brace-aware static `import` / `import type` extraction.
+ * Handles multi-line `import { … }\nfrom '…'` without latching on `from` inside braces.
+ * Dynamic `import(` is left to the dynRe pass.
+ */
+function scanStaticImports(
+	cleaned: string,
+	push: (
+		specifier: string,
+		form: ExtractedImport['form'],
+		index: number,
+		bindings: ImportBinding[],
+	) => void,
+): void {
+	const n = cleaned.length;
+	let i = 0;
+	while (i < n) {
+		const idx = cleaned.indexOf('import', i);
+		if (idx === -1) break;
+
+		// \bimport\b
+		if (isIdentChar(cleaned[idx - 1]) || isIdentChar(cleaned[idx + 6])) {
+			i = idx + 6;
+			continue;
+		}
+
+		const afterImport = idx + 6;
+		let j = skipWs(cleaned, afterImport);
+
+		// Dynamic import( — leave to dynRe
+		if (j < n && cleaned[j] === '(') {
+			i = afterImport;
+			continue;
+		}
+
+		// Optional `type` (import type { … } / import type Foo); not `typeof`
+		if (cleaned.startsWith('type', j) && !isIdentChar(cleaned[j + 4])) {
+			j = skipWs(cleaned, j + 4);
+		}
+
+		// Side-effect: import 'x' | import "x"
+		if (j < n && (cleaned[j] === "'" || cleaned[j] === '"')) {
+			const quote = cleaned[j] as "'" | '"';
+			const end = findStringEnd(cleaned, j, quote);
+			if (end !== -1) {
+				push(cleaned.slice(j + 1, end), 'import', idx, [{ kind: 'side-effect' }]);
+				i = end + 1;
+				continue;
+			}
+			i = afterImport;
+			continue;
+		}
+
+		// Scan for `from '…'` / `from "…"` at brace depth 0
+		const scanEnd = Math.min(n, j + STATIC_IMPORT_SCAN_CAP);
+		let depth = 0;
+		let k = j;
+		let inStr: "'" | '"' | '`' | null = null;
+		let found = false;
+		let clauseEnd = -1;
+		let specOpen = -1;
+		let specClose = -1;
+
+		while (k < scanEnd) {
+			const c = cleaned[k]!;
+
+			if (inStr) {
+				if (c === '\\') {
+					k += 2;
+					continue;
+				}
+				if (c === inStr) inStr = null;
+				k++;
+				continue;
+			}
+
+			if (c === "'" || c === '"' || c === '`') {
+				inStr = c as "'" | '"' | '`';
+				k++;
+				continue;
+			}
+
+			if (c === '{') {
+				depth++;
+				k++;
+				continue;
+			}
+			if (c === '}') {
+				if (depth > 0) depth--;
+				k++;
+				continue;
+			}
+
+			// Statement end without from → not a static import-from
+			if (depth === 0 && c === ';') break;
+
+			// At depth 0: \bfrom\b + string specifier
+			if (
+				depth === 0 &&
+				c === 'f' &&
+				cleaned.startsWith('from', k) &&
+				!isIdentChar(cleaned[k - 1]) &&
+				!isIdentChar(cleaned[k + 4])
+			) {
+				const afterFrom = skipWs(cleaned, k + 4);
+				if (afterFrom < n && (cleaned[afterFrom] === "'" || cleaned[afterFrom] === '"')) {
+					const quote = cleaned[afterFrom] as "'" | '"';
+					const end = findStringEnd(cleaned, afterFrom, quote);
+					if (end !== -1) {
+						clauseEnd = k;
+						specOpen = afterFrom + 1;
+						specClose = end;
+						found = true;
+						break;
+					}
+				}
+			}
+
+			k++;
+		}
+
+		if (found && clauseEnd >= j && specOpen >= 0 && specClose > specOpen) {
+			const clause = cleaned.slice(j, clauseEnd).trim();
+			const specifier = cleaned.slice(specOpen, specClose);
+			push(specifier, 'import', idx, parseImportClause(clause || undefined));
+			i = specClose + 1;
+			continue;
+		}
+
+		i = afterImport;
+	}
+}
+
 /**
  * Extract import/export/require/dynamic-import string specifiers + clause bindings.
  */
@@ -187,19 +348,13 @@ export function extractImports(source: string): ExtractedImport[] {
 		});
 	};
 
-	// import [clause] from 'x'  |  import 'x'
-	const importFrom =
-		/\bimport\s+(?:type\s+)?(?:([^'";\n]+?)\s+from\s+)?['"]([^'"]+)['"]/g;
-	let m: RegExpExecArray | null;
-	while ((m = importFrom.exec(cleaned)) !== null) {
-		const clause = m[1];
-		const bindings = parseImportClause(clause);
-		push(m[2]!, 'import', m.index, bindings);
-	}
+	// Static import [clause] from 'x' | import 'x' (brace-aware, multi-line OK)
+	scanStaticImports(cleaned, push);
 
 	// export ... from 'x'  |  export * from 'x'
 	const exportFrom =
 		/\bexport\s+(?:type\s+)?(\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
+	let m: RegExpExecArray | null;
 	while ((m = exportFrom.exec(cleaned)) !== null) {
 		const clause = m[1]!;
 		const bindings =
