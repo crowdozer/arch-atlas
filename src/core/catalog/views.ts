@@ -7,13 +7,22 @@ import { catalogComplex, catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
 import { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 import { catalogHotspots } from '@core/catalog/hotspots.ts';
+import {
+	DEFAULT_SPINE_FORMULA,
+	catalogSpines,
+} from '@core/catalog/spines.ts';
 import { catalogStarts } from '@core/catalog/starts.ts';
-import type { CodeGraph, MapCatalog, SuggestedView } from '@core/graph/types.ts';
+import type {
+	CodeGraph,
+	MapCatalog,
+	SpineFormula,
+	SuggestedView,
+} from '@core/graph/types.ts';
 
 /** Optional top-N overrides for catalog ranking bins (UI keeps defaults). */
 export type BuildMapCatalogOpts = {
 	/**
-	 * Top-N for hotspots, complex, deepest, fileLoc, blastRadius.
+	 * Top-N for hotspots, complex, deepest, fileLoc, blastRadius, spines.
 	 * Default 15 (UI). CLI digest typically passes a higher limit (e.g. 40).
 	 */
 	limit?: number;
@@ -21,6 +30,8 @@ export type BuildMapCatalogOpts = {
 	startsLimit?: number;
 	/** Ends list cap (default 50). */
 	endsLimit?: number;
+	/** Spine ranking formula (default modules-then-in). */
+	spineFormula?: SpineFormula;
 };
 
 function languageTags(graph: CodeGraph): string[] {
@@ -40,6 +51,7 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const startsLimit = opts?.startsLimit ?? 40;
 	const endsLimit = opts?.endsLimit ?? 50;
 
+	const spineFormula = opts?.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	const starts = catalogStarts(graph, startsLimit);
 	const ends = catalogEnds(graph, endsLimit);
 	const hotspots = catalogHotspots(graph, rankLimit);
@@ -47,6 +59,10 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const deepest = catalogDeepest(graph, rankLimit);
 	const fileLoc = catalogFileLoc(graph, rankLimit);
 	const blastRadius = catalogBlastRadius(graph, rankLimit);
+	const spines = catalogSpines(graph, rankLimit, spineFormula);
+	// Exact overlay only — stable empty shape under estimate
+	const publicMass: MapCatalog['publicMass'] = [];
+	const icebergs: MapCatalog['icebergs'] = [];
 	const views: SuggestedView[] = [];
 
 	const primary = starts[0];
@@ -134,6 +150,10 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 		deepest,
 		fileLoc,
 		blastRadius,
+		publicMass,
+		icebergs,
+		spines,
+		spineFormula,
 		views,
 		summary: {
 			sourceCount: graph.stats.sourceCount,

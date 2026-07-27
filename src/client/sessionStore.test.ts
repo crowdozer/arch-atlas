@@ -61,6 +61,9 @@ describe('sessionStore encode/parse', () => {
 				deepest: [],
 				fileLoc: [],
 				blastRadius: [],
+				publicMass: [],
+				icebergs: [],
+				spines: [],
 				views: [],
 				summary: {
 					sourceCount: 2,

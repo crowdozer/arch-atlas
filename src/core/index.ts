@@ -15,11 +15,15 @@ export type {
 	CatalogEnd,
 	CatalogFileLoc,
 	CatalogHotspot,
+	CatalogIceberg,
+	CatalogPublicMass,
+	CatalogSpine,
 	CatalogStart,
 	CodeGraph,
 	FileParseKind,
 	MapCatalog,
 	ParseMapEntry,
+	SpineFormula,
 	SuggestedView,
 	VirtualFile,
 } from '@core/graph/types.ts';
@@ -37,6 +41,21 @@ export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
 export { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 export { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
+export {
+	DEFAULT_SPINE_FORMULA,
+	SPINE_FORMULAS,
+	catalogSpines,
+	rankSpineRows,
+	spineMetrics,
+} from '@core/catalog/spines.ts';
+export {
+	ICEBERG_MAX_RATIO,
+	MIN_PRIVATE,
+	MIN_WHOLE,
+	PUBLIC_MIN_RATIO,
+	buildMassBins,
+} from '@core/catalog/massBins.ts';
+export type { MassBinDefaults, MassBinsResult } from '@core/catalog/massBins.ts';
 export {
 	catalogComplex,
 	catalogDeepest,

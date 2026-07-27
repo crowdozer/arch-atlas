@@ -26,8 +26,16 @@ export {
 	isShakenWeightUi,
 	parseInteractionMode,
 	parseLocPrecision,
+	parseSpineFormula,
 	parseVizMaxDepth,
 	parseWeightAxis,
 } from '@shell/controls.ts';
+
+export {
+	SPINE_FORMULA_HONESTY_FOOTER,
+	spineFormulaHelp,
+	spineFormulaOptions,
+} from '@shell/spineFormulaHelp.ts';
+export type { SpineFormulaHelp } from '@shell/spineFormulaHelp.ts';
 
 export type { InteractionMode, Session } from '@shell/types.ts';

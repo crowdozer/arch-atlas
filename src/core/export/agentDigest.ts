@@ -3,6 +3,8 @@
  * No FS / process — hosts (CLI, future injectors) call these after indexHostFeed.
  */
 
+import { buildMassBins } from '@core/catalog/massBins.ts';
+import { DEFAULT_SPINE_FORMULA } from '@core/catalog/spines.ts';
 import type {
 	CatalogBlast,
 	CatalogComplex,
@@ -10,9 +12,13 @@ import type {
 	CatalogEnd,
 	CatalogFileLoc,
 	CatalogHotspot,
+	CatalogIceberg,
+	CatalogPublicMass,
+	CatalogSpine,
 	CatalogStart,
 	CodeGraph,
 	MapCatalog,
+	SpineFormula,
 	SuggestedView,
 } from '@core/graph/types.ts';
 import {
@@ -66,6 +72,12 @@ export type AgentDigestCatalog = {
 	deepest: CatalogDeep[];
 	fileLoc: CatalogFileLoc[];
 	blastRadius: CatalogBlast[];
+	/** Public-mass files (Exact surface ratio); empty under estimate. */
+	publicMass: CatalogPublicMass[];
+	/** Iceberg files (Exact private mass); empty under estimate. */
+	icebergs: CatalogIceberg[];
+	/** Cross-cutting spines (topology). */
+	spines: CatalogSpine[];
 	views: SuggestedView[];
 };
 
@@ -74,6 +86,8 @@ export type AgentDigestAnalysis = {
 	honesty: string;
 	/** How fileLoc.loc was measured. */
 	locMetric: 'whole-file' | 'export-surface';
+	/** Spine ranking formula used for catalog.spines. */
+	spineFormula?: SpineFormula;
 	/** Exact engine origin when tier is exact. */
 	engine?: {
 		source: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
@@ -154,6 +168,9 @@ export type AgentFileCatalogHits = {
 	deepest?: CatalogDeep;
 	fileLoc?: CatalogFileLoc;
 	blastRadius?: CatalogBlast;
+	publicMass?: CatalogPublicMass;
+	icebergs?: CatalogIceberg;
+	spines?: CatalogSpine;
 };
 
 export type AgentFileReport = {
@@ -260,10 +277,16 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 	const exact = input.exact;
 	let fileLoc = catalog.fileLoc;
 	let catalogEstimateFileLoc: CatalogFileLoc[] | undefined;
+	let publicMass = catalog.publicMass ?? [];
+	let icebergs = catalog.icebergs ?? [];
+	const spines = catalog.spines ?? [];
+	const spineFormula =
+		catalog.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	let analysis: AgentDigestAnalysis = {
 		tier: 'estimate',
 		honesty: ANALYSIS_HONESTY,
 		locMetric: 'whole-file',
+		spineFormula,
 	};
 
 	if (exact) {
@@ -275,10 +298,14 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			limit,
 			catalog.fileLoc,
 		);
+		const mass = buildMassBins(graph, exact.exportSurfaceLoc, limit);
+		publicMass = mass.publicMass;
+		icebergs = mass.icebergs;
 		analysis = {
 			tier: 'exact',
 			honesty: ANALYSIS_HONESTY_EXACT,
 			locMetric: 'export-surface',
+			spineFormula,
 			engine: {
 				source: exact.engineSource,
 				classicAst: exact.classicAst,
@@ -305,6 +332,9 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			deepest: catalog.deepest,
 			fileLoc,
 			blastRadius: catalog.blastRadius,
+			publicMass,
+			icebergs,
+			spines,
 			views: catalog.views,
 		},
 		catalogEstimateFileLoc,
@@ -391,6 +421,9 @@ export function buildAgentFileReport(input: {
 	hit(input.catalog.deepest, 'deepest');
 	hit(input.catalog.fileLoc, 'fileLoc');
 	hit(input.catalog.blastRadius, 'blastRadius');
+	hit(input.catalog.publicMass ?? [], 'publicMass');
+	hit(input.catalog.icebergs ?? [], 'icebergs');
+	hit(input.catalog.spines ?? [], 'spines');
 
 	const imports: AgentFileNeighbor[] = [];
 	const importers: AgentFileImporter[] = [];

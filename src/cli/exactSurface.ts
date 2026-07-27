@@ -13,6 +13,7 @@
 import {
 	collectExportSpansFromText,
 	collectExportSpansFromTs,
+	coveredExportLines,
 	isClassicTypescriptModule,
 	loadTypescript,
 	type ExportSpan,
@@ -40,16 +41,8 @@ export type LoadExactSurfaceResult =
 	  }
 	| { ok: false; error: string; tried?: string[] };
 
-/** Unique 1-based lines covered by any export span. */
-export function coveredExportLines(spans: readonly ExportSpan[]): number {
-	const lines = new Set<number>();
-	for (const s of spans) {
-		const start = Math.min(s.startLine, s.endLine);
-		const end = Math.max(s.startLine, s.endLine);
-		for (let L = start; L <= end; L++) lines.add(L);
-	}
-	return lines.size;
-}
+/** Re-export for CLI tests / hosts that imported from this module. */
+export { coveredExportLines };
 
 function spansForFile(
 	path: string,

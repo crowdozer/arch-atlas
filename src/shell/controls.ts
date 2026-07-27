@@ -2,11 +2,14 @@
  * Pure control parsers + weight-precision gate (no DOM).
  */
 import {
+	DEFAULT_SPINE_FORMULA,
 	HUB_DEFAULT_MAX_DEPTH,
 	IMPORTED_SURFACE_LOC_UI,
+	SPINE_FORMULAS,
 	resolveWeightRequest,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
+	type SpineFormula,
 	type WeightAxis,
 } from '@core/index.ts';
 import type { InteractionMode } from '@shell/types.ts';
@@ -16,6 +19,13 @@ const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
 
 export function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'target-loc';
+}
+
+/** Parse spine formula select value; unknown → default modules-then-in. */
+export function parseSpineFormula(raw: string): SpineFormula {
+	return (SPINE_FORMULAS as readonly string[]).includes(raw)
+		? (raw as SpineFormula)
+		: DEFAULT_SPINE_FORMULA;
 }
 
 /**

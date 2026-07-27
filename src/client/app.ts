@@ -8,11 +8,17 @@
  * Alluvial stage: `@stage/*`.
  */
 import {
+	DEFAULT_SPINE_FORMULA,
 	HUB_DEFAULT_MAX_DEPTH,
+	buildMassBins,
+	catalogSpines,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
+	type CodeGraph,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
+	type MapCatalog,
+	type SpineFormula,
 	type WeightAxis,
 } from '@core/index.ts';
 import {
@@ -22,6 +28,7 @@ import {
 	emptyPayloadStatus,
 	nearestFileFocus,
 	parseInteractionMode,
+	parseSpineFormula,
 	payloadForView as projectPayloadForView,
 	sameView,
 	statusForView,
@@ -37,10 +44,17 @@ import {
 	drillTargetFromLine,
 	isDrillableRef,
 } from '@stage/index.ts';
+import {
+	collectExportSpansFromText,
+	coveredExportLines,
+} from '@exact/index.ts';
 import { $, setStatus, showWarnings } from './dom.ts';
 import { createExactPaintMode } from './exactPaintMode.ts';
 import { createInspectModals } from './inspectModal.ts';
-import { createCatalogRenderer } from './renderCatalog.ts';
+import {
+	createCatalogRenderer,
+	openSpineFormulaHelpModal,
+} from './renderCatalog.ts';
 import { createTreeRenderer } from './renderTree.ts';
 import {
 	createSessionLifecycle,
@@ -93,6 +107,13 @@ let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
 let depthUserSet = false;
 /** Click behavior: drill navigates; inspect opens import evidence. */
 let interactionMode: InteractionMode = 'drill';
+/** Spine ranking formula (session-local; not persisted). */
+let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
+/**
+ * Per-graph export-surface LOC map for mass bins (text spans; rebuilt on graph change).
+ * Filled when Exact is on; not a re-index.
+ */
+let exportSurfaceLocCache: Map<string, number> | null = null;
 
 // ── Stage (Carbon chart + polish + focus; host injects outcomes) ─────────────
 
@@ -134,11 +155,70 @@ function syncPrecisionDropdown(
 	el.setAttribute('value', precision);
 }
 
+function exportSurfaceLocMapFromGraph(graph: CodeGraph): Map<string, number> {
+	const map = new Map<string, number>();
+	for (const [path, node] of graph.files) {
+		if (!node.isSource) continue;
+		const content = graph.contents.get(path);
+		if (content === undefined) {
+			map.set(path, 0);
+			continue;
+		}
+		map.set(path, coveredExportLines(collectExportSpansFromText(content)));
+	}
+	return map;
+}
+
+/**
+ * Paint catalog with optional Exact mass overlay + selected spine formula.
+ * Does not mutate session.catalog (index remains estimate topology + empty mass).
+ */
+function paintCatalog(selectedStart?: string | null): void {
+	if (!session) return;
+	const fileId =
+		selectedStart !== undefined
+			? selectedStart
+			: nearestFileFocus(viewStack);
+	const base = session.catalog;
+	const limit = Math.max(base.spines?.length ?? 15, 15);
+	const formula = spineFormula;
+	const spines =
+		formula === (base.spineFormula ?? DEFAULT_SPINE_FORMULA) && base.spines?.length
+			? base.spines
+			: catalogSpines(session.graph, limit, formula);
+
+	let publicMass = base.publicMass ?? [];
+	let icebergs = base.icebergs ?? [];
+	const massExactReady = locPrecision === 'exact' && Boolean(surfaceProvider);
+	if (massExactReady) {
+		if (!exportSurfaceLocCache) {
+			exportSurfaceLocCache = exportSurfaceLocMapFromGraph(session.graph);
+		}
+		const mass = buildMassBins(session.graph, exportSurfaceLocCache, limit);
+		publicMass = mass.publicMass;
+		icebergs = mass.icebergs;
+	} else {
+		publicMass = [];
+		icebergs = [];
+	}
+
+	const cat: MapCatalog = {
+		...base,
+		spines,
+		spineFormula: formula,
+		publicMass,
+		icebergs,
+	};
+	catalog.renderCatalog(cat, fileId, { massExactReady });
+}
+
 const exact = createExactPaintMode({
 	getSession: () => session,
 	getSurfaceProvider: () => surfaceProvider,
 	setSurfaceProvider: (p) => {
 		surfaceProvider = p;
+		// New provider / graph surface — rebuild mass map on next paint
+		exportSurfaceLocCache = null;
 	},
 	getLocPrecision: () => locPrecision,
 	setLocPrecision: (p) => {
@@ -314,7 +394,7 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 	else if (!payload) setStatus(emptyPayloadStatus(view));
 
 	tree.renderTree();
-	catalog.renderCatalog(session.catalog, fileId);
+	paintCatalog(fileId);
 
 	if (!opts?.skipPersist) persistSessionIfEnabled();
 	return mounted;
@@ -431,11 +511,12 @@ function handleLineClick(sourceName: string | null, targetName: string | null): 
 	setStatus('No drill target for this band');
 }
 
-/** Remount chart for the top of the view stack (e.g. resize). */
+/** Remount chart for the top of the view stack (e.g. resize). Also re-paints catalog (Exact mass). */
 function remountCurrentView(): void {
 	const view = currentView();
 	if (!view || !session) return;
 	mountAlluvialGated(payloadForView(view));
+	paintCatalog();
 }
 
 // ── Session lifecycle (zip / demo / open / restore / reset) ──────────────────
@@ -454,10 +535,14 @@ lifecycle = createSessionLifecycle({
 	setVizMaxDepth: (d) => {
 		vizMaxDepth = d;
 	},
-	resetExactState: () => exact.resetExactState(),
+	resetExactState: () => {
+		exact.resetExactState();
+		exportSurfaceLocCache = null;
+		spineFormula = DEFAULT_SPINE_FORMULA;
+	},
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
 	clearStage: () => stage.clear(),
-	renderCatalog: (cat, startId) => catalog.renderCatalog(cat, startId),
+	renderCatalog: (_cat, startId) => paintCatalog(startId),
 	renderTree: () => tree.renderTree(),
 	navigateReplace: (view, opts) => navigateReplace(view, opts),
 	persistSessionIfEnabled,
@@ -478,6 +563,12 @@ tree = createTreeRenderer({
 catalog = createCatalogRenderer({
 	selectStart: (id) => lifecycle.selectStart(id),
 	navigatePush: (view) => navigatePush(view),
+	getSpineFormula: () => spineFormula,
+	onSpineFormulaChange: (raw) => {
+		spineFormula = parseSpineFormula(raw);
+		paintCatalog();
+	},
+	onSpineFormulaInfo: () => openSpineFormulaHelpModal(spineFormula),
 });
 
 // ── Bootstrap: bind chrome once ──────────────────────────────────────────────

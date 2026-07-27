@@ -8,6 +8,7 @@
 
 export {
 	collectExportSpansFromText,
+	coveredExportLines,
 	massForBindings,
 	pickSpansForBindings,
 	type ExportSpan,

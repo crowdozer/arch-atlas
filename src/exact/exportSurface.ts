@@ -17,6 +17,17 @@ export type ExportSpan = {
 	text: string;
 };
 
+/** Unique 1-based lines covered by any export span (export-surface LOC). */
+export function coveredExportLines(spans: readonly ExportSpan[]): number {
+	const lines = new Set<number>();
+	for (const s of spans) {
+		const start = Math.min(s.startLine, s.endLine);
+		const end = Math.max(s.startLine, s.endLine);
+		for (let L = start; L <= end; L++) lines.add(L);
+	}
+	return lines.size;
+}
+
 /**
  * Collect export spans from source text (line-oriented, honest + coarse).
  * Handles common forms: export function/class/const/type/interface/enum,
