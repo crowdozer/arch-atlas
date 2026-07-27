@@ -1,0 +1,355 @@
+/**
+ * Imports* (forward / file-deps) multi-instance rings.
+ *
+ * **Naming trap (keep names):** `addExportRings` builds the **right** side
+ * (Imports / Import hop N) — outbound file deps only, multi-instance dual-path.
+ * Packages land later as External sinks. See hub-alluvial-behavior.md / E1.
+ */
+
+import {
+	fileImportAdj,
+	fileLongestDistances,
+} from '@core/catalog/deepest.ts';
+import type { ImportEdge } from '@core/graph/types.ts';
+import {
+	moreCountLabel,
+	TEAL,
+	uniqueFileLabels,
+} from '@core/view/alluvial.ts';
+import {
+	importHopCategory,
+	importHopColor,
+	importRailId,
+} from '@core/view/hubCategories.ts';
+import {
+	claimName,
+	edgeWeightFromSet,
+	type LinkBuilder,
+} from '@core/view/hubLinkUtils.ts';
+import { edgeWeight } from '@core/view/weight.ts';
+
+export type ImportTreePadResult = {
+	/** path → label + longest-path dist for kept non-bucket import-tree files */
+	tree: Map<string, { lab: string; dist: number }>;
+	maxFileDist: number;
+	/**
+	 * Hub mass still sitting on each kept file after File→file routing.
+	 * Tree package sinks spend this residual (not raw importer-loc of the leaf).
+	 */
+	residualMass: Map<string, number>;
+	padFromFile: (targetLab: string, toDist: number, w: number) => void;
+	padBetween: (
+		fromLab: string,
+		fromDist: number,
+		toLab: string,
+		toDist: number,
+		w: number,
+	) => void;
+};
+
+/**
+ * Forward multi-hop file deps on **Imports / Import hop N** (file→file only).
+ * Packages are placed later as External sinks ({@link addFocusPackageImports} /
+ * {@link addExportTreePackageImports}).
+ */
+export function addExportRings(
+	args: LinkBuilder & {
+		fileId: string;
+		/** File→file out-edges only (packages handled as External). */
+		outEdges: ImportEdge[];
+		hubRadius: number;
+		maxPerHop: number;
+		classicLabels?: Map<string, string>;
+	},
+): ImportTreePadResult {
+	const {
+		graph,
+		fileId,
+		fileLabel,
+		outEdges,
+		hubRadius,
+		maxPerHop,
+		weightAxis,
+		addLink,
+		nodeRef,
+		nodeMeta,
+		usedNames,
+		classicLabels,
+	} = args;
+
+	const fwdAdj = fileImportAdj(graph);
+	// Longest path: format→types stays at hop 2 when types is also a direct dep
+	const { dist, maxHops } = fileLongestDistances(graph, fileId, fwdAdj);
+	const radiusR = Math.min(hubRadius, Math.max(maxHops, 1));
+
+	/** Focus-incident file deps (seed mass), keyed by path. */
+	const fileSeed = new Map<string, number>();
+	for (const e of outEdges) {
+		if (e.toKind !== 'file') continue;
+		const w = edgeWeight(e, graph, weightAxis);
+		fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
+	}
+
+	// Pad helpers always available for External package placement
+	const ensureImportRailsUpTo = (maxStage: number) => {
+		const cap = Math.max(maxStage, radiusR, 1);
+		for (let s = 1; s <= maxStage; s++) {
+			const id = importRailId(s);
+			if (nodeMeta.has(id)) continue;
+			nodeMeta.set(id, {
+				category: importHopCategory(s),
+				color: importHopColor(s, cap),
+			});
+			nodeRef[id] = { kind: 'bucket', id };
+		}
+	};
+	const padBetween = (
+		fromLab: string,
+		fromDist: number,
+		toLab: string,
+		toDist: number,
+		w: number,
+	) => {
+		if (w <= 0 || toDist <= fromDist) return;
+		if (toDist === fromDist + 1) {
+			addLink(fromLab, toLab, w);
+			return;
+		}
+		ensureImportRailsUpTo(toDist - 1);
+		let prev = fromLab;
+		for (let stage = fromDist + 1; stage < toDist; stage++) {
+			const rail = importRailId(stage);
+			addLink(prev, rail, w);
+			prev = rail;
+		}
+		addLink(prev, toLab, w);
+	};
+	const padFromFile = (targetLab: string, toDist: number, w: number) => {
+		padBetween(fileLabel, 0, targetLab, toDist, w);
+	};
+
+	if (!fileSeed.size) {
+		return {
+			tree: new Map(),
+			maxFileDist: 0,
+			residualMass: new Map(),
+			padFromFile,
+			padBetween,
+		};
+	}
+
+	/**
+	 * Multi-instance placement: one file node per (path, hop dist).
+	 * Seeds always get an instance at dist 1 (File→seed). Edge expansion then
+	 * creates deeper instances so analytics→redis/logger branches even when
+	 * redis/logger are also direct focus seeds (single-path identity collapsed
+	 * those edges). Packages still collapse by package id later.
+	 */
+	const filesAt = new Map<number, string[]>();
+	const placeAt = (path: string, d: number) => {
+		if (d < 1 || d > radiusR || path === fileId) return false;
+		const list = filesAt.get(d) ?? [];
+		if (list.includes(path)) return false;
+		list.push(path);
+		filesAt.set(d, list);
+		return true;
+	};
+
+	// Seeds on Imports
+	for (const path of fileSeed.keys()) {
+		if (path === fileId) continue;
+		placeAt(path, 1);
+	}
+	// Edge expansion from every instance (fixed-point within radius)
+	let grew = true;
+	while (grew) {
+		grew = false;
+		for (let d = 1; d < radiusR; d++) {
+			for (const path of [...(filesAt.get(d) ?? [])]) {
+				for (const child of fwdAdj.get(path) ?? []) {
+					if (child === fileId) continue;
+					if (placeAt(child, d + 1)) grew = true;
+				}
+			}
+		}
+	}
+	// Non-seed files only on longest path (not edge-expanded) — rare orphans
+	for (const [path, rawD] of dist) {
+		if (rawD < 1 || path === fileId || fileSeed.has(path)) continue;
+		const d = Math.min(rawD, radiusR);
+		if (![...filesAt.values()].some((list) => list.includes(path))) {
+			placeAt(path, d);
+		}
+	}
+
+	/** Instance key path@dist for mass / labels (multi-instance safe). */
+	const ik = (path: string, d: number) => `${path}\0${d}`;
+	const display = new Map<string, string>(); // ik → label
+	const keptByDist = new Map<number, string[]>(); // dist → paths kept
+	const mass = new Map<string, number>(); // ik → mass
+	/** Mass that reached each path (any instance) — package budget (not leftover after file children). */
+	const arrivedByPath = new Map<string, number>();
+	const noteArrived = (path: string, w: number) => {
+		if (w <= 0) return;
+		arrivedByPath.set(path, (arrivedByPath.get(path) ?? 0) + w);
+	};
+
+	const fileHasPackageOut = (path: string): boolean => {
+		for (const e of graph.edges) {
+			if (e.from !== path) continue;
+			if (e.toKind === 'package' || e.toKind === 'unresolved') return true;
+		}
+		return false;
+	};
+
+	// --- Materialize nodes hop by hop ---
+	for (let d = 1; d <= radiusR; d++) {
+		const files = filesAt.get(d) ?? [];
+		const keptInner = new Set(keptByDist.get(d - 1) ?? []);
+		const ranked = [...files].sort((a, b) => {
+			const sa =
+				d === 1
+					? (fileSeed.get(a) ?? 0)
+					: edgeWeightFromSet(graph, keptInner, a, weightAxis) ||
+						(fileSeed.get(a) ?? 0);
+			const sb =
+				d === 1
+					? (fileSeed.get(b) ?? 0)
+					: edgeWeightFromSet(graph, keptInner, b, weightAxis) ||
+						(fileSeed.get(b) ?? 0);
+			return sb - sa || a.localeCompare(b);
+		});
+		const kept = ranked.slice(0, maxPerHop);
+		const keptSet = new Set(kept);
+		keptByDist.set(d, kept);
+		const otherCount = ranked.length - kept.length;
+
+		if (otherCount > 0) {
+			const preferred = moreCountLabel(otherCount);
+			const otherName = claimName(usedNames, preferred, 'more');
+			for (const f of files) {
+				if (!keptSet.has(f)) display.set(ik(f, d), otherName);
+			}
+			nodeRef[otherName] = { kind: 'bucket', id: `other-export-h${d}` };
+			nodeMeta.set(otherName, {
+				category: importHopCategory(d),
+				color: TEAL.exportOther,
+			});
+		}
+
+		const pathLabels =
+			d === 1 && classicLabels ? classicLabels : uniqueFileLabels(kept);
+		for (const f of kept) {
+			const base = pathLabels.get(f) ?? f;
+			// Any second+ hop instance of a path needs a distinct label
+			// (seed extras and multi-hop non-seeds — avoid claimName "· file")
+			const hasShallower = [...Array(d).keys()].some(
+				(sd) => sd >= 1 && display.has(ik(f, sd)),
+			);
+			const isExtraInstance = d > 1 && (fileSeed.has(f) || hasShallower);
+			const preferred = isExtraInstance ? `${base} · h${d}` : base;
+			const name = claimName(
+				usedNames,
+				preferred,
+				isExtraInstance ? `h${d}` : 'file',
+			);
+			display.set(ik(f, d), name);
+			nodeRef[name] = { kind: 'file', id: f };
+			nodeMeta.set(name, {
+				category: importHopCategory(d),
+				color: importHopColor(d, radiusR),
+			});
+		}
+	}
+
+	// --- Seed focus out-mass: File → seed instance @ dist 1 only ---
+	for (const [f, w] of fileSeed) {
+		if (w <= 0) continue;
+		const lab = display.get(ik(f, 1));
+		if (!lab) continue;
+		addLink(fileLabel, lab, w);
+		if (nodeRef[lab]?.kind !== 'bucket') {
+			mass.set(ik(f, 1), (mass.get(ik(f, 1)) ?? 0) + w);
+			noteArrived(f, w);
+		}
+	}
+
+	// --- Route mass parent@d → child@(d+1) when real edge exists ---
+	for (let d = 1; d < radiusR; d++) {
+		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
+			a.localeCompare(b),
+		);
+		for (const f of parents) {
+			const fromKey = ik(f, d);
+			const m = mass.get(fromKey) ?? 0;
+			if (m <= 0) continue;
+			const fromLab = display.get(fromKey);
+			if (!fromLab || nodeRef[fromLab]?.kind === 'bucket') continue;
+
+			const targets: { lab: string; path: string; key: string }[] = [];
+			for (const c of fwdAdj.get(f) ?? []) {
+				const toLab = display.get(ik(c, d + 1));
+				if (!toLab) continue;
+				targets.push({ lab: toLab, path: c, key: ik(c, d + 1) });
+			}
+			if (!targets.length) continue;
+
+			targets.sort(
+				(a, b) =>
+					Number(fileHasPackageOut(b.path)) -
+						Number(fileHasPackageOut(a.path)) ||
+					a.path.localeCompare(b.path),
+			);
+
+			const base = Math.floor(m / targets.length);
+			let rem = m - base * targets.length;
+			for (const t of targets) {
+				const share = base + (rem > 0 ? 1 : 0);
+				if (rem > 0) rem -= 1;
+				if (share <= 0) continue;
+				addLink(fromLab, t.lab, share);
+				if (nodeRef[t.lab]?.kind !== 'bucket') {
+					mass.set(t.key, (mass.get(t.key) ?? 0) + share);
+					noteArrived(t.path, share);
+				}
+			}
+			mass.set(fromKey, 0);
+		}
+	}
+
+	// Packages: one tree entry per path → deepest kept instance (packages collapse)
+	// Budget = mass that **arrived** at the path (not leftover after file children),
+	// so redis→ioredis still appears when redis also forwards mass to logger.
+	const tree = new Map<string, { lab: string; dist: number }>();
+	const residualMass = new Map<string, number>();
+	let maxFileDist = 0;
+	const pathDepths = new Map<string, number[]>();
+	for (const [d, paths] of keptByDist) {
+		for (const f of paths) {
+			const list = pathDepths.get(f) ?? [];
+			list.push(d);
+			pathDepths.set(f, list);
+			if (d > maxFileDist) maxFileDist = d;
+		}
+	}
+	for (const [f, depths] of pathDepths) {
+		// Attach packages from the **shallowest** instance (usually the seed).
+		// Deepest multi-instances can be free sources if mass never reached them,
+		// which pulled External packages into the leftmost Carbon free-source layer.
+		const shallow = Math.min(...depths);
+		const lab = display.get(ik(f, shallow));
+		if (!lab || nodeRef[lab]?.kind === 'bucket') continue;
+		tree.set(f, { lab, dist: shallow });
+		const arrived = arrivedByPath.get(f) ?? 0;
+		if (arrived > 0) residualMass.set(f, arrived);
+	}
+	// silence unused longest map when multi-instance fully covers
+	void dist;
+	return {
+		tree,
+		maxFileDist,
+		residualMass,
+		padFromFile,
+		padBetween,
+	};
+}
