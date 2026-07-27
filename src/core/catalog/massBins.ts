@@ -3,7 +3,9 @@
  * Pure overlay: does not re-index the graph. Empty until a surface map is supplied.
  *
  * Guardrails: only js-ts-import (export-surface engine support); skip surfaceLoc===0
- * icebergs; surfaceLoc = export-declaration span coverage, not public API.
+ * icebergs; surfaceLoc / exportDeclarationLoc = export-declaration span coverage,
+ * not public API. Unsupported langs never enter bins (not ranked as 0-surface icebergs).
+ * Included rows stamp surfaceSupport: 'supported'.
  */
 
 import type {
@@ -47,7 +49,8 @@ function hasExportSurfaceSupport(graph: CodeGraph, path: string): boolean {
  * Build public-mass and iceberg rankings from graph + export-surface LOC map.
  * Degrees are for list badges only.
  *
- * surfaceLoc is **export-declaration span** coverage (not public-API member surface).
+ * surfaceLoc / exportDeclarationLoc is **export-declaration span** coverage
+ * (not public-API member surface). Rows stamp surfaceSupport: 'supported'.
  */
 export function buildMassBins(
 	graph: CodeGraph,
@@ -74,6 +77,7 @@ export function buildMassBins(
 
 	for (const [path, node] of graph.files) {
 		if (!node.isSource) continue;
+		// Unsupported langs never enter (not ranked as 0-surface icebergs)
 		if (!hasExportSurfaceSupport(graph, path)) continue;
 		// Demote obvious debug/script noise from mass bins
 		if (isDebugPath(path)) continue;
@@ -82,13 +86,15 @@ export function buildMassBins(
 		if (wholeLoc < minWhole) continue;
 
 		const surfaceLoc = exportSurfaceLoc.get(path) ?? 0;
-		// Zero-surface files are unsupported / empty for icebergs (not "private body")
+		// Zero-surface files are empty for icebergs (not "private body")
 		if (surfaceLoc === 0) continue;
 
 		const ratio = wholeLoc > 0 ? surfaceLoc / wholeLoc : 0;
 		const privateLoc = Math.max(0, wholeLoc - surfaceLoc);
 		const outDegree = outDeg.get(path) ?? 0;
 		const inDegree = inDeg.get(path) ?? 0;
+		// Included rows are always engine-supported (js-ts-import gate above)
+		const surfaceSupport = 'supported' as const;
 
 		if (ratio >= publicMinRatio) {
 			publicMass.push({
@@ -96,6 +102,8 @@ export function buildMassBins(
 				path,
 				wholeLoc,
 				surfaceLoc,
+				exportDeclarationLoc: surfaceLoc,
+				surfaceSupport,
 				ratio,
 				outDegree,
 				inDegree,
@@ -109,6 +117,8 @@ export function buildMassBins(
 				path,
 				wholeLoc,
 				surfaceLoc,
+				exportDeclarationLoc: surfaceLoc,
+				surfaceSupport,
 				privateLoc,
 				ratio,
 				outDegree,

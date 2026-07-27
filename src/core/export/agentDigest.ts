@@ -40,11 +40,11 @@ export const ANALYSIS_HONESTY =
 
 /** Exact (export surface) honesty — same product contract as web Precision Exact. */
 export const ANALYSIS_HONESTY_EXACT =
-	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); surfaceLoc = export-declaration span coverage (not public-API member surface); Python/Astro stay estimate mass; not LSP / not bundler tree-shake';
+	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); surfaceLoc / exportDeclarationLoc = export-declaration span coverage (not public-API member surface); Python/Astro stay estimate mass (surfaceSupport unsupported — never 0-surface icebergs); not LSP / not bundler tree-shake';
 
 /** Note folded into analysis when Exact mass bins are present. */
 export const SURFACE_METRIC_NOTE =
-	'surfaceLoc counts lines covered by export declarations (span coverage), not public API surface area';
+	'surfaceLoc and exportDeclarationLoc count lines covered by export declarations (span coverage), not public API surface area';
 
 export type AgentDigestSource = {
 	kind: 'directory' | 'zip';
@@ -95,10 +95,20 @@ export type AgentDigestCatalog = {
 	roots?: CatalogStart[];
 	ends: CatalogEnd[];
 	hotspots: CatalogHotspot[];
+	/** Downwind import reach ranking (wire name kept for compat). */
 	complex: CatalogComplex[];
+	/**
+	 * Honesty alias of complex — downwind import reach (not cyclomatic complexity).
+	 */
+	downwindReach: CatalogComplex[];
 	deepest: CatalogDeep[];
 	fileLoc: CatalogFileLoc[];
+	/** Reverse-reach consumers ranking (wire name kept for compat). */
 	blastRadius: CatalogBlast[];
+	/**
+	 * Honesty alias of blastRadius — reverse-reach file count (cycle-sensitive).
+	 */
+	reverseReach: CatalogBlast[];
 	/** Public-mass files (Exact surface ratio); empty under estimate. */
 	publicMass: CatalogPublicMass[];
 	/** Iceberg files (Exact private mass); empty under estimate. */
@@ -112,7 +122,7 @@ export type AgentDigestAnalysis = {
 	honesty: string;
 	/** How fileLoc.loc was measured. */
 	locMetric: 'whole-file' | 'export-surface';
-	/** surfaceLoc honesty when Exact. */
+	/** surfaceLoc / exportDeclarationLoc honesty when Exact. */
 	surfaceMetricNote?: string;
 	/** Spine ranking formula used for catalog.spines. */
 	spineFormula?: SpineFormula;
@@ -224,12 +234,35 @@ export type AgentFileCatalogHits = {
 	starts?: CatalogStart;
 	hotspots?: CatalogHotspot;
 	complex?: CatalogComplex;
+	/** Honesty alias of complex when present. */
+	downwindReach?: CatalogComplex;
 	deepest?: CatalogDeep;
 	fileLoc?: CatalogFileLoc;
 	blastRadius?: CatalogBlast;
+	/** Honesty alias of blastRadius when present. */
+	reverseReach?: CatalogBlast;
 	publicMass?: CatalogPublicMass;
 	icebergs?: CatalogIceberg;
 	spines?: CatalogSpine;
+};
+
+/**
+ * File-lens capability stamp — topology neighbors + catalog hits only.
+ * Exact mass is not available on the `file` command.
+ */
+export type AgentFileLensCapabilities = {
+	/** Exact / export-surface mass not on file command. */
+	mass: false;
+	neighbors: true;
+	catalogHits: true;
+	/** Level-1 syntax import graph (not Program / not LSP). */
+	importGraph: 'syntax';
+};
+
+export type AgentFileAnalysis = {
+	/** Capability matrix for this lens. */
+	fileLens: AgentFileLensCapabilities;
+	honesty: string;
 };
 
 export type AgentFileReport = {
@@ -245,6 +278,8 @@ export type AgentFileReport = {
 	uniqueOut?: number;
 	uniqueIn?: number;
 	scope?: AgentDigestScope;
+	/** File-lens capability stamp (mass not available on file command). */
+	analysis?: AgentFileAnalysis;
 	catalogHits?: AgentFileCatalogHits;
 	/** Outgoing import edges (structural; no source text). */
 	imports?: AgentFileNeighbor[];
@@ -254,9 +289,24 @@ export type AgentFileReport = {
 	importsTotal?: number;
 	/** Total incoming edges before truncation. */
 	importersTotal?: number;
+	/** Length of imports array after cap (shown count). */
+	importsShown?: number;
+	/** Length of importers array after cap (shown count). */
+	importersShown?: number;
 	/** True when imports or importers were capped. */
 	truncated?: boolean;
 	warnings: string[];
+};
+
+/** File-command honesty: topology only; Exact mass not on this lens. */
+export const ANALYSIS_HONESTY_FILE =
+	'Level-1 syntax import neighbors + catalog hits; Exact mass not available on file command; not LSP / not tree-shake';
+
+export const FILE_LENS_CAPABILITIES: AgentFileLensCapabilities = {
+	mass: false,
+	neighbors: true,
+	catalogHits: true,
+	importGraph: 'syntax',
 };
 
 function languageForPath(path: string, isSource: boolean): string | undefined {
@@ -316,6 +366,9 @@ export function fileLocFromExportSurface(
 			id: path,
 			path,
 			loc,
+			// Dual-publish Exact surface names alongside loc
+			exportDeclarationLoc: loc,
+			surfaceLoc: loc,
 			outDegree: est?.outDegree ?? outDeg.get(path) ?? 0,
 			inDegree: est?.inDegree ?? inDeg.get(path) ?? 0,
 			epistemic: 'observed',
@@ -411,6 +464,9 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			catalog.summary.externalPackageCount ?? catalog.summary.packageCount,
 	};
 
+	const complex = catalog.complex;
+	const blastRadius = catalog.blastRadius;
+
 	return {
 		schema: AGENT_DIGEST_SCHEMA,
 		generatedAt,
@@ -425,10 +481,13 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			roots: catalog.roots,
 			ends: catalog.ends,
 			hotspots: catalog.hotspots,
-			complex: catalog.complex,
+			complex,
+			// Honesty aliases (same arrays; agents may prefer clearer names)
+			downwindReach: complex,
 			deepest: catalog.deepest,
 			fileLoc,
-			blastRadius: catalog.blastRadius,
+			blastRadius,
+			reverseReach: blastRadius,
 			publicMass,
 			icebergs,
 			spines,
@@ -573,6 +632,7 @@ export function buildAgentTree(input: {
 
 /**
  * Compact per-file report: degrees, catalog hits, import neighbors — no source dump.
+ * Exact mass is not available on this lens (see analysis.fileLens).
  */
 export function buildAgentFileReport(input: {
 	graph: CodeGraph;
@@ -591,6 +651,10 @@ export function buildAgentFileReport(input: {
 	const limit = input.neighborLimit ?? 40;
 	const node = input.graph.files.get(path);
 	const scope = resolveScope(input.source, input.scope, false);
+	const analysis: AgentFileAnalysis = {
+		fileLens: FILE_LENS_CAPABILITIES,
+		honesty: ANALYSIS_HONESTY_FILE,
+	};
 
 	if (!node) {
 		return {
@@ -600,6 +664,7 @@ export function buildAgentFileReport(input: {
 			path,
 			exists: false,
 			scope,
+			analysis,
 			warnings: [...warnings, `File not in graph: ${path}`],
 		};
 	}
@@ -615,9 +680,12 @@ export function buildAgentFileReport(input: {
 	hit(input.catalog.starts, 'starts');
 	hit(input.catalog.hotspots, 'hotspots');
 	hit(input.catalog.complex, 'complex');
+	// Dual-publish honesty aliases when catalog hits land
+	if (catalogHits.complex) catalogHits.downwindReach = catalogHits.complex;
 	hit(input.catalog.deepest, 'deepest');
 	hit(input.catalog.fileLoc, 'fileLoc');
 	hit(input.catalog.blastRadius, 'blastRadius');
+	if (catalogHits.blastRadius) catalogHits.reverseReach = catalogHits.blastRadius;
 	hit(input.catalog.publicMass ?? [], 'publicMass');
 	hit(input.catalog.icebergs ?? [], 'icebergs');
 	hit(input.catalog.spines ?? [], 'spines');
@@ -661,6 +729,10 @@ export function buildAgentFileReport(input: {
 
 	const importsTotal = imports.length;
 	const importersTotal = importers.length;
+	const importsShownList = imports.slice(0, limit);
+	const importersShownList = importers.slice(0, limit);
+	const importsShown = importsShownList.length;
+	const importersShown = importersShownList.length;
 	const truncated = importsTotal > limit || importersTotal > limit;
 
 	return {
@@ -676,11 +748,14 @@ export function buildAgentFileReport(input: {
 		uniqueOut: fileUniqueOutDegree(input.graph, path),
 		uniqueIn: fileUniqueInDegree(input.graph, path),
 		scope,
+		analysis,
 		catalogHits: Object.keys(catalogHits).length ? catalogHits : undefined,
-		imports: imports.slice(0, limit),
-		importers: importers.slice(0, limit),
+		imports: importsShownList,
+		importers: importersShownList,
 		importsTotal,
 		importersTotal,
+		importsShown,
+		importersShown,
 		truncated,
 		warnings,
 	};

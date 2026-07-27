@@ -102,8 +102,12 @@ describe('buildAgentDigest', () => {
 		expect(digest.analysis.tier).toBe('exact');
 		expect(digest.analysis.locMetric).toBe('export-surface');
 		expect(digest.analysis.engine?.source).toBe('local');
+		expect(digest.analysis.honesty).toMatch(/exportDeclarationLoc/);
 		expect(digest.catalog.fileLoc[0]?.path).toBe(hubPath);
 		expect(digest.catalog.fileLoc[0]?.loc).toBe(hubSurface);
+		// Dual-publish Exact surface names on fileLoc rows
+		expect(digest.catalog.fileLoc[0]?.exportDeclarationLoc).toBe(hubSurface);
+		expect(digest.catalog.fileLoc[0]?.surfaceLoc).toBe(hubSurface);
 		expect(digest.catalogEstimateFileLoc?.length).toBeGreaterThan(0);
 		// topology bins unchanged vs estimate catalog
 		expect(digest.catalog.blastRadius).toEqual(catalog.blastRadius);
@@ -112,10 +116,24 @@ describe('buildAgentDigest', () => {
 		const hubMass = digest.catalog.publicMass.find((r) => r.path === hubPath);
 		expect(hubMass).toBeDefined();
 		expect(hubMass!.surfaceLoc).toBe(hubSurface);
+		expect(hubMass!.exportDeclarationLoc).toBe(hubSurface);
+		expect(hubMass!.surfaceSupport).toBe('supported');
 		expect(hubMass!.wholeLoc).toBe(hubWhole);
 		expect(hubMass!.ratio).toBeGreaterThanOrEqual(PUBLIC_MIN_RATIO);
 		// Hub is not an iceberg at ratio 1.0
 		expect(digest.catalog.icebergs.some((r) => r.path === hubPath)).toBe(false);
+	});
+
+	it('dual-publishes downwindReach / reverseReach catalog aliases', () => {
+		const digest = buildAgentDigest({
+			graph,
+			catalog,
+			source: { kind: 'directory', path: '/tmp/demo' },
+		});
+		expect(digest.catalog.downwindReach).toEqual(digest.catalog.complex);
+		expect(digest.catalog.reverseReach).toEqual(digest.catalog.blastRadius);
+		expect(digest.catalog.complex.length).toBeGreaterThan(0);
+		expect(digest.catalog.blastRadius.length).toBeGreaterThan(0);
 	});
 
 	it('respects catalog limit from index', () => {
@@ -166,7 +184,7 @@ describe('buildAgentDigest', () => {
 		expect(digest.analysis.surfaceMetricNote).toBeUndefined();
 	});
 
-	it('exact analysis includes surfaceMetricNote', () => {
+	it('exact analysis includes surfaceMetricNote with exportDeclarationLoc', () => {
 		const exportSurfaceLoc = new Map<string, number>();
 		for (const f of graph.files.values()) {
 			if (f.isSource) exportSurfaceLoc.set(f.path, 5);
@@ -183,6 +201,7 @@ describe('buildAgentDigest', () => {
 			scope: { exactRequested: true },
 		});
 		expect(digest.analysis.surfaceMetricNote).toMatch(/export declarations/i);
+		expect(digest.analysis.surfaceMetricNote).toMatch(/exportDeclarationLoc/);
 		expect(digest.scope?.exactApplied).toBe(true);
 	});
 });
@@ -204,6 +223,21 @@ describe('buildAgentFileReport', () => {
 		expect(report.isSource).toBe(true);
 		expect((report.outDegree ?? 0) + (report.inDegree ?? 0)).toBeGreaterThan(0);
 		expect(report.imports?.length ?? 0).toBeGreaterThan(0);
+		// File-lens capability matrix: topology only, no Exact mass
+		expect(report.analysis?.fileLens).toEqual({
+			mass: false,
+			neighbors: true,
+			catalogHits: true,
+			importGraph: 'syntax',
+		});
+		expect(report.analysis?.honesty).toMatch(/not available on file command/i);
+		// Dual-publish catalog hit aliases when present
+		if (report.catalogHits?.complex) {
+			expect(report.catalogHits.downwindReach).toEqual(report.catalogHits.complex);
+		}
+		if (report.catalogHits?.blastRadius) {
+			expect(report.catalogHits.reverseReach).toEqual(report.catalogHits.blastRadius);
+		}
 		const json = JSON.stringify(report);
 		const hubSrc = graph.contents.get('src/god/hub.ts') ?? '';
 		if (hubSrc.length > 40) {
@@ -220,9 +254,11 @@ describe('buildAgentFileReport', () => {
 		});
 		expect(report.exists).toBe(false);
 		expect(report.warnings.some((w) => w.includes('not in graph'))).toBe(true);
+		// Capability stamp still present on miss
+		expect(report.analysis?.fileLens.mass).toBe(false);
 	});
 
-	it('reports neighbor totals and truncated flag', () => {
+	it('reports neighbor totals, shown counts, and truncated flag', () => {
 		const report = buildAgentFileReport({
 			graph,
 			catalog,
@@ -233,6 +269,9 @@ describe('buildAgentFileReport', () => {
 		expect(report.importsTotal ?? 0).toBeGreaterThan(1);
 		expect(report.truncated).toBe(true);
 		expect(report.imports?.length).toBe(1);
+		expect(report.importsShown).toBe(1);
+		expect(report.importersShown).toBe(report.importers?.length);
+		expect(report.importsShown).toBeLessThan(report.importsTotal ?? 0);
 		expect(report.uniqueOut ?? 0).toBeGreaterThanOrEqual(0);
 	});
 });

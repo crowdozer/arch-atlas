@@ -74,12 +74,16 @@ describe('buildMassBins', () => {
 		const pub = bins.publicMass.find((r) => r.path === 'src/publicApi.ts')!;
 		expect(pub.ratio).toBeGreaterThanOrEqual(PUBLIC_MIN_RATIO);
 		expect(pub.surfaceLoc).toBe(wholePublic);
+		expect(pub.exportDeclarationLoc).toBe(pub.surfaceLoc);
+		expect(pub.surfaceSupport).toBe('supported');
 
 		expect(bins.icebergs.some((r) => r.path === 'src/iceberg.ts')).toBe(true);
 		const ice = bins.icebergs.find((r) => r.path === 'src/iceberg.ts')!;
 		expect(ice.ratio).toBeLessThanOrEqual(ICEBERG_MAX_RATIO);
 		expect(ice.privateLoc).toBeGreaterThanOrEqual(MIN_PRIVATE > 10 ? 10 : ice.privateLoc);
 		expect(ice.privateLoc).toBe(ice.wholeLoc - ice.surfaceLoc);
+		expect(ice.exportDeclarationLoc).toBe(ice.surfaceLoc);
+		expect(ice.surfaceSupport).toBe('supported');
 
 		// tiny below minWhole floor
 		expect(bins.publicMass.some((r) => r.path === 'src/tiny.ts')).toBe(false);
@@ -163,8 +167,31 @@ describe('buildMassBins', () => {
 			icebergMaxRatio: 0.7,
 			minPrivate: 10,
 		});
-		// Python/Astro excluded; zero surface skipped (not false icebergs)
+		// Python/Astro excluded (unsupported); zero surface skipped (not false icebergs)
 		expect(bins.icebergs).toEqual([]);
 		expect(bins.publicMass).toEqual([]);
+		// No unsupported row ever ranked as surfaceSupport with surface 0
+		expect(
+			[...bins.publicMass, ...bins.icebergs].every(
+				(r) => r.surfaceSupport === 'supported' && r.exportDeclarationLoc > 0,
+			),
+		).toBe(true);
+	});
+
+	it('stamps surfaceSupport supported and dual exportDeclarationLoc on included rows', () => {
+		const body = padLines('export const z = 1;\n', 100);
+		const { graph } = indexFiles(files([['src/lib.ts', body]]));
+		const whole = body.split('\n').length - (body.endsWith('\n') ? 1 : 0);
+		const bins = buildMassBins(
+			graph,
+			new Map([['src/lib.ts', whole]]),
+			15,
+			{ minWhole: 50, publicMinRatio: 0.9 },
+		);
+		expect(bins.publicMass).toHaveLength(1);
+		const row = bins.publicMass[0]!;
+		expect(row.surfaceSupport).toBe('supported');
+		expect(row.exportDeclarationLoc).toBe(row.surfaceLoc);
+		expect(row.exportDeclarationLoc).toBe(whole);
 	});
 });

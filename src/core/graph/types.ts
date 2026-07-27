@@ -237,12 +237,23 @@ export type CatalogComplex = {
 /**
  * Source file ranked by whole-file LOC (newline count of graph.contents).
  * Same estimate surface as tree LOC captions / weight target-loc.
+ * When Exact re-ranks agent digest fileLoc, loc is export-surface and dual
+ * fields exportDeclarationLoc / surfaceLoc may be present.
  */
 export type CatalogFileLoc = {
 	id: string;
 	path: string;
-	/** Whole-file line count from indexed source text. */
+	/** Whole-file line count (estimate) or export-surface LOC (Exact digest). */
 	loc: number;
+	/**
+	 * Exact fileLoc only: export-declaration span LOC (= loc under Exact).
+	 * Absent under estimate whole-file ranking.
+	 */
+	exportDeclarationLoc?: number;
+	/**
+	 * Exact fileLoc only: wire alias of exportDeclarationLoc / loc.
+	 */
+	surfaceLoc?: number;
 	outDegree: number;
 	inDegree: number;
 	epistemic: 'observed';
@@ -306,8 +317,18 @@ export type CatalogPublicMass = {
 	id: string;
 	path: string;
 	wholeLoc: number;
-	/** Export-declaration surface LOC (Exact). */
+	/** Export-declaration surface LOC (Exact). Wire name kept for compat. */
 	surfaceLoc: number;
+	/**
+	 * Honesty alias of surfaceLoc: lines covered by export declaration spans
+	 * (not public-API member surface).
+	 */
+	exportDeclarationLoc: number;
+	/**
+	 * Export-surface engine support for this row. Mass bins only include
+	 * supported (js-ts-import) files; unsupported langs never enter as 0-surface.
+	 */
+	surfaceSupport: 'supported' | 'unsupported';
 	/** surfaceLoc / wholeLoc when wholeLoc > 0. */
 	ratio: number;
 	outDegree: number;
@@ -323,7 +344,18 @@ export type CatalogIceberg = {
 	id: string;
 	path: string;
 	wholeLoc: number;
+	/** Export-declaration surface LOC (Exact). Wire name kept for compat. */
 	surfaceLoc: number;
+	/**
+	 * Honesty alias of surfaceLoc: lines covered by export declaration spans
+	 * (not public-API member surface).
+	 */
+	exportDeclarationLoc: number;
+	/**
+	 * Export-surface engine support for this row. Mass bins only include
+	 * supported (js-ts-import) files; unsupported langs never enter as 0-surface.
+	 */
+	surfaceSupport: 'supported' | 'unsupported';
 	/** max(0, wholeLoc - surfaceLoc). */
 	privateLoc: number;
 	ratio: number;
