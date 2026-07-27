@@ -1,0 +1,70 @@
+/**
+ * Ordered post-mount polish facade for Carbon alluvial holders.
+ *
+ * Pipeline (exact order — do not reorder):
+ * center spine → truncate labels (undraw without pairs) → hide rails with pairs
+ * → straighten → terminators → File chrome → export recolor → svg overflow
+ */
+
+import { straightenExternalPackageBands } from './externalStraighten.ts';
+import type { ExternalStraightPair } from './externalStraighten.ts';
+import {
+	highlightFileSpine,
+	recolorExportBands,
+} from './fileChrome.ts';
+import { centerHubFileSpineInHolder } from './fileSpine.ts';
+import {
+	ALLUVIAL_LABEL_MAX_CHARS,
+	rightTruncateAlluvialLabels,
+} from './labels.ts';
+import { hideAlluvialRails } from './rails.ts';
+import {
+	markAlluvialExportTerminators,
+	markAlluvialTerminators,
+} from './terminators.ts';
+
+/**
+ * Center hub File spine, highlight File column, right-truncate labels, recolor exports.
+ * Hides pad rails / pad bands; marks hub terminators from meta.
+ */
+export function polishAlluvialHolder(
+	holder: HTMLElement,
+	opts?: {
+		colorScale?: Record<string, string>;
+		/** Default true — center File when it has both import and export edges. */
+		centerHubFile?: boolean;
+		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
+		labelMaxChars?: number;
+		/**
+		 * Reverse free-source pad targets (Exports* left) → cyan wrap.
+		 * @see markAlluvialTerminators
+		 */
+		terminators?: readonly string[];
+		/**
+		 * Forward true leaves (Imports / External, right) → yellow wrap.
+		 * @see markAlluvialExportTerminators
+		 */
+		exportTerminators?: readonly string[];
+		/**
+		 * Construction-time External parent→package pairs (hub meta).
+		 * @see straightenExternalPackageBands / planExternalStraightBands
+		 */
+		externalStraightPairs?: readonly ExternalStraightPair[];
+	},
+): void {
+	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
+	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
+	// Undraw scaffolds + any pair-covered parent→package (incl. direct deepest attaches)
+	hideAlluvialRails(holder, { pairs: opts?.externalStraightPairs });
+	// Then paint one straight parent→package band per construction pair
+	straightenExternalPackageBands(holder, {
+		pairs: opts?.externalStraightPairs,
+	});
+	// Contrast: cyan on yellow Exports free sources; yellow on cyan Imports leaves
+	markAlluvialTerminators(holder, opts?.terminators);
+	markAlluvialExportTerminators(holder, opts?.exportTerminators);
+	highlightFileSpine(holder);
+	if (opts?.colorScale) recolorExportBands(holder, opts.colorScale);
+	const svg = holder.querySelector('svg');
+	if (svg) svg.style.overflow = 'visible';
+}

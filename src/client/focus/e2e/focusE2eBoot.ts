@@ -6,7 +6,7 @@
 import { AlluvialChart, ChartEvent } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import type { AlluvialPayload } from '@core/graph/types.ts';
-import { polishAlluvialHolder } from '../../alluvialTopPack.ts';
+import { polishAlluvialHolder } from '../../alluvialPolish/index.ts';
 import {
 	createHubAlluvialFocus,
 	type AlluvialFocusApi,

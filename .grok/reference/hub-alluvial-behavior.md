@@ -4,9 +4,9 @@
 External straighten pairs, reverse terminator chrome)  
 **Code SoR:** `src/core/view/fileHub.ts`, `src/core/catalog/deepest.ts`,
 pad/paint helpers in `src/core/view/alluvial.ts`, polish in
-`src/client/alluvialTopPack.ts`  
+`src/client/alluvialPolish/`  
 **Tests that lock membership:** `src/core/view/hubOrientation.golden.test.ts`,
-parts of `fileHub.test.ts` / `alluvial.test.ts` / `alluvialTopPack.test.ts`  
+parts of `fileHub.test.ts` / `alluvial.test.ts` / `alluvialPolish/alluvialPolish.test.ts`  
 **Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)  
 **Hover focus / highlight (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) —
 LogicalFocusGraph FocusPlan; do **not** retcon this geometry matrix to fix hover.

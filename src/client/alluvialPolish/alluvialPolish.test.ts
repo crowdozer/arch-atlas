@@ -23,11 +23,11 @@ import {
 	rightTruncateLabel,
 	planExternalStraightBands,
 	straightenExternalPackageBands,
-} from './alluvialTopPack.ts';
+} from './index.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
-	'../../fixtures',
+	'../../../fixtures',
 );
 
 function walkFixtures(dir: string, base = dir): VirtualFile[] {
