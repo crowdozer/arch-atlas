@@ -5,7 +5,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@core/*": ["src/core/*"]
+      "@core/*": ["src/core/*"],
+      "@shell/*": ["src/shell/*"]
     }
   }
 }

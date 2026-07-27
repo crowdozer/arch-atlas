@@ -13,6 +13,7 @@ export default defineConfig({
 		resolve: {
 			alias: {
 				'@core': path.join(root, 'src/core'),
+				'@shell': path.join(root, 'src/shell'),
 			},
 		},
 		ssr: {
