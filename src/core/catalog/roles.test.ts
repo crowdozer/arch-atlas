@@ -42,4 +42,20 @@ describe('roles', () => {
 		expect(inferFileRoles(graph, 'src/index.ts')).toContain('barrel');
 		expect(isPureBarrel(graph, 'src/a.ts')).toBe(false);
 	});
+
+	it('detects façade role on public.ts', () => {
+		const { graph } = indexFiles(
+			files([
+				[
+					'mod/public.ts',
+					`export { a } from './a';\nexport { b } from './b';\n`,
+				],
+				['mod/a.ts', 'export const a = 1;\n'],
+				['mod/b.ts', 'export const b = 2;\n'],
+			]),
+		);
+		const roles = inferFileRoles(graph, 'mod/public.ts');
+		expect(roles).toContain('facade');
+		expect(roles).toContain('barrel');
+	});
 });

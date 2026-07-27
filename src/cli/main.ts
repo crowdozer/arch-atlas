@@ -16,8 +16,13 @@ import {
 	buildAgentFileReport,
 	buildAgentImpact,
 	buildAgentTree,
+	filterFilesByTestInclusion,
 	indexHostFeed,
+	isDebugPath,
+	isTestPath,
+	parseAliasFlag,
 } from '@core/index.ts';
+import type { AgentAliasRewrite, AgentScopePreset } from '@core/index.ts';
 import { loadExactExportSurface } from './exactSurface.ts';
 import { DEFAULT_MAX_DEPTH, loadFeed } from './loadFeed.ts';
 import { loadGitRef } from './loadGitRef.ts';
@@ -26,6 +31,9 @@ import { compileOmitMatcher, parseOmitFlagValues } from './omitGlobs.ts';
 const CLI_LIMIT_DEFAULT = 40;
 
 const KNOWN_COMMANDS = new Set(['digest', 'tree', 'file', 'impact']);
+
+/** Supported CLI scope presets (product omits tests+debug heuristics). */
+const SCOPE_PRESETS = new Set(['full', 'product']);
 
 type GlobalOpts = {
 	out?: string;
@@ -51,6 +59,14 @@ type GlobalOpts = {
 	base?: string;
 	/** Git ref for impact --head (required for impact). */
 	head?: string;
+	/**
+	 * Scope preset: full (default) | product (omit tests + debug paths).
+	 */
+	scope: 'full' | 'product';
+	/**
+	 * Raw `--alias PATTERN=TARGET` values (repeatable).
+	 */
+	aliasRaw: string[];
 	help: boolean;
 };
 
@@ -79,6 +95,12 @@ Options:
   --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
                   Bare names match that segment anywhere (fixtures → fixtures/**).
                   Also: --omit=**/fixtures/** or --omit=fixtures,dist
+  --alias P=T     Path-alias rewrite for isolated ZIPs (repeatable).
+                  Example: --alias '@/modules/artillery/*=./*'
+                  Merged after tsconfig paths; same pattern: rewrite wins.
+  --scope MODE    Feed scope preset: full (default) | product.
+                  product omits test + debug/scripts path heuristics and stamps
+                  scope.presets + includeTests:false.
   --base <ref>    Impact: base git ref (required). Example: main, HEAD^, abc123
   --head <ref>    Impact: head git ref (required). Example: HEAD, feature-branch
   --estimate      Digest: skip Exact mass (estimate-only fileLoc / empty mass bins).
@@ -97,6 +119,7 @@ Examples:
   arch-atlas digest . --omit fixtures
   arch-atlas digest . --omit fixtures --estimate --out runtime.json
   arch-atlas digest . --exact-local --out exact.json
+  arch-atlas digest fixtures/agent-artillery-shaped --scope product --alias '@/modules/artillery/*=./*'
   npm run atlas -- digest . --omit fixtures
   npm run atlas -- tree . --tree-full
   npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
@@ -123,6 +146,8 @@ function parseArgs(argv: string[]): {
 		exactLocalOnly: false,
 		estimate: false,
 		treeFull: false,
+		scope: 'full',
+		aliasRaw: [],
 		help: false,
 	};
 	const positional: string[] = [];
@@ -208,6 +233,42 @@ function parseArgs(argv: string[]): {
 			const v = a.slice('--omit='.length);
 			if (!v) return { command: '', opts, error: '--omit requires a glob pattern' };
 			opts.omitRaw.push(v);
+			continue;
+		}
+		if (a === '--alias') {
+			const v = argv[++i];
+			if (!v) return { command: '', opts, error: '--alias requires PATTERN=TARGET' };
+			opts.aliasRaw.push(v);
+			continue;
+		}
+		if (a.startsWith('--alias=')) {
+			const v = a.slice('--alias='.length);
+			if (!v) return { command: '', opts, error: '--alias requires PATTERN=TARGET' };
+			opts.aliasRaw.push(v);
+			continue;
+		}
+		if (a === '--scope') {
+			const v = argv[++i];
+			if (!v || !SCOPE_PRESETS.has(v)) {
+				return {
+					command: '',
+					opts,
+					error: '--scope requires full|product',
+				};
+			}
+			opts.scope = v as 'full' | 'product';
+			continue;
+		}
+		if (a.startsWith('--scope=')) {
+			const v = a.slice('--scope='.length);
+			if (!v || !SCOPE_PRESETS.has(v)) {
+				return {
+					command: '',
+					opts,
+					error: '--scope requires full|product',
+				};
+			}
+			opts.scope = v as 'full' | 'product';
 			continue;
 		}
 		if (a === '--file') {
@@ -323,6 +384,21 @@ export async function runCli(argv: string[]): Promise<number> {
 	const omit = parseOmitFlagValues(opts.omitRaw);
 	const shouldOmit = compileOmitMatcher(omit);
 
+	// Parse --alias PATTERN=TARGET (repeatable)
+	const aliasRewrites: AgentAliasRewrite[] = [];
+	for (const raw of opts.aliasRaw) {
+		const parsed = parseAliasFlag(raw);
+		if (!parsed) {
+			process.stderr.write(
+				`error: invalid --alias '${raw}' (expected PATTERN=TARGET)\n\n`,
+			);
+			printUsage();
+			return 1;
+		}
+		aliasRewrites.push(parsed);
+	}
+	const extraAliases = aliasRewrites.length ? aliasRewrites : undefined;
+
 	let feed;
 	try {
 		feed = loadFeed(target, { maxDepth: opts.maxDepth, omit });
@@ -333,14 +409,31 @@ export async function runCli(argv: string[]): Promise<number> {
 		return 1;
 	}
 
+	// Scope product: drop test + debug path heuristics from the feed and stamp
+	// omitted targets so edges to them become toKind omitted (not unresolved).
+	const productScope = opts.scope === 'product';
+	let feedFiles = feed.files;
+	if (productScope) {
+		feedFiles = filterFilesByTestInclusion(feedFiles, false);
+		feedFiles = feedFiles.filter((f) => !isDebugPath(f.path));
+	}
+
+	const isOmittedPath = (p: string): boolean => {
+		if (omit.length && shouldOmit(p)) return true;
+		if (productScope && (isTestPath(p) || isDebugPath(p))) return true;
+		return false;
+	};
+	const hasOmitMatcher = omit.length > 0 || productScope;
+
 	let graph;
 	let catalog;
 	try {
 		const result = indexHostFeed(
-			{ files: feed.files },
+			{ files: feedFiles },
 			{
 				catalog: { limit: opts.limit },
-				isOmittedPath: omit.length ? shouldOmit : undefined,
+				isOmittedPath: hasOmitMatcher ? isOmittedPath : undefined,
+				extraAliases,
 			},
 		);
 		graph = result.graph;
@@ -354,12 +447,20 @@ export async function runCli(argv: string[]): Promise<number> {
 
 	const source = feed.source;
 	const warnings = [...feed.warnings];
+	if (productScope) {
+		warnings.push(
+			'Scope product: test and debug/scripts path heuristics omitted from feed.',
+		);
+	}
 
+	const presets: AgentScopePreset[] = productScope ? ['product'] : ['full'];
 	const scopeBase = {
 		omit,
-		includeTests: true as const,
+		includeTests: !productScope,
 		exactRequested: command === 'digest' ? opts.exact : false,
 		feedKind: source.kind,
+		presets,
+		...(aliasRewrites.length ? { aliasRewrites } : {}),
 	};
 
 	let exactInput:

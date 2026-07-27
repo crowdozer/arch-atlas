@@ -2,7 +2,7 @@
  * Public pure API for Arch Atlas Level-1 analysis.
  */
 
-export { buildGraph, reachableFiles } from '@core/graph/build.ts';
+export { buildGraph, classifyUnresolvedReason, reachableFiles } from '@core/graph/build.ts';
 export type { BuildGraphOpts } from '@core/graph/build.ts';
 export type {
 	AlluvialFocus,
@@ -11,6 +11,7 @@ export type {
 	AlluvialNodeRefKind,
 	AlluvialPayload,
 	CatalogBlast,
+	CatalogBoundaryCrossing,
 	CatalogComplex,
 	CatalogDeep,
 	CatalogEnd,
@@ -18,6 +19,7 @@ export type {
 	CatalogHotspot,
 	CatalogIceberg,
 	CatalogPublicMass,
+	CatalogScc,
 	CatalogSpine,
 	CatalogStart,
 	CodeGraph,
@@ -26,6 +28,7 @@ export type {
 	MapCatalog,
 	ParseMapEntry,
 	SpineFormula,
+	UnresolvedReason,
 	VirtualFile,
 } from '@core/graph/types.ts';
 export {
@@ -43,12 +46,19 @@ export { catalogEnds } from '@core/catalog/ends.ts';
 export { catalogHotspots } from '@core/catalog/hotspots.ts';
 export type { CatalogHotspotsOpts } from '@core/catalog/hotspots.ts';
 export {
+	HOTSPOT_SURFACE_DEMOTION,
 	inferFileRoles,
 	isBarrelBasename,
 	isDebugPath,
+	isFacade,
+	isFacadeBasename,
+	isHotspotDemotedSurface,
 	isPureBarrel,
 	primaryRole,
 } from '@core/catalog/roles.ts';
+export { catalogCycles, stronglyConnectedComponents } from '@core/catalog/cycles.ts';
+export type { CatalogCyclesResult } from '@core/catalog/cycles.ts';
+export { catalogBoundaryCrossings } from '@core/catalog/boundary.ts';
 export { catalogFileLoc } from '@core/catalog/fileLoc.ts';
 export { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
 export {
@@ -170,6 +180,14 @@ export type {
 } from '@core/parse/resolveRules.ts';
 export { resolveSpecifier, barePackageName, isRelativeSpecifier } from '@core/parse/resolve.ts';
 export type { ResolveResult } from '@core/parse/resolve.ts';
+export {
+	expandAlias,
+	joinPosix,
+	mergePathAliases,
+	parseAliasFlag,
+	parseTsconfigPaths,
+} from '@core/parse/tsconfig.ts';
+export type { PathAliasConfig } from '@core/parse/tsconfig.ts';
 export { ingestZip, isTextPath } from '@core/ingest/zip.ts';
 export {
 	filterFilesByTestInclusion,
@@ -203,6 +221,7 @@ export {
 	fileLocFromExportSurface,
 } from '@core/export/agentDigest.ts';
 export type {
+	AgentAliasRewrite,
 	AgentDigest,
 	AgentDigestAnalysis,
 	AgentDigestScope,
@@ -211,6 +230,7 @@ export type {
 	AgentFileAnalysis,
 	AgentFileLensCapabilities,
 	AgentFileReport,
+	AgentScopePreset,
 	AgentTreeNode,
 	AgentTreeOut,
 	BuildAgentDigestInput,

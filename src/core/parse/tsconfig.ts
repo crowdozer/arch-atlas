@@ -69,6 +69,60 @@ export function joinPosix(a: string, b: string): string {
 }
 
 /**
+ * Merge path-alias entries. Later entries win on the same pattern.
+ * Used to apply CLI `--alias` rewrites over tsconfig paths.
+ */
+export function mergePathAliases(
+	base: PathAliasConfig | null,
+	extra:
+		| PathAliasConfig
+		| Array<{ pattern: string; targets: string[] }>
+		| null
+		| undefined,
+): PathAliasConfig | null {
+	if (!extra) return base;
+	const extraPaths = Array.isArray(extra)
+		? extra
+		: extra.paths;
+	const baseUrl =
+		(!Array.isArray(extra) && extra.baseUrl) || base?.baseUrl || '';
+	const byPattern = new Map<string, string[]>();
+	for (const p of base?.paths ?? []) {
+		byPattern.set(p.pattern, [...p.targets]);
+	}
+	for (const p of extraPaths) {
+		if (!p.pattern || !p.targets?.length) continue;
+		// Rewrites win on the same pattern
+		byPattern.set(p.pattern, [...p.targets]);
+	}
+	const paths = [...byPattern.entries()].map(([pattern, targets]) => ({
+		pattern,
+		targets,
+	}));
+	if (!paths.length && !baseUrl) return base;
+	return { baseUrl, paths };
+}
+
+/**
+ * Parse a single CLI `--alias PATTERN=TARGET` value into a paths entry.
+ * TARGET may be comma-separated for multiple targets.
+ * Returns null when the form is invalid (no `=` or empty sides).
+ */
+export function parseAliasFlag(raw: string): { pattern: string; targets: string[] } | null {
+	const eq = raw.indexOf('=');
+	if (eq <= 0) return null;
+	const pattern = raw.slice(0, eq).trim();
+	const targetPart = raw.slice(eq + 1).trim();
+	if (!pattern || !targetPart) return null;
+	const targets = targetPart
+		.split(',')
+		.map((t) => t.trim())
+		.filter(Boolean);
+	if (!targets.length) return null;
+	return { pattern, targets };
+}
+
+/**
  * Apply path aliases. Returns candidate relative paths (no extension).
  */
 export function expandAlias(

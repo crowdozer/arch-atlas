@@ -19,7 +19,14 @@ import {
 	isRelativeSpecifier,
 	resolveSpecifier,
 } from '@core/parse/resolve.ts';
-import { expandAlias, joinPosix, parseTsconfigPaths, type PathAliasConfig } from '@core/parse/tsconfig.ts';
+import {
+	expandAlias,
+	joinPosix,
+	mergePathAliases,
+	parseTsconfigPaths,
+	type PathAliasConfig,
+} from '@core/parse/tsconfig.ts';
+import type { UnresolvedReason } from '@core/graph/types.ts';
 
 function pickAliasConfig(files: Map<string, string>): PathAliasConfig | null {
 	const candidates = ['tsconfig.json', 'jsconfig.json', 'tsconfig.app.json', 'tsconfig.base.json'];
@@ -113,7 +120,34 @@ export type BuildGraphOpts = {
 	 * `toKind: 'omitted'` instead of `unresolved`. Host/CLI pass omit matcher.
 	 */
 	isOmittedPath?: (path: string) => boolean;
+	/**
+	 * Extra path aliases (CLI `--alias`) merged after tsconfig pick.
+	 * Same pattern: rewrite wins.
+	 */
+	extraAliases?: PathAliasConfig | Array<{ pattern: string; targets: string[] }>;
 };
+
+/**
+ * Classify why a non-omitted resolve miss is unresolved.
+ * Prefer alias when expansion produced candidates or specifier is path-like `@/`.
+ */
+export function classifyUnresolvedReason(
+	specifier: string,
+	alias: PathAliasConfig | null,
+): UnresolvedReason {
+	const aliased = expandAlias(specifier, alias);
+	if (aliased.length > 0) return 'alias';
+	// Path-like `@/` is never a real npm scope — alias-style even without config
+	if (specifier.startsWith('@/')) return 'alias';
+	if (
+		isRelativeSpecifier(specifier) ||
+		specifier === '~' ||
+		specifier.startsWith('~/')
+	) {
+		return 'missing';
+	}
+	return 'external';
+}
 
 export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGraph {
 	const contents = new Map<string, string>();
@@ -166,7 +200,7 @@ export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGra
 	}
 
 	const fileSet = new Set(files.keys());
-	const alias = pickAliasConfig(contents);
+	const alias = mergePathAliases(pickAliasConfig(contents), opts?.extraAliases);
 	let unresolvedCount = 0;
 	let edgeSeq = 0;
 
@@ -183,6 +217,7 @@ export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGra
 			const resolved = resolveSpecifier(path, imp.specifier, fileSet, alias);
 			let to: string;
 			let toKind: ImportEdge['toKind'];
+			let unresolvedReason: UnresolvedReason | undefined;
 
 			if (resolved.kind === 'file') {
 				to = resolved.path;
@@ -218,6 +253,7 @@ export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGra
 				} else {
 					to = `unresolved:${imp.specifier}`;
 					toKind = 'unresolved';
+					unresolvedReason = classifyUnresolvedReason(imp.specifier, alias);
 					unresolvedCount++;
 				}
 			}
@@ -235,6 +271,7 @@ export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGra
 				line: imp.line,
 				bindings: imp.bindings,
 				...(imp.typeOnly ? { typeOnly: true } : {}),
+				...(unresolvedReason ? { unresolvedReason } : {}),
 			});
 		}
 	}

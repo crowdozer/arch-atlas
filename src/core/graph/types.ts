@@ -48,6 +48,14 @@ export type ImportBinding =
 	| { kind: 'namespace'; local: string }
 	| { kind: 'side-effect' };
 
+/**
+ * Why an unresolved edge failed to bind (additive taxonomy; toKind stays unresolved).
+ * - alias: path-alias expansion produced candidates missing from the feed
+ * - missing: relative/tilde target not in the feed
+ * - external: non-path external / URL / other fail-closed miss
+ */
+export type UnresolvedReason = 'alias' | 'missing' | 'external';
+
 export type ImportEdge = {
 	id: string;
 	kind: 'imports';
@@ -72,6 +80,11 @@ export type ImportEdge = {
 	 * Best-effort: `import { type X }` may still be value form.
 	 */
 	typeOnly?: boolean;
+	/**
+	 * Present when toKind is unresolved: alias | missing | external.
+	 * Omitted edges do not carry a reason (use toKind omitted).
+	 */
+	unresolvedReason?: UnresolvedReason;
 };
 
 /**
@@ -132,6 +145,7 @@ export type InferredFileRole =
 	| 'test'
 	| 'debug'
 	| 'barrel'
+	| 'facade'
 	| 'entrypoint'
 	| 'module';
 
@@ -310,6 +324,35 @@ export type CatalogSpine = {
 };
 
 /**
+ * Strongly connected component row (file→file cycle knot).
+ * Observed from import edges; size ≥ 2 only in catalog.
+ */
+export type CatalogScc = {
+	/** Distinct files in the component. */
+	size: number;
+	/** Sample member paths (stable sort, capped). */
+	samplePaths: string[];
+	/** File→file edges wholly inside the component. */
+	edgeCount: number;
+	epistemic: 'observed';
+};
+
+/**
+ * Deep import past a barrel/façade surface (inferred boundary heuristic).
+ */
+export type CatalogBoundaryCrossing = {
+	/** Barrel or façade path that owns the folder surface. */
+	barrel: string;
+	/** Importer outside the barrel directory. */
+	from: string;
+	/** Non-surface module under the barrel directory. */
+	to: string;
+	/** 1-based line of the deep import when known. */
+	line?: number;
+	epistemic: 'inferred';
+};
+
+/**
  * Large whole-file with export surface ≈ whole (Exact ratio).
  * Empty until Exact overlay provides export-surface LOC.
  */
@@ -398,6 +441,19 @@ export type MapCatalog = {
 	spines: CatalogSpine[];
 	/** Formula used to rank `spines` (optional stamp). */
 	spineFormula?: SpineFormula;
+	/**
+	 * Strongly connected components on file→file edges (runtime vs type).
+	 * Size ≥ 2 only; capped. Additive P1 lens.
+	 */
+	cycles?: {
+		runtime: CatalogScc[];
+		type: CatalogScc[];
+	};
+	/**
+	 * Deep imports past barrel/façade surfaces (inferred heuristic).
+	 * Additive P1 lens.
+	 */
+	boundaryCrossings?: CatalogBoundaryCrossing[];
 	summary: {
 		sourceCount: number;
 		/** External package nodes (npm/builtin), not monorepo packages. */

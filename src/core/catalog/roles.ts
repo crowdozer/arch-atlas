@@ -37,6 +37,23 @@ export function isBarrelBasename(path: string): boolean {
 	);
 }
 
+/** Basename is a public façade surface (`public.ts` / `.tsx` / `.js`). */
+export function isFacadeBasename(path: string): boolean {
+	const base = (normalizePath(path).split('/').pop() ?? '').toLowerCase();
+	return base === 'public.ts' || base === 'public.tsx' || base === 'public.js';
+}
+
+/** Path has a `public` segment (folder or basename stem). */
+function hasPublicSegment(path: string): boolean {
+	const p = normalizePath(path);
+	const parts = p.split('/');
+	for (const seg of parts) {
+		if (seg === 'public') return true;
+	}
+	const base = parts[parts.length - 1] ?? '';
+	return /^public\./i.test(base);
+}
+
 /**
  * Pure re-export barrel heuristic: barrel basename + re-export dominance
  * or high outDegree with tiny whole-file LOC.
@@ -59,6 +76,37 @@ export function isPureBarrel(graph: CodeGraph, path: string): boolean {
 	return false;
 }
 
+/**
+ * Façade heuristic (inferred): public.ts basename, or pure barrel under a
+ * `public` path segment with re-export dominance.
+ */
+export function isFacade(graph: CodeGraph, path: string): boolean {
+	if (isFacadeBasename(path)) {
+		// public.ts with any re-exports / outs is a façade surface
+		let out = 0;
+		for (const e of graph.edges) {
+			if (e.from === path) out += 1;
+		}
+		if (out > 0) return true;
+		// Empty public.ts still named as façade for role honesty
+		return true;
+	}
+	// Barrel with high reexport share + path segment `public`
+	if (hasPublicSegment(path) && isPureBarrel(graph, path)) return true;
+	return false;
+}
+
+/**
+ * True when hotspot rankScore should be demoted (barrel or façade).
+ * Single demotion factor — do not stack.
+ */
+export function isHotspotDemotedSurface(graph: CodeGraph, path: string): boolean {
+	return isFacade(graph, path) || isPureBarrel(graph, path);
+}
+
+/** Demotion multiplier applied to base hotspot score for barrel/façade. */
+export const HOTSPOT_SURFACE_DEMOTION = 0.35;
+
 export type InferFileRolesOpts = {
 	/** Paths treated as entrypoints (from starts entrypoint set). */
 	entrypointSet?: ReadonlySet<string>;
@@ -77,6 +125,7 @@ export function inferFileRoles(
 	if (isTestPath(path)) roles.push('test');
 	if (isDebugPath(path)) roles.push('debug');
 	if (opts?.entrypointSet?.has(path)) roles.push('entrypoint');
+	if (isFacade(graph, path)) roles.push('facade');
 	if (isPureBarrel(graph, path)) roles.push('barrel');
 	if (!roles.length) roles.push('module');
 	return roles;

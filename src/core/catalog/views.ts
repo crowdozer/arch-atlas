@@ -2,7 +2,9 @@
  * Assemble the map catalog from ranking bins (starts, ends, hotspots, …).
  */
 
+import { catalogBoundaryCrossings } from '@core/catalog/boundary.ts';
 import { catalogBlastRadius } from '@core/catalog/blastRadius.ts';
+import { catalogCycles } from '@core/catalog/cycles.ts';
 import { catalogComplex, catalogDeepest } from '@core/catalog/deepest.ts';
 import { catalogEnds } from '@core/catalog/ends.ts';
 import { catalogFileLoc } from '@core/catalog/fileLoc.ts';
@@ -17,7 +19,8 @@ import type { CodeGraph, MapCatalog, SpineFormula } from '@core/graph/types.ts';
 /** Optional top-N overrides for catalog ranking bins (UI keeps defaults). */
 export type BuildMapCatalogOpts = {
 	/**
-	 * Top-N for hotspots, complex, deepest, fileLoc, blastRadius, spines.
+	 * Top-N for hotspots, complex, deepest, fileLoc, blastRadius, spines,
+	 * cycles (per partition).
 	 * Default 15 (UI). CLI digest typically passes a higher limit (e.g. 40).
 	 */
 	limit?: number;
@@ -25,6 +28,8 @@ export type BuildMapCatalogOpts = {
 	startsLimit?: number;
 	/** Ends list cap (default 50). */
 	endsLimit?: number;
+	/** Boundary crossings cap (default 40). */
+	boundaryLimit?: number;
 	/** Spine ranking formula (default modules-then-in). */
 	spineFormula?: SpineFormula;
 };
@@ -49,6 +54,7 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const rankLimit = opts?.limit ?? 15;
 	const startsLimit = opts?.startsLimit ?? 40;
 	const endsLimit = opts?.endsLimit ?? 50;
+	const boundaryLimit = opts?.boundaryLimit ?? 40;
 
 	const spineFormula = opts?.spineFormula ?? DEFAULT_SPINE_FORMULA;
 	const { starts, entrypoints, roots } = catalogStartsSplit(graph, startsLimit);
@@ -60,6 +66,8 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const fileLoc = catalogFileLoc(graph, rankLimit);
 	const blastRadius = catalogBlastRadius(graph, rankLimit);
 	const spines = catalogSpines(graph, rankLimit, spineFormula);
+	const cycles = catalogCycles(graph, rankLimit);
+	const boundaryCrossings = catalogBoundaryCrossings(graph, boundaryLimit);
 	// Exact overlay only — stable empty shape under estimate
 	const publicMass: MapCatalog['publicMass'] = [];
 	const icebergs: MapCatalog['icebergs'] = [];
@@ -78,6 +86,8 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 		icebergs,
 		spines,
 		spineFormula,
+		cycles,
+		boundaryCrossings,
 		summary: {
 			sourceCount: graph.stats.sourceCount,
 			packageCount: graph.stats.packageCount,

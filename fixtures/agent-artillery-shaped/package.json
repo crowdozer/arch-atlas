@@ -1,0 +1,6 @@
+{
+  "name": "agent-artillery-shaped",
+  "private": true,
+  "type": "module",
+  "main": "client/main.ts"
+}

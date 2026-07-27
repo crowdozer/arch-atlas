@@ -4,7 +4,11 @@
  * Sort key is rankScore (unique/package runtime score after barrel demotion).
  */
 
-import { isPureBarrel, inferFileRoles } from '@core/catalog/roles.ts';
+import {
+	HOTSPOT_SURFACE_DEMOTION,
+	inferFileRoles,
+	isHotspotDemotedSurface,
+} from '@core/catalog/roles.ts';
 import type { CatalogHotspot, CodeGraph } from '@core/graph/types.ts';
 import { fileDegreeMaps } from '@core/view/fileImporters.ts';
 
@@ -48,8 +52,9 @@ export function catalogHotspots(
 		const inn = all.inDeg.get(path) ?? 0;
 		// Package-only hubs: score by runtime package outs (not type-only file traffic)
 		const baseScore = uniqueScore > 0 ? uniqueScore : runtimePackageOut;
-		const barrel = isPureBarrel(graph, path);
-		const rankScore = barrel ? baseScore * 0.35 : baseScore;
+		// Barrel / façade demotion (single factor; do not stack)
+		const demote = isHotspotDemotedSurface(graph, path);
+		const rankScore = demote ? baseScore * HOTSPOT_SURFACE_DEMOTION : baseScore;
 		const roles = inferFileRoles(graph, path, { entrypointSet });
 
 		hotspots.push({

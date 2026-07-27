@@ -7,6 +7,7 @@ import { buildMassBins } from '@core/catalog/massBins.ts';
 import { DEFAULT_SPINE_FORMULA } from '@core/catalog/spines.ts';
 import type {
 	CatalogBlast,
+	CatalogBoundaryCrossing,
 	CatalogComplex,
 	CatalogDeep,
 	CatalogEnd,
@@ -14,11 +15,13 @@ import type {
 	CatalogHotspot,
 	CatalogIceberg,
 	CatalogPublicMass,
+	CatalogScc,
 	CatalogSpine,
 	CatalogStart,
 	CodeGraph,
 	MapCatalog,
 	SpineFormula,
+	UnresolvedReason,
 } from '@core/graph/types.ts';
 import {
 	buildFileTree,
@@ -52,10 +55,18 @@ export type AgentDigestSource = {
 	path: string;
 };
 
+/** Scope preset name stamped when CLI `--scope` expands heuristics. */
+export type AgentScopePreset = 'full' | 'product' | 'debug' | 'test' | string;
+
+export type AgentAliasRewrite = {
+	pattern: string;
+	targets: string[];
+};
+
 export type AgentDigestScope = {
 	/** Normalized omit globs applied at feed (may be empty). */
 	omit: string[];
-	/** Whether tests were included (CLI default true). */
+	/** Whether tests were included (CLI default true; product scope false). */
 	includeTests: boolean;
 	/** Host requested Exact mass overlay. */
 	exactRequested: boolean;
@@ -63,6 +74,16 @@ export type AgentDigestScope = {
 	exactApplied: boolean;
 	/** Feed origin kind. */
 	feedKind: 'directory' | 'zip' | string;
+	/**
+	 * Active scope presets (e.g. `product` omits tests+debug heuristics).
+	 * Empty / absent means full default feed.
+	 */
+	presets?: AgentScopePreset[];
+	/**
+	 * Alias rewrites applied at graph build (CLI `--alias`).
+	 * Additive honesty stamp — not a second resolver.
+	 */
+	aliasRewrites?: AgentAliasRewrite[];
 };
 
 export type AgentDigestGraphFile = {
@@ -85,6 +106,8 @@ export type AgentDigestGraphEdge = {
 	line: number;
 	/** Present when true (import type / export type from). */
 	typeOnly?: boolean;
+	/** Present when toKind is unresolved (alias | missing | external). */
+	unresolvedReason?: UnresolvedReason;
 };
 
 export type AgentDigestCatalog = {
@@ -115,6 +138,19 @@ export type AgentDigestCatalog = {
 	icebergs: CatalogIceberg[];
 	/** Cross-cutting spines (topology). */
 	spines: CatalogSpine[];
+	/**
+	 * Strongly connected components (runtime vs type file graphs).
+	 * Additive P1; size ≥ 2 only.
+	 */
+	cycles?: {
+		runtime: CatalogScc[];
+		type: CatalogScc[];
+	};
+	/**
+	 * Deep imports past barrel/façade surfaces (inferred).
+	 * Additive P1.
+	 */
+	boundaryCrossings?: CatalogBoundaryCrossing[];
 };
 
 export type AgentDigestAnalysis = {
@@ -325,13 +361,21 @@ function resolveScope(
 	partial: Partial<AgentDigestScope> | undefined,
 	exactApplied: boolean,
 ): AgentDigestScope {
-	return {
+	const scope: AgentDigestScope = {
 		omit: partial?.omit ?? [],
 		includeTests: partial?.includeTests ?? true,
 		exactRequested: partial?.exactRequested ?? false,
 		exactApplied,
 		feedKind: partial?.feedKind ?? source.kind,
 	};
+	if (partial?.presets?.length) scope.presets = [...partial.presets];
+	if (partial?.aliasRewrites?.length) {
+		scope.aliasRewrites = partial.aliasRewrites.map((r) => ({
+			pattern: r.pattern,
+			targets: [...r.targets],
+		}));
+	}
+	return scope;
 }
 
 /**
@@ -406,6 +450,7 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 		form: e.form,
 		line: e.line,
 		...(e.typeOnly ? { typeOnly: true } : {}),
+		...(e.unresolvedReason ? { unresolvedReason: e.unresolvedReason } : {}),
 	}));
 
 	if (graph.stats.sourceCount === 0) {
@@ -491,6 +536,9 @@ export function buildAgentDigest(input: BuildAgentDigestInput): AgentDigest {
 			publicMass,
 			icebergs,
 			spines,
+			// P1 graph interpretation lenses
+			cycles: catalog.cycles,
+			boundaryCrossings: catalog.boundaryCrossings,
 		},
 		catalogEstimateFileLoc,
 		graph: { files, packages, edges },

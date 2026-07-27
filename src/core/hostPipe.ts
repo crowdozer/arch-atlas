@@ -38,6 +38,11 @@ export type IndexHostFeedOpts = {
 	 * `toKind: 'omitted'` instead of `unresolved`.
 	 */
 	isOmittedPath?: BuildGraphOpts['isOmittedPath'];
+	/**
+	 * Extra path aliases (CLI `--alias`) merged after tsconfig pick.
+	 * Same pattern: rewrite wins.
+	 */
+	extraAliases?: BuildGraphOpts['extraAliases'];
 };
 
 /**
@@ -47,6 +52,7 @@ export type IndexHostFeedOpts = {
 export function indexHostFeed(feed: HostFileFeed, opts?: IndexHostFeedOpts): IndexResult {
 	const graph = buildGraph(feed.files, {
 		isOmittedPath: opts?.isOmittedPath,
+		extraAliases: opts?.extraAliases,
 	});
 	const catalog = buildMapCatalog(graph, opts?.catalog);
 	return { graph, catalog };

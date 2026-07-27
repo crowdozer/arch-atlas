@@ -32,6 +32,22 @@ describe('buildGraph omitted targets', () => {
 		]);
 		const e = graph.edges.find((x) => x.specifier === './nope');
 		expect(e?.toKind).toBe('unresolved');
+		expect(e?.unresolvedReason).toBe('missing');
 		expect(graph.stats.unresolvedCount).toBe(1);
+	});
+
+	it('merges extraAliases and resolves path rewrite', () => {
+		const graph = buildGraph(
+			[
+				vf('src/a.ts', `import { u } from '@/mod/util';\n`),
+				vf('util.ts', `export const u = 1;\n`),
+			],
+			{
+				extraAliases: [{ pattern: '@/mod/*', targets: ['./*'] }],
+			},
+		);
+		const e = graph.edges.find((x) => x.specifier === '@/mod/util');
+		expect(e?.toKind).toBe('file');
+		expect(e?.to).toBe('util.ts');
 	});
 });
