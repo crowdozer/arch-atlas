@@ -126,7 +126,7 @@ VS Code: shell on extension host; stage via **postMessage** (`messages.ts`).
 ## Implementation slice (when realized)
 
 1. `src/shell` — types, navigation, project, messages + unit tests  
-2. `src/stage` — mount/clicks; move `alluvialTopPack`  
+2. `src/stage` — mount/clicks; move `src/client/alluvialPolish/` (post-mount polish package; formerly `alluvialTopPack`)  
 3. Rewire `app.ts`; path aliases `@shell`, `@stage`  
 4. `extension/` — compile, Index Workspace → `indexFiles`, stage panel stub  
 5. Root scripts `extension:compile`; README/AGENTS docs  

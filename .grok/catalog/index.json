@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-27T01:52:45Z",
+  "generated_at": "2026-07-27T02:21:11Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 4,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
       "kind": "proposal",
-      "state": "active",
+      "state": "implemented",
       "authority": "advisory",
       "provenance": "mixed",
       "path": ".grok/catalog/entries/alluvial-top-pack-rename-split.md",
@@ -21,21 +21,24 @@
         "hub-alluvial"
       ],
       "applies_when": [
-        "refactoring src/client/alluvialTopPack.ts",
-        "renaming alluvialTopPack or polishAlluvialHolder",
+        "refactoring src/client/alluvialPolish",
+        "renaming alluvialPolish or polishAlluvialHolder",
+        "former alluvialTopPack module or godfile cleanup",
         "extracting stage from client",
         "dual-host stage bundle for webview",
         "Carbon alluvial post-mount polish",
         "External straighten or pad-rail DOM surgery",
         "terminator chrome on hub alluvial",
         "File spine center highlight label truncate",
-        "client rendering godfile cleanup",
+        "client rendering package split under alluvialPolish",
         "src/stage ownership of chart paint",
-        "alluvialTopPack.test.ts geometry suite"
+        "alluvialPolish.test.ts geometry suite"
       ],
       "touches": [
-        "src/client/alluvialTopPack.ts",
-        "src/client/alluvialTopPack.test.ts",
+        "src/client/alluvialPolish/",
+        "src/client/alluvialPolish/index.ts",
+        "src/client/alluvialPolish/polish.ts",
+        "src/client/alluvialPolish/alluvialPolish.test.ts",
         "src/client/app.ts (polishAlluvialHolder call site)",
         "src/client/focus/displayInventory.ts",
         "src/client/focus/e2e/focusE2eBoot.ts",
@@ -47,7 +50,7 @@
         "geometric-vs-knot-architecture"
       ],
       "rationale_quality": "full",
-      "consult": "Consult when: refactoring src/client/alluvialTopPack.ts; renaming alluvialTopPack or polishAlluvialHolder; extracting stage from client; dual-host stage bundle for webview"
+      "consult": "Consult when: refactoring src/client/alluvialPolish; renaming alluvialPolish or polishAlluvialHolder; former alluvialTopPack module or godfile cleanup; extracting stage from client"
     },
     {
       "id": "dual-host-shell-stage",
