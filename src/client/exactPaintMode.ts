@@ -57,6 +57,11 @@ export type ExactPaintModeDeps = {
 	/** Drop session.programMeta (soft-fail / new graph without applied Program). */
 	clearProgramMeta: () => void;
 	remountCurrentView: () => void;
+	/**
+	 * Clear the alluvial and show a stage loading status while Program enrich
+	 * runs (avoids stale prior chart). Wired to {@link AlluvialStage.showLoading}.
+	 */
+	showStageLoading: (msg: string) => void;
 	setStatus: (msg: string) => void;
 	openUnavailableModal: (opts: {
 		label: string;
@@ -477,6 +482,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setLocPrecision('program');
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'program');
 		deps.setStatus('Program: loading TypeScript engine in worker…');
+		// Clear prior alluvial immediately — do not leave stale chart during enrich.
+		deps.showStageLoading('Building Program topology…');
 
 		try {
 			const result = await runProgramEnrichment(session.graph, {
@@ -494,7 +501,12 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 			if (result.ok === false) {
 				if (result.cancelled) {
-					// New session / supersede — do not toast over open status
+					// Supersede / cancel: remount prior graph if session still open so
+					// the user is not stuck on the loading placeholder. New open clears
+					// session then remounts on its own path — skip if session gone.
+					if (deps.getSession()) {
+						deps.remountCurrentView();
+					}
 					return;
 				}
 				// Soft-fail: prior graph unchanged; restore prior precision chrome

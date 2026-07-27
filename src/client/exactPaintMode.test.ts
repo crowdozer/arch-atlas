@@ -98,6 +98,7 @@ function mockPaintDeps(session: Session): {
 		statuses: string[];
 		precisionSyncs: LocPrecision[];
 		programApplies: number;
+		stageLoading: string[];
 	};
 } {
 	const state = {
@@ -115,6 +116,7 @@ function mockPaintDeps(session: Session): {
 		statuses: [] as string[],
 		precisionSyncs: [] as LocPrecision[],
 		programApplies: 0,
+		stageLoading: [] as string[],
 	};
 
 	const deps: ExactPaintModeDeps = {
@@ -151,6 +153,9 @@ function mockPaintDeps(session: Session): {
 		},
 		remountCurrentView: () => {
 			calls.remount += 1;
+		},
+		showStageLoading: (msg) => {
+			calls.stageLoading.push(msg);
 		},
 		setStatus: (msg) => {
 			calls.statuses.push(msg);
@@ -318,7 +323,36 @@ describe('enableProgramMode orchestration', () => {
 		cancelProgramEnrichment.mockReset();
 	});
 
-	it('soft-fail restores prior precision, no apply, clears programMeta, L1 status', async () => {
+	it('showStageLoading is called before enrich resolves', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		let resolveEnrich!: (v: unknown) => void;
+		runProgramEnrichment.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveEnrich = resolve;
+				}),
+		);
+
+		const pending = paint.enableProgramMode();
+
+		// Flight started: loading must appear before enrich settles
+		expect(calls.stageLoading).toEqual(['Building Program topology…']);
+		expect(calls.remount).toBe(0);
+		expect(calls.programApplies).toBe(0);
+
+		resolveEnrich!(okProgramResult(session));
+		await pending;
+
+		expect(calls.programApplies).toBe(1);
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
+		expect(state.exactEnableInFlight).toBe(false);
+	});
+
+	it('soft-fail restores prior precision, remounts, no apply, L1 status', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'estimate';
@@ -331,11 +365,13 @@ describe('enableProgramMode orchestration', () => {
 
 		await paint.enableProgramMode();
 
+		expect(calls.stageLoading).toEqual(['Building Program topology…']);
 		expect(calls.programApplies).toBe(0);
 		expect(state.locPrecision).toBe('estimate');
 		expect(state.programExactMass).toBe(false);
 		expect(state.programMetaCleared).toBe(1);
 		expect(calls.precisionSyncs).toContain('estimate');
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
 		expect(calls.statuses.at(-1)).toMatch(/graph left at L1/);
 		expect(calls.statuses.at(-1)).toMatch(/not LSP/);
 		expect(state.exactEnableInFlight).toBe(false);
@@ -358,9 +394,11 @@ describe('enableProgramMode orchestration', () => {
 
 		await paint.enableProgramMode();
 
+		expect(calls.stageLoading).toEqual(['Building Program topology…']);
 		expect(calls.programApplies).toBe(0);
 		expect(state.locPrecision).toBe('exact');
 		expect(state.surfaceProvider).toBe(provider);
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
 		expect(calls.statuses.at(-1)).toMatch(/Program unavailable/);
 	});
 
@@ -374,6 +412,7 @@ describe('enableProgramMode orchestration', () => {
 
 		await paint.enableProgramMode();
 
+		expect(calls.stageLoading).toEqual(['Building Program topology…']);
 		expect(calls.programApplies).toBe(1);
 		expect(state.locPrecision).toBe('program');
 		expect(state.programExactMass).toBe(false);
@@ -435,7 +474,7 @@ describe('enableProgramMode orchestration', () => {
 		expect(ensureExactForGraph).toHaveBeenCalled();
 	});
 
-	it('cancelled result is silent (no soft-fail toast / no apply)', async () => {
+	it('cancelled with live session remounts prior graph (no soft-fail toast)', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'estimate';
@@ -449,12 +488,44 @@ describe('enableProgramMode orchestration', () => {
 
 		await paint.enableProgramMode();
 
+		expect(calls.stageLoading).toEqual(['Building Program topology…']);
 		expect(calls.programApplies).toBe(0);
+		// Live session: remount prior graph so loading placeholder is not sticky
+		expect(calls.remount).toBeGreaterThanOrEqual(1);
 		// Loading status may have been set; must not clobber with soft-fail L1 line
 		expect(calls.statuses.some((s) => s.includes('graph left at L1'))).toBe(
 			false,
 		);
 		expect(state.programMetaCleared).toBe(0);
+		expect(state.exactEnableInFlight).toBe(false);
+	});
+
+	it('cancelled with no session skips remount (new open owns paint)', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		// enableProgramMode checks session at start; cancel path re-checks
+		let callsToGet = 0;
+		deps.getSession = () => {
+			callsToGet += 1;
+			// Start needs session; after cancel host may already have cleared it
+			return callsToGet === 1 ? session : null;
+		};
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockResolvedValue({
+			ok: false,
+			error: 'Program enrich cancelled (stale generation)',
+			cancelled: true,
+		});
+
+		await paint.enableProgramMode();
+
+		expect(calls.programApplies).toBe(0);
+		expect(calls.remount).toBe(0);
+		expect(calls.statuses.some((s) => s.includes('graph left at L1'))).toBe(
+			false,
+		);
 		expect(state.exactEnableInFlight).toBe(false);
 	});
 

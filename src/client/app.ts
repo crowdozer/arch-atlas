@@ -339,6 +339,9 @@ const exact = createExactPaintMode({
 	applyProgramGraph,
 	clearProgramMeta,
 	remountCurrentView: () => remountCurrentView(),
+	showStageLoading: (msg) => {
+		stage.showLoading(msg);
+	},
 	setStatus,
 	openUnavailableModal: (opts) => inspect.openUnavailableModal(opts),
 	syncPrecisionDropdown,

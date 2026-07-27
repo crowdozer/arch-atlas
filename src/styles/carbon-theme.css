@@ -563,6 +563,17 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart__loading {
   font-size: 0.875rem;
   color: #71717a;
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  min-height: 8rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Program enrich: keep stage from collapsing while chart is cleared. */
+.atlas-stage__chart--loading {
+  min-height: 12rem;
 }
 
 .ui-carbon-chart .cds--cc--alluvial rect.node {

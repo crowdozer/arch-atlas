@@ -43,6 +43,11 @@ export type AlluvialStage = {
 	destroy(): void;
 	/** Clear chart + empty root + drop payload (resetSession). */
 	clear(): void;
+	/**
+	 * Destroy chart and show a loading status in the stage (Program enrich).
+	 * Message is set via textContent (never raw HTML).
+	 */
+	showLoading(message: string): void;
 	getPayload(): AlluvialPayload | null;
 	refForName(name: string): AlluvialNodeRef | null;
 	/** After successful payload mount; used by focus e2e hover/dump. */
@@ -82,6 +87,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 
 		destroy();
 		// Always replace holder DOM — Carbon leaves residual SVG if only innerHTML clear.
+		root.classList.remove('atlas-stage__chart--loading');
 		root.replaceChildren();
 		currentPayload = payload;
 
@@ -164,13 +170,36 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 		destroy();
 		currentPayload = null;
 		const root = host.getRoot();
-		if (root) root.replaceChildren();
+		if (root) {
+			root.classList.remove('atlas-stage__chart--loading');
+			root.replaceChildren();
+		}
+	};
+
+	/**
+	 * Tear down the chart and inject a polite loading status so the prior
+	 * alluvial is not left on screen during async Program enrich.
+	 */
+	const showLoading = (message: string): void => {
+		destroy();
+		currentPayload = null;
+		const root = host.getRoot();
+		if (!root) return;
+		root.replaceChildren();
+		root.classList.add('atlas-stage__chart--loading');
+		const p = document.createElement('p');
+		p.className = 'ui-carbon-chart__loading';
+		p.setAttribute('role', 'status');
+		p.setAttribute('aria-live', 'polite');
+		p.textContent = message;
+		root.appendChild(p);
 	};
 
 	return {
 		mount,
 		destroy,
 		clear,
+		showLoading,
 		getPayload: () => currentPayload,
 		refForName,
 		getFocusApi: () => focusApi,
