@@ -249,19 +249,33 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * Map provider surface text into inspect snippet shape.
- * Path/line range are best-effort from the edge + excerpt length.
+ * Map provider surface into inspect snippet shape.
+ * Prefer provider file line range; fall back to excerpt-relative 1..n only when
+ * the host omitted start/end (legacy injects).
  */
 function exactImportedCodeFromProvider(
 	e: ImportEdge,
-	surface: { text: string; note: string },
+	surface: {
+		text: string;
+		note: string;
+		startLine?: number;
+		endLine?: number;
+	},
 ): ImportedCodeSnippet {
 	const lines = sourceLines(surface.text);
-	const endLine = lines.length > 0 ? lines.length : 1;
+	const excerptEnd = lines.length > 0 ? lines.length : 1;
+	const startLine =
+		typeof surface.startLine === 'number' && surface.startLine >= 1
+			? surface.startLine
+			: 1;
+	const endLine =
+		typeof surface.endLine === 'number' && surface.endLine >= startLine
+			? surface.endLine
+			: excerptEnd;
 	return {
 		epistemic: 'observed',
 		path: e.toKind === 'file' ? e.to : toLabel(e),
-		startLine: 1,
+		startLine,
 		endLine,
 		text: surface.text,
 		note: surface.note,

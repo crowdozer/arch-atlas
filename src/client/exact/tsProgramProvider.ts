@@ -314,16 +314,25 @@ export function createTsProgramProvider(
 		importedSurface(
 			graph: CodeGraph,
 			edge: ImportEdge,
-		): { text: string; note: string } | null {
+		): {
+			text: string;
+			note: string;
+			startLine?: number;
+			endLine?: number;
+		} | null {
 			void graph;
 			if (edge.toKind !== 'file') return null;
 			const spans = spansFor(edge.to);
 			const picked = pickSpansForBindings(edge.bindings ?? [], spans);
 			if (!picked.length) return null;
 			const text = picked.map((s) => s.text.trimEnd()).join('\n\n');
+			const startLine = Math.min(...picked.map((s) => s.startLine));
+			const endLine = Math.max(...picked.map((s) => s.endLine));
 			return {
 				text: text.slice(0, 4000),
 				note: surfaceNote(edge.to),
+				startLine,
+				endLine,
 			};
 		},
 

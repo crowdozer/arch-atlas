@@ -247,7 +247,10 @@ export function pickSpansForBindings(
 ): ExportSpan[] {
 	if (!bindings.length) return [];
 	const onlySide = bindings.every((b) => b.kind === 'side-effect');
-	if (onlySide || bindings.some((b) => b.kind === 'namespace')) {
+	// Side-effect import has no named surface — do not dump the whole export list
+	if (onlySide) return [];
+	// namespace import: show export surface (capped)
+	if (bindings.some((b) => b.kind === 'namespace')) {
 		return spans.slice(0, 12);
 	}
 	const wanted = new Set<string>();

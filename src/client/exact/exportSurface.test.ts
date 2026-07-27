@@ -101,4 +101,9 @@ describe('pickSpansForBindings', () => {
 		expect(picked).toHaveLength(1);
 		expect(picked[0]!.name).toBe('foo');
 	});
+
+	it('side-effect import picks no spans (do not dump all exports)', () => {
+		const picked = pickSpansForBindings([{ kind: 'side-effect' }], spans);
+		expect(picked).toEqual([]);
+	});
 });

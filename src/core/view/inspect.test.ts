@@ -121,6 +121,8 @@ describe('inspect evidence', () => {
 			importedSurface: () => ({
 				text: 'export const x = 1; // exact surface',
 				note: 'exact imported surface (mock)',
+				startLine: 10,
+				endLine: 12,
 			}),
 			callSites: () => [
 				{
@@ -136,6 +138,9 @@ describe('inspect evidence', () => {
 		expect(ev!.import.text).toContain('util');
 		expect(ev!.importedCode?.text).toContain('exact surface');
 		expect(ev!.importedCode?.note).toMatch(/exact/i);
+		// Prefer provider file line range over excerpt-relative 1..n
+		expect(ev!.importedCode?.startLine).toBe(10);
+		expect(ev!.importedCode?.endLine).toBe(12);
 		expect(ev!.callsites).toHaveLength(1);
 		expect(ev!.callsites[0]!.symbol).toBe('x');
 		expect(ev!.blockers.some((b) => b.code === 'exact-not-implemented')).toBe(

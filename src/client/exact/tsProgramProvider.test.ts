@@ -69,6 +69,11 @@ describe('createTsProgramProvider (Program-backed)', () => {
 		const surf = provider.importedSurface?.(graph, edge!);
 		expect(surf?.note).toMatch(/Program|createSourceFile/i);
 		expect(surf?.text).toMatch(/used/);
+		// File line range (not excerpt-relative 1..n only)
+		expect(surf?.startLine).toBeGreaterThanOrEqual(1);
+		expect(surf?.endLine).toBeGreaterThanOrEqual(surf!.startLine!);
+		// Should not include unused export body
+		expect(surf?.text).not.toMatch(/unused/);
 	});
 
 	it('falls back to text surface when ts is missing', () => {

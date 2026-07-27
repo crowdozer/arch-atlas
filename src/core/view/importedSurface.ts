@@ -25,11 +25,20 @@ export type ImportedSurfaceProvider = {
 	/**
 	 * Exact imported surface excerpt for inspect (optional).
 	 * Null / omit → withhold surface under exact (blocker or empty).
+	 * When present, `startLine`/`endLine` are 1-based line numbers in `path`
+	 * (file), not relative to the excerpt alone.
 	 */
 	importedSurface?(
 		graph: CodeGraph,
 		edge: ImportEdge,
-	): { text: string; note: string } | null;
+	): {
+		text: string;
+		note: string;
+		/** 1-based start line in the target file (optional). */
+		startLine?: number;
+		/** 1-based end line in the target file (optional). */
+		endLine?: number;
+	} | null;
 
 	/**
 	 * Exact callsites for inspect (optional).
