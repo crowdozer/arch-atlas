@@ -1014,16 +1014,17 @@ cds-search.atlas-tree-search {
 
 /*
  * Carbon form-items default to flex: 1 1 auto + column layout.
- * Force a fixed field width and single-row host (modestly tighter than prior).
+ * Fixed field widths — sized for honest labels (Export surface / Exact …)
+ * so selected text is not clipped in the closed trigger.
  */
 cds-dropdown.atlas-stage__weight,
 .atlas-stage__weight {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 10rem !important;
+  flex: 0 0 12.5rem !important;
   flex-direction: row !important;
-  width: 10rem !important;
-  max-width: 10rem !important;
+  width: 12.5rem !important;
+  max-width: 12.5rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -1033,10 +1034,10 @@ cds-dropdown.atlas-stage__depth,
 .atlas-stage__depth {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 4.25rem !important;
+  flex: 0 0 5rem !important;
   flex-direction: row !important;
-  width: 4.25rem !important;
-  max-width: 4.25rem !important;
+  width: 5rem !important;
+  max-width: 5rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
@@ -1046,10 +1047,10 @@ cds-dropdown.atlas-stage__precision,
 .atlas-stage__precision {
   box-sizing: border-box;
   display: block !important;
-  flex: 0 0 7.5rem !important;
+  flex: 0 0 11.5rem !important;
   flex-direction: row !important;
-  width: 7.5rem !important;
-  max-width: 7.5rem !important;
+  width: 11.5rem !important;
+  max-width: 11.5rem !important;
   min-width: 0 !important;
   height: 2rem;
   align-self: center;
