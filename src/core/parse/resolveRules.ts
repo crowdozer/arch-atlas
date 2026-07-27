@@ -16,6 +16,10 @@ export type LanguageFamilyId = 'js-ts' | 'python';
 /**
  * Named path-rule families applied by `resolveSpecifier`.
  * Order in `RULES_BY_FAMILY` documents policy; apply order lives in resolve.ts.
+ *
+ * `resource-query-strip` is a **js-ts pre-resolve normalize** (Vite/webpack
+ * `?worker` / `?raw` / `#hash`). Not universal — candidates must not inherit
+ * it blindly (see CANDIDATE_LANGUAGE_NOTES blockers).
  */
 export type PathRuleFamily =
 	| 'dot-relative'
@@ -24,11 +28,14 @@ export type PathRuleFamily =
 	| 'pathlike-at-fail-closed'
 	| 'bare-external'
 	| 'tilde-prefix'
-	| 'specifier-ext-rewrite';
+	| 'specifier-ext-rewrite'
+	/** js-ts only: strip `?query` / `#hash` before tryFile (not python). */
+	| 'resource-query-strip';
 
 /** Rules enabled for estimate resolve (family-scoped apply in resolve.ts). */
 export const RULES_BY_FAMILY: Record<LanguageFamilyId, readonly PathRuleFamily[]> = {
 	'js-ts': [
+		'resource-query-strip', // pre-step; Vite/webpack only
 		'dot-relative',
 		'ext-index-probe', // part of tryFile
 		'config-path-alias',
@@ -57,6 +64,7 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 	{
 		family: 'javascript',
 		rules: [
+			'resource-query-strip',
 			'dot-relative',
 			'ext-index-probe',
 			'config-path-alias',
@@ -66,11 +74,16 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 			'bare-external',
 		],
 		confidence: 'very-high',
-		blockers: ['same gaps as js-ts (bundler configs, package imports)'],
+		blockers: [
+			'same gaps as js-ts (bundler configs, package imports)',
+			// document only — already enabled for js-ts family
+			'bundler query strip is js-ts pre-resolve normalize, not universal',
+		],
 	},
 	{
 		family: 'vue-svelte-astro-sfc',
 		rules: [
+			'resource-query-strip', // only if resolve family stays js-ts (Astro does)
 			'dot-relative',
 			'ext-index-probe',
 			'config-path-alias',
@@ -78,13 +91,24 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 			'bare-external',
 		],
 		confidence: 'medium',
-		blockers: ['SFC script-block extract', 'style/template import paths'],
+		blockers: [
+			'SFC script-block extract',
+			'style/template import paths',
+			'string-aware extract FP suite required (HTML lookalikes)',
+			'bundler query strip is js-ts pre-resolve normalize, not universal',
+		],
 	},
 	{
 		family: 'php-composer',
 		rules: ['config-path-alias', 'dot-relative'],
 		confidence: 'medium',
-		blockers: ['use/require extract', 'PSR-4 map loader', 'not npm bare'],
+		blockers: [
+			'use/require extract',
+			'PSR-4 map loader',
+			'not npm bare',
+			'do not inherit resource-query-strip (not a bundler family)',
+			'string-aware extract FP suite required',
+		],
 	},
 	{
 		family: 'python',
@@ -94,25 +118,35 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 			'no site-packages / pyproject path maps',
 			'no importlib / dynamic',
 			'stdlib builtin tagging optional',
+			// resource-query-strip intentionally absent — python early-return in resolve.ts
+			'bundler query strip is js-ts pre-resolve normalize, not universal',
 		],
 	},
 	{
 		family: 'go',
 		rules: ['bare-external'],
 		confidence: 'low',
-		blockers: ['go.mod modules', 'module-path imports ≠ file-relative ./'],
+		blockers: [
+			'go.mod modules',
+			'module-path imports ≠ file-relative ./',
+			'do not inherit resource-query-strip',
+		],
 	},
 	{
 		family: 'rust',
 		rules: ['bare-external'],
 		confidence: 'low',
-		blockers: ['mod/use path model', 'crate graph'],
+		blockers: ['mod/use path model', 'crate graph', 'do not inherit resource-query-strip'],
 	},
 	{
 		family: 'java-kotlin',
 		rules: ['bare-external'],
 		confidence: 'low',
-		blockers: ['type-name imports', 'classpath layout'],
+		blockers: [
+			'type-name imports',
+			'classpath layout',
+			'do not inherit resource-query-strip',
+		],
 	},
 ];
 

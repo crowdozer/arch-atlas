@@ -301,11 +301,15 @@ export function resolveSpecifier(
 	const family: LanguageFamilyId = familyForPath(fromPath) ?? 'js-ts';
 
 	if (family === 'python') {
+		// Python never applies resource-query-strip / tilde / alias / ext-rewrite.
 		return resolvePythonSpecifier(fromPath, specifier, fileSet);
 	}
 
-	// Vite/webpack resource queries (`?worker`, `?raw`, …) and optional hash
-	const cleaned = stripSpecifierResourceSuffix(specifier);
+	// js-ts pre-resolve normalize only (resource-query-strip PathRuleFamily).
+	// Not universal — PHP/C/etc. must not inherit this blindly.
+	const cleaned = hasRule(family, 'resource-query-strip')
+		? stripSpecifierResourceSuffix(specifier)
+		: specifier;
 	if (!cleaned) {
 		return { kind: 'unresolved', specifier: cleaned || specifier };
 	}

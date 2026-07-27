@@ -1,0 +1,10 @@
+{
+  "name": "golden-l1-js-ts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/entry.ts",
+  "dependencies": {
+    "zod": "^3.0.0"
+  }
+}

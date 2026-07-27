@@ -262,7 +262,14 @@ import {
 		expect(s).toContain('http://x');
 		expect(s).not.toContain('trail');
 	});
+});
 
+/**
+ * L1 false-positive guards — product-proven extract noise classes.
+ * Each case pairs negatives (lookalikes must not edge) with a real import
+ * in the same source (prevents "strip everything" regressions).
+ */
+describe('L1 false-positive guards', () => {
 	it('does not latch import inside string literals (union type / form field)', () => {
 		// Product false-positive class: form: 'import' | 'export' | … → package '|'
 		const src = `
@@ -309,6 +316,30 @@ import { x } from './x';
 `;
 		const imps = extractImports(src);
 		expect(imps.map((i) => i.specifier)).toEqual(['./x']);
+	});
+
+	it('skips import lookalikes in line/block comments while keeping real edge', () => {
+		const src = `
+// import { no } from './commented';
+/* import { no2 } from './block'; */
+import { a } from './a';
+`;
+		const imps = extractImports(src);
+		const specs = imps.map((i) => i.specifier);
+		expect(specs).toEqual(['./a']);
+		expect(specs).not.toContain('./commented');
+		expect(specs).not.toContain('./block');
+	});
+
+	it('does not harvest import keyword mid-line inside a double-quoted string', () => {
+		const src = `
+const hint = "use import { x } from './fake' in docs";
+import { real } from './real';
+`;
+		const imps = extractImports(src);
+		const specs = imps.map((i) => i.specifier);
+		expect(specs).toEqual(['./real']);
+		expect(specs).not.toContain('./fake');
 	});
 });
 

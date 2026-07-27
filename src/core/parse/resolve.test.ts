@@ -207,6 +207,7 @@ describe('resolveSpecifier bare / builtins', () => {
 describe('RULES_BY_FAMILY registry', () => {
 	it('includes expected js-ts rule families', () => {
 		const expected: PathRuleFamily[] = [
+			'resource-query-strip',
 			'dot-relative',
 			'ext-index-probe',
 			'config-path-alias',
@@ -220,19 +221,22 @@ describe('RULES_BY_FAMILY registry', () => {
 		}
 	});
 
-	it('familyForPath maps JS/TS and Python sources', () => {
+	it('familyForPath maps JS/TS, Astro (→ js-ts), and Python sources', () => {
 		expect(familyForPath('src/a.ts')).toBe('js-ts');
 		expect(familyForPath('x.tsx')).toBe('js-ts');
 		expect(familyForPath('x.mjs')).toBe('js-ts');
+		// Astro SFCs resolve with js-ts path rules; parseKind stays astro-import
+		expect(familyForPath('src/pages/index.astro')).toBe('js-ts');
 		expect(familyForPath('x.py')).toBe('python');
 		expect(familyForPath('pkg/a.py')).toBe('python');
 		expect(familyForPath('x.go')).toBeNull();
 	});
 
-	it('includes python rule families', () => {
+	it('includes python rule families without resource-query-strip', () => {
 		expect(RULES_BY_FAMILY.python).toContain('dot-relative');
 		expect(RULES_BY_FAMILY.python).toContain('ext-index-probe');
 		expect(RULES_BY_FAMILY.python).toContain('bare-external');
+		expect(RULES_BY_FAMILY.python).not.toContain('resource-query-strip');
 	});
 });
 

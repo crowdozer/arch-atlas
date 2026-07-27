@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<script lang="ts">
+import { greet } from '../lib/greet.ts';
+console.log(greet());
+</script>
+<html>
+  <Layout>
+    <p>Docs: import { x } from './fake'</p>
+    <code>import Button from './Button.astro'</code>
+    <pre>
+import { ghost } from '../ghost.ts';
+    </pre>
+  </Layout>
+</html>

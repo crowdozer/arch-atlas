@@ -54,6 +54,49 @@ import B from './b.ts';
 	});
 });
 
+/**
+ * L1 false-positive guards — template HTML must not become import edges;
+ * frontmatter + inline <script> real imports must (positives + negatives same source).
+ */
+describe('L1 false-positive guards', () => {
+	it('does not extract import-looking HTML/template body text', () => {
+		const src = `---
+import Layout from '../layouts/Layout.astro';
+---
+<html>
+  <p>Docs: import { x } from './fake'</p>
+  <code>import Button from './Button.astro'</code>
+  <pre>
+import { ghost } from '../ghost.ts';
+  </pre>
+</html>
+`;
+		const imps = extractAstroImports(src);
+		const specs = imps.map((i) => i.specifier);
+		expect(specs).toEqual(['../layouts/Layout.astro']);
+		expect(specs).not.toContain('./fake');
+		expect(specs).not.toContain('./Button.astro');
+		expect(specs).not.toContain('../ghost.ts');
+	});
+
+	it('keeps frontmatter and inline script imports; skips src= external scripts', () => {
+		const src = `---
+import Layout from '../layouts/Layout.astro';
+---
+<script src="/cdn/widget.js"></script>
+<script lang="ts">
+import { greet } from '../lib/greet.ts';
+</script>
+<p>import { noise } from './html-noise'</p>
+`;
+		const imps = extractAstroImports(src);
+		const specs = imps.map((i) => i.specifier).sort();
+		expect(specs).toEqual(['../layouts/Layout.astro', '../lib/greet.ts'].sort());
+		expect(specs).not.toContain('/cdn/widget.js');
+		expect(specs).not.toContain('./html-noise');
+	});
+});
+
 describe('astro graph integration', () => {
 	it('classifies and resolves .astro → .astro / .ts edges', () => {
 		expect(classifyFileParse('src/pages/index.astro').kind).toBe('astro-import');
