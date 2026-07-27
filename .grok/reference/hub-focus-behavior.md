@@ -1,17 +1,19 @@
 # Hub alluvial focus — behavioral matrix
 
-**Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`)  
-**Code SoR:** `src/client/focus/logicalFocusGraph.ts` (plan),  
-`src/client/focus/displayInventory.ts` + `focusApply.ts` (drawn bands),  
-`src/client/focus/focusHarness.ts` (test observation: plan + inventory classify + MiniEl apply),  
-thin wire in `src/client/app.ts`  
+**Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`; sticky package open)  
+**Code SoR:** `src/stage/focus/logicalFocusGraph.ts` (plan),  
+`src/stage/focus/displayInventory.ts` + `focusApply.ts` (drawn bands),  
+`src/stage/focus/bindAlluvialFocus.ts` (hover wire + sticky `defaultSeed`),  
+`src/stage/focus/focusHarness.ts` (test observation: plan + inventory classify + MiniEl apply),  
+host wire in `src/client/app.ts` (`pendingPackageFocusLabel` / package open)  
 **Geometry matrix (orthogonal):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)  
 **Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
 
-This document is the **working contract for hub hover focus/highlight**.  
-Geometry membership (columns, pads, rails, straighten) is **not** owned here —
-focus **consumes** payload + `meta.externalStraightPairs` and reconciles onto
-**drawn** bands after polish. Do not rewrite `fileHub` pads to make hover easy.
+This document is the **working contract for hub focus/highlight** (hover seeds
+plus open-time sticky package seed). Geometry membership (columns, pads, rails,
+straighten) is **not** owned here — focus **consumes** payload +
+`meta.externalStraightPairs` and reconciles onto **drawn** bands after polish.
+Do not rewrite `fileHub` pads to make hover easy.
 
 ---
 
@@ -37,10 +39,37 @@ connectivity for External is **`externalStraightPairs` only**.
 | ---- | ---- | ----------- |
 | **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ non-multi-instance aliases) |
 | **file** | Hover a file label | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
-| **package** | Hover External package / unresolved chip | Reverse-path **union** from all pair parents of that package |
+| **package** | Hover External package / unresolved chip **or** sticky open-time seed (§2a) | Reverse-path **union** from all pair parents of that package (§3c) |
 | **file-spine** | Hover the hub File column spine | Same as **file** for `meta.startId` / File focus label |
 
 Band hover does **not** expand the tree of either endpoint.
+
+### 2a. Open-time sticky package seed (not hover-only)
+
+Package focus is **not** hover-only. When the host opens a package as hub
+(catalog **Export Roots** or alluvial package/unresolved drill), after the
+file-hub mount it applies a **sticky default** package seed:
+
+1. Host stores painted External label in `pendingPackageFocusLabel` (not on
+   `AtlasView`; not persisted).
+2. Stage `setDefaultSeed({ kind: 'package', name: label })` then `applySeed`
+   (same reverse-path FocusPlan as §3c).
+3. Hub file is still the **primary importer** (`startId` / File spine / tree
+   selection). **Selection chrome ≠ FocusPlan seed.**
+
+| Interaction | Behavior |
+| ----------- | -------- |
+| **Hover** (band / file / other package / spine) | Temporary override via `applySeed` |
+| **mouseleave → `clearFocus`** | Restores sticky package default (not neutral, not last hover) |
+| **Ordinary file/module nav, pop, session clear** | Host clears pending label + `setDefaultSeed(null)` → neutral clear |
+| **Remount while pending** | New focus API starts `defaultSeed=null`; host re-applies sticky seed |
+
+Stage: `setDefaultSeed` / `clearFocus` restore path in
+`src/stage/focus/bindAlluvialFocus.ts`. Host: `openPackageAsHub` +
+`applyPendingPackageFocus` / `clearPackageFocusIntent` in `src/client/app.ts`.
+
+**Unchanged:** package membership law (§3c), geometry matrix, file-spine seed
+still = hub file neighborhood when hovered.
 
 ---
 
@@ -150,7 +179,7 @@ drawn band as **focus** or **dim** (no third state). Pad-bands never focus.
 
 Do **not** pin blue tracks with Carbon mounts or screenshots as the primary
 oracle. Use `observeHubFocus` / `observeHubFocusApplied` in
-`focusHarness.ts`:
+`src/stage/focus/focusHarness.ts`:
 
 | Layer | Observable |
 | ----- | ---------- |
@@ -171,8 +200,8 @@ When MiniEl is not enough, run **real Carbon** under Playwright:
 | Piece | Path |
 | ----- | ---- |
 | Mount page | `/focus-e2e` (`src/pages/focus-e2e.astro`) |
-| Boot hook | `window.__ATLAS_FOCUS_E2E__` (`focus/e2e/focusE2eBoot.ts`) |
-| Spec | `src/client/focus/e2e/focusCarbon.e2e.test.ts` |
+| Boot hook | `window.__ATLAS_FOCUS_E2E__` (`src/stage/focus/e2e/focusE2eBoot.ts`) |
+| Spec | `src/stage/focus/e2e/focusCarbon.e2e.test.ts` |
 | Command | `npm run test:e2e:focus` (not in default `npm test`) |
 
 Observable: `dumpBands()` reads `atlas-alluvial-carbon-link-focus` / `-dim` on
@@ -236,7 +265,8 @@ Apply / adapter:
 
 | ID | Case |
 | -- | ---- |
-| `D1`–`D5` | drawn band focus\|dim completeness; pad never focus; clearFocus |
+| `D1`–`D5` | drawn band focus\|dim completeness; pad never focus; clearFocus (neutral when no default) |
+| sticky-default | `setDefaultSeed` + clearFocus restores package seed (`bindAlluvialFocus.test.ts`) |
 | `S1`–`S4` | Carbon/straighten seed mapping; rails never seeds |
 
 Manual E5: demo-react-simple `main.tsx` — band main→App / main→logger /
