@@ -13,6 +13,7 @@ import type {
 } from '@core/graph/types.ts';
 import { classifyFileParse, shouldKeepInGraph } from '@core/parse/capability.ts';
 import { extractImports } from '@core/parse/imports.ts';
+import { extractPythonImports } from '@core/parse/pythonImports.ts';
 import { resolveSpecifier } from '@core/parse/resolve.ts';
 import { parseTsconfigPaths, type PathAliasConfig } from '@core/parse/tsconfig.ts';
 
@@ -119,7 +120,10 @@ export function buildGraph(input: VirtualFile[]): CodeGraph {
 	for (const [path, node] of files) {
 		if (!node.isSource) continue;
 		const text = contents.get(path) ?? '';
-		const imports = extractImports(text);
+		const imports =
+			node.parseKind === 'python-import'
+				? extractPythonImports(text)
+				: extractImports(text);
 		for (const imp of imports) {
 			const resolved = resolveSpecifier(path, imp.specifier, fileSet, alias);
 			let to: string;

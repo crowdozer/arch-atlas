@@ -10,8 +10,8 @@ tree-shake** for the current in-tab Exact path.
 
 | Tier | Contract |
 | ---- | -------- |
-| **Estimate** | Observed static JS/TS import graph + estimate mass (fuzzy by design). |
-| **Exact (web)** | Export-declaration surface for JS/TS bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. |
+| **Estimate** | Observed static import graph for **JS/TS + Python (L1)** + estimate mass (fuzzy by design). Other admitted sources may show grey (“present, not parsed”). |
+| **Exact (web)** | Export-declaration surface for **JS/TS** bindings via classic TS AST (`createSourceFile`) or text fallback — **not** a language server. Python stays estimate mass. |
 | **VS Code host (future)** | Same `ImportedSurfaceProvider` port; host may use workspace language features / multi-LSP — still not automatic tree-shake. |
 
 ## Capability scorecard
@@ -20,10 +20,10 @@ tree-shake** for the current in-tab Exact path.
 
 | | |
 | - | - |
-| **Shows** | File/package nodes; static import/require/export edges; estimate band weights (edges, importer LOC, target whole-file LOC; reverse hub uses importer LOC under Imported LOC). |
-| **Gets right** | Observed topology; no type fantasy; local-first. |
-| **Misrepresents if…** | User expects resolved monorepo paths, dynamic imports, or multi-lang edges. |
-| **Missing** | Symbols, calls, type-aware resolve, non-JS/TS import parse. |
+| **Shows** | File/package nodes; static import/require/export edges (JS/TS + Python `import`/`from`); estimate band weights (edges, importer LOC, target whole-file LOC; reverse hub uses importer LOC under Imported LOC). |
+| **Gets right** | Observed topology; no type fantasy; local-first; Python package-relative + bare external leaves. |
+| **Misrepresents if…** | User expects resolved monorepo paths, dynamic imports, site-packages, or full multi-lang Exact. |
+| **Missing** | Symbols, calls, type-aware resolve; C/PHP/Astro/Lua extractors; Python Exact / pyright. |
 
 ### Exact (in-tab “export surface”)
 
@@ -79,11 +79,13 @@ tier).
 3. Inspect headers: **estimate** vs **export surface** (not “exact LSP”).
 4. Callsites: always qualify **not type-checked** / **name scan**.
 5. Status: **export-surface mode** + engine source (`local` / `cdn` / `inject`).
-6. Mixed-language: keep warning that only JS/TS Exact applies.
+6. Mixed-language: keep warning that only JS/TS Exact applies (Python and other langs stay estimate / missing engine).
 7. Catalog: **File LOC** = whole-file; **Public mass** / **Icebergs** = need Exact (export surface); **Spines** = topology + formula (not mass Exact).
 
 ## Related
 
 - [scope.md](./scope.md) — product contracts  
+- [multilang-roadmap.md](./multilang-roadmap.md) — phased multi-lang Estimate/Exact after Python L1  
 - [hub-alluvial-behavior.md](./hub-alluvial-behavior.md) — reverse mass dual-side  
 - Catalog futures: [exact-surface-mode-futures](../catalog/entries/exact-surface-mode-futures.md)  
+

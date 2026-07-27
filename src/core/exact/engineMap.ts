@@ -79,23 +79,38 @@ function languageForUnsupported(path: string): MissingLanguageEngine | null {
 /**
  * Derive engines required for Exact honesty over this graph.
  * Config/text assets do not require engines.
+ *
+ * Typescript is required only for JS/TS / `js-ts-import` — not every
+ * `file.isSource` (Python is import-parseable but has no Exact engine).
  */
 export function requiredEngines(graph: CodeGraph): RequiredEnginesResult {
 	let needsTypescript = false;
 	const missingByKey = new Map<string, MissingLanguageEngine>();
 
+	const addMissing = (miss: MissingLanguageEngine) => {
+		const key = `${miss.language}\0${miss.engine ?? ''}`;
+		if (!missingByKey.has(key)) missingByKey.set(key, miss);
+	};
+
 	for (const [path, file] of graph.files) {
-		if (file.isSource || JS_TS_SOURCE_EXT.test(path)) {
+		const parse = graph.parseMap.get(path);
+		const kind = parse?.kind ?? file.parseKind;
+
+		// JS/TS only → loadable typescript engine
+		if (kind === 'js-ts-import' || JS_TS_SOURCE_EXT.test(path)) {
 			needsTypescript = true;
 			continue;
 		}
-		const parse = graph.parseMap.get(path);
-		const kind = parse?.kind ?? file.parseKind;
+
+		// Python L1 Estimate — present as source, no Exact engine
+		if (kind === 'python-import' || /\.py$/i.test(path)) {
+			addMissing({ language: 'Python', engine: 'python' });
+			continue;
+		}
+
 		if (kind === 'unsupported-language') {
 			const miss = languageForUnsupported(path);
-			if (!miss) continue;
-			const key = `${miss.language}\0${miss.engine ?? ''}`;
-			if (!missingByKey.has(key)) missingByKey.set(key, miss);
+			if (miss) addMissing(miss);
 		}
 	}
 

@@ -17,7 +17,7 @@ describe('requiredEngines', () => {
 		expect(graphNeedsTypescript(graph)).toBe(true);
 	});
 
-	it('reports missing engines for unsupported languages', () => {
+	it('reports missing engines for unsupported languages and Python', () => {
 		const { graph } = indexFiles([
 			{ path: 'src/a.ts', content: "export const a = 1;\n", byteLength: 20 },
 			{ path: 'svc/main.go', content: 'package main\n', byteLength: 13 },
@@ -29,6 +29,23 @@ describe('requiredEngines', () => {
 		expect(langs).toEqual(['Go', 'Python']);
 		const go = r.missing.find((m) => m.language === 'Go');
 		expect(go?.engine).toBe('gopls');
+		const py = r.missing.find((m) => m.language === 'Python');
+		expect(py?.engine).toBe('python');
+		// Python is import-parseable but must NOT force typescript alone
+		expect(graph.files.get('ml/train.py')?.isSource).toBe(true);
+		expect(graph.files.get('ml/train.py')?.parseKind).toBe('python-import');
+	});
+
+	it('does not require typescript for pure-Python graphs', () => {
+		const { graph } = indexFiles([
+			{ path: 'a.py', content: 'import b\n', byteLength: 9 },
+			{ path: 'b.py', content: 'x = 1\n', byteLength: 6 },
+		]);
+		const r = requiredEngines(graph);
+		expect(r.loadable).toEqual([]);
+		expect(graphNeedsTypescript(graph)).toBe(false);
+		expect(r.missing).toEqual([{ language: 'Python', engine: 'python' }]);
+		expect(graph.stats.sourceCount).toBe(2);
 	});
 
 	it('ignores config and display text for engines', () => {

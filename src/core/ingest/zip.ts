@@ -6,9 +6,13 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { normalizePath, shouldIgnorePath } from '@core/ignore.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 
-/** Extensions we decode as UTF-8 text for the Level-1 index (ZIP + dir feed). */
+/**
+ * Extensions we decode as UTF-8 text for the Level-1 index (ZIP + dir feed).
+ * Includes import-parseable sources plus greyable unsupported languages so
+ * capability greying can fire (shown, not parsed) instead of silent drop.
+ */
 const TEXT_EXT =
-	/\.(m?[jt]sx?|cjs|mjs|json|md|css|html|svg|yml|yaml|toml|txt|map)$/i;
+	/\.(m?[jt]sx?|cjs|mjs|py|rb|go|rs|java|kt|kts|php|cs|swift|scala|clj|ex|exs|erl|hs|lua|r|jl|vue|svelte|astro|json|md|mdx|css|scss|less|html|htm|svg|yml|yaml|toml|txt|xml|map)$/i;
 
 export type ZipIngestResult = {
 	files: VirtualFile[];

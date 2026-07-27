@@ -87,6 +87,17 @@ describe('ingestZip directory markers', () => {
 		const { files } = ingestZip(buf);
 		expect(files.map((f) => f.path)).toEqual(['src/a.ts']);
 	});
+
+	it('admits .py and other greyable source extensions', () => {
+		const buf = zipBuffer({
+			'proj/main.py': 'import os\n',
+			'proj/svc/main.go': 'package main\n',
+			'proj/src/a.ts': 'export {};\n',
+		});
+		const { files } = ingestZip(buf);
+		const paths = files.map((f) => f.path).sort();
+		expect(paths).toEqual(['main.py', 'src/a.ts', 'svc/main.go']);
+	});
 });
 
 describe('detectCommonRoot', () => {

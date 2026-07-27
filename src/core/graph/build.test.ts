@@ -27,6 +27,47 @@ function loadFixtureDir(dir: string, prefix = ''): VirtualFile[] {
 	return out;
 }
 
+describe('buildGraph python fixture', () => {
+	const pyRoot = path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		'../../../fixtures/sample-python-project',
+	);
+	const files = loadFixtureDir(pyRoot);
+	const graph = buildGraph(files);
+
+	it('indexes Python sources as import-parseable', () => {
+		expect(graph.files.get('pkg/a.py')?.isSource).toBe(true);
+		expect(graph.files.get('pkg/a.py')?.parseKind).toBe('python-import');
+		expect(graph.stats.sourceCount).toBeGreaterThanOrEqual(3);
+	});
+
+	it('builds file edges among package modules', () => {
+		const edge = graph.edges.find(
+			(e) => e.from === 'pkg/a.py' && e.to === 'pkg/b.py',
+		);
+		expect(edge?.toKind).toBe('file');
+		const mainEdge = graph.edges.find(
+			(e) => e.from === 'main.py' && e.to === 'pkg/a.py',
+		);
+		expect(mainEdge?.toKind).toBe('file');
+	});
+
+	it('maps external bare import to package node', () => {
+		const edge = graph.edges.find(
+			(e) => e.from === 'pkg/a.py' && e.specifier === 'requests',
+		);
+		expect(edge?.toKind).toBe('package');
+		expect(edge?.to).toBe('requests');
+		expect(graph.packages.has('requests')).toBe(true);
+	});
+
+	it('tags catalog languages with Python', () => {
+		const catalog = buildMapCatalog(graph);
+		expect(catalog.summary.languages).toContain('Python');
+		expect(catalog.summary.edgeCount).toBeGreaterThan(0);
+	});
+});
+
 describe('buildGraph fixture', () => {
 	const files = loadFixtureDir(root);
 	const graph = buildGraph(files);

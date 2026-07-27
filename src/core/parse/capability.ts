@@ -5,21 +5,24 @@
  */
 
 import type { FileParseKind } from '@core/graph/types.ts';
-import { isConfigFile, isSourceFile } from '@core/ignore.ts';
+import { isConfigFile, isPythonSourceFile, isSourceFile } from '@core/ignore.ts';
 
 export type { FileParseKind };
 
 export type FileParseInfo = {
-	/** True when Level-1 `extractImports` runs on this file. */
+	/** True when Level-1 import extract runs on this file. */
 	importParseable: boolean;
 	kind: FileParseKind;
 	/** Short human reason (tree title / status). */
 	note: string;
 };
 
-/** Common source languages without a Level-1 import extractor yet. */
+/**
+ * Common source languages without a Level-1 import extractor yet.
+ * Python (`.py`) is handled separately as `python-import`.
+ */
 const UNSUPPORTED_SOURCE_EXT =
-	/\.(py|rb|go|rs|java|kt|kts|php|cs|swift|scala|clj|ex|exs|erl|hs|lua|r|jl|vue|svelte|astro)$/i;
+	/\.(rb|go|rs|java|kt|kts|php|cs|swift|scala|clj|ex|exs|erl|hs|lua|r|jl|vue|svelte|astro)$/i;
 
 /** Non-code text kept in the graph for tree / size context only. */
 const DISPLAY_TEXT_EXT = /\.(json|md|mdx|css|scss|less|html|htm|svg|yml|yaml|toml|txt|xml)$/i;
@@ -33,6 +36,13 @@ export function classifyFileParse(path: string): FileParseInfo {
 			importParseable: true,
 			kind: 'js-ts-import',
 			note: 'Import-parsed (JS/TS Level-1)',
+		};
+	}
+	if (isPythonSourceFile(path)) {
+		return {
+			importParseable: true,
+			kind: 'python-import',
+			note: 'Import-parsed (Python Level-1)',
 		};
 	}
 	if (isConfigFile(path) || /(^|\/)package\.json$/i.test(path)) {
@@ -68,7 +78,7 @@ export function classifyFileParse(path: string): FileParseInfo {
  * Import-parseable sources, config, display text, and known unsupported sources.
  */
 export function shouldKeepInGraph(path: string): boolean {
-	if (isSourceFile(path) || isConfigFile(path)) return true;
+	if (isSourceFile(path) || isPythonSourceFile(path) || isConfigFile(path)) return true;
 	if (/(^|\/)package\.json$/i.test(path)) return true;
 	if (UNSUPPORTED_SOURCE_EXT.test(path)) return true;
 	if (DISPLAY_TEXT_EXT.test(path)) return true;

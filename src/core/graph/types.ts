@@ -8,6 +8,7 @@ export type Epistemic = 'observed' | 'inferred' | 'declared';
 /** How a file relates to Level-1 import extraction (see parse/capability). */
 export type FileParseKind =
 	| 'js-ts-import'
+	| 'python-import'
 	| 'config'
 	| 'text'
 	| 'unsupported-language';

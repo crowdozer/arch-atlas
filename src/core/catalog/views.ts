@@ -36,6 +36,8 @@ function languageTags(graph: CodeGraph): string[] {
 		if (/\.tsx?$/i.test(f.path)) tags.add('TypeScript');
 		else if (/\.jsx?$/i.test(f.path) || /\.mjs$/i.test(f.path) || /\.cjs$/i.test(f.path)) {
 			tags.add('JavaScript');
+		} else if (/\.py$/i.test(f.path) || f.parseKind === 'python-import') {
+			tags.add('Python');
 		}
 	}
 	return [...tags].sort();

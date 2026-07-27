@@ -132,6 +132,10 @@ export {
 	localNamesFromBindings,
 	parseImportClause,
 } from '@core/parse/imports.ts';
+export {
+	extractPythonImports,
+	stripPythonNoise,
+} from '@core/parse/pythonImports.ts';
 export type { ImportBinding } from '@core/graph/types.ts';
 export {
 	CANDIDATE_LANGUAGE_NOTES,
@@ -149,6 +153,7 @@ export type { ResolveResult } from '@core/parse/resolve.ts';
 export { ingestZip, isTextPath } from '@core/ingest/zip.ts';
 export {
 	filterFilesByTestInclusion,
+	isPythonSourceFile,
 	isSourceFile,
 	isTestPath,
 	normalizePath,

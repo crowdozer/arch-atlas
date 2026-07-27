@@ -60,8 +60,14 @@ export function shouldIgnorePath(path: string): boolean {
 	return false;
 }
 
+/** JS/TS sources only (classic Level-1 family; Exact export-surface path). */
 export function isSourceFile(path: string): boolean {
 	return /\.(m?[jt]sx?|cjs|mjs)$/i.test(path);
+}
+
+/** Python sources (Level-1 import-parseable; Exact engine still missing). */
+export function isPythonSourceFile(path: string): boolean {
+	return /\.py$/i.test(path);
 }
 
 /**

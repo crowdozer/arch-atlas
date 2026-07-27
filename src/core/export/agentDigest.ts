@@ -31,11 +31,11 @@ export const AGENT_TREE_SCHEMA = 'arch-atlas.agent-tree.v1' as const;
 export const AGENT_FILE_SCHEMA = 'arch-atlas.agent-file.v1' as const;
 
 export const ANALYSIS_HONESTY =
-	'Level-1 static JS/TS import graph; not LSP / not tree-shake';
+	'Level-1 static import graph (JS/TS + Python); not LSP / not tree-shake';
 
 /** Exact (export surface) honesty — same product contract as web Precision Exact. */
 export const ANALYSIS_HONESTY_EXACT =
-	'Level-1 import graph + export-declaration surface LOC (classic TS AST or text fallback); not LSP / not bundler tree-shake';
+	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); Python stays estimate; not LSP / not bundler tree-shake';
 
 export type AgentDigestSource = {
 	kind: 'directory' | 'zip';
@@ -195,6 +195,7 @@ function languageForPath(path: string, isSource: boolean): string | undefined {
 	if (/\.jsx?$/i.test(path) || /\.mjs$/i.test(path) || /\.cjs$/i.test(path)) {
 		return 'JavaScript';
 	}
+	if (/\.py$/i.test(path)) return 'Python';
 	return undefined;
 }
 
