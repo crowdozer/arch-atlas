@@ -74,6 +74,8 @@ realized_by:
   - 2859d22  # Ship B czar fixes
   - c1767c2  # Ship C protocol envelope
   - 587926b  # Ship C pickAliasConfig single owner
+  - 41889f8  # P3 createProgram
+  - 49c6cf0  # P3 L2 stamp honesty
 superseded_by: null
 rationale_quality: full
 ---

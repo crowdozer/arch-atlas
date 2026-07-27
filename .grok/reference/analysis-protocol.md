@@ -148,16 +148,13 @@ first.” Prefer **honest packs + one IR protocol + CLI TS reference**, then por
 | **P0** | Pack honesty residuals | **Landed (Ship A):** `exportDeclarationLoc` dual-publish; `surfaceSupport` on mass rows; file `*Shown` truncation; fileLens matrix; `downwindReach`/`reverseReach` aliases |
 | **P1** | Graph interpretation | **Landed (Ship B):** `--alias` rewrites; `unresolvedReason`; `catalog.cycles` runtime/type; `boundaryCrossings`; `--scope product`; `facade` role; `fixtures/agent-artillery-shaped` laws |
 | **P2** | Analysis protocol v2 + portable artifact | **Landed (Ship C):** `analysis.capabilities` L0–L2 stamps; `capabilityDetail`/`completeness`; `digest --artifact` → `arch-atlas.artifact.v1` |
-| **P3** | CLI TypeScript Program | L2 resolve + optional L3 members; completeness stamps |
+| **P3** | CLI TypeScript Program | **Landed:** CLI `--program` createProgram over feed VFS; L2 re-resolve when it helps; thin L3 `exportSymbolCount`; soft-fail; evidence-gated capability stamps |
 | **P4** | Browser Program worker | Port P3 host interface; stream enrichment; fail soft to L1 |
 | **P5** | Tree-sitter multi-lang L1 breadth | Syntax baseline; always stamp L1 only |
 | **P6** | VS Code thin host + LSP enrich | Workspace inject; live updates; LSP annotations not full graph replace |
 
-**Landed relative to this ladder (ship `552b25eb` and earlier):** L0–L1 IR;
-CLI Exact-default export-span mass; roles/entrypoints/roots; typeOnly flag;
-omitted targets; unique degrees; scope stamp; dual-host shell/stage partial;
-agent CLI host. **Not** P1 SCC/alias-rewrite product, **not** P2 envelope,
-**not** Program.
+**Landed through P3:** L0–L1 IR; agent ranking honesty (P0); graph interpretation (P1); capabilities envelope + portable artifact (P2); CLI `--program` createProgram (P3). **Open:** P4 browser worker, P5 Tree-sitter breadth, P6 VS Code thin host.
+
 
 ## Acceptance style (artillery-shaped)
 

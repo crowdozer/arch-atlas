@@ -50,7 +50,7 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README). **Digest defaults Exact** export-surface mass (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). |
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 

@@ -95,6 +95,7 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 | `--tree-full` | **Tree only:** full verbose file leaves. Default tree mode is **summary** (directory rolls with `fileCount` / `sourceCount`; leaves only for small folders or deep paths). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write JSON to file instead of stdout. |
+| `--program` | **Digest:** TypeScript `createProgram` over the feed VFS (opt-in). Soft-fail to L1 graph. L2/L3 capability stamps only with evidence. Not LSP. |
 | `--artifact <path>` | **Digest:** write portable `arch-atlas.artifact.v1` wrapper (payload = digest). Stdout/`--out` stay bare agent-digest. |
 | `-h`, `--help` | Usage. |
 
