@@ -43,7 +43,7 @@ invariants:
   - Graph (CodeGraph) remains source of record; hosts only feed VirtualFile[] and paint projections
   - src/core stays pure — no document, no vscode
   - src/shell stays pure — no document, no Carbon, no chart
-  - Level-1 static analysis remains default; Exact/LSP is a later vertical
+  - Level-1 static analysis remains default; Exact surface is optional (web on-ramp landed; extension inject still later)
   - Local-first — web ZIP and VS Code workspace both on-device
   - Astro remains the fast paint loop until stage is extract-stable; stage extract landed web-in-process — keep Astro until extension/webview path is real
 open_questions:
@@ -75,6 +75,11 @@ Approved ship plan (Gate A, run `3e810aae`) — **partially realized**.
 `polish/`, `focus/`); `@stage` alias; `app.ts` is web host composition root —
 injects `createAlluvialStage` callbacks; no `@carbon/charts` in client. Polish
 and focus live under stage (not client).
+
+**Landed — Exact web on-ramp (ship lazy-exact-engine):** client engine loader +
+TS export-surface `ImportedSurfaceProvider`; core `requiredEngines` + exact
+`edgeWeight`; Precision/Shaken dual entry. Extension inject of the same provider
+seam remains unrealized (see `exact-surface-mode-futures`).
 
 **Still unrealized:** VS Code `extension/` adapter; webview message loop;
 dual-host packaging. Do not treat dual-host as complete — stage is landed for

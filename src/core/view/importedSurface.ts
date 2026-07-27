@@ -1,10 +1,10 @@
 /**
- * Exact imported-surface port (typed stub).
+ * Exact imported-surface port.
  *
- * Future LSP / TS Program hosts implement this; core stays pure (no vscode).
- * Default absence → Exact fails closed via `resolveWeightRequest` / inspect
- * blockers. `edgeWeight` estimate semantics are unchanged until projectors
- * wire Exact mass (deferred).
+ * Hosts implement this (web: TS Program provider; VS Code: language features).
+ * Core stays pure (no vscode, no fetch). Default absence → Exact fails closed
+ * via `resolveWeightRequest` / inspect blockers. Under exact + target-loc,
+ * projectors pass the provider into `edgeWeight` for surface mass.
  */
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';

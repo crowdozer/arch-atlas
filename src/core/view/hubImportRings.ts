@@ -70,6 +70,7 @@ export function addExportRings(
 		hubRadius,
 		maxPerHop,
 		weightAxis,
+		edgeWeightOpts,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -86,7 +87,7 @@ export function addExportRings(
 	const fileSeed = new Map<string, number>();
 	for (const e of outEdges) {
 		if (e.toKind !== 'file') continue;
-		const w = edgeWeight(e, graph, weightAxis);
+		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		fileSeed.set(e.to, (fileSeed.get(e.to) ?? 0) + w);
 	}
 
@@ -210,12 +211,12 @@ export function addExportRings(
 			const sa =
 				d === 1
 					? (fileSeed.get(a) ?? 0)
-					: edgeWeightFromSet(graph, keptInner, a, weightAxis) ||
+					: edgeWeightFromSet(graph, keptInner, a, weightAxis, edgeWeightOpts) ||
 						(fileSeed.get(a) ?? 0);
 			const sb =
 				d === 1
 					? (fileSeed.get(b) ?? 0)
-					: edgeWeightFromSet(graph, keptInner, b, weightAxis) ||
+					: edgeWeightFromSet(graph, keptInner, b, weightAxis, edgeWeightOpts) ||
 						(fileSeed.get(b) ?? 0);
 			return sb - sa || a.localeCompare(b);
 		});

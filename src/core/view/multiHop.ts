@@ -46,10 +46,14 @@ import {
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type EdgeWeightOpts,
+	type LocPrecision,
 } from '@core/view/weight.ts';
 
 const DEFAULT_MAX_DEPTH = 7;
@@ -110,6 +114,8 @@ export function projectMultiHopAlluvial(
 		maxEnds?: number;
 		maxNodesPerHop?: number;
 		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
@@ -123,8 +129,15 @@ export function projectMultiHopAlluvial(
 	const maxEnds = opts?.maxEnds ?? 16;
 	const maxNodesPerHop = opts?.maxNodesPerHop ?? 12;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'package-mass');
-	const passOpts = { heightPx, maxEnds, weightAxis };
+	const edgeWeightOpts = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
+	const passOpts = {
+		heightPx,
+		maxEnds,
+		weightAxis,
+		precision: opts?.precision,
+		surface: opts?.surface,
+	};
 
 	const fwd = fileImportAdj(graph);
 	const { dist, maxHops } = fileDistances(graph, startId, fwd);
@@ -134,6 +147,7 @@ export function projectMultiHopAlluvial(
 			heightPx,
 			maxEnds,
 			weightAxis,
+			edgeWeightOpts,
 			units,
 		});
 	}
@@ -144,6 +158,7 @@ export function projectMultiHopAlluvial(
 			heightPx,
 			maxEnds,
 			weightAxis,
+			edgeWeightOpts,
 			units,
 		});
 	}
@@ -175,7 +190,7 @@ export function projectMultiHopAlluvial(
 
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const w = edgeWeight(e, graph, weightAxis);
+		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		endMeta.set(e.to, { label, kind: e.toKind });
 		const list = endToImporters.get(e.to) ?? [];
 		list.push({ file: from, w });
@@ -498,6 +513,7 @@ function projectDirectImportsOnly(
 		heightPx: number;
 		maxEnds: number;
 		weightAxis: WeightAxis;
+		edgeWeightOpts?: EdgeWeightOpts;
 		units: string;
 	},
 ): AlluvialPayload | null {
@@ -514,7 +530,7 @@ function projectDirectImportsOnly(
 		if (e.toKind === 'file') continue;
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const w = edgeWeight(e, graph, opts.weightAxis);
+		const w = edgeWeight(e, graph, opts.weightAxis, opts.edgeWeightOpts);
 		const prev = endCounts.get(e.to);
 		if (prev) prev.n += w;
 		else endCounts.set(e.to, { label, kind: e.toKind, n: w });
@@ -525,6 +541,8 @@ function projectDirectImportsOnly(
 			heightPx: opts.heightPx,
 			maxEnds: opts.maxEnds,
 			weightAxis: opts.weightAxis,
+			precision: opts.edgeWeightOpts?.precision,
+			surface: opts.edgeWeightOpts?.surface,
 		});
 	}
 

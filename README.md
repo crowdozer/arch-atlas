@@ -56,8 +56,9 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 | `tsconfig` `paths` / `baseUrl` (best-effort) | Full monorepo workspace semantics |
 | Inferred entrypoints + package ends | Call graph, symbols, DB entities |
 | Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
-| Weight axes (edges / importer LOC / **estimated** target file LOC) | Exact tree-shaken imported LOC (Precision → Exact requires LSP — not implemented) |
-| Inspect evidence (import + target excerpt + estimated callsites) | Type-checked references / multi-language exact surface |
+| Weight axes (edges / importer LOC / **estimated** target file LOC) | Multi-language Exact engines (pyright/gopls/…); Program topology re-index |
+| Optional **Exact** surface mass (Precision → Exact or Weight → Shaken loads TS Program — local/CDN `@latest`, status on enable; inject via `ImportedSurfaceProvider`) | Full in-tab LSP JSON-RPC; perfect monorepo types for ZIP |
+| Inspect evidence (import + target excerpt; Exact when provider present) | Type-checked multi-language surface outside JS/TS |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |
 
 ## Layout

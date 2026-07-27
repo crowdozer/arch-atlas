@@ -312,12 +312,12 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Precision"
-								titleText="LOC precision (estimate vs exact LSP)"
+								titleText="LOC precision (estimate vs Exact surface engine)"
 								value="estimate"
 								aria-labelledby="atlas-precision-label"
 							>
 								<DropdownItem value="estimate">Estimate</DropdownItem>
-								<DropdownItem value="exact">Exact (LSP)</DropdownItem>
+								<DropdownItem value="exact">Exact</DropdownItem>
 							</Dropdown>
 						</div>
 						<div
@@ -375,13 +375,13 @@ import Tag from '../components/ui/Tag.astro';
 		</ModalFooter>
 	</Modal>
 
-	<!-- Blocking notice: unimplemented weight/precision features (Exact, imported surface LOC) -->
+	<!-- Notices: Exact load failure, mixed-language partial Exact, other host messages -->
 	<Modal
 		id="atlas-unavailable-modal"
 		class="atlas-unavailable-modal"
 		size="xs"
 		alert
-		aria-label="Feature not available"
+		aria-label="Feature notice"
 	>
 		<ModalHeader>
 			<ModalCloseButton />

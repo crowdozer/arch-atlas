@@ -9,6 +9,7 @@ import {
 	evidenceForEdges,
 	type AlluvialNodeRef,
 	type ImportEvidence,
+	type ImportedSurfaceProvider,
 	type LocPrecision,
 } from '@core/index.ts';
 import type { Session } from '@shell/types.ts';
@@ -17,6 +18,8 @@ import { $, escapeHtml } from './dom.ts';
 export type InspectModalDeps = {
 	getLocPrecision: () => LocPrecision;
 	getSession: () => Session | null;
+	/** Exact surface provider when engines are ready (null under estimate). */
+	getSurface?: () => ImportedSurfaceProvider | null;
 	/** Resolve alluvial display name → node ref (from current payload). */
 	refForName: (name: string) => AlluvialNodeRef | null;
 };
@@ -239,10 +242,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 			return;
 		}
 		const edges = edgesForNode(session.graph, ref);
+		const surface = deps.getSurface?.() ?? null;
 		const evidence = evidenceForEdges(
 			session.graph,
 			edges,
 			deps.getLocPrecision(),
+			surface,
 		);
 		openInspectModal(
 			name,
@@ -262,10 +267,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const title =
 			[sourceName, targetName].filter(Boolean).join(' → ') || 'Band';
 		const edges = edgesForBand(session.graph, sourceRef, targetRef);
+		const surface = deps.getSurface?.() ?? null;
 		const evidence = evidenceForEdges(
 			session.graph,
 			edges,
 			deps.getLocPrecision(),
+			surface,
 		);
 		openInspectModal(
 			title,

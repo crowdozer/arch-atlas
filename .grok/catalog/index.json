@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T03:13:54Z",
-  "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 4,
+  "generated_at": "2026-07-27T03:35:03Z",
+  "root": "arch-atlas",
+  "count": 5,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -35,22 +35,19 @@
         "alluvialPolish.test.ts geometry suite"
       ],
       "touches": [
-        "src/client/alluvialPolish/",
-        "src/client/alluvialPolish/index.ts",
-        "src/client/alluvialPolish/polish.ts",
-        "src/client/alluvialPolish/alluvialPolish.test.ts",
-        "src/client/app.ts (polishAlluvialHolder call site)",
-        "src/client/focus/displayInventory.ts",
-        "src/client/focus/e2e/focusE2eBoot.ts",
-        "future src/stage/*",
+        "src/stage/polish/ (current home; was src/client/alluvialPolish/)",
+        "src/stage/polish/index.ts",
+        "src/stage/polish/polish.ts",
+        "src/stage/polish/alluvialPolish.test.ts",
+        "src/stage/mount.ts",
+        "src/stage/focus/",
+        "src/client/app.ts (stage host injectors; no polish import)",
         "dual-host-shell-stage catalog plan"
       ],
       "related": [
         "dual-host-shell-stage",
         "geometric-vs-knot-architecture"
-      ],
-      "rationale_quality": "full",
-      "consult": "Consult when: refactoring src/client/alluvialPolish; renaming alluvialPolish or polishAlluvialHolder; former alluvialTopPack module or godfile cleanup; extracting stage from client"
+      ]
     },
     {
       "id": "dual-host-shell-stage",
@@ -98,9 +95,49 @@
       ],
       "related": [
         "alluvial-top-pack-rename-split"
+      ]
+    },
+    {
+      "id": "exact-surface-mode-futures",
+      "kind": "idea",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "ship",
+      "path": ".grok/catalog/entries/exact-surface-mode-futures.md",
+      "scope": [
+        "exact-mode",
+        "imported-surface",
+        "typescript-program",
+        "multi-language",
+        "dual-host",
+        "engine-loader",
+        "weight-axis",
+        "inspect"
       ],
-      "rationale_quality": "full",
-      "consult": "Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz"
+      "applies_when": [
+        "Exact or Imported LOC (Shaken) precision work",
+        "mixed estimate/exact band UI",
+        "pinning TypeScript engine version",
+        "multi-language engines (pyright, gopls)",
+        "full LSP JSON-RPC in browser tab",
+        "VS Code extension Exact inject via ImportedSurfaceProvider",
+        "Program-informed re-index under Exact",
+        "progressive stage / src/stage dual-host extract"
+      ],
+      "touches": [
+        "src/core/exact/engineMap.ts",
+        "src/core/view/weight.ts",
+        "src/core/view/importedSurface.ts",
+        "src/client/exact/",
+        "src/client/app.ts",
+        "src/shell/controls.ts",
+        "extension/ (future)",
+        "dual-host-shell-stage"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "segmented-relative-path-labels"
+      ]
     },
     {
       "id": "geometric-vs-knot-architecture",
@@ -145,9 +182,7 @@
       ],
       "related": [
         "dual-host-shell-stage"
-      ],
-      "rationale_quality": "full",
-      "consult": "Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer"
+      ]
     },
     {
       "id": "segmented-relative-path-labels",
@@ -187,9 +222,7 @@
       "related": [
         "dual-host-shell-stage",
         "alluvial-top-pack-rename-split"
-      ],
-      "rationale_quality": "full",
-      "consult": "Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels"
+      ]
     }
   ]
 }

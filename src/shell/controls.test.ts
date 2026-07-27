@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EXACT_NOT_IMPLEMENTED_MESSAGE, HUB_DEFAULT_MAX_DEPTH } from '@core/index.ts';
 import {
 	canMountWeight,
+	isShakenWeightUi,
 	parseInteractionMode,
 	parseLocPrecision,
 	parseVizMaxDepth,
@@ -52,5 +53,15 @@ describe('canMountWeight', () => {
 		if (!r.ok) {
 			expect(r.message).toBe(EXACT_NOT_IMPLEMENTED_MESSAGE);
 		}
+	});
+
+	it('allows exact + target-loc when surface provider present', () => {
+		const surface = { targetSurfaceMass: () => 4 };
+		expect(canMountWeight('target-loc', 'exact', surface)).toEqual({ ok: true });
+	});
+
+	it('isShakenWeightUi recognizes UI-only shaken value', () => {
+		expect(isShakenWeightUi('imported-loc')).toBe(true);
+		expect(isShakenWeightUi('target-loc')).toBe(false);
 	});
 });

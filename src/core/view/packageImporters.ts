@@ -22,10 +22,13 @@ import {
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type LocPrecision,
 } from '@core/view/weight.ts';
 
 const FILE_PROMOTE_THRESHOLD = 12;
@@ -70,12 +73,19 @@ function resolvePackageFocus(
 export function projectPackageImporters(
 	graph: CodeGraph,
 	packageIdOrLabel: string,
-	opts?: { heightPx?: number; maxImporters?: number; weightAxis?: WeightAxis },
+	opts?: {
+		heightPx?: number;
+		maxImporters?: number;
+		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
+	},
 ): AlluvialPayload | null {
 	const heightPx = opts?.heightPx ?? 360;
 	const maxImporters = opts?.maxImporters ?? 16;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'import-edges');
+	const edgeWeightOpts = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'import-edges', opts?.precision);
 
 	const edges = graph.edges.filter((e) => edgeMatchesPackage(e, packageIdOrLabel));
 	if (!edges.length) return null;
@@ -95,13 +105,19 @@ export function projectPackageImporters(
 		const labels = uniqueFileLabels(importerPaths);
 		for (const e of edges) {
 			const label = labels.get(e.from) ?? basename(e.from);
-			weights.set(label, (weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis));
+			weights.set(
+				label,
+				(weights.get(label) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+			);
 			importerRef.set(label, { kind: 'file', id: e.from });
 		}
 	} else {
 		for (const e of edges) {
 			const mod = topFolder(e.from);
-			weights.set(mod, (weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis));
+			weights.set(
+				mod,
+				(weights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
+			);
 			if (!importerRef.has(mod)) {
 				importerRef.set(mod, { kind: 'module', id: mod });
 			}

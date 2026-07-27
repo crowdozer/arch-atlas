@@ -50,6 +50,7 @@ export function addFocusPackageImports(
 		outEdges,
 		maxPerHop,
 		weightAxis,
+		edgeWeightOpts,
 		externalDist,
 		padFromFile,
 		externalStraightPairs,
@@ -68,7 +69,7 @@ export function addFocusPackageImports(
 	const byKey = new Map<string, PkgEntry>();
 	for (const e of outEdges) {
 		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
-		const w = edgeWeight(e, graph, weightAxis);
+		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		const pkgLabel =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
 		const key = `${e.toKind}:${e.to}`;
@@ -174,6 +175,7 @@ export function addExportTreePackageImports(
 		residualMass,
 		maxPerHop,
 		weightAxis,
+		edgeWeightOpts,
 		externalDist,
 		padBetween,
 		externalStraightPairs,
@@ -199,7 +201,7 @@ export function addExportTreePackageImports(
 		for (const e of graph.edges) {
 			if (e.from !== fPath) continue;
 			if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
-			const w = edgeWeight(e, graph, weightAxis);
+			const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 			if (w <= 0) continue;
 			const pkgLabel =
 				e.toKind === 'unresolved'

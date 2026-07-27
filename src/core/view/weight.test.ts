@@ -5,6 +5,7 @@ import {
 	edgeWeight,
 	fileLineCount,
 	lineCount,
+	normalizeExactSurfaceMass,
 	resolveWeightAxis,
 	resolveWeightRequest,
 	unitsForAxis,
@@ -121,6 +122,55 @@ describe('edgeWeight matrix', () => {
 		const e = edge({ from: 'missing.ts', to: 'zod', toKind: 'package' });
 		expect(edgeWeight(e, graph, 'importer-loc')).toBe(1);
 	});
+
+	it('exact + target-loc uses surface mass (never whole-file)', () => {
+		const bLoc = fileLineCount(graph, 'b.ts');
+		expect(bLoc).toBeGreaterThan(1);
+		const surface = { targetSurfaceMass: () => 2 };
+		expect(
+			edgeWeight(fileEdge, graph, 'target-loc', {
+				precision: 'exact',
+				surface,
+			}),
+		).toBe(2);
+		// null mass → 1, not whole-file
+		const nullSurface = { targetSurfaceMass: () => null };
+		expect(
+			edgeWeight(fileEdge, graph, 'target-loc', {
+				precision: 'exact',
+				surface: nullSurface,
+			}),
+		).toBe(1);
+		// package still 1 under exact
+		expect(
+			edgeWeight(pkgEdge, graph, 'target-loc', {
+				precision: 'exact',
+				surface,
+			}),
+		).toBe(1);
+	});
+
+	it('estimate still uses whole-file when surface is present', () => {
+		const bLoc = fileLineCount(graph, 'b.ts');
+		const surface = { targetSurfaceMass: () => 99 };
+		expect(
+			edgeWeight(fileEdge, graph, 'target-loc', {
+				precision: 'estimate',
+				surface,
+			}),
+		).toBe(bLoc);
+	});
+});
+
+describe('normalizeExactSurfaceMass', () => {
+	it('maps null/0/negative to 1 and floors positives', () => {
+		expect(normalizeExactSurfaceMass(null)).toBe(1);
+		expect(normalizeExactSurfaceMass(undefined)).toBe(1);
+		expect(normalizeExactSurfaceMass(0)).toBe(1);
+		expect(normalizeExactSurfaceMass(-3)).toBe(1);
+		expect(normalizeExactSurfaceMass(3.9)).toBe(3);
+		expect(normalizeExactSurfaceMass(1)).toBe(1);
+	});
 });
 
 describe('unitsForAxis', () => {
@@ -134,6 +184,12 @@ describe('unitsForAxis', () => {
 		expect(unitsForAxis('target-loc')).toMatch(/imported LOC/i);
 		expect(unitsForAxis('target-loc')).toMatch(/whole file/i);
 		expect(unitsForAxis('target-loc')).toMatch(/packages?\s*=\s*1/i);
+	});
+
+	it('exact target-loc units name surface honesty', () => {
+		const u = unitsForAxis('target-loc', 'import-edges', 'exact');
+		expect(u).toMatch(/surface/i);
+		expect(u).not.toMatch(/whole file/i);
 	});
 });
 

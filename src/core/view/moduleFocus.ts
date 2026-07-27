@@ -18,10 +18,13 @@ import {
 	topFolder,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type LocPrecision,
 } from '@core/view/weight.ts';
 
 /**
@@ -31,12 +34,19 @@ import {
 export function projectModuleFocus(
 	graph: CodeGraph,
 	moduleFolder: string,
-	opts?: { heightPx?: number; maxEnds?: number; weightAxis?: WeightAxis },
+	opts?: {
+		heightPx?: number;
+		maxEnds?: number;
+		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
+	},
 ): AlluvialPayload | null {
 	const heightPx = opts?.heightPx ?? 360;
 	const maxEnds = opts?.maxEnds ?? 16;
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'package-mass');
+	const edgeWeightOpts = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
 
 	// endKey → { label, kind, mass }
 	const endCounts = new Map<string, { label: string; kind: string; n: number }>();
@@ -47,7 +57,7 @@ export function projectModuleFocus(
 
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');
-		const w = edgeWeight(e, graph, weightAxis);
+		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		const prev = endCounts.get(e.to);
 		if (prev) prev.n += w;
 		else endCounts.set(e.to, { label, kind: e.toKind, n: w });

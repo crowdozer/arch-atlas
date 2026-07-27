@@ -43,7 +43,12 @@ export {
 	importDepthStats,
 } from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
-export type { LocPrecision, WeightAxis, WeightResolution } from '@core/view/weight.ts';
+export type {
+	EdgeWeightOpts,
+	LocPrecision,
+	WeightAxis,
+	WeightResolution,
+} from '@core/view/weight.ts';
 export {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
 	IMPORTED_SURFACE_LOC_MESSAGE,
@@ -52,11 +57,22 @@ export {
 	edgeWeight,
 	fileLineCount,
 	lineCount,
+	normalizeExactSurfaceMass,
+	pickEdgeWeightOpts,
 	resolveLocPrecision,
 	resolveWeightRequest,
 	unitsForAxis,
 } from '@core/view/weight.ts';
 export type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
+export type {
+	EngineId,
+	MissingLanguageEngine,
+	RequiredEnginesResult,
+} from '@core/exact/engineMap.ts';
+export {
+	graphNeedsTypescript,
+	requiredEngines,
+} from '@core/exact/engineMap.ts';
 export { projectPackageImporters } from '@core/view/packageImporters.ts';
 export { projectModuleFocus } from '@core/view/moduleFocus.ts';
 export {

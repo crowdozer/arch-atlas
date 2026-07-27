@@ -86,9 +86,13 @@ import {
 } from '@core/view/hubExportRings.ts';
 import { addExportRings } from '@core/view/hubImportRings.ts';
 import {
+	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
+	type EdgeWeightOpts,
+	type LocPrecision,
 } from '@core/view/weight.ts';
+import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 
 // Public re-exports (facade freezes import path @core/view/fileHub.ts)
 export {
@@ -141,6 +145,8 @@ export function projectFileHub(
 		/** Viz-only dual hop radius. Does not affect indexing. */
 		maxDepth?: number;
 		weightAxis?: WeightAxis;
+		precision?: LocPrecision;
+		surface?: ImportedSurfaceProvider | null;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
@@ -151,7 +157,8 @@ export function projectFileHub(
 	const maxModules = opts?.maxModules ?? DEFAULT_MAX_MODULES;
 	const hubRadius = Math.max(1, Math.floor(opts?.maxDepth ?? HUB_DEFAULT_MAX_DEPTH));
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
-	const units = unitsForAxis(weightAxis, 'import-edges');
+	const edgeWeightOpts: EdgeWeightOpts | undefined = pickEdgeWeightOpts(opts);
+	const units = unitsForAxis(weightAxis, 'import-edges', opts?.precision);
 
 	const inEdges = graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId);
 	const outEdges = graph.edges.filter((e) => e.from === fileId);
@@ -214,6 +221,7 @@ export function projectFileHub(
 					Math.min(48, maxImporters /* depth=1 leaf budget */),
 				),
 				weightAxis,
+				edgeWeightOpts,
 				addLink,
 				nodeRef,
 				nodeMeta,
@@ -228,6 +236,7 @@ export function projectFileHub(
 				hubRadius,
 				maxPerHop: Math.min(48, maxImporters),
 				weightAxis,
+				edgeWeightOpts,
 				addLink,
 				nodeRef,
 				nodeMeta,
@@ -252,6 +261,7 @@ export function projectFileHub(
 		hubRadius,
 		maxPerHop: Math.min(48, maxDeps),
 		weightAxis,
+		edgeWeightOpts,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -274,6 +284,7 @@ export function projectFileHub(
 			outEdges: focusPkgEdges,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
+			edgeWeightOpts,
 			externalDist,
 			padFromFile: importTreeResult.padFromFile,
 			externalStraightPairs,
@@ -293,6 +304,7 @@ export function projectFileHub(
 			residualMass: importTreeResult.residualMass,
 			maxPerHop: Math.min(48, maxDeps),
 			weightAxis,
+			edgeWeightOpts,
 			externalDist,
 			padBetween: importTreeResult.padBetween,
 			externalStraightPairs,

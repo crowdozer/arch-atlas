@@ -59,6 +59,7 @@ export function addImportRings(
 		hubRadius,
 		maxPerHop,
 		weightAxis,
+		edgeWeightOpts,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -74,7 +75,7 @@ export function addImportRings(
 	// Focus-incident mass on dist-1 importers
 	const seedMass = new Map<string, number>();
 	for (const e of inEdges) {
-		const w = edgeWeight(e, graph, weightAxis);
+		const w = edgeWeight(e, graph, weightAxis, edgeWeightOpts);
 		seedMass.set(e.from, (seedMass.get(e.from) ?? 0) + w);
 	}
 
@@ -98,11 +99,11 @@ export function addImportRings(
 			const sa =
 				d === 1
 					? (seedMass.get(a) ?? 0)
-					: edgeWeightIntoSet(graph, a, keptInner, weightAxis);
+					: edgeWeightIntoSet(graph, a, keptInner, weightAxis, edgeWeightOpts);
 			const sb =
 				d === 1
 					? (seedMass.get(b) ?? 0)
-					: edgeWeightIntoSet(graph, b, keptInner, weightAxis);
+					: edgeWeightIntoSet(graph, b, keptInner, weightAxis, edgeWeightOpts);
 			return sb - sa || a.localeCompare(b);
 		});
 		const kept = ranked.slice(0, maxPerHop);
@@ -281,6 +282,7 @@ export function addImportModules(
 		fileLabel,
 		maxModules,
 		weightAxis,
+		edgeWeightOpts,
 		addLink,
 		nodeRef,
 		nodeMeta,
@@ -293,7 +295,7 @@ export function addImportModules(
 		const mod = groupKey(e.from);
 		moduleWeights.set(
 			mod,
-			(moduleWeights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis),
+			(moduleWeights.get(mod) ?? 0) + edgeWeight(e, graph, weightAxis, edgeWeightOpts),
 		);
 	}
 

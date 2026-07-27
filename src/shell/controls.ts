@@ -3,7 +3,9 @@
  */
 import {
 	HUB_DEFAULT_MAX_DEPTH,
+	IMPORTED_SURFACE_LOC_UI,
 	resolveWeightRequest,
+	type ImportedSurfaceProvider,
 	type LocPrecision,
 	type WeightAxis,
 } from '@core/index.ts';
@@ -14,6 +16,14 @@ const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact'];
 
 export function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'target-loc';
+}
+
+/**
+ * True when the weight dropdown value is the UI-only Shaken entry
+ * (maps to target-loc + exact once engines are ready).
+ */
+export function isShakenWeightUi(raw: string): boolean {
+	return raw === IMPORTED_SURFACE_LOC_UI || raw === 'imported-loc';
 }
 
 export function parseLocPrecision(raw: string): LocPrecision {
@@ -34,13 +44,14 @@ export function parseVizMaxDepth(raw: string): number {
 
 /**
  * When exact + target-loc (imported surface), refuse remount with estimate numbers.
- * Fail-closed via {@link resolveWeightRequest} without a surface provider.
+ * Fail-closed via {@link resolveWeightRequest} unless a surface provider is present.
  */
 export function canMountWeight(
 	axis: WeightAxis,
 	precision: LocPrecision,
+	surface?: ImportedSurfaceProvider | null,
 ): { ok: true } | { ok: false; message: string } {
-	const r = resolveWeightRequest(axis, precision);
+	const r = resolveWeightRequest(axis, precision, surface);
 	if (!r.ok) return { ok: false, message: r.message };
 	return { ok: true };
 }
