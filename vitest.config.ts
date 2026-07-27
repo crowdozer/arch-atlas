@@ -12,5 +12,8 @@ export default defineConfig({
 	},
 	test: {
 		include: ['src/**/*.test.ts', 'fixtures/**/*.test.ts'],
+		// Browser Carbon e2e: npm run test:e2e:focus only (needs preview + playwright)
+		exclude: ['src/**/*.e2e.test.ts', '**/node_modules/**'],
 	},
 });
+
