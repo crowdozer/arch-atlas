@@ -16,6 +16,7 @@ import {
 	type LocPrecision,
 	type VirtualFile,
 	type WeightAxis,
+	graphNeedsTypescript,
 } from '@core/index.ts';
 import {
 	canMountWeight,
@@ -45,7 +46,11 @@ import {
 } from '@stage/index.ts';
 import { $, setStatus, showWarnings } from './dom.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
-import { ensureExactForGraph } from './exact/ensureExact.ts';
+import {
+	ensureExactForGraph,
+	ensureExactLocalOnly,
+	isLocalExactSource,
+} from './exact/ensureExact.ts';
 import { createInspectModals } from './inspectModal.ts';
 import { createCatalogRenderer } from './renderCatalog.ts';
 import { createTreeRenderer } from './renderTree.ts';
@@ -326,6 +331,64 @@ function disableExactPaintMode(): void {
 	remountCurrentView();
 }
 
+/**
+ * Default Exact **on** when a local/injected analysis engine is already available.
+ * Never triggers CDN download — production web stays estimate until user opts in.
+ * Silent no-op when local classic TS is missing (dev without dep, pure CDN hosts).
+ */
+async function tryAutoExactWhenLocalAvailable(): Promise<void> {
+	if (!session || exactEnableInFlight) return;
+	if (locPrecision === 'exact' && surfaceProvider) return;
+
+	const needsTs = graphNeedsTypescript(session.graph);
+	const hasSurfaceInject = (() => {
+		try {
+			return !!(
+				globalThis as typeof globalThis & {
+					__ARCH_ATLAS_SURFACE__?: ImportedSurfaceProvider;
+				}
+			).__ARCH_ATLAS_SURFACE__;
+		} catch {
+			return false;
+		}
+	})();
+	// No JS/TS and no host inject → stay estimate (empty provider is not auto)
+	if (!needsTs && !hasSurfaceInject) return;
+
+	exactEnableInFlight = true;
+	const precisionDropdown = $('atlas-loc-precision') as
+		| (HTMLElement & { value?: string })
+		| null;
+	const weightDropdown = $('atlas-weight-axis') as
+		| (HTMLElement & { value?: string })
+		| null;
+
+	try {
+		const result = await ensureExactLocalOnly(session.graph, {
+			cachedProvider: surfaceProvider,
+		});
+		if (!result.ok || !isLocalExactSource(result.source)) return;
+		// Synthetic empty provider is not a real local engine
+		if (result.source === 'empty') return;
+
+		surfaceProvider = result.provider;
+		locPrecision = 'exact';
+		weightAxis = 'target-loc';
+		if (precisionDropdown) syncPrecisionDropdown(precisionDropdown, 'exact');
+		if (weightDropdown) syncWeightDropdown(weightDropdown, 'target-loc');
+		// No mixed-language modal on auto — user can still open Exact explicitly later
+		remountCurrentView();
+		const base = statusForView(session, currentView());
+		setStatus(
+			`${base} · Exact on (${result.source})`,
+		);
+	} catch {
+		// stay estimate
+	} finally {
+		exactEnableInFlight = false;
+	}
+}
+
 function updateBackButton(): void {
 	const btn = $('atlas-alluvial-back') as (HTMLElement & { disabled?: boolean }) | null;
 	if (!btn) return;
@@ -560,6 +623,8 @@ function activateSession(
 	}
 	setStatus(statusLine);
 	if (!opts?.skipPersist) persistSessionIfEnabled();
+	// Prefer Exact when local classic TS / host inject is already available (no CDN)
+	void tryAutoExactWhenLocalAvailable();
 }
 
 function expandToPath(startId: string): void {

@@ -57,7 +57,7 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 | Inferred entrypoints + package ends | Call graph, symbols, DB entities |
 | Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
 | Weight axes (edges / importer LOC / **estimated** target file LOC) | Multi-language Exact engines (pyright/gopls/…); Program topology re-index |
-| Optional **Exact** surface mass (Precision → Exact or Weight → Shaken loads classic TypeScript — local/CDN `@latest` — and measures export spans via `createSourceFile` AST; text fallback if AST unavailable; inject via `ImportedSurfaceProvider`) | Full type-checker / LanguageService; multi-lang engines; Program topology re-index |
+| Optional **Exact** surface mass (auto-on when local classic TS or host inject is available; otherwise Precision → Exact / Weight → Shaken loads classic TypeScript — local/CDN `@latest` — export spans via `createSourceFile` AST; inject via `ImportedSurfaceProvider`) | Full type-checker / LanguageService; multi-lang engines; Program topology re-index |
 | Inspect evidence (import + Exact export surface when provider present) | Type-checked multi-language surface outside JS/TS |
 | Carbon alluvial projection | Progressive stage-insert UX (later) |
 

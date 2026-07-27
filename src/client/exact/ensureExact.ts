@@ -15,18 +15,32 @@ import {
 import { loadTypescript, type LoadTypescriptOpts } from './loadTypescript.ts';
 import { createTsProgramProvider } from './tsProgramProvider.ts';
 
+export type EnsureExactSource =
+	| 'inject'
+	| 'local'
+	| 'jsdelivr'
+	| 'unpkg'
+	| 'cached'
+	/** Graph has no JS/TS — null-mass provider for manual Exact only. */
+	| 'empty';
+
 export type EnsureExactResult =
 	| {
 			ok: true;
 			provider: ImportedSurfaceProvider;
 			engines: RequiredEnginesResult;
-			source: 'inject' | 'local' | 'jsdelivr' | 'unpkg' | 'cached';
+			source: EnsureExactSource;
 	  }
 	| {
 			ok: false;
 			error: string;
 			engines: RequiredEnginesResult;
 	  };
+
+/** Sources that justify auto-enabling Exact (no CDN). */
+export function isLocalExactSource(source: EnsureExactSource): boolean {
+	return source === 'inject' || source === 'local' || source === 'cached';
+}
 
 export type EnsureExactOpts = {
 	/** Already-built provider (client cache / host inject). */
@@ -83,7 +97,7 @@ export async function ensureExactForGraph(
 		const empty: ImportedSurfaceProvider = {
 			targetSurfaceMass: () => null,
 		};
-		return { ok: true, provider: empty, engines, source: 'inject' };
+		return { ok: true, provider: empty, engines, source: 'empty' };
 	}
 
 	const loaded = await loadTypescript(opts.load ?? {});
@@ -102,4 +116,18 @@ export async function ensureExactForGraph(
 		engines,
 		source: loaded.source,
 	};
+}
+
+/**
+ * Ensure Exact using only inject / local classic / cache — **never CDN**.
+ * Prefer for default-on when the analysis engine is already on-device.
+ */
+export async function ensureExactLocalOnly(
+	graph: CodeGraph,
+	opts: EnsureExactOpts = {},
+): Promise<EnsureExactResult> {
+	return ensureExactForGraph(graph, {
+		...opts,
+		load: { ...opts.load, skipCdn: true },
+	});
 }
