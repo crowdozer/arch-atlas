@@ -4,9 +4,10 @@
  * navigation stay in `app.ts` — this module only binds DOM events.
  */
 
-import type { LocPrecision, WeightAxis } from '@core/index.ts';
+import type { BandSortMode, LocPrecision, WeightAxis } from '@core/index.ts';
 import {
 	isShakenWeightUi,
+	parseBandSortMode,
 	parseInteractionMode,
 	parseLocPrecision,
 	parseVizMaxDepth,
@@ -31,6 +32,8 @@ export type WireUiDeps = {
 	getSession: () => Session | null;
 	getWeightAxis: () => WeightAxis;
 	setWeightAxis: (a: WeightAxis) => void;
+	getBandSort: () => BandSortMode;
+	setBandSort: (m: BandSortMode) => void;
 	getLocPrecision: () => LocPrecision;
 	getVizMaxDepth: () => number;
 	setVizMaxDepth: (d: number) => void;
@@ -176,6 +179,31 @@ export function wireUi(deps: WireUiDeps): void {
 				(typeof depthDropdown.value === 'string' ? depthDropdown.value : '');
 			deps.setVizMaxDepth(parseVizMaxDepth(next));
 			deps.setDepthUserSet(true);
+			deps.remountCurrentView();
+		}) as EventListener);
+	}
+
+	const bandSortDropdown = $('atlas-band-sort') as
+		| (HTMLElement & { value?: string })
+		| null;
+	if (bandSortDropdown) {
+		const syncBandSort = () => {
+			const m = deps.getBandSort();
+			bandSortDropdown.value = m;
+			bandSortDropdown.setAttribute('value', m);
+		};
+		syncBandSort();
+		bandSortDropdown.addEventListener('cds-dropdown-selected', ((e: Event) => {
+			const detail = (e as CustomEvent).detail as {
+				item?: { value?: string };
+			} | null;
+			const next =
+				detail?.item?.value ??
+				(typeof bandSortDropdown.value === 'string'
+					? bandSortDropdown.value
+					: 'name');
+			deps.setBandSort(parseBandSortMode(next));
+			syncBandSort();
 			deps.remountCurrentView();
 		}) as EventListener);
 	}

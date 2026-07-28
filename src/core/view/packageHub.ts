@@ -32,6 +32,7 @@ import {
 	moreCountLabel,
 	TEAL,
 	uniqueFileLabels,
+	type BandSortMode,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import { CHART_PALETTE } from '@core/view/chartPalette.ts';
@@ -112,6 +113,8 @@ export function projectPackageHub(
 		weightAxis?: WeightAxis;
 		precision?: LocPrecision;
 		surface?: ImportedSurfaceProvider | null;
+		/** In-column band stack order; default name. */
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	const inEdges = graph.edges.filter((e) =>
@@ -277,8 +280,10 @@ export function projectPackageHub(
 		nodeRef,
 		// No startId: package is External sink, not File spine (module parity).
 		// Setting package id would pollute LogicalFocusGraph.fileSpineName.
+		// Dir-walk uses focus.id (package id) when startId is absent.
 		units,
 		ariaLabel: `Package hub for ${pkgLabel} (viz depth ${hubRadius})`,
+		bandSort: opts?.bandSort,
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: forwardTerminators,
 		externalStraightPairs: externalStraightPairs.length

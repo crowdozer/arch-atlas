@@ -44,6 +44,7 @@ import {
 	projectAlluvial,
 	TEAL,
 	uniqueFileLabels,
+	type BandSortMode,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import { CHART_PALETTE } from '@core/view/chartPalette.ts';
@@ -117,6 +118,8 @@ export function projectMultiHopAlluvial(
 		weightAxis?: WeightAxis;
 		precision?: LocPrecision;
 		surface?: ImportedSurfaceProvider | null;
+		/** In-column band stack order; default name. */
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(startId)) return null;
@@ -132,12 +135,14 @@ export function projectMultiHopAlluvial(
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
 	const edgeWeightOpts = pickEdgeWeightOpts(opts);
 	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
+	const bandSort = opts?.bandSort;
 	const passOpts = {
 		heightPx,
 		maxEnds,
 		weightAxis,
 		precision: opts?.precision,
 		surface: opts?.surface,
+		bandSort,
 	};
 
 	const fwd = fileImportAdj(graph);
@@ -150,6 +155,7 @@ export function projectMultiHopAlluvial(
 			weightAxis,
 			edgeWeightOpts,
 			units,
+			bandSort,
 		});
 	}
 
@@ -161,6 +167,7 @@ export function projectMultiHopAlluvial(
 			weightAxis,
 			edgeWeightOpts,
 			units,
+			bandSort,
 		});
 	}
 
@@ -500,6 +507,7 @@ export function projectMultiHopAlluvial(
 		startId,
 		units,
 		ariaLabel: `Import tree for ${startId} (viz depth ${maxDepth})`,
+		bandSort,
 	});
 }
 
@@ -516,6 +524,7 @@ function projectDirectImportsOnly(
 		weightAxis: WeightAxis;
 		edgeWeightOpts?: EdgeWeightOpts;
 		units: string;
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	const startLabel = startId;
@@ -544,6 +553,7 @@ function projectDirectImportsOnly(
 			weightAxis: opts.weightAxis,
 			precision: opts.edgeWeightOpts?.precision,
 			surface: opts.edgeWeightOpts?.surface,
+			bandSort: opts.bandSort,
 		});
 	}
 
@@ -598,5 +608,6 @@ function projectDirectImportsOnly(
 		startId,
 		units: opts.units,
 		ariaLabel: `Direct imports for ${startId}`,
+		bandSort: opts.bandSort,
 	});
 }

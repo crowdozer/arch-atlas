@@ -6,10 +6,15 @@ import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import {
 	alluvialTooltipCustomHTML,
+	buildAlluvialPayload,
+	compareAlluvialBands,
+	incidentBandMass,
 	isAlluvialRailName,
 	isImportPadScaffoldLink,
 	isInRailName,
 	isOutRailName,
+	isOverflowNodeName,
+	pathSegmentProximity,
 	projectAlluvial,
 } from '@core/view/alluvial.ts';
 import {
@@ -474,5 +479,214 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 		expect(html).toContain('app/dashboard/page.tsx');
 		expect(html).toContain('57');
 		expect(html).not.toMatch(/in-rail/i);
+	});
+});
+
+describe('band sort (name / mass / dir-walk)', () => {
+	const focusPath = 'src/lib/focus.ts';
+	const rail = '\u200b·in-rail·h2';
+	const overflow = '+ 3 more';
+	const other = '(other ends)';
+
+	it('pathSegmentProximity ranks longer common prefix first', () => {
+		const a = pathSegmentProximity('src/lib/utils.ts', focusPath);
+		const b = pathSegmentProximity('src/app/page.ts', focusPath);
+		const c = pathSegmentProximity('other/x.ts', focusPath);
+		expect(a.commonPrefix).toBeGreaterThan(b.commonPrefix);
+		expect(b.commonPrefix).toBeGreaterThan(c.commonPrefix);
+		expect(a.segmentDelta).toBe(0);
+	});
+
+	it('incidentBandMass sums endpoints and skips pure rail↔rail', () => {
+		const mass = incidentBandMass([
+			{ source: 'a', target: 'b', value: 5 },
+			{ source: 'a', target: 'c', value: 2 },
+			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
+		]);
+		expect(mass.get('a')).toBe(7);
+		expect(mass.get('b')).toBe(5);
+		expect(mass.get('c')).toBe(2);
+		expect(mass.has(rail)).toBe(false);
+	});
+
+	it('overflow last and rails after real nodes under every mode', () => {
+		const names = [overflow, 'z-file', rail, 'a-file', other];
+		const nodeRef = {
+			'z-file': { kind: 'file' as const, id: 'z-file' },
+			'a-file': { kind: 'file' as const, id: 'a-file' },
+		};
+		const mass = new Map([
+			['z-file', 1],
+			['a-file', 10],
+		]);
+		for (const mode of ['name', 'mass', 'dir-walk'] as const) {
+			const sorted = [...names].sort((a, b) =>
+				compareAlluvialBands(a, b, {
+					mode,
+					mass,
+					nodeRef,
+					focusPath,
+				}),
+			);
+			expect(isOverflowNodeName(sorted[sorted.length - 1]!)).toBe(true);
+			expect(isOverflowNodeName(sorted[sorted.length - 2]!)).toBe(true);
+			const real = sorted.filter(
+				(n) => !isOverflowNodeName(n) && !isAlluvialRailName(n),
+			);
+			const rails = sorted.filter((n) => isAlluvialRailName(n));
+			const overs = sorted.filter((n) => isOverflowNodeName(n));
+			expect(sorted).toEqual([...real, ...rails, ...overs]);
+		}
+	});
+
+	it('name mode is alpha among real nodes', () => {
+		const names = ['zebra.ts', 'alpha.ts', 'mid.ts'];
+		const sorted = [...names].sort((a, b) =>
+			compareAlluvialBands(a, b, {
+				mode: 'name',
+				mass: new Map(),
+				nodeRef: {},
+				focusPath,
+			}),
+		);
+		expect(sorted).toEqual(['alpha.ts', 'mid.ts', 'zebra.ts']);
+	});
+
+	it('mass mode orders higher incident mass first', () => {
+		const names = ['light', 'heavy', 'mid'];
+		const mass = new Map([
+			['light', 1],
+			['mid', 5],
+			['heavy', 20],
+		]);
+		const sorted = [...names].sort((a, b) =>
+			compareAlluvialBands(a, b, {
+				mode: 'mass',
+				mass,
+				nodeRef: {},
+				focusPath,
+			}),
+		);
+		expect(sorted).toEqual(['heavy', 'mid', 'light']);
+	});
+
+	it('dir-walk prefers path proximity to focus; packages after files', () => {
+		const names = [
+			'src/lib/utils.ts',
+			'src/app/page.ts',
+			'lodash',
+			'other/x.ts',
+		];
+		const nodeRef = {
+			'src/lib/utils.ts': { kind: 'file' as const, id: 'src/lib/utils.ts' },
+			'src/app/page.ts': { kind: 'file' as const, id: 'src/app/page.ts' },
+			'other/x.ts': { kind: 'file' as const, id: 'other/x.ts' },
+			lodash: { kind: 'package' as const, id: 'lodash' },
+		};
+		const sorted = [...names].sort((a, b) =>
+			compareAlluvialBands(a, b, {
+				mode: 'dir-walk',
+				mass: new Map(),
+				nodeRef,
+				focusPath,
+			}),
+		);
+		expect(sorted[0]).toBe('src/lib/utils.ts');
+		expect(sorted[sorted.length - 1]).toBe('lodash');
+		expect(sorted.indexOf('src/app/page.ts')).toBeLessThan(
+			sorted.indexOf('other/x.ts'),
+		);
+	});
+
+	it('dir-walk multi-instance keys on nodeRef.id then label', () => {
+		const a = 'src/lib/utils.ts';
+		const a2 = 'src/lib/utils.ts · h2';
+		const b = 'src/app/page.ts';
+		const nodeRef = {
+			[a]: { kind: 'file' as const, id: 'src/lib/utils.ts' },
+			[a2]: { kind: 'file' as const, id: 'src/lib/utils.ts' },
+			[b]: { kind: 'file' as const, id: 'src/app/page.ts' },
+		};
+		const sorted = [b, a2, a].sort((x, y) =>
+			compareAlluvialBands(x, y, {
+				mode: 'dir-walk',
+				mass: new Map(),
+				nodeRef,
+				focusPath,
+			}),
+		);
+		// both utils instances before page; among instances label order
+		expect(sorted.slice(0, 2).sort()).toEqual([a, a2].sort());
+		expect(sorted[2]).toBe(b);
+		expect(sorted.indexOf(a)).toBeLessThan(sorted.indexOf(a2));
+	});
+
+	it('buildAlluvialPayload writes rank + nodeRank under mass mode', () => {
+		const links = [
+			{ source: 'heavy', target: 'focus', value: 10 },
+			{ source: 'light', target: 'focus', value: 1 },
+			{ source: overflow, target: 'focus', value: 2 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['heavy', { category: 'Imports', color: '#1' }],
+			['light', { category: 'Imports', color: '#2' }],
+			[overflow, { category: 'Imports', color: '#3' }],
+		]);
+		const nodeRef = {
+			focus: { kind: 'file' as const, id: 'focus' },
+			heavy: { kind: 'file' as const, id: 'heavy' },
+			light: { kind: 'file' as const, id: 'light' },
+		};
+		const payload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['Imports', 'File'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef,
+			startId: 'focus',
+			bandSort: 'mass',
+		});
+		expect(payload).not.toBeNull();
+		const imports = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		expect(imports).toEqual(['heavy', 'light', overflow]);
+		expect(payload!.meta.nodeRank!['heavy']).toBe(0);
+		expect(payload!.meta.nodeRank!['light']).toBe(1);
+		expect(payload!.meta.nodeRank![overflow]).toBe(2);
+		expect(
+			payload!.options.alluvial.nodes.find((n) => n.name === 'heavy')?.rank,
+		).toBe(0);
+	});
+
+	it('buildAlluvialPayload default bandSort is name (alpha)', () => {
+		const links = [
+			{ source: 'zebra', target: 'focus', value: 1 },
+			{ source: 'alpha', target: 'focus', value: 99 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['zebra', { category: 'Imports', color: '#1' }],
+			['alpha', { category: 'Imports', color: '#2' }],
+		]);
+		const payload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['Imports', 'File'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				zebra: { kind: 'file', id: 'zebra' },
+				alpha: { kind: 'file', id: 'alpha' },
+			},
+			startId: 'focus',
+		});
+		const imports = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		expect(imports).toEqual(['alpha', 'zebra']);
 	});
 });

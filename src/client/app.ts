@@ -16,6 +16,7 @@ import {
 	edgeMatchesPackage,
 	type AlluvialNodeRef,
 	type AlluvialPayload,
+	type BandSortMode,
 	type CodeGraph,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
@@ -94,6 +95,8 @@ let session: Session | null = null;
 let viewStack: AtlasView[] = [];
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'target-loc';
+/** In-column band stack order (session-local; not persisted). */
+let bandSort: BandSortMode = 'name';
 /**
  * Imported-surface honesty: estimate (Level-1) vs exact (export-surface provider).
  * Exact / export-surface weight entry loads engines and installs {@link surfaceProvider}.
@@ -488,6 +491,7 @@ function payloadForView(view: AtlasView): AlluvialPayload | null {
 		maxDepth: vizMaxDepth,
 		precision: precisionForMass,
 		surface,
+		bandSort,
 	});
 }
 
@@ -839,6 +843,10 @@ wireUi({
 	getWeightAxis: () => weightAxis,
 	setWeightAxis: (a) => {
 		weightAxis = a;
+	},
+	getBandSort: () => bandSort,
+	setBandSort: (m) => {
+		bandSort = m;
 	},
 	getLocPrecision: () => locPrecision,
 	getVizMaxDepth: () => vizMaxDepth,

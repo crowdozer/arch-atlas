@@ -88,6 +88,7 @@ export {
 	importDepthStats,
 } from '@core/catalog/deepest.ts';
 export { projectAlluvial } from '@core/view/alluvial.ts';
+export type { BandSortMode } from '@core/view/alluvial.ts';
 export type {
 	EdgeWeightOpts,
 	LocPrecision,

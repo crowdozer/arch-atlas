@@ -3,6 +3,7 @@ import { EXACT_NOT_IMPLEMENTED_MESSAGE, HUB_DEFAULT_MAX_DEPTH } from '@core/inde
 import {
 	canMountWeight,
 	isShakenWeightUi,
+	parseBandSortMode,
 	parseInteractionMode,
 	parseLocPrecision,
 	parseSpineFormula,
@@ -17,6 +18,14 @@ describe('control parsers', () => {
 		expect(parseWeightAxis('importer-loc')).toBe('importer-loc');
 		expect(parseWeightAxis('target-loc')).toBe('target-loc');
 		expect(parseWeightAxis('nope')).toBe('target-loc');
+	});
+
+	it('parseBandSortMode accepts known modes and defaults to name', () => {
+		expect(parseBandSortMode('name')).toBe('name');
+		expect(parseBandSortMode('mass')).toBe('mass');
+		expect(parseBandSortMode('dir-walk')).toBe('dir-walk');
+		expect(parseBandSortMode('')).toBe('name');
+		expect(parseBandSortMode('nope')).toBe('name');
 	});
 
 	it('parseLocPrecision defaults to estimate', () => {

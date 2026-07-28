@@ -404,6 +404,25 @@ import Tag from '../components/ui/Tag.astro';
 								<DropdownItem value="program">Program (createProgram resolve)</DropdownItem>
 							</Dropdown>
 						</div>
+						<div class="atlas-stage__control-group">
+							<span class="atlas-stage__control-label" id="atlas-band-sort-label"
+								>Band order</span
+							>
+							<Dropdown
+								id="atlas-band-sort"
+								class="atlas-stage__band-sort"
+								size="sm"
+								hideLabel
+								labelText="Band order"
+								titleText="In-column band stack: name (alpha), mass (incident link value), or path proximity toward hub focus. Session-only."
+								value="name"
+								aria-labelledby="atlas-band-sort-label"
+							>
+								<DropdownItem value="name">Name</DropdownItem>
+								<DropdownItem value="mass">Mass</DropdownItem>
+								<DropdownItem value="dir-walk">Path toward focus</DropdownItem>
+							</Dropdown>
+						</div>
 						<div class="atlas-stage__control-group atlas-stage__control-group--tests">
 							<Checkbox
 								id="atlas-include-tests"

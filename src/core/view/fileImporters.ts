@@ -25,6 +25,7 @@ import {
 	TEAL,
 	topFolder,
 	uniqueFileLabels,
+	type BandSortMode,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
@@ -130,6 +131,8 @@ export function projectFileImporters(
 		weightAxis?: WeightAxis;
 		precision?: LocPrecision;
 		surface?: ImportedSurfaceProvider | null;
+		/** In-column band stack order; default name. */
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
@@ -143,6 +146,7 @@ export function projectFileImporters(
 	const weightAxis = resolveWeightAxis(opts?.weightAxis);
 	const edgeWeightOpts = pickEdgeWeightOpts(opts);
 	const units = unitsForAxis(weightAxis, 'import-edges', opts?.precision);
+	const bandSort = opts?.bandSort;
 
 	const edges = graph.edges.filter((e) => e.toKind === 'file' && e.to === fileId);
 	if (!edges.length) return null;
@@ -170,6 +174,7 @@ export function projectFileImporters(
 			weightAxis,
 			edgeWeightOpts,
 			units,
+			bandSort,
 		});
 	}
 
@@ -185,6 +190,7 @@ export function projectFileImporters(
 		weightAxis,
 		edgeWeightOpts,
 		units,
+		bandSort,
 	});
 }
 
@@ -200,6 +206,7 @@ function projectImportsColumn(args: {
 	weightAxis: WeightAxis;
 	edgeWeightOpts?: EdgeWeightOpts;
 	units: string;
+	bandSort?: BandSortMode;
 }): AlluvialPayload | null {
 	const {
 		graph,
@@ -213,6 +220,7 @@ function projectImportsColumn(args: {
 		weightAxis,
 		edgeWeightOpts,
 		units,
+		bandSort,
 	} = args;
 
 	const weights = new Map<string, number>();
@@ -298,6 +306,7 @@ function projectImportsColumn(args: {
 		startId: fileId,
 		units,
 		ariaLabel: `Imports of ${fileId}`,
+		bandSort,
 	});
 }
 
