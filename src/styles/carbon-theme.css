@@ -1297,11 +1297,29 @@ cds-dropdown.atlas-stage__precision {
   margin: 0;
 }
 
-/* Near-viewport inspect dialog (Carbon size max is lg) */
+/*
+ * Near-viewport inspect dialog.
+ * Carbon sizes the panel in shadow DOM (`.cds--modal-container` / part=dialog)
+ * with content-driven height + breakpoint inline-size. CSS ::part alone often
+ * only nudges shape; JS also sets these props on the part (see inspectModal.ts).
+ * Grid is `auto 1fr auto` — block-size is required for the body row to expand.
+ */
 .atlas-inspect-modal--fullscreen::part(dialog) {
-  inline-size: min(96vw, 72rem);
-  max-inline-size: min(96vw, 72rem);
-  max-block-size: min(92vh, 56rem);
+  inline-size: min(96vw, 100%) !important;
+  max-inline-size: 96vw !important;
+  block-size: 92vh !important;
+  max-block-size: 92vh !important;
+  min-block-size: min(92vh, 100%) !important;
+}
+
+/* Fill the 1fr grid row when the dialog has a real block-size */
+.atlas-inspect-modal--fullscreen cds-modal-body,
+.atlas-inspect-modal--fullscreen .atlas-inspect-modal__body {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  block-size: 100%;
+  overflow: hidden;
 }
 
 /* Inspect modal body content */
@@ -1315,7 +1333,10 @@ cds-dropdown.atlas-stage__precision {
 }
 
 .atlas-inspect-modal--fullscreen .atlas-inspect {
-  max-block-size: min(75vh, 48rem);
+  flex: 1 1 auto;
+  min-block-size: 0;
+  max-block-size: none;
+  block-size: 100%;
 }
 
 .atlas-inspect__empty {

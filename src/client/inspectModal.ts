@@ -231,12 +231,55 @@ function appendEvidenceSections(
 	parent.appendChild(callSec);
 }
 
+/**
+ * Carbon mounts the dialog panel as shadow DOM `[part=dialog]`
+ * (`.cds--modal-container`). Host-class `::part(dialog)` rules are fragile
+ * against size media queries; set geometry on the part node so fullscreen
+ * actually fills the viewport (grid is `auto 1fr auto` — needs block-size).
+ */
+function dialogPartEl(modal: HTMLElement): HTMLElement | null {
+	const root = modal.shadowRoot;
+	if (!root) return null;
+	return (
+		(root.querySelector('[part~="dialog"]') as HTMLElement | null) ??
+		(root.querySelector('.cds--modal-container') as HTMLElement | null)
+	);
+}
+
+/** Apply / clear near-viewport size on Carbon's shadow dialog part. */
+export function applyInspectDialogFullscreenGeometry(
+	modal: HTMLElement,
+	on: boolean,
+): void {
+	const dialog = dialogPartEl(modal);
+	if (!dialog) return;
+	if (on) {
+		// Explicit block-size: content-height alone never fills the overlay.
+		dialog.style.setProperty('inline-size', 'min(96vw, 100%)');
+		dialog.style.setProperty('max-inline-size', '96vw');
+		dialog.style.setProperty('block-size', '92vh');
+		dialog.style.setProperty('max-block-size', '92vh');
+		dialog.style.setProperty('min-block-size', 'min(92vh, 100%)');
+	} else {
+		for (const prop of [
+			'inline-size',
+			'max-inline-size',
+			'block-size',
+			'max-block-size',
+			'min-block-size',
+		] as const) {
+			dialog.style.removeProperty(prop);
+		}
+	}
+}
+
 function syncFullscreenChrome(
 	modal: HTMLElement,
 	btn: HTMLElement | null,
 	on: boolean,
 ): void {
 	modal.classList.toggle('atlas-inspect-modal--fullscreen', on);
+	applyInspectDialogFullscreenGeometry(modal, on);
 	if (!btn) return;
 	btn.setAttribute('aria-pressed', on ? 'true' : 'false');
 	btn.textContent = on ? 'Exit fullscreen' : 'Fullscreen';
@@ -265,7 +308,14 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const modal = $('atlas-inspect-modal');
 		if (!modal) return;
 		const btn = $('atlas-inspect-fullscreen');
-		syncFullscreenChrome(modal, btn, readInspectModalFullscreen());
+		const on = readInspectModalFullscreen();
+		syncFullscreenChrome(modal, btn, on);
+		// Shadow dialog part may not exist until the WC upgrades / opens
+		if (on && !dialogPartEl(modal)) {
+			requestAnimationFrame(() => {
+				applyInspectDialogFullscreenGeometry(modal, true);
+			});
+		}
 	}
 
 	function toggleFullscreen(): void {
@@ -358,6 +408,8 @@ export function createInspectModals(deps: InspectModalDeps): {
 			p.textContent = emptyHint;
 			body.appendChild(p);
 			modal.open = true;
+			// Re-apply after open so shadow part is present
+			applyFullscreenFromPref();
 			return;
 		}
 
@@ -407,6 +459,8 @@ export function createInspectModals(deps: InspectModalDeps): {
 
 		body.appendChild(accordion);
 		modal.open = true;
+		// Re-apply after open so shadow part is present
+		applyFullscreenFromPref();
 	}
 
 	function claimPrecision(): LocPrecision {

@@ -12,6 +12,7 @@ import {
 } from '@core/index.ts';
 import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
+	applyInspectDialogFullscreenGeometry,
 	callsitesTitle,
 	emptyCallsitesNote,
 	importSiteAccordionTitle,
@@ -239,5 +240,57 @@ describe('inspect modal fullscreen pref (sessionStorage)', () => {
 		writeInspectModalFullscreen(false);
 		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
 		expect(readInspectModalFullscreen()).toBe(false);
+	});
+});
+
+describe('applyInspectDialogFullscreenGeometry', () => {
+	/** Minimal shadow host — no jsdom required. */
+	function mockModalWithDialogPart(): {
+		host: HTMLElement;
+		props: Map<string, string>;
+	} {
+		const props = new Map<string, string>();
+		const dialog = {
+			style: {
+				setProperty(k: string, v: string) {
+					props.set(k, v);
+				},
+				removeProperty(k: string) {
+					props.delete(k);
+				},
+			},
+		};
+		const host = {
+			shadowRoot: {
+				querySelector(sel: string) {
+					if (sel.includes('dialog') || sel.includes('modal-container')) {
+						return dialog;
+					}
+					return null;
+				},
+			},
+		} as unknown as HTMLElement;
+		return { host, props };
+	}
+
+	it('sets block-size on Carbon shadow part=dialog (not just max)', () => {
+		const { host, props } = mockModalWithDialogPart();
+
+		applyInspectDialogFullscreenGeometry(host, true);
+		expect(props.get('block-size')).toBe('92vh');
+		expect(props.get('max-block-size')).toBe('92vh');
+		expect(props.get('inline-size')).toBe('min(96vw, 100%)');
+		expect(props.get('max-inline-size')).toBe('96vw');
+		expect(props.get('min-block-size')).toBe('min(92vh, 100%)');
+
+		applyInspectDialogFullscreenGeometry(host, false);
+		expect(props.size).toBe(0);
+	});
+
+	it('no-ops when shadowRoot is missing', () => {
+		const host = { shadowRoot: null } as unknown as HTMLElement;
+		expect(() =>
+			applyInspectDialogFullscreenGeometry(host, true),
+		).not.toThrow();
 	});
 });
