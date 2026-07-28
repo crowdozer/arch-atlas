@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T02:46:31Z",
+  "generated_at": "2026-07-28T05:30:24Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 15,
   "entries": [
@@ -634,7 +634,8 @@
         "hierarchical-heatmap-lens",
         "analysis-capability-honesty",
         "analysis-protocol-multi-host",
-        "geometric-vs-knot-architecture"
+        "geometric-vs-knot-architecture",
+        "ops: .grok/reference/cycles-cheatsheet.md \u2014 circular import scan (digest SCCs vs mermaid honesty)"
       ],
       "rationale_quality": "full",
       "consult": "Consult when: automated mermaid graph or flowchart export; dependency + folder structure diagram (not domain map); agent lens or ChatGPT-portable architecture sketch; structural overview without inferred features/domains"
