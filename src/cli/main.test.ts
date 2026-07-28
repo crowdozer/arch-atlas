@@ -169,6 +169,25 @@ describe('runCli', () => {
 		expect(() => JSON.parse(out)).toThrow();
 	});
 
+	it('mermaid --containment emits indexed hierarchy without dependency output', async () => {
+		capture();
+		const code = await runCli([
+			'mermaid',
+			fixtureDir,
+			'--containment',
+			'--limit',
+			'3',
+		]);
+		expect(code).toBe(0);
+		const out = logs.join('');
+		expect(out).toMatch(/^flowchart TB/m);
+		expect(out).toContain('mode=containment');
+		expect(out).toMatch(/subgraph d\d+/);
+		expect(out).toMatch(/\bn\d+\["/);
+		expect(out).not.toMatch(/-->|<-->|cycles\.runtime/);
+		expect(() => JSON.parse(out)).toThrow();
+	});
+
 	it('usage error without path exits 1', async () => {
 		capture();
 		const code = await runCli(['digest']);

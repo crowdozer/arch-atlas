@@ -201,4 +201,70 @@ describe('buildAgentMermaid', () => {
 		expect(text).toContain('["pkg/c"]');
 		expect(text).toContain('["pkg/d"]');
 	});
+
+	it('containment renders indexed paths without dependency or cycle output', () => {
+		const graph = buildGraph(
+			files([
+				['src/core/a.ts', `import { b } from '../lib/b';\nexport const a = b;\n`],
+				['src/lib/b.ts', `export const b = 1;\n`],
+				['notes/readme.md', '# Notes\n'],
+			]),
+		);
+		const text = buildAgentMermaid({
+			graph,
+			source,
+			mode: 'containment',
+			limit: 40,
+		});
+
+		expect(text).toMatch(/^flowchart TB/m);
+		expect(text).toContain('mode=containment');
+		expect(text).toContain('indexed paths only');
+		expect(text).toContain('subgraph d0["notes"]');
+		expect(text).toContain('subgraph d1["src"]');
+		expect(text).toContain('["readme.md"]');
+		expect(text).toContain('["a.ts"]');
+		expect(text).toContain('["b.ts"]');
+		expect(text).not.toMatch(/-->|<-->|cycles\.runtime/);
+	});
+
+	it('containment caps alphabetic file leaves and retains their ancestors', () => {
+		const graph = buildGraph(
+			files([
+				['z/last.ts', 'export const z = 1;\n'],
+				['a/deep/first.ts', 'export const a = 1;\n'],
+				['b/second.ts', 'export const b = 1;\n'],
+			]),
+		);
+		const text = buildAgentMermaid({
+			graph,
+			source,
+			mode: 'containment',
+			limit: 2,
+		});
+
+		expect(text).toContain('showing 2 of 3 files (limit=2)');
+		expect(text).toContain('["a"]');
+		expect(text).toContain('["deep"]');
+		expect(text).toContain('["first.ts"]');
+		expect(text).toContain('["b"]');
+		expect(text).toContain('["second.ts"]');
+		expect(text).not.toContain('["z"]');
+		expect(text).not.toContain('["last.ts"]');
+	});
+
+	it('containment limit zero emits honest headers without empty groups', () => {
+		const graph = buildGraph(
+			files([['src/a.ts', 'export const a = 1;\n']]),
+		);
+		const text = buildAgentMermaid({
+			graph,
+			source,
+			mode: 'containment',
+			limit: 0,
+		});
+
+		expect(text).toContain('showing 0 of 1 files (limit=0)');
+		expect(text).not.toMatch(/subgraph|\bn\d+\["/);
+	});
 });

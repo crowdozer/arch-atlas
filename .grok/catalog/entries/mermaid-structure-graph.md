@@ -24,6 +24,7 @@ applies_when:
   - second/third lens after alluvial for static structure
   - CLI digest/tree companion that renders as mermaid
   - avoiding force-directed hairball for agent handoff
+  - containment-only folder and file hierarchy from indexed paths
 touches:
   - src/core/export/agentMermaid.ts
   - src/core/export/agentMermaid.test.ts
@@ -40,12 +41,12 @@ invariants:
   - Do not invent domain/feature labels; folder prefixes and observed imports only
   - Unresolved / external ends stay labeled honestly (Estimate/Exact honesty ladder)
   - Mermaid is a portable projection, not a second source of record
-  - File-level runtime SCCs always listed in %% comments (within-prefix honesty)
-  - Grain is topFolder path-prefix (not external npm package names)
+  - Dependency mode always lists file-level runtime SCCs in %% comments (within-prefix honesty)
+  - Dependency grain is topFolder path-prefix (not external npm package names)
+  - Containment mode uses indexed paths only and never emits dependency or SCC claims
 open_questions:
   - Hybrid expand (folder subgraphs + file leaves) deferred beyond v1 topFolder rollup
   - In-app / web mermaid render vs CLI text-only (v1 is CLI text export)
-  - Whether a pure containment (tree) mermaid mode is worth a second command
 related:
   - interchangeable-atlas-lenses
   - dependency-structure-matrix
@@ -65,15 +66,16 @@ realized_by:
   - .grok/skills/_shared/preamble.md
   - "ship: 014be6a feat(cli): add mermaid structure graph export"
   - "ship: b7ef96e test(cli): fix vacuous mermaid bidirectional edge assertion"
+  - "ship: e238d49 feat(core): add Mermaid containment projection"
 superseded_by: null
 rationale_quality: full
 ---
 
 # Automated Mermaid structure graph (dependency + folder)
 
-**Status:** implemented (v1 CLI). Command `arch-atlas mermaid <path>` emits
-pasteable Mermaid **text** (no JSON wrapper, no markdown fence). Projection of
-CodeGraph only; not a second analyzer.
+**Status:** implemented (CLI dependency + containment modes). Command
+`arch-atlas mermaid <path>` emits pasteable Mermaid **text** (no JSON wrapper,
+no markdown fence). Projection of CodeGraph only; not a second analyzer.
 
 ## Problem
 
@@ -106,7 +108,9 @@ same CodeGraph as other lenses.
 | Cycles | File SCCs always in `%% cycles.runtime (file SCC)` comments; multi-prefix SCCs as subgraphs; size-2 mutual pairs may use `<-->` |
 | Cap | `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible |
 | Analysis tier | L1 Estimate topology only — not Exact mass, not Program, not domain map |
-| Hybrid expand | **Deferred** (folder subgraphs + file leaves not in v1) |
+| Hybrid expand | **Deferred** in dependency mode |
+| Containment | Opt-in `--containment`: `flowchart TB`, indexed folder/file paths only, no edges or SCCs |
+| Containment cap | `--limit N` alphabetically ordered file leaves; ancestors retained |
 
 Header comments stamp source, scope omit/presets, truncation, and cycle honesty
 so within-prefix knots (e.g. physics↔weapons under `client/sim`) stay visible
@@ -151,16 +155,17 @@ See frontmatter. Practical follow-ons:
 
 1. **Hybrid expand** — subgraphs = folders; optional file leaves under a prefix.  
 2. **In-app mermaid** — embed render in web host vs keep CLI-only.  
-3. **Tree-only mode** — pure containment mindmap without import edges.
 
 ## Revisit when
 
 - Hybrid expand or web embed is prioritized.
 - Package rollup or omit-glob semantics change (affects default grain).
-- ChatGPT / agent handoff packs need a second diagram mode (containment-only).
+- Containment output needs optional directory-chain compaction or another path presentation policy.
 
 ## Provenance
 
 User idea after artillery ZIP agent-lens pack: automated mermaid based on
 dependency / folder structure, explicitly **not** inferred domain. v1 shipped as
-CLI text export with topFolder grain + file SCC comment honesty.
+CLI text export with topFolder grain + file SCC comment honesty. A later ship
+added opt-in containment from indexed paths while leaving dependency output
+unchanged.

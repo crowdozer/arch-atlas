@@ -53,8 +53,8 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (topFolder rollup + file SCC `%%` honesty). |
-| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph (`flowchart LR`); cycle honesty in comments; `--limit` caps prefix nodes. **Not** the primary cycle enumerator — see cycles cheatsheet |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (default topFolder rollup + file SCC `%%` honesty; `--containment` for indexed path hierarchy). |
+| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph: default `flowchart LR` dependency rollup with cycle honesty; opt-in `--containment` emits `flowchart TB` indexed folders/files with no edges/SCCs. `--limit` caps prefix nodes or containment file leaves. **Not** the primary cycle enumerator — see cycles cheatsheet |
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
