@@ -31,7 +31,7 @@ g100 dump (--cds-* stock defaults)     leave dump block alone
 palette bridge on .cds--g100           zinc/teal CDS overrides; status presets;
                                        support → status aliases
         ↓
-product --atlas-*                      select*, drill*, export/import terminators
+product --atlas-*                      select*, drill*, export*, import direction, terminators
         ↓
 CSS call sites → var(--cds-*) / var(--atlas-*)
 TS chart/SVG → chartPalette hex        must match CSS token values; no getComputedStyle in core
@@ -47,6 +47,17 @@ TS chart/SVG → chartPalette hex        must match CSS token values; no getComp
 **Canonical hex for product tokens lives in the CSS bridge.** `CHART_PALETTE` must stay in lockstep for values that also paint in CSS. Import **hop** ladders are TS-only (no CSS hop tokens); terminator/drill CSS cousins share mid/near cyan steps only.
 
 Historical scale export `TEAL` re-exports a subset of `CHART_PALETTE` for minimal churn — prefer `CHART_PALETTE` at new call sites.
+
+Do **not** land a second TS palette (`palette.ts`) or a parallel `atlas-tokens.css` — single bridge + `chartPalette` only.
+
+## Direction tokens (import / export UI)
+
+| Token | Typical use |
+| ----- | ----------- |
+| `--atlas-import` | Inspect form-tri import markers; aliases brand teal (`--cds-interactive`) — **not** `--cds-status-blue` |
+| `--atlas-export` | Export bands, form-tri export markers, outbound catalog yellow chips |
+| `--atlas-export-pkg` / `--atlas-export-other` | Deeper export hop yellow ladder (mirrors `CHART_PALETTE` / `TEAL`) |
+| `--atlas-import-term*` / `--atlas-export-term*` | Alluvial terminator chrome (contrast wraps) |
 
 ## Selection purple (`--atlas-select*`)
 

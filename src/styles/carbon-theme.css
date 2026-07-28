@@ -407,6 +407,8 @@ body.cds--g100,
   --atlas-export-other: #a16207; /* yellow-700 */
   --atlas-export-term-text: #fde68a; /* yellow-200 — terminator label */
   --atlas-export-term-bg-stroke: #ca8a04; /* yellow-600 — terminator chip border */
+  /* Direction · import — brand teal (not CDS status-blue) for UI markers */
+  --atlas-import: var(--cds-interactive, #14b8a6); /* teal-500 = brand interactive */
   --atlas-import-term-stroke: #22d3ee; /* cyan-400 — export-column terminator */
   --atlas-import-term-text: #a5f3fc; /* cyan-200 */
   --atlas-import-term-bg-stroke: #06b6d4; /* cyan-500 */
@@ -592,10 +594,10 @@ cds-tag {
   vertical-align: middle;
 }
 
-/* Product yellow (Carbon has no type=yellow) — high-complexity / caution chips */
+/* Product export yellow (Carbon has no type=yellow) — outbound direction chips */
 cds-tag.ui-tag--yellow {
-  background-color: color-mix(in srgb, var(--cds-status-yellow, #f1c21b) 28%, #000) !important;
-  color: var(--cds-status-yellow, #f1c21b) !important;
+  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, #000) !important;
+  color: var(--atlas-export, #eab308) !important;
 }
 
 /* Carbon charts on zinc */
@@ -1464,7 +1466,7 @@ cds-inline-notification.atlas-inspect__banner {
 /*
  * Import/export form markers — Carbon status triangles (ui-status-indicator).
  * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
- * Colors: blue import / yellow export (matches outbound chips + export bands).
+ * Colors: brand teal import / alluvial yellow export (direction tokens — not status-*).
  */
 .atlas-inspect__form-tri.ui-status-indicator {
   flex-shrink: 0;
@@ -1481,14 +1483,14 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-inspect__form-tri--import {
-  --ui-status-color: var(--cds-status-blue, #4589ff);
-  color: var(--cds-status-blue, #4589ff);
+  --ui-status-color: var(--atlas-import, var(--cds-interactive, #14b8a6));
+  color: var(--atlas-import, var(--cds-interactive, #14b8a6));
 }
 
 .atlas-inspect__form-tri--export {
-  /* Product export yellow (Carbon support-warning / status-yellow) */
-  --ui-status-color: var(--cds-status-yellow, #f1c21b);
-  color: var(--cds-status-yellow, #f1c21b);
+  /* Alluvial export yellow (direction token — not status-yellow) */
+  --ui-status-color: var(--atlas-export, #eab308);
+  color: var(--atlas-export, #eab308);
 }
 
 .atlas-inspect__form-tri--mixed {
@@ -1849,7 +1851,7 @@ cds-tag.atlas-edge-badge {
   justify-content: center;
 }
 
-/* Outbound yellow inherits cds-tag.ui-tag--yellow (status-yellow color-mix) */
+/* Outbound yellow inherits cds-tag.ui-tag--yellow (--atlas-export color-mix) */
 
 .atlas-summary-tag,
 cds-tag.atlas-summary-tag {
