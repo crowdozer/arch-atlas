@@ -27,18 +27,9 @@ import {
 
 export type { WeightAxis, LocPrecision };
 
-export const TEAL = {
-	start: '#14b8a6', // teal-500
-	module: '#2dd4bf', // teal-400
-	package: '#0d9488', // teal-600
-	builtin: '#5eead4', // teal-300
-	unresolved: '#f59e0b', // amber
-	other: '#71717a', // zinc-500
-	/** Export / outbound hub bands — yellow complements teal importers. */
-	export: '#eab308', // yellow-500
-	exportPkg: '#ca8a04', // yellow-600
-	exportOther: '#a16207', // yellow-700 (overflow)
-};
+/** Chart scale colors — owned by `chartPalette.ts` (must match carbon-theme). */
+export { CHART_PALETTE, TEAL } from '@core/view/chartPalette.ts';
+import { TEAL } from '@core/view/chartPalette.ts';
 
 export function basename(path: string): string {
 	const i = path.lastIndexOf('/');

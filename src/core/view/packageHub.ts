@@ -34,6 +34,7 @@ import {
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { importerGroupKey } from '@core/view/fileImporters.ts';
 import { HUB_DEFAULT_MAX_DEPTH } from '@core/view/fileHub.ts';
 import {
@@ -531,7 +532,10 @@ function addPackageImportModules(args: {
 			const source = claimName(usedNames, mod, 'module');
 			addLink(source, packageLabel, n);
 			nodeRef[source] = { kind: 'module', id: mod };
-			nodeMeta.set(source, { category: 'Exports', color: '#06b6d4' });
+			nodeMeta.set(source, {
+				category: 'Exports',
+				color: CHART_PALETTE.exportFree,
+			});
 			externalStraightPairs.push({
 				parent: source,
 				packageName: packageLabel,
@@ -543,7 +547,10 @@ function addPackageImportModules(args: {
 	}
 	if (otherLabel) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-pkg-import-modules' };
-		nodeMeta.set(otherLabel, { category: 'Exports', color: '#0e7490' });
+		nodeMeta.set(otherLabel, {
+			category: 'Exports',
+			color: CHART_PALETTE.exportFreeOther,
+		});
 		const overflowMass = ranked
 			.filter(([k]) => !kept.has(k))
 			.reduce((s, [, n]) => s + n, 0);

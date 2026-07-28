@@ -18,6 +18,7 @@ Agents: start here, then load playbooks from the preamble.
 9. **Analysis protocol (canonical multi-host L0–L4):** [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md) — one IR, capability stamps, ship phases; catalog [analysis-protocol-multi-host](.grok/catalog/entries/analysis-protocol-multi-host.md)
 10. **Analysis honesty (Estimate / Exact / VS Code today):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
 11. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
+12. **Color / Carbon tokens:** [.grok/reference/carbon-tokens.md](.grok/reference/carbon-tokens.md) — zinc+teal brand (not emerald), purple selection, status CDS presets, g100 → bridge → `--atlas-*` → `chartPalette`
 
 ## Role skills
 

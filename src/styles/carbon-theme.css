@@ -377,7 +377,12 @@ body.cds--g100,
   --cds-content-switcher-selected: rgba(141, 141, 141, 0.24);
 }
 
-/* ---- Arch Atlas palette bridge (zinc shell + teal interactive + purple select) ---- */
+/*
+ * ---- Arch Atlas palette bridge (zinc shell + teal interactive + purple select) ----
+ * Hex values in this block are canonical for product tokens.
+ * TS chart/SVG mirror: `src/core/view/chartPalette.ts` — must stay in lockstep.
+ * g100 dump above is left raw; overrides apply only under .cds--g100.
+ */
 html.cds--g100,
 body.cds--g100,
 .cds--g100 {
@@ -390,14 +395,30 @@ body.cds--g100,
 
   /* Drill-target affordance (hover preview of where a click navigates) */
   --atlas-drill: #67e8f9; /* cyan-300 — label text */
-  --atlas-drill-strong: #22d3ee; /* cyan-400 — chip border */
+  --atlas-drill-strong: #22d3ee; /* cyan-400 — chip border / export terminator stroke */
   --atlas-drill-deep: #155e75; /* cyan-800 — chip fill */
+
+  /*
+   * Chart band families (alluvial) — same hues as chartPalette TEAL / hops.
+   * Terminators use contrast family (yellow wrap on import; cyan wrap on export).
+   */
+  --atlas-export: #eab308; /* yellow-500 — export bands + import terminator stroke */
+  --atlas-export-pkg: #ca8a04; /* yellow-600 */
+  --atlas-export-other: #a16207; /* yellow-700 */
+  --atlas-export-term-text: #fde68a; /* yellow-200 — terminator label */
+  --atlas-export-term-bg-stroke: #ca8a04; /* yellow-600 — terminator chip border */
+  /* Direction · import — brand teal (not CDS status-blue) for UI markers */
+  --atlas-import: var(--cds-interactive, #14b8a6); /* teal-500 = brand interactive */
+  --atlas-import-term-stroke: #22d3ee; /* cyan-400 — export-column terminator */
+  --atlas-import-term-text: #a5f3fc; /* cyan-200 */
+  --atlas-import-term-bg-stroke: #06b6d4; /* cyan-500 */
+  /* Import hop ladder lives only in chartPalette (Carbon color.scale); no CSS hop paint */
 
   --cds-background: #09090b; /* zinc-950 */
   --cds-background-hover: rgba(63, 63, 70, 0.35);
   --cds-background-active: rgba(63, 63, 70, 0.5);
   --cds-background-selected: rgba(63, 63, 70, 0.4);
-  --cds-background-brand: #0d9488; /* teal-600 */
+  --cds-background-brand: #0d9488; /* teal-600 — brand, not emerald */
   --cds-layer-01: #18181b; /* zinc-900 */
   --cds-layer-02: #27272a; /* zinc-800 */
   --cds-layer-03: #3f3f46; /* zinc-700 */
@@ -438,10 +459,7 @@ body.cds--g100,
   --cds-button-secondary-active: #27272a;
   --cds-button-tertiary: #e4e4e7;
   --cds-button-tertiary-hover: #fafafa;
-  --cds-support-error: #fa4d56;
-  --cds-support-success: #42be65;
-  --cds-support-warning: #f1c21b;
-  --cds-support-info: #4589ff;
+  /* Status = CDS presets (never brand teal for PASS/FAIL) */
   --cds-status-red: #fa4d56;
   --cds-status-orange: #ff832b;
   --cds-status-yellow: #f1c21b;
@@ -449,14 +467,19 @@ body.cds--g100,
   --cds-status-blue: #4589ff;
   --cds-status-purple: #a78bfa; /* align with --atlas-select-strong */
   --cds-status-gray: #8d8d8d;
+  /* Support aliases status (Sentinel pattern) */
+  --cds-support-error: var(--cds-status-red, #fa4d56);
+  --cds-support-success: var(--cds-status-green, #42be65);
+  --cds-support-warning: var(--cds-status-yellow, #f1c21b);
+  --cds-support-info: var(--cds-status-blue, #4589ff);
 }
 
 /* Shell */
 body.cds--g100 {
   margin: 0;
   min-height: 100vh;
-  background: #09090b;
-  color: #fafafa;
+  background: var(--cds-background, #09090b);
+  color: var(--cds-text-primary, #fafafa);
   font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
@@ -478,8 +501,8 @@ cds-header.atlas-header,
   position: relative !important;
   inset: auto !important;
   z-index: 10;
-  background: #18181b;
-  border-block-end: 1px solid #27272a;
+  background: var(--cds-background, #18181b);
+  border-block-end: 1px solid var(--cds-border-subtle, #27272a);
   /* Light-DOM siblings (tagline / on-device note) sit beside HeaderName */
   display: flex;
   align-items: center;
@@ -497,7 +520,7 @@ cds-header.atlas-header,
   z-index: 5;
   flex-shrink: 0;
   min-block-size: 2.5rem;
-  background: #09090b;
+  background: var(--cds-background, #09090b);
 }
 
 #atlas-subbar.flex {
@@ -514,14 +537,14 @@ cds-button.atlas-reset {
 /* Carbon header-name: prefix "Arch" (zinc) + product slot "Atlas" (teal) */
 .ui-header-name,
 cds-header-name.ui-header-name {
-  color: #2dd4bf !important;
+  color: var(--cds-link-primary, #2dd4bf) !important;
   font-weight: 600;
   letter-spacing: 0.02em;
   --cds-link-primary: #2dd4bf;
 }
 
 cds-header-name.ui-header-name::part(prefix) {
-  color: #fafafa;
+  color: var(--cds-text-primary, #fafafa);
 }
 
 /* Tiles — Carbon layer surface, square corners (g100 / product shell) */
@@ -537,14 +560,14 @@ cds-tile.ui-tile {
 .ui-tile--padding-sm { padding: 0.75rem; }
 .ui-tile--padding-md { padding: 1rem; }
 .ui-tile--padding-lg { padding: 1.25rem; }
-.ui-tile--dashed { border-style: dashed; border-color: #3f3f46; }
+.ui-tile--dashed { border-style: dashed; border-color: var(--cds-layer-03, #3f3f46); }
 .ui-tile--muted { opacity: 0.65; }
 
 .ui-tile__label {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
   margin-bottom: 0.35rem;
 }
 
@@ -571,10 +594,10 @@ cds-tag {
   vertical-align: middle;
 }
 
-/* Product yellow (Carbon has no type=yellow) — high-complexity / caution chips */
+/* Product export yellow (Carbon has no type=yellow) — outbound direction chips */
 cds-tag.ui-tag--yellow {
-  background-color: #5c4d00 !important;
-  color: #f1c21b !important; /* Carbon support-warning yellow */
+  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, #000) !important;
+  color: var(--atlas-export, #eab308) !important;
 }
 
 /* Carbon charts on zinc */
@@ -589,7 +612,19 @@ cds-tag.ui-tag--yellow {
   --cds-layer: transparent;
   --cds-layer-01: transparent;
   --cds-background: transparent;
-  --cds-layer-01-absolute: #f4f4f4;
+  /*
+   * Carbon chart-holder[data-carbon-theme=g100] redefines absolute layers
+   * (inverse → white). Label chips pin zinc via rgb() below; these tokens
+   * remain for any non-overridden chart chrome.
+   */
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
+}
+
+/* Beat Carbon theme absolute-layer flip on the chart holder itself. */
+.ui-carbon-chart .cds--chart-holder,
+.ui-carbon-chart [class*='chart-holder'] {
+  --cds-layer-01-absolute: #e4e4e7;
   --cds-layer-inverse-absolute: #18181b;
 }
 
@@ -600,7 +635,7 @@ cds-tag.ui-tag--yellow {
 
 .ui-carbon-chart__loading {
   font-size: 0.875rem;
-  color: #71717a;
+  color: var(--cds-text-placeholder, #71717a);
   margin: 0;
   padding: 1.25rem 0.75rem;
   min-height: 8rem;
@@ -615,18 +650,24 @@ cds-tag.ui-tag--yellow {
 }
 
 .ui-carbon-chart .cds--cc--alluvial rect.node {
-  fill: rgb(39 39 42) !important;
-  stroke: rgb(63 63 70) !important;
+  fill: var(--cds-layer-02, #27272a) !important;
+  stroke: var(--cds-layer-03, #3f3f46) !important;
   stroke-width: 1px;
 }
 
 .ui-carbon-chart .cds--cc--alluvial rect.node-text-bg {
+  /*
+   * Zinc-900 chip under light labels. Do NOT use --cds-layer-inverse-absolute:
+   * Carbon g100 sets that to #ffffff on .cds--chart-holder[data-carbon-theme=g100]
+   * (white chip + black text). Chart also forces --cds-layer-01 transparent, so
+   * shell layer tokens are unusable here — pin zinc-900 explicitly.
+   */
   fill: rgb(24 24 27 / 0.92) !important;
   stroke: none;
 }
 
 .ui-carbon-chart .cds--cc--alluvial text.node-text {
-  fill: rgb(228 228 231) !important;
+  fill: var(--cds-icon-primary, #e4e4e7) !important;
   font-weight: 500;
 }
 
@@ -641,7 +682,11 @@ cds-tag.ui-tag--yellow {
 }
 
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node-text-bg {
-  fill: rgb(91 33 182 / 0.92) !important; /* violet-800 */
+  fill: color-mix(
+    in srgb,
+    var(--atlas-select-deep, #5b21b6) 92%,
+    transparent
+  ) !important;
   stroke: var(--atlas-select-strong, #a78bfa);
   stroke-width: 1px;
 }
@@ -659,7 +704,11 @@ cds-tag.ui-tag--yellow {
   .cds--cc--alluvial
   .atlas-alluvial-drill-target:not(.atlas-alluvial-file-spine)
   rect.node-text-bg {
-  fill: rgb(21 94 117 / 0.92) !important; /* cyan-800 */
+  fill: color-mix(
+    in srgb,
+    var(--atlas-drill-deep, #155e75) 92%,
+    transparent
+  ) !important;
   stroke: var(--atlas-drill-strong, #22d3ee);
   stroke-width: 1px;
 }
@@ -726,36 +775,37 @@ cds-tag.ui-tag--yellow {
  * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
  * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
  * - .atlas-alluvial-export-terminator = **cyan** wrap → Exports* free sources (yellow side)
+ * Tokens: --atlas-export* / --atlas-import-term* (mirror chartPalette).
  */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node {
-  stroke: #eab308 !important;
+  stroke: var(--atlas-export, #eab308) !important;
   stroke-width: 2.5px !important;
   stroke-opacity: 1 !important;
   paint-order: stroke fill;
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator text.node-text {
   font-weight: 600 !important;
-  fill: #fde68a !important;
+  fill: var(--atlas-export-term-text, #fde68a) !important;
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node-text-bg {
-  stroke: #ca8a04 !important;
+  stroke: var(--atlas-export-term-bg-stroke, #ca8a04) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }
 
 /* Cyan wrap on yellow export columns (reverse free sources) */
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node {
-  stroke: #22d3ee !important;
+  stroke: var(--atlas-import-term-stroke, #22d3ee) !important;
   stroke-width: 2.5px !important;
   stroke-opacity: 1 !important;
   paint-order: stroke fill;
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator text.node-text {
   font-weight: 600 !important;
-  fill: #a5f3fc !important;
+  fill: var(--atlas-import-term-text, #a5f3fc) !important;
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node-text-bg {
-  stroke: #06b6d4 !important;
+  stroke: var(--atlas-import-term-bg-stroke, #06b6d4) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }
@@ -881,8 +931,9 @@ cds-tag.ui-tag--yellow {
   min-width: 16rem;
   max-width: 26rem;
   flex-shrink: 0;
-  border-inline-end: 1px solid #27272a; /* zinc-800 */
-  background: #0c0c0e;
+  border-inline-end: 1px solid var(--cds-border-subtle-00, #27272a);
+  /* Near zinc-950; slightly elevated from --cds-background */
+  background: color-mix(in srgb, var(--cds-background, #09090b) 92%, #fff);
   min-height: 0;
 }
 
@@ -894,7 +945,7 @@ cds-tag.ui-tag--yellow {
 
 .atlas-drawer__panel--tree {
   flex: 1 1 48%;
-  border-block-end: 1px solid #27272a;
+  border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
   min-height: 12rem;
 }
 
@@ -960,7 +1011,7 @@ cds-search.atlas-tree-search {
   min-height: 0;
   /* Clip both axes so a tall Carbon SVG cannot push past the viewport */
   overflow: hidden;
-  background: #09090b;
+  background: var(--cds-background, #09090b);
   /* Stage width drives label collapse (drawer steals viewport width) */
   container-type: inline-size;
   container-name: atlas-stage;
@@ -981,7 +1032,7 @@ cds-search.atlas-tree-search {
   min-width: 0;
   max-width: 100%;
   padding: 0.5rem 1rem;
-  border-block-end: 1px solid #27272a;
+  border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
 }
 
 .atlas-stage__title-band {
@@ -1013,7 +1064,7 @@ cds-search.atlas-tree-search {
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0.02em;
-  color: #71717a; /* zinc-500 */
+  color: var(--cds-text-placeholder, #71717a);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -1122,10 +1173,10 @@ cds-dropdown.atlas-stage__precision,
   align-items: stretch;
   align-self: center;
   height: 2rem;
-  border: 1px solid #3f3f46; /* zinc-700 */
+  border: 1px solid var(--cds-layer-03, #3f3f46);
   border-radius: 0.25rem;
   overflow: hidden;
-  background: #18181b; /* zinc-900 */
+  background: var(--cds-layer-01, #18181b);
   position: relative;
   z-index: 1;
 }
@@ -1144,7 +1195,7 @@ button.atlas-stage__mode-btn {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #a1a1aa; /* zinc-400 */
+  color: var(--cds-text-secondary, #a1a1aa);
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1154,12 +1205,12 @@ button.atlas-stage__mode-btn {
 }
 
 button.atlas-stage__mode-btn + button.atlas-stage__mode-btn {
-  border-inline-start: 1px solid #3f3f46; /* zinc-700 */
+  border-inline-start: 1px solid var(--cds-layer-03, #3f3f46);
 }
 
 button.atlas-stage__mode-btn:hover {
   background: rgba(141, 141, 141, 0.12);
-  color: #e4e4e7; /* zinc-200 */
+  color: var(--cds-icon-primary, #e4e4e7);
 }
 
 button.atlas-stage__mode-btn:focus {
@@ -1167,19 +1218,23 @@ button.atlas-stage__mode-btn:focus {
 }
 
 button.atlas-stage__mode-btn:focus-visible {
-  outline: 2px solid #2dd4bf; /* teal focus */
+  outline: 2px solid var(--cds-focus, #2dd4bf);
   outline-offset: -2px;
   z-index: 1;
 }
 
 /* Active selection — purple (house selection accent, not brand teal) */
 button.atlas-stage__mode-btn.is-active {
-  background: rgba(167, 139, 250, 0.18);
+  background: var(--atlas-select-soft, rgb(139 92 246 / 0.18));
   color: var(--atlas-select-strong, #a78bfa);
 }
 
 button.atlas-stage__mode-btn.is-active:hover {
-  background: rgba(167, 139, 250, 0.26);
+  background: color-mix(
+    in srgb,
+    var(--atlas-select-strong, #a78bfa) 26%,
+    transparent
+  );
   color: var(--atlas-select-strong, #a78bfa);
 }
 
@@ -1247,7 +1302,7 @@ cds-dropdown.atlas-stage__precision {
   padding: 0.35rem 0 0.15rem;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #e4e4e7;
+  color: var(--cds-icon-primary, #e4e4e7);
 }
 
 .atlas-inspect-modal cds-modal-header,
@@ -1263,7 +1318,7 @@ cds-dropdown.atlas-stage__precision {
 .atlas-inspect-modal cds-modal-label {
   display: block;
   margin: 0 0 0.25rem;
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
   font-size: 0.75rem;
   line-height: 1.333;
   letter-spacing: 0.02em;
@@ -1396,7 +1451,7 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-inspect__line-num {
-  color: #14b8a6;
+  color: var(--cds-interactive, #14b8a6);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1405,13 +1460,13 @@ cds-inline-notification.atlas-inspect__banner {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 0.65rem;
-  color: #71717a;
+  color: var(--cds-text-placeholder, #71717a);
 }
 
 /*
  * Import/export form markers — Carbon status triangles (ui-status-indicator).
  * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
- * Colors: blue import / yellow export (matches outbound chips + export bands).
+ * Colors: brand teal import / alluvial yellow export (direction tokens — not status-*).
  */
 .atlas-inspect__form-tri.ui-status-indicator {
   flex-shrink: 0;
@@ -1428,14 +1483,14 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-inspect__form-tri--import {
-  --ui-status-color: var(--cds-status-blue, #4589ff);
-  color: var(--cds-status-blue, #4589ff);
+  --ui-status-color: var(--atlas-import, var(--cds-interactive, #14b8a6));
+  color: var(--atlas-import, var(--cds-interactive, #14b8a6));
 }
 
 .atlas-inspect__form-tri--export {
-  /* Product export yellow (Carbon support-warning / status-yellow) */
-  --ui-status-color: var(--cds-status-yellow, #f1c21b);
-  color: var(--cds-status-yellow, #f1c21b);
+  /* Alluvial export yellow (direction token — not status-yellow) */
+  --ui-status-color: var(--atlas-export, #eab308);
+  color: var(--atlas-export, #eab308);
 }
 
 .atlas-inspect__form-tri--mixed {
@@ -1548,7 +1603,12 @@ cds-inline-notification.atlas-inspect__banner {
   text-align: left;
   background: transparent;
   border: 0;
-  color: #d4d4d8;
+  /* ≈ zinc-300: no CDS text step between primary and secondary */
+  color: color-mix(
+    in srgb,
+    var(--cds-text-primary, #fafafa) 55%,
+    var(--cds-text-secondary, #a1a1aa)
+  );
   padding: 0.22rem 0.35rem;
   border-radius: 0.2rem;
   cursor: pointer;
@@ -1557,18 +1617,18 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-tree__row:hover {
-  background: rgb(39 39 42 / 0.85);
-  color: #fafafa;
+  background: color-mix(in srgb, var(--cds-layer-02, #27272a) 85%, transparent);
+  color: var(--cds-text-primary, #fafafa);
 }
 
 /* Folders (collapsed or expanded off-path): white labels */
 .atlas-tree__row--dir {
-  color: #fafafa; /* zinc-50 */
+  color: var(--cds-text-primary, #fafafa);
   font-weight: 500;
 }
 
 .atlas-tree__row--dir:hover {
-  color: #ffffff;
+  color: var(--cds-text-primary, #fafafa);
 }
 
 .atlas-tree__row--dir .atlas-tree__name {
@@ -1576,11 +1636,11 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-tree__row--dir .atlas-tree__icon {
-  color: #e4e4e7; /* zinc-200 — match light folder labels */
+  color: var(--cds-icon-primary, #e4e4e7);
 }
 
 .atlas-tree__row--dir .atlas-tree__chevron {
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
 }
 
 /*
@@ -1604,41 +1664,41 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-tree__row--file.is-source {
-  color: #e4e4e7;
+  color: var(--cds-icon-primary, #e4e4e7);
 }
 
 /* Disabled / unparseable: use the former collapsed-folder grey */
 .atlas-tree__row--file.is-unparseable {
-  color: #a1a1aa; /* zinc-400 */
+  color: var(--cds-text-secondary, #a1a1aa);
   opacity: 0.85;
   cursor: default;
 }
 
 .atlas-tree__row--file.is-unparseable:hover {
-  background: rgb(39 39 42 / 0.45);
-  color: #a1a1aa;
+  background: color-mix(in srgb, var(--cds-layer-02, #27272a) 45%, transparent);
+  color: var(--cds-text-secondary, #a1a1aa);
   opacity: 0.95;
 }
 
 .atlas-tree__row--file.is-unparseable .atlas-tree__icon,
 .atlas-tree__icon--muted {
-  color: #71717a; /* zinc-500 */
+  color: var(--cds-text-placeholder, #71717a);
   opacity: 0.95;
 }
 
 /* Folder with no import-parseable descendants */
 .atlas-tree__row--dir.is-unparseable {
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
   opacity: 0.8;
 }
 
 .atlas-tree__row--dir.is-unparseable:hover {
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
 }
 
 .atlas-tree__row--dir.is-unparseable .atlas-tree__icon,
 .atlas-tree__row--dir.is-unparseable .atlas-tree__chevron {
-  color: #71717a;
+  color: var(--cds-text-placeholder, #71717a);
 }
 
 /* Selected file (active start): purple label + tile */
@@ -1653,7 +1713,7 @@ cds-inline-notification.atlas-inspect__banner {
   flex-shrink: 0;
   width: 0.85rem;
   font-size: 0.65rem;
-  color: #71717a;
+  color: var(--cds-text-placeholder, #71717a);
   text-align: center;
 }
 
@@ -1668,7 +1728,7 @@ cds-inline-notification.atlas-inspect__banner {
   justify-content: center;
   width: 1rem;
   height: 1rem;
-  color: #a1a1aa; /* zinc-400 */
+  color: var(--cds-text-secondary, #a1a1aa);
   opacity: 0.95;
 }
 
@@ -1681,7 +1741,7 @@ cds-inline-notification.atlas-inspect__banner {
 
 .atlas-tree__row--file.is-source .atlas-tree__icon,
 .atlas-tree__icon--source {
-  color: #e4e4e7;
+  color: var(--cds-icon-primary, #e4e4e7);
 }
 
 .atlas-tree__row--file.is-selected .atlas-tree__icon {
@@ -1725,7 +1785,7 @@ cds-inline-notification.atlas-inspect__banner {
 .atlas-tree__badge {
   flex-shrink: 0;
   font-size: 0.65rem;
-  color: #52525b;
+  color: var(--cds-border-strong-01, #52525b);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1734,9 +1794,9 @@ cds-inline-notification.atlas-inspect__banner {
   display: block;
   width: 100%;
   text-align: left;
-  background: #18181b;
-  border: 1px solid #27272a;
-  color: #e4e4e7;
+  background: var(--cds-layer-01, #18181b);
+  border: 1px solid var(--cds-border-subtle-00, #27272a);
+  color: var(--cds-icon-primary, #e4e4e7);
   padding: 0.5rem 0.65rem;
   border-radius: 0;
   cursor: pointer;
@@ -1745,7 +1805,7 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-list-btn:hover {
-  border-color: #3f3f46;
+  border-color: var(--cds-layer-03, #3f3f46);
 }
 
 .atlas-list-btn.is-selected {
@@ -1756,13 +1816,13 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-list-btn.is-selected .meta {
-  color: rgb(196 181 253 / 0.75); /* violet-300 muted */
+  color: color-mix(in srgb, var(--atlas-select, #c4b5fd) 75%, transparent);
 }
 
 .atlas-list-btn .meta {
   display: block;
   font-size: 0.7rem;
-  color: #a1a1aa;
+  color: var(--cds-text-secondary, #a1a1aa);
   margin-top: 0.15rem;
 }
 
@@ -1791,11 +1851,7 @@ cds-tag.atlas-edge-badge {
   justify-content: center;
 }
 
-/* Outbound chip — product yellow (matches export bands) */
-cds-tag.atlas-edge-badge--out.ui-tag--yellow {
-  background-color: #5c4d00 !important;
-  color: #f1c21b !important;
-}
+/* Outbound yellow inherits cds-tag.ui-tag--yellow (--atlas-export color-mix) */
 
 .atlas-summary-tag,
 cds-tag.atlas-summary-tag {

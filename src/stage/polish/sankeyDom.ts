@@ -2,6 +2,8 @@
  * Shared Sankey / Carbon `__data__` types and path geometry helpers.
  */
 
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
+
 export type SankeyLink = {
 	y0: number;
 	y1: number;
@@ -82,7 +84,7 @@ function linkPaintColor(path: SVGPathElement): string {
 	const fill =
 		(path.style && path.style.fill) || path.getAttribute?.('fill') || '';
 	if (fill && fill !== 'none') return fill;
-	return '#0d9488';
+	return CHART_PALETTE.brand;
 }
 
 /**

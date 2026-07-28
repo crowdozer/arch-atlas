@@ -6,6 +6,7 @@ import {
 	isAlluvialRailName,
 	isInRailName,
 } from '@core/view/alluvial.ts';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import {
 	horizontalLinkRibbonPath,
 	readData,
@@ -99,7 +100,7 @@ export function planExternalStraightBands(
 		list.push({
 			source: l.source,
 			width: l.width,
-			stroke: l.stroke ?? '#0d9488',
+			stroke: l.stroke ?? CHART_PALETTE.brand,
 			opacity: l.opacity ?? '0.5',
 		});
 		inbound.set(l.target, list);
@@ -115,7 +116,7 @@ export function planExternalStraightBands(
 		const directIn = inbound.get(pkg) ?? [];
 		const railIn = directIn.find((e) => isInRailName(e.source));
 		return {
-			stroke: railIn?.stroke || directIn[0]?.stroke || '#0d9488',
+			stroke: railIn?.stroke || directIn[0]?.stroke || CHART_PALETTE.brand,
 			opacity: railIn?.opacity || directIn[0]?.opacity || '0.5',
 		};
 	};
@@ -318,7 +319,7 @@ export function straightenExternalPackageBands(
 			source: sn,
 			target: tn,
 			width,
-			stroke: stroke && stroke !== 'none' ? stroke : '#0d9488',
+			stroke: stroke && stroke !== 'none' ? stroke : CHART_PALETTE.brand,
 			opacity,
 		});
 	}

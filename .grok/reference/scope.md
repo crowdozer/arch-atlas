@@ -135,9 +135,14 @@ Agent CLI + Exact export-surface honesty: [analysis-honesty.md](./analysis-hones
 Visual/UX grammar (MVP shell landed):
 
 - **IBM Carbon** web components via thin wrappers (pages never raw `cds-*`)
-- **Zinc** base shell + **teal** interactive/active chrome (brand map: teal-600/500/400)
+- **Zinc** base shell + **teal** interactive/active chrome (brand map: teal-600/500/400 — **not** Sentinel emerald)
+- **Purple** = active selection (`--atlas-select*`); status severity uses `--cds-status-*` (never brand teal for PASS/FAIL)
 - **Alluvial / Sankey** (`@carbon/charts`) as the signature architecture visual
 - Thin Astro pages + pure core modules for analysis (`src/core/`)
+- **g100 dark only** today — no light mode
+
+Token layers, support→status alias, and chart hex mirror:
+[carbon-tokens.md](./carbon-tokens.md).
 
 Reference (do not copy wholesale): `~/git-personal/sentinel/.grok/reference/carbon-ui.md`
 

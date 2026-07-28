@@ -23,6 +23,20 @@ Ship bar for admitting a new Estimate language family. Companion:
       (or equivalent) edge assertions — product-agnostic, no UI domain
 - [ ] Honesty non-claims listed (dynamics, site-packages, template HTML, Exact, …)
 - [ ] Exact story (missing engine vs later)
+- [ ] **Adversarial L1 bar** (see below) — garbage-specifier invariant + FP class matrix row for the new language
+
+## Adversarial L1 bar (ship add-on)
+
+Third belt after extract FP units and `fixtures/golden-l1-*` disk goldens:
+
+| Layer | Home | Asserts |
+| ----- | ---- | ------- |
+| Garbage-specifier grammar | `src/core/parse/l1GarbageSpec.ts` | Package names + non-path-like unresolved are not extract soup (`\|`, `kind:`, empty, `?`/`#` on package id). **Test invariant only** — not a production filter in `buildGraph` / resolve |
+| Fixtures corpus | `l1Adversarial.corpus.test.ts` | Every top-level `fixtures/*` project → `buildGraph` → zero garbage externals (demos are corpus inputs, not L1 minimize SoT) |
+| FP class matrix | `l1FpClassMatrix.test.ts` | Cross-lang table (`keyword-in-string` / comment / template / tooling-suffix / form-arg soup / …): each admitted language **implements** or marks **N/A** with an active assertion |
+| Light lex soup | same matrix file | Deterministic comment/string wrappers around `import` lookalikes → empty harvest + real edge kept (no fast-check) |
+
+**When adding a language:** extend the matrix column (implements | N/A + run), add `golden-l1-<id>/` if applicable, keep corpus green without weakening `l1GarbageSpec` to green-wash real FPs — fix extract/resolve instead.
 
 ## Dual stamps (Astro pattern)
 
@@ -52,5 +66,6 @@ Demos (`demo-*`), `codebreaker-focus`, and hub orientation goldens remain
 **product/UI/hub** contracts — not L1 minimize targets.
 
 **Test ownership:** pure L1 edge laws → `goldenL1.integration.test.ts` +
-`fixtures/golden-l1-*`; `build.test.ts` samples = app/catalog smoke; codebreaker
-= product alias domain.
+`fixtures/golden-l1-*`; adversarial post-graph belt → `l1GarbageSpec` +
+`l1Adversarial.corpus` + `l1FpClassMatrix`; `build.test.ts` samples =
+app/catalog smoke; codebreaker = product alias domain.

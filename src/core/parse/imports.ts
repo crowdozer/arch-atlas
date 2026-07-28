@@ -207,6 +207,36 @@ function findTemplateEnd(s: string, open: number): number {
 }
 
 /**
+ * True when `index` sits in code (not inside a '…' / "…" / `…` span).
+ * Used to gate regex-based require / export-from / dynamic-import passes so
+ * lookalikes inside string/template literals are not harvested (same class as
+ * nextImportKeywordOutsideStrings for static import).
+ */
+function isCodeIndexOutsideStrings(s: string, index: number): boolean {
+	if (index < 0 || index >= s.length) return false;
+	let i = 0;
+	while (i < index) {
+		const c = s[i]!;
+		if (c === "'" || c === '"') {
+			const end = findStringEnd(s, i, c);
+			if (end === -1) return false;
+			if (index <= end) return false;
+			i = end + 1;
+			continue;
+		}
+		if (c === '`') {
+			const end = findTemplateEnd(s, i);
+			if (end === -1) return false;
+			if (index <= end) return false;
+			i = end + 1;
+			continue;
+		}
+		i++;
+	}
+	return true;
+}
+
+/**
  * Next `\bimport\b` keyword outside string/template literals, starting at `from`.
  * Prevents false side-effect specs from e.g. `form: 'import' | 'export' | …`.
  */
@@ -424,6 +454,7 @@ export function extractImports(source: string): ExtractedImport[] {
 		/\bexport\s+(type\s+)?(\*|\{[^}]*\}|\w+)\s+from\s+['"]([^'"]+)['"]/g;
 	let m: RegExpExecArray | null;
 	while ((m = exportFrom.exec(cleaned)) !== null) {
+		if (!isCodeIndexOutsideStrings(cleaned, m.index)) continue;
 		const typeOnly = Boolean(m[1]);
 		const clause = m[2]!;
 		const bindings =
@@ -436,12 +467,14 @@ export function extractImports(source: string): ExtractedImport[] {
 	// require('x') — binding lives on the left-hand side; not extracted here
 	const requireRe = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = requireRe.exec(cleaned)) !== null) {
+		if (!isCodeIndexOutsideStrings(cleaned, m.index)) continue;
 		push(m[1]!, 'require', m.index, [{ kind: 'side-effect' }]);
 	}
 
 	// import('x') dynamic — string literal only
 	const dynRe = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = dynRe.exec(cleaned)) !== null) {
+		if (!isCodeIndexOutsideStrings(cleaned, m.index)) continue;
 		push(m[1]!, 'dynamic', m.index, [{ kind: 'side-effect' }]);
 	}
 
