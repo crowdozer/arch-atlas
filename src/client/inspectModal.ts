@@ -58,9 +58,9 @@ export type FormDirectionMarker = {
 	className: string;
 };
 
-/** Pure map: edge form → direction marker chrome (never mixed). */
-export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
-	if (form === 'export') {
+/** Marker chrome for a resolved direction kind (import / export / mixed). */
+export function directionMarker(kind: DirectionKind): FormDirectionMarker {
+	if (kind === 'export') {
 		return {
 			direction: 'export',
 			label: 'export',
@@ -68,20 +68,12 @@ export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--export',
 		};
 	}
-	if (form === 'require') {
+	if (kind === 'mixed') {
 		return {
-			direction: 'import',
-			label: 'require',
-			title: 'require()',
-			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
-		};
-	}
-	if (form === 'dynamic') {
-		return {
-			direction: 'import',
-			label: 'dynamic',
-			title: 'Dynamic import',
-			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
+			direction: 'mixed',
+			label: 'mixed',
+			title: 'Import and export',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--mixed',
 		};
 	}
 	return {
@@ -93,11 +85,31 @@ export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 }
 
 /**
- * Accordion title direction for one evidence row without a focus file.
- * Defaults to the edge's observed form (not section presence).
- *
- * Prefer {@link perspectiveDirectionKind} when the inspected file is known —
- * inbound consumers of the focus file are **export** from the focus POV.
+ * Pure map: edge form → direction marker chrome (never mixed).
+ * Shares class tokens with {@link directionMarker}; only labels differ for require/dynamic.
+ */
+export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
+	if (form === 'export') return directionMarker('export');
+	if (form === 'require') {
+		return {
+			...directionMarker('import'),
+			label: 'require',
+			title: 'require()',
+		};
+	}
+	if (form === 'dynamic') {
+		return {
+			...directionMarker('import'),
+			label: 'dynamic',
+			title: 'Dynamic import',
+		};
+	}
+	return directionMarker('import');
+}
+
+/**
+ * Form-only direction for one evidence row (no focus file).
+ * Prefer {@link perspectiveDirectionKind} when the inspected file is known.
  */
 export function accordionDirectionKind(ev: ImportEvidence): DirectionKind {
 	return formDirectionMarker(ev.import.form).direction;
@@ -266,32 +278,6 @@ export function formatInspectMetaLabel(counts: {
 	if (exportCount) parts.push(`${exportCount} export${exportCount === 1 ? '' : 's'}`);
 	if (mixedCount) parts.push(`${mixedCount} mixed`);
 	return `${total} observed · ${parts.join(' · ')} (relative to selection)`;
-}
-
-/** Marker chrome for a resolved direction kind (import / export / mixed). */
-export function directionMarker(kind: DirectionKind): FormDirectionMarker {
-	if (kind === 'export') {
-		return {
-			direction: 'export',
-			label: 'export',
-			title: 'Export',
-			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--export',
-		};
-	}
-	if (kind === 'mixed') {
-		return {
-			direction: 'mixed',
-			label: 'mixed',
-			title: 'Import and export',
-			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--mixed',
-		};
-	}
-	return {
-		direction: 'import',
-		label: 'import',
-		title: 'Import',
-		className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
-	};
 }
 
 /** Status presentation for direction chrome (color/rotate via host class). */
