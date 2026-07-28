@@ -191,7 +191,7 @@ export function projectPackageHub(
 			externalStraightPairs,
 		});
 	} else {
-		const exportTerminators = addPackageExportRings({
+		const reverseTerminators = addPackageExportRings({
 			graph,
 			inEdges,
 			packageLabel: pkgLabel,
@@ -204,7 +204,7 @@ export function projectPackageHub(
 			nodeMeta,
 			usedNames,
 		});
-		terminators.push(...exportTerminators);
+		terminators.push(...reverseTerminators);
 
 		// Record straighten pairs for every Exports → External link mass.
 		for (const [k, value] of linkMap) {
@@ -264,7 +264,8 @@ export function projectPackageHub(
 	].filter((c) => present.has(c));
 
 	// External sink is the sole forward true leaf (yellow polish chrome).
-	const exportTerminators = used.has(pkgLabel) ? [pkgLabel] : undefined;
+	// Field name on payload is historical (`exportTerminators` = forward leaves).
+	const forwardTerminators = used.has(pkgLabel) ? [pkgLabel] : undefined;
 
 	return buildAlluvialPayload({
 		heightPx,
@@ -273,11 +274,12 @@ export function projectPackageHub(
 		categoryOrder,
 		focus,
 		nodeRef,
-		startId: pkgId,
+		// No startId: package is External sink, not File spine (module parity).
+		// Setting package id would pollute LogicalFocusGraph.fileSpineName.
 		units,
 		ariaLabel: `Package hub for ${pkgLabel} (viz depth ${hubRadius})`,
 		terminators: terminators.length ? terminators : undefined,
-		exportTerminators,
+		exportTerminators: forwardTerminators,
 		externalStraightPairs: externalStraightPairs.length
 			? externalStraightPairs
 			: undefined,

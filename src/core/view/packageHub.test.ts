@@ -7,6 +7,11 @@ import { indexFiles } from '@core/index.ts';
 import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
 import { projectPackageHub } from '@core/view/packageHub.ts';
 import { EXTERNAL_IMPORT_CATEGORY } from '@core/view/hubCategories.ts';
+import {
+	buildLogicalFocusGraph,
+	externalBandKey,
+	planFocus,
+} from '../../stage/focus/logicalFocusGraph.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -205,6 +210,60 @@ describe('projectPackageHub', () => {
 		expect(expIdx).toBeLessThan(extIdx);
 		for (let i = 0; i < expIdx; i++) {
 			expect(order[i]).toMatch(/^Export hop \d+$/);
+		}
+	});
+
+	it('omits startId so LogicalFocusGraph has no polluted fileSpineName', () => {
+		const payload = projectPackageHub(graph, 'nodemailer', {
+			weightAxis: 'import-edges',
+		})!;
+		expect(payload.meta.startId).toBeUndefined();
+		const g = buildLogicalFocusGraph(payload);
+		expect(g.fileSpineName).toBeNull();
+	});
+
+	it('planPackage lights reverse∪ from every pair parent on multi-importer hub', () => {
+		// Prefer a known multi-importer package when present; else largest fan-in.
+		const byPkg = new Map<string, Set<string>>();
+		for (const e of graph.edges) {
+			if (e.toKind === 'file') continue;
+			const set = byPkg.get(e.to) ?? new Set();
+			set.add(e.from);
+			byPkg.set(e.to, set);
+		}
+		const multi = [...byPkg.entries()]
+			.filter(([, s]) => s.size >= 2)
+			.sort((a, b) => b[1].size - a[1].size)[0];
+		expect(multi, 'fixture should have multi-importer package').toBeTruthy();
+		const [pkgId] = multi!;
+
+		const payload = projectPackageHub(graph, pkgId, {
+			weightAxis: 'import-edges',
+			maxDepth: 3,
+		})!;
+		expect(payload).not.toBeNull();
+		const pkgLabel = payload.meta.focus.label;
+		const pairs = payload.meta.externalStraightPairs ?? [];
+		expect(pairs.length).toBeGreaterThanOrEqual(2);
+
+		const g = buildLogicalFocusGraph(payload);
+		expect(g.fileSpineName).toBeNull();
+		const plan = planFocus(g, { kind: 'package', name: pkgLabel });
+
+		// Package chip active
+		expect(plan.activeLabels.has(pkgLabel)).toBe(true);
+
+		// Every pair parent is in reverse∪ active set
+		for (const p of pairs) {
+			expect(
+				plan.activeLabels.has(p.parent),
+				`pair parent ${p.parent} should be active`,
+			).toBe(true);
+			// External straighten band for that parent → package
+			expect(
+				plan.focusedBandKeys.has(externalBandKey(p.parent, pkgLabel)),
+				`ext band ${p.parent} → ${pkgLabel}`,
+			).toBe(true);
 		}
 	});
 });
