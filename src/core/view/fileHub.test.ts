@@ -23,6 +23,7 @@ import {
 	preferFileHubView,
 	projectFileHub,
 } from '@core/view/fileHub.ts';
+import { assertAlluvialPayloadIntegrity } from '@core/view/alluvialPayloadIntegrity.ts';
 
 const fixturesRoot = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -157,6 +158,12 @@ function assertPositiveLinks(payload: AlluvialPayload, label: string): void {
 	}
 }
 
+/** Shared integrity oracle + positive values (file-hub smoke). */
+function assertHubIntegrity(payload: AlluvialPayload, label: string): void {
+	assertAlluvialPayloadIntegrity(payload, label);
+	assertPositiveLinks(payload, label);
+}
+
 function categories(payload: AlluvialPayload): Set<string> {
 	return new Set(payload.options.alluvial.nodes.map((n) => n.category));
 }
@@ -230,7 +237,7 @@ describe('projectFileHub demo-next-complex', () => {
 		expect(importerMass).toBe(fileInDegree(graph, id));
 		expect(depMass).toBe(fileOut + pkgOut);
 		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
-		assertPositiveLinks(payload!, id);
+		assertHubIntegrity(payload!, id);
 
 		const cats = categories(payload!);
 		expect(cats.has('Imports') || cats.has('External')).toBe(true);
@@ -560,7 +567,7 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		expect(importerMass).toBe(1);
 		expect(depMass).toBe(2);
 		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
-		assertPositiveLinks(payload, 'depth1');
+		assertHubIntegrity(payload, 'depth1');
 
 		const intoFile = payload.data.filter((l) => l.target === focus);
 		const fromFile = payload.data.filter((l) => l.source === focus);
@@ -604,7 +611,7 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 			fileOutFileDegree(graph, focusId) + fileOutPackageDegree(graph, focusId),
 		);
 		expect(total).toBe(fileInDegree(graph, focusId) + fileOutDegree(graph, focusId));
-		assertPositiveLinks(payload, 'depth3');
+		assertHubIntegrity(payload, 'depth3');
 
 		const hop2ImportNodes = payload.options.alluvial.nodes.filter(
 			(n) => n.category === 'Import hop 2',

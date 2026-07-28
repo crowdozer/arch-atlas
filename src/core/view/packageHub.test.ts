@@ -8,6 +8,10 @@ import { edgeMatchesPackage } from '@core/view/packageImporters.ts';
 import { projectPackageHub } from '@core/view/packageHub.ts';
 import { EXTERNAL_IMPORT_CATEGORY } from '@core/view/hubCategories.ts';
 import {
+	assertAlluvialPayloadIntegrity,
+	assertFocusGraphNoRails,
+} from '@core/view/alluvialPayloadIntegrity.ts';
+import {
 	buildLogicalFocusGraph,
 	externalBandKey,
 	planFocus,
@@ -67,6 +71,11 @@ describe('projectPackageHub', () => {
 			weightAxis: 'import-edges',
 		})!;
 		expect(payload).not.toBeNull();
+		assertAlluvialPayloadIntegrity(payload, 'nodemailer package-hub');
+		assertFocusGraphNoRails(
+			buildLogicalFocusGraph(payload),
+			'nodemailer package-hub lfg',
+		);
 		expect(payload.meta.focus).toEqual({
 			kind: 'package',
 			id: 'nodemailer',
@@ -114,6 +123,7 @@ describe('projectPackageHub', () => {
 			maxDepth: 1,
 		})!;
 		expect(payload).not.toBeNull();
+		assertAlluvialPayloadIntegrity(payload, `multi-importer ${pkgId}`);
 
 		const externalNodes = namedNodesInCategory(payload, EXTERNAL_IMPORT_CATEGORY);
 		// One package sink (no multi-package External)

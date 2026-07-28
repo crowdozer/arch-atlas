@@ -23,6 +23,7 @@ import { projectModuleFocus } from '@core/view/moduleFocus.ts';
 import { projectPackageHub } from '@core/view/packageHub.ts';
 import { primaryImporterFile } from '@core/view/packageImporters.ts';
 import { EXTERNAL_IMPORT_CATEGORY } from '@core/view/hubCategories.ts';
+import { assertAlluvialPayloadIntegrity } from '@core/view/alluvialPayloadIntegrity.ts';
 
 /** Focus out-edges that are file→file (export-side hub mass). */
 function fileOutFileDegree(graph: CodeGraph, fileId: string): number {
@@ -183,16 +184,9 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	}
 }
 
+/** Catalog smoke entry: shared payload integrity (structure + coverage). */
 function assertNodeRefCoversNamedNodes(payload: AlluvialPayload, label: string) {
-	for (const n of payload.options.alluvial.nodes) {
-		if (n.name.startsWith('(')) {
-			// buckets may or may not be in nodeRef
-			continue;
-		}
-		const ref = payload.meta.nodeRef[n.name];
-		expect(ref, `${label}: nodeRef missing for ${n.name}`).toBeTruthy();
-		expect(ref.kind).not.toBeUndefined();
-	}
+	assertAlluvialPayloadIntegrity(payload, label);
 }
 
 /** Payload the UI mounts for any file catalog click (always file-hub). */

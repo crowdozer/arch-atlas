@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-28T20:16:27Z",
+  "generated_at": "2026-07-28T20:47:14Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 16,
   "entries": [
     {
       "id": "alluvial-engine-correctness-triage",
       "kind": "plan",
-      "state": "active",
+      "state": "partial",
       "authority": "advisory",
       "provenance": "mixed",
       "path": ".grok/catalog/entries/alluvial-engine-correctness-triage.md",

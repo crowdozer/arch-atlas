@@ -29,6 +29,7 @@ import {
 	projectFileImporters,
 } from '@core/view/fileImporters.ts';
 import { projectModuleFocus } from '@core/view/moduleFocus.ts';
+import { assertAlluvialPayloadIntegrity } from '@core/view/alluvialPayloadIntegrity.ts';
 import {
 	edgeMatchesPackage,
 	primaryImporterFile,
@@ -247,6 +248,7 @@ describe('projectModuleFocus', () => {
 			weightAxis: 'import-edges',
 		});
 		expect(payload).not.toBeNull();
+		assertAlluvialPayloadIntegrity(payload!, 'module src/lib');
 		expect(payload!.meta.focus).toEqual({
 			kind: 'module',
 			id: 'src/lib',

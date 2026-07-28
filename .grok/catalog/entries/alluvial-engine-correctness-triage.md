@@ -1,7 +1,7 @@
 ---
 id: alluvial-engine-correctness-triage
 kind: plan
-state: active
+state: partial
 authority: advisory
 provenance: mixed
 
@@ -77,6 +77,10 @@ realized_by:
     note: Minimal synthetic fixtures per triage defect
   - path: src/pages/scenes.astro
     note: Gallery page for shareable scene links
+  - path: src/core/view/alluvialPayloadIntegrity.ts
+    note: Phase 0 shared payload integrity oracle (test-owned)
+  - path: src/core/view/alluvialPayloadIntegrity.test.ts
+    note: Phase 0 deliberate-malform + healthy hub checks
 superseded_by: null
 rationale_quality: full
 ---
@@ -190,34 +194,23 @@ the preceding gate is green.
   so repair ships flip those expectations green
 - Does **not** change geometry; only load + open recipes
 
-### Phase 0 — Shared integrity guardrails
+### Phase 0 — Shared integrity guardrails ✅ landed
 
 **Ship prompt**
 
 > Add reusable aggressive alluvial payload invariants and apply them across the
 > existing projector smoke corpus without changing product geometry.
 
-**Research agent**
+**Landed**
 
-- Inventory every producer of `AlluvialPayload` and every synthetic payload
-  used by focus tests.
-- Confirm which links are deliberate pad scaffolds and which names are rails.
-- Keep the helper test-owned unless research finds an existing production
-  validation owner.
-
-**Engineer**
-
-- Add one shared assertion surface covering:
-  - unique node names;
-  - every link endpoint resolves to exactly one node;
-  - no self-links;
-  - positive finite link values;
-  - exact `nodeRef`, color, rank, and visible-category coverage;
-  - focus and `externalStraightPairs` labels resolve;
-  - pair widths are positive;
-  - rails do not enter the logical focus graph.
-- Invoke it from file-hub, package-hub, module-focus, and catalog smoke tests.
-- Do not add projector-named copies of the same checker.
+- `src/core/view/alluvialPayloadIntegrity.ts` — test-owned collector + assert
+  (structure-hard: unique names, endpoints, no self-links, positive values,
+  nodeRef/color/rank/category coverage, focus + pair resolution, rail bucket
+  law). Focus-graph rail exclusion via `assertFocusGraphNoRails` (no core→stage
+  import).
+- Wired into catalog smoke, file-hub, package-hub, module-focus tests.
+- Deliberate-malform unit tests in `alluvialPayloadIntegrity.test.ts`.
+- No production topology / goldens / projector geometry changes.
 
 **Czar gate**
 
