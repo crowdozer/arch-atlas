@@ -131,15 +131,14 @@ import Tag from '../components/ui/Tag.astro';
 						id="atlas-persist"
 						checked={true}
 						labelText="Remember this project in the browser"
-						helper-text="Saves the indexed files to localStorage so a refresh or dev reload keeps your session. Stays on this device only."
+						helper-text="Saves the indexed files to localStorage. This device only."
 						class="atlas-persist"
 					/>
 					<Checkbox
 						id="atlas-engine-pref"
 						checked={true}
-						labelText="Remember language engine preference"
-						helper-text="Stores Estimate / Exact / Program choice per language family in localStorage (prefs only — not the TypeScript compiler). Engines still load local or CDN when you reopen."
-						title="Preference map only; does not store multi-MB engine binaries in localStorage."
+						labelText="Remember preferences"
+						title="Projection chrome and language-engine precision map only; does not store multi-MB engine binaries or source in this flag."
 						class="atlas-engine-pref"
 					/>
 				</div>
@@ -414,7 +413,7 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Band order"
-								titleText="In-column stack (payload + polish lock). Name = alpha + overflow last (prior default / unsorted feel). Node size = whole-file LOC. Session-only."
+								titleText="In-column stack (payload + polish lock). Name = alpha + overflow last (prior default / unsorted feel). Node size = whole-file LOC."
 								value="name"
 								aria-labelledby="atlas-band-sort-label"
 							>

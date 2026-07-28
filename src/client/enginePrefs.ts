@@ -1,7 +1,8 @@
 /**
  * Sticky language-engine precision preferences (localStorage).
  *
- * Stores a map LanguageFamily → LocPrecision plus an enabled flag.
+ * Stores a map LanguageFamily → LocPrecision. Opt-in is the shared splash
+ * **Remember preferences** gate ({@link readPrefsEnabled} / prefsStore).
  * Does **not** cache multi-MB TypeScript compiler blobs — engines still load
  * via inject / local classic / CDN as today when Exact/Program is applied.
  */
@@ -11,9 +12,18 @@ import {
 	type LocPrecision,
 } from '@core/index.ts';
 import { parseLocPrecision } from '@shell/index.ts';
+import {
+	ENGINE_PREF_ENABLED_KEY,
+	readPrefsEnabled,
+	writePrefsEnabled,
+} from './prefsStore.ts';
 
 export const ENGINE_PREF_KEY = 'arch-atlas:engine-pref:v1';
-export const ENGINE_PREF_ENABLED_KEY = 'arch-atlas:engine-pref-enabled';
+export {
+	ENGINE_PREF_ENABLED_KEY,
+	readPrefsEnabled as readEnginePrefEnabled,
+	writePrefsEnabled as writeEnginePrefEnabled,
+};
 
 /** Engine/language families for sticky precision (TS+JS share one Exact engine). */
 export type LanguageFamily = 'js-ts' | 'python' | 'astro' | 'other';
@@ -89,25 +99,6 @@ export function stickyOpenAction(
 	return 'auto-local';
 }
 
-/** Preference defaults on when unset. */
-export function readEnginePrefEnabled(): boolean {
-	try {
-		const raw = localStorage.getItem(ENGINE_PREF_ENABLED_KEY);
-		if (raw === null) return true;
-		return raw === '1' || raw === 'true';
-	} catch {
-		return true;
-	}
-}
-
-export function writeEnginePrefEnabled(on: boolean): void {
-	try {
-		localStorage.setItem(ENGINE_PREF_ENABLED_KEY, on ? '1' : '0');
-	} catch {
-		/* private mode / blocked storage */
-	}
-}
-
 export function parseEnginePrefMap(raw: string): EnginePrefMap {
 	try {
 		const data = JSON.parse(raw) as unknown;
@@ -152,7 +143,7 @@ export function writeEnginePref(
 	family: LanguageFamily,
 	precision: LocPrecision,
 ): void {
-	if (!readEnginePrefEnabled()) return;
+	if (!readPrefsEnabled()) return;
 	const next = { ...readEnginePrefs(), [family]: precision };
 	writeEnginePrefs(next);
 }
@@ -165,7 +156,7 @@ export function recordPrecisionPreference(
 	graph: CodeGraph,
 	precision: LocPrecision,
 ): void {
-	if (!readEnginePrefEnabled()) return;
+	if (!readPrefsEnabled()) return;
 	const families = languageFamiliesFromGraph(graph);
 	if (!families.length) return;
 

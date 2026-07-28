@@ -19,9 +19,9 @@ import {
 import { $, setStatus } from './dom.ts';
 import type { DemoId } from './demoFixtures.ts';
 import {
-	readEnginePrefEnabled,
-	writeEnginePrefEnabled,
-} from './enginePrefs.ts';
+	readPrefsEnabled,
+	writePrefsEnabled,
+} from './prefsStore.ts';
 import {
 	listInsightScenes,
 	parseSceneQuery,
@@ -43,11 +43,16 @@ export type WireUiDeps = {
 	getVizMaxDepth: () => number;
 	setVizMaxDepth: (d: number) => void;
 	setDepthUserSet: (v: boolean) => void;
+	/**
+	 * Snapshot sticky projection chrome (Depth / Weight / Band order, …)
+	 * into localStorage when Remember preferences is on.
+	 */
+	persistProjectionPrefs: () => void;
 	getInteractionMode: () => InteractionMode;
 	setInteractionMode: (m: InteractionMode) => void;
 	currentView: () => AtlasView | null;
 	persistCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
-	/** Splash: remember language-engine precision prefs (not engine binaries). */
+	/** Splash: Remember preferences (projection chrome + engine precision map). */
 	enginePrefCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
 	includeTestsCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
 	getIncludeTests: () => boolean;
@@ -102,12 +107,15 @@ function wirePersistCheckbox(deps: WireUiDeps): void {
 	});
 }
 
-function wireEnginePrefCheckbox(deps: WireUiDeps): void {
+function wirePrefsCheckbox(deps: WireUiDeps): void {
 	const box = deps.enginePrefCheckbox();
 	if (!box) return;
-	box.checked = readEnginePrefEnabled();
+	box.checked = readPrefsEnabled();
 	box.addEventListener('cds-checkbox-changed', () => {
-		writeEnginePrefEnabled(Boolean(box.checked));
+		const on = Boolean(box.checked);
+		writePrefsEnabled(on);
+		// Turning on: snapshot current chrome so reopen matches this session
+		if (on) deps.persistProjectionPrefs();
 	});
 }
 
@@ -128,7 +136,7 @@ function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 /** Bind all workspace chrome controls; call once at bootstrap. */
 export function wireUi(deps: WireUiDeps): void {
 	wirePersistCheckbox(deps);
-	wireEnginePrefCheckbox(deps);
+	wirePrefsCheckbox(deps);
 	wireIncludeTestsCheckbox(deps);
 
 	const drop = $('atlas-drop');
@@ -171,6 +179,7 @@ export function wireUi(deps: WireUiDeps): void {
 			// but remount; user can still inspect under exact. If they pick non-target while exact,
 			// keep provider cached; paint uses axis estimate path for non-target axes.
 			deps.syncWeightDropdown(weightDropdown, deps.getWeightAxis());
+			deps.persistProjectionPrefs();
 			deps.remountCurrentView();
 		}) as EventListener);
 	}
@@ -189,6 +198,7 @@ export function wireUi(deps: WireUiDeps): void {
 				(typeof depthDropdown.value === 'string' ? depthDropdown.value : '');
 			deps.setVizMaxDepth(parseVizMaxDepth(next));
 			deps.setDepthUserSet(true);
+			deps.persistProjectionPrefs();
 			deps.remountCurrentView();
 		}) as EventListener);
 	}
@@ -214,6 +224,7 @@ export function wireUi(deps: WireUiDeps): void {
 					: 'name');
 			deps.setBandSort(parseBandSortMode(next));
 			syncBandSort();
+			deps.persistProjectionPrefs();
 			deps.remountCurrentView();
 		}) as EventListener);
 	}

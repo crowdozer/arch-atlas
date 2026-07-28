@@ -75,6 +75,10 @@ import {
 } from './enginePrefs.ts';
 import type { InsightScene } from './insightScenes.ts';
 import {
+	readProjectionPrefs,
+	writeProjectionPrefs,
+} from './projectionPrefs.ts';
+import {
 	readPersistPreference,
 	savePersistedSession,
 } from './sessionStore.ts';
@@ -97,9 +101,15 @@ let session: Session | null = null;
  * which commit chrome via {@link commitNavigation}.
  */
 let viewStack: AtlasView[] = [];
-/** Band-width axis for all projectors (session-local; not persisted). */
+/**
+ * Band-width axis for all projectors.
+ * Sticky via {@link writeProjectionPrefs} when Remember preferences is on.
+ */
 let weightAxis: WeightAxis = 'target-loc';
-/** In-column band stack order (session-local; not persisted). */
+/**
+ * In-column band stack order.
+ * Sticky via {@link writeProjectionPrefs} when Remember preferences is on.
+ */
 let bandSort: BandSortMode = 'name';
 /**
  * Imported-surface honesty: estimate (Level-1) vs exact (export-surface provider).
@@ -129,11 +139,27 @@ let programExactMass = false;
 /**
  * Viz-only hop radius for file-hub (dual BFS) and package-hub (reverse).
  * Does not bound graph scan. Default {@link HUB_DEFAULT_MAX_DEPTH} (3);
- * module ignores depth.
+ * module ignores depth. Sticky via projection prefs when Remember preferences is on.
  */
 let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
-/** True after the user picks Depth manually (stops auto mode defaults). */
+/**
+ * True after the user picks Depth manually (stops auto mode defaults),
+ * or after a stored maxDepth pref is restored.
+ */
 let depthUserSet = false;
+
+/** Apply sticky projection chrome from localStorage (before control wiring). */
+function hydrateProjectionPrefs(): void {
+	const prefs = readProjectionPrefs();
+	if (prefs.weightAxis !== undefined) weightAxis = prefs.weightAxis;
+	if (prefs.bandSort !== undefined) bandSort = prefs.bandSort;
+	if (prefs.maxDepth !== undefined) {
+		vizMaxDepth = prefs.maxDepth;
+		depthUserSet = true;
+	}
+}
+
+hydrateProjectionPrefs();
 /** Click behavior: drill navigates; inspect opens import evidence. */
 let interactionMode: InteractionMode = 'drill';
 /**
@@ -922,6 +948,14 @@ wireUi({
 	},
 	setDepthUserSet: (v) => {
 		depthUserSet = v;
+	},
+	/** Persist Depth / Weight / Band order (and future slots) under Remember preferences. */
+	persistProjectionPrefs: () => {
+		writeProjectionPrefs({
+			weightAxis,
+			bandSort,
+			maxDepth: vizMaxDepth,
+		});
 	},
 	getInteractionMode: () => interactionMode,
 	setInteractionMode: (m) => {
