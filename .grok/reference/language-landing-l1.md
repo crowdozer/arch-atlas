@@ -50,3 +50,7 @@ normalize, wrong resolve family) before hub polish, catalog ranking, or Exact.
 
 Demos (`demo-*`), `codebreaker-focus`, and hub orientation goldens remain
 **product/UI/hub** contracts — not L1 minimize targets.
+
+**Test ownership:** pure L1 edge laws → `goldenL1.integration.test.ts` +
+`fixtures/golden-l1-*`; `build.test.ts` samples = app/catalog smoke; codebreaker
+= product alias domain.

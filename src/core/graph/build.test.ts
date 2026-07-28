@@ -7,6 +7,12 @@ import { buildMapCatalog } from '@core/catalog/views.ts';
 import { projectAlluvial } from '@core/view/alluvial.ts';
 import type { VirtualFile } from '@core/graph/types.ts';
 
+/**
+ * App/catalog smoke + product alias domain.
+ * Pure L1 edge laws (relative / package / alias / parseKind) live in
+ * goldenL1.integration.test.ts + fixtures/golden-l1-*.
+ */
+
 const root = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
 	'../../../fixtures/sample-ts-project',
@@ -27,39 +33,13 @@ function loadFixtureDir(dir: string, prefix = ''): VirtualFile[] {
 	return out;
 }
 
-describe('buildGraph python fixture', () => {
+describe('buildGraph python smoke', () => {
 	const pyRoot = path.join(
 		path.dirname(fileURLToPath(import.meta.url)),
 		'../../../fixtures/sample-python-project',
 	);
 	const files = loadFixtureDir(pyRoot);
 	const graph = buildGraph(files);
-
-	it('indexes Python sources as import-parseable', () => {
-		expect(graph.files.get('pkg/a.py')?.isSource).toBe(true);
-		expect(graph.files.get('pkg/a.py')?.parseKind).toBe('python-import');
-		expect(graph.stats.sourceCount).toBeGreaterThanOrEqual(3);
-	});
-
-	it('builds file edges among package modules', () => {
-		const edge = graph.edges.find(
-			(e) => e.from === 'pkg/a.py' && e.to === 'pkg/b.py',
-		);
-		expect(edge?.toKind).toBe('file');
-		const mainEdge = graph.edges.find(
-			(e) => e.from === 'main.py' && e.to === 'pkg/a.py',
-		);
-		expect(mainEdge?.toKind).toBe('file');
-	});
-
-	it('maps external bare import to package node', () => {
-		const edge = graph.edges.find(
-			(e) => e.from === 'pkg/a.py' && e.specifier === 'requests',
-		);
-		expect(edge?.toKind).toBe('package');
-		expect(edge?.to).toBe('requests');
-		expect(graph.packages.has('requests')).toBe(true);
-	});
 
 	it('tags catalog languages with Python', () => {
 		const catalog = buildMapCatalog(graph);
@@ -68,31 +48,18 @@ describe('buildGraph python fixture', () => {
 	});
 });
 
-describe('buildGraph fixture', () => {
+describe('buildGraph sample-ts smoke', () => {
 	const files = loadFixtureDir(root);
 	const graph = buildGraph(files);
 
-	it('indexes source files and package.json deps', () => {
+	it('indexes multi-file inventory', () => {
 		expect(graph.stats.sourceCount).toBeGreaterThanOrEqual(7);
-		expect(graph.packages.has('zod')).toBe(true);
 		expect(graph.edges.length).toBeGreaterThan(5);
 	});
 
-	it('resolves relative imports to files', () => {
-		const edge = graph.edges.find(
-			(e) => e.from === 'src/index.ts' && e.to === 'src/app.ts',
-		);
-		expect(edge?.toKind).toBe('file');
-	});
-
-	it('resolves path alias @/ from tsconfig', () => {
-		const edge = graph.edges.find(
-			(e) => e.from === 'src/pages/home.ts' && e.to === 'src/lib/format.ts',
-		);
-		expect(edge?.toKind).toBe('file');
-	});
-
 	it('treats node builtins as packages', () => {
+		// Graph-level builtin paint; resolve unit owns classify (node:fs → builtin).
+		// Not expanded into golden-l1 disk SoT this ship.
 		const edge = graph.edges.find(
 			(e) => e.from === 'src/db/users.ts' && e.specifier.includes('fs'),
 		);
