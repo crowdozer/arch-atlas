@@ -28,7 +28,6 @@ applies_when:
   - virtualize alluvial svg
 touches:
   - src/stage/mount.ts
-  - src/stage/displayMassScale.ts
   - src/stage/height.ts
   - src/stage/carbonEvents.ts
   - src/stage/polish/*
@@ -50,7 +49,7 @@ open_questions:
   - Soft perf ceiling for polish + SVG on real hubs (needs measurement, not only theory)
   - Whether horizontal scroll is product-wanted once multi-hop columns squeeze
   - Whether resize remount should preserve scroll/pan position
-  - Min band height / padding as product constants — still open; partial readability via stage display-mass √ compress (not a min-height constant; solitary empty-slack + tooltip honesty deferred)
+  - Min band height / padding readability targets as product constants
 related:
   - dual-host-shell-stage
   - interchangeable-atlas-lenses
@@ -119,7 +118,6 @@ extent). “Bigger” means **taller/wider extent**, not automatic overflow.
 | Behavior | Effect on scale |
 | --- | --- |
 | `alluvialHeightPx` min(stage, room below fold) | Caps chart to viewport; dense hubs get thinner, not taller |
-| Stage `scaleAlluvialDisplayMass` (default √) | **Layout-only** compress of link values + straighten pair widths for readable extreme ratios; semantic mass on `getPayload` + node labels; **not** a min-band product constant; solitary charts still fill height; tooltips may still show layout numbers |
 | `.atlas-stage { overflow: hidden }` | Tall SVG cannot scroll; intentionally clipped |
 | Resize → full remount | Height reapplied; no scroll/pan state |
 | Full polish every `RENDER_FINISHED` | Cost ∝ DOM size (links + nodes) |

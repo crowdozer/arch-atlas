@@ -18,19 +18,17 @@ How to use:
 
 ```text
 CodeGraph (observed edges)
-    → projectFileHub payload (membership, semantic mass, pads, meta)
-        → stage display-mass scale (layout channel only; default √)
-            → Carbon / d3-sankey layout (depth, align, free-source columns)
-                → stage polish (label semantic restore; straighten; terminators)
+    → projectFileHub payload (membership, mass, pads, meta)
+        → Carbon / d3-sankey layout (depth, align, free-source columns)
+            → client polish (hide rails, straighten packages, terminator chrome)
 ```
 
 | Layer | Owns | Does **not** own |
 | ----- | ---- | ---------------- |
 | Graph | Who imports whom | Column labels |
-| Payload / matrix | Categories, seed clamp, residual, rails topology, meta pairs | Pixel x-positions; presentation compress |
-| Stage display-mass | Dual channel: layout `value` / pair `width` for Carbon thickness | Hub residual membership; Exact floors |
+| Payload / matrix | Categories, seed clamp, residual, rails topology, meta pairs | Pixel x-positions |
 | Carbon / d3-sankey | Column **x0**, free-source layering, last-category-wins headers | Product “Imports means outbound” |
-| Polish | Undraw pads, straight External ribbons, cyan/yellow/purple wraps; label mass restore | Inventing new parents for packages |
+| Polish | Undraw pads, straight External ribbons, cyan/yellow/purple wraps | Inventing new parents for packages |
 
 **Hard lesson:** membership green ≠ screenshot correct. Payload category tests can pass while Carbon free-source geometry paints the wrong header or merges commodities.
 
@@ -51,7 +49,6 @@ CodeGraph (observed edges)
 | Yellow-on-yellow / cyan-on-cyan terminator bars | Wrong class family | Invert colors again | Exports free sources **cyan**; Imports file leaves **yellow**; packages **purple** |
 | Bands drawn past node ends / through free-source pads | Out-rail free-source paint | Thicker stroke | Undraw out-rail free-source pad bands past terminators |
 | Pointed cusps / spikes past File on thick teal bands | Stroke centerline + huge stroke-width | CSS idle opacity / AA (E14 — wrong) | Filled ribbon path (E15); mass in fill not stroke-offset |
-| Mid-size bands vanish next to huge peers (e.g. 5k vs 50k) | Linear link `value` in fixed sankey extent | Retcon residual / share floors into matrix | Stage display-mass (default √); semantic mass on labels + `getPayload` (E16) |
 | Package free-sourced on far **left** | Package with no inbound | Put package on Exports | Packages always sinks; attach from shallowest instance |
 | Tests green, UI wrong after Carbon change | Test uses payload categories only | Retcon goldens to cascade | Pipe through `layoutAlluvialLikeCarbon` |
 
@@ -193,14 +190,6 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 - **Landed:** `horizontalLinkRibbonPath` closed fill (top cubic y−w/2, bottom reverse y+w/2); unconditional `rewriteLinkRibbons` after File center; External straighten injects ribbons + `pointer-events: fill`; focus/pad CSS uses **fill-opacity** parity (0 / 0.3 / 0.95); recolor sets fill.
 - **Keep:** hub mass matrix untouched; same `__data__` / class hooks; idle fill-opacity ~0.8.
 
-### E16 — Display-mass scale (layout √ vs semantic integer)
-
-- **Wanted:** readable band-size ratios under extreme semantic mass (e.g. 5k vs 50k LOC) without lying about mass or retconning the hub matrix.
-- **Rejected:** share floors + renormalization; residual/membership rewrites; min-height product constant; putting compress in core projectors; shell toggle in v1.
-- **Landed (stage only):** `scaleAlluvialDisplayMass` at mount — default **`sqrt`** on link `value` **and** `meta.externalStraightPairs[].width` (lockstep for straighten); clone layout channel only; `currentPayload` / `getPayload()` stay **semantic**; polish `semanticByNodeName` rewrites node labels to `Math.round` semantic integers post-draw.
-- **Deferred / known gaps:** solitary / tiny-only charts still fill full height (empty-slack later); **tooltips may still show layout-scaled numbers** (no `semanticByLinkKey` wrap yet); no shell control.
-- **Keep:** dual channel (semantic vs layout); matrix / residual / Exact floors untouched; do not “fix” readability by inventing residual membership.
-
 ---
 
 ## 4. Stable “do not redo” list
@@ -217,7 +206,6 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 10. **Do not** leave pair-covered direct parent→package Carbon links painted when straighten will redraw them.
 11. **Do not** duplicate External package nodes for dual-path (files may multi-instance; packages collapse).
 12. **Do not** “fix” thick-band cusps with CSS opacity / AA — use filled ribbon geometry (E14/E15).
-13. **Do not** push band-ratio readability into hub residual / membership — use stage display-mass (E16); keep straighten pair widths lockstep with layout.
 
 ---
 
@@ -228,8 +216,7 @@ Episodes are **working memory**, not blame. “Rejected” means we tried it or 
 | Hub builder / residual / multi-instance / reverse rings | `src/core/view/fileHub.ts` |
 | Pad scaffold undraw | `src/core/view/alluvial.ts` (`isImportPadScaffoldLink`) |
 | Carbon-like layout for tests | `src/core/view/alluvialCarbonLayout.ts` |
-| Display-mass scale (layout √ vs semantic maps) | `src/stage/displayMassScale.ts` + `mount.ts` |
-| Label semantic restore / straighten / ribbons / terminators | `src/stage/polish/` (`@stage`) |
+| Straighten + terminator polish + link ribbons | `src/stage/polish/` (`@stage`) |
 | Polish wiring / meta | `src/client/app.ts` |
 | Terminator CSS | `src/styles/carbon-theme.css` |
 | Membership goldens | `src/core/view/hubOrientation.golden.test.ts` |
