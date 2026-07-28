@@ -115,15 +115,18 @@ Mermaid is plain text (flowchart LR): topFolder path-prefix rollup of runtime
 file→file imports, file SCC cycle honesty in %% comments, multi-prefix SCCs as
 subgraphs. Topology-only L1 Estimate (no Exact mass / no Program).
 With --containment, Mermaid emits flowchart TB folder/file containment from
-indexed paths only, with no dependency edges or cycle analysis.
+indexed paths only (no dependency edges or cycle analysis). Default containment
+is summary hierarchy (all dirs; selective leaves — same thresholds as tree).
+Use --tree-full with --containment for full leaves (balanced --limit cap).
 
 Impact usage cheatsheet (read order for large JSON):
   .grok/reference/impact-cheatsheet.md
 
 Options:
   --limit N       Top-N for ranking bins (digest/file catalog; impact movers /
-                  edge samples; mermaid max prefix nodes, or max file leaves
-                  with --containment). Default ${CLI_LIMIT_DEFAULT}.
+                  edge samples; mermaid max prefix nodes; containment summary =
+                  max expanded leaves with full dir skeleton; containment full
+                  = balanced max file leaves). Default ${CLI_LIMIT_DEFAULT}.
   --max-depth N   Max path segments from walk root for directory feeds.
                   Default ${DEFAULT_MAX_DEPTH}. 0 or negative = unlimited.
   --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
@@ -152,7 +155,10 @@ Options:
                   alias edges re-resolved. Soft-fail on error. Local classic
                   typescript only. Incomplete without node_modules; not LSP.
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
+                  Also Mermaid --containment: full leaves (default is summary
+                  hierarchy; full uses balanced leaf selection under --limit).
   --containment   Mermaid: indexed folder/file hierarchy only (no import edges).
+                  Default presentation=summary; add --tree-full for full leaves.
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write output to file instead of stdout (JSON for digest/tree/
                   file/impact; Mermaid text for mermaid).
@@ -170,6 +176,7 @@ Examples:
   arch-atlas digest fixtures/agent-artillery-shaped --program --estimate
   arch-atlas mermaid fixtures/agent-artillery-shaped --limit 40
   arch-atlas mermaid . --containment --limit 40
+  arch-atlas mermaid . --containment --tree-full --limit 80
   npm run atlas -- digest . --omit fixtures
   npm run atlas -- digest fixtures/agent-artillery-shaped --program --estimate
   npm run atlas -- tree . --tree-full
@@ -680,6 +687,8 @@ export async function runCli(argv: string[]): Promise<number> {
 				catalog,
 				source,
 				mode: opts.containment ? 'containment' : 'dependencies',
+				// Reuse --tree-full: containment summary default; full leaves opt-in
+				presentation: opts.treeFull ? 'full' : 'summary',
 				scope: {
 					omit,
 					includeTests: !productScope,

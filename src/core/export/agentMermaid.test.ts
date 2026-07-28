@@ -219,38 +219,103 @@ describe('buildAgentMermaid', () => {
 
 		expect(text).toMatch(/^flowchart TB/m);
 		expect(text).toContain('mode=containment');
+		expect(text).toContain('presentation=summary');
 		expect(text).toContain('indexed paths only');
-		expect(text).toContain('subgraph d0["notes"]');
-		expect(text).toContain('subgraph d1["src"]');
+		// Path-true dir labels may include file counts
+		expect(text).toMatch(/subgraph d\d+\["notes \(\d+ files\)"\]/);
+		expect(text).toMatch(/subgraph d\d+\["src \(\d+ files\)"\]/);
 		expect(text).toContain('["readme.md"]');
 		expect(text).toContain('["a.ts"]');
 		expect(text).toContain('["b.ts"]');
 		expect(text).not.toMatch(/-->|<-->|cycles\.runtime/);
 	});
 
-	it('containment caps alphabetic file leaves and retains their ancestors', () => {
-		const graph = buildGraph(
-			files([
-				['z/last.ts', 'export const z = 1;\n'],
-				['a/deep/first.ts', 'export const a = 1;\n'],
-				['b/second.ts', 'export const b = 1;\n'],
-			]),
-		);
+	it('containment summary keeps late folders when early folders are dense', () => {
+		// 10 files under a/ (dense) + one under z/ — summary must still show z
+		const entries: Array<[string, string]> = [];
+		for (let i = 0; i < 10; i++) {
+			entries.push([`a/f${i}.ts`, `export const a${i} = ${i};\n`]);
+		}
+		entries.push(['z/core.ts', 'export const z = 1;\n']);
+		const graph = buildGraph(files(entries));
 		const text = buildAgentMermaid({
 			graph,
 			source,
 			mode: 'containment',
+			limit: 40,
+		});
+
+		expect(text).toContain('presentation=summary');
+		expect(text).toMatch(/subgraph d\d+\["a \(\d+ files\)"\]/);
+		expect(text).toMatch(/subgraph d\d+\["z \(\d+ files\)"\]/);
+		// z is small → leaves expanded
+		expect(text).toContain('["core.ts"]');
+		expect(text).not.toMatch(/-->|<-->|cycles\.runtime/);
+	});
+
+	it('containment summary rolls dense folders (not every leaf)', () => {
+		// Root depth 0 with > smallFolderMax files and only one top folder:
+		// a/ keeps subdirs or rolls files when over threshold.
+		const entries: Array<[string, string]> = [];
+		for (let i = 0; i < 12; i++) {
+			entries.push([`a/leaf${i}.ts`, `export const v${i} = ${i};\n`]);
+		}
+		// Nested late folder also present
+		entries.push(['z/deep/core.ts', 'export const z = 1;\n']);
+		const graph = buildGraph(files(entries));
+		const text = buildAgentMermaid({
+			graph,
+			source,
+			mode: 'containment',
+			// High limit so failure is about rollup, not cap
+			limit: 40,
+		});
+
+		expect(text).toContain('presentation=summary');
+		expect(text).toMatch(/dense folders rolled/);
+		// Dir skeleton includes both top folders
+		expect(text).toMatch(/subgraph d\d+\["a \(\d+ files\)"\]/);
+		expect(text).toMatch(/subgraph d\d+\["z \(\d+ files\)"\]/);
+		// Dense a/ at depth 1 with 12 files → rolls file leaves (depth < 3)
+		expect(text).not.toContain('["leaf0.ts"]');
+		expect(text).not.toContain('["leaf11.ts"]');
+		// z/deep is small → may expand core.ts
+		expect(text).toContain('["core.ts"]');
+		expect(text).toMatch(/truncated: showing .+ of 13 files as leaves/);
+	});
+
+	it('containment full + limit uses balanced selection (late folder kept)', () => {
+		const graph = buildGraph(
+			files([
+				['a/deep/first.ts', 'export const a = 1;\n'],
+				['a/deep/second.ts', 'export const a2 = 2;\n'],
+				['b/mid.ts', 'export const b = 1;\n'],
+				['z/last.ts', 'export const z = 1;\n'],
+			]),
+		);
+		// Pure alpha at limit 2 would keep a/* only; balanced must keep a leaf from z or b
+		const text = buildAgentMermaid({
+			graph,
+			source,
+			mode: 'containment',
+			presentation: 'full',
 			limit: 2,
 		});
 
-		expect(text).toContain('showing 2 of 3 files (limit=2)');
-		expect(text).toContain('["a"]');
-		expect(text).toContain('["deep"]');
-		expect(text).toContain('["first.ts"]');
-		expect(text).toContain('["b"]');
-		expect(text).toContain('["second.ts"]');
-		expect(text).not.toContain('["z"]');
-		expect(text).not.toContain('["last.ts"]');
+		expect(text).toContain('presentation=full');
+		expect(text).toMatch(/showing 2 of 4 files \(limit=2 · balanced\)/);
+		// Round-robin by top segment a,b,z → first pass takes one from a and one from b
+		expect(text).toMatch(/subgraph d\d+\["a \(\d+ files\)"\]/);
+		expect(text).toMatch(/\["first\.ts"\]|\["second\.ts"\]/);
+		// Late folder present under tight budget (not pure alpha starvation of a/* only)
+		const hasB =
+			/subgraph d\d+\["b \(\d+ files\)"\]/.test(text) ||
+			text.includes('["mid.ts"]');
+		const hasZ =
+			/subgraph d\d+\["z \(\d+ files\)"\]/.test(text) ||
+			text.includes('["last.ts"]');
+		expect(hasB || hasZ).toBe(true);
+		expect(text).not.toMatch(/-->|<-->|cycles\.runtime/);
 	});
 
 	it('containment limit zero emits honest headers without empty groups', () => {
@@ -265,6 +330,7 @@ describe('buildAgentMermaid', () => {
 		});
 
 		expect(text).toContain('showing 0 of 1 files (limit=0)');
+		expect(text).toContain('presentation=summary');
 		expect(text).not.toMatch(/subgraph|\bn\d+\["/);
 	});
 });

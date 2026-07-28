@@ -182,10 +182,50 @@ describe('runCli', () => {
 		const out = logs.join('');
 		expect(out).toMatch(/^flowchart TB/m);
 		expect(out).toContain('mode=containment');
+		expect(out).toContain('presentation=summary');
 		expect(out).toMatch(/subgraph d\d+/);
-		expect(out).toMatch(/\bn\d+\["/);
 		expect(out).not.toMatch(/-->|<-->|cycles\.runtime/);
 		expect(() => JSON.parse(out)).toThrow();
+	});
+
+	it('mermaid --containment default summary shows multi-folder shape', async () => {
+		// agent-artillery-shaped has client/, scripts/, types/ + root files —
+		// summary must orient across folders, not alphabet-starve to one prefix.
+		capture();
+		const code = await runCli([
+			'mermaid',
+			artilleryFixtureDir,
+			'--containment',
+			'--limit',
+			'40',
+		]);
+		expect(code).toBe(0);
+		const out = logs.join('');
+		expect(out).toMatch(/^flowchart TB/m);
+		expect(out).toContain('presentation=summary');
+		expect(out).toMatch(/subgraph d\d+\["client \(\d+ files\)"\]/);
+		// At least one other top-level folder present
+		const hasScripts = /subgraph d\d+\["scripts \(\d+ files\)"\]/.test(out);
+		const hasTypes = /subgraph d\d+\["types \(\d+ files\)"\]/.test(out);
+		expect(hasScripts || hasTypes).toBe(true);
+		expect(out).not.toMatch(/-->|<-->|cycles\.runtime/);
+	});
+
+	it('mermaid --containment --tree-full stamps presentation=full', async () => {
+		capture();
+		const code = await runCli([
+			'mermaid',
+			fixtureDir,
+			'--containment',
+			'--tree-full',
+			'--limit',
+			'40',
+		]);
+		expect(code).toBe(0);
+		const out = logs.join('');
+		expect(out).toContain('presentation=full');
+		expect(out).toMatch(/\bn\d+\["/);
+		expect(out).not.toMatch(/-->|<-->|cycles\.runtime/);
 	});
 
 	it('usage error without path exits 1', async () => {

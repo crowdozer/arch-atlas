@@ -5,6 +5,11 @@
  * Cycles: file-level runtime SCCs always listed in %% comments (so
  * within-prefix knots like physics↔weapons stay visible). Multi-prefix
  * SCCs wrap nodes in subgraphs; size-2 mutual pairs may use <--> edges.
+ *
+ * Containment mode (opt-in): indexed folder/file hierarchy only — no import
+ * edges / SCCs. Default presentation is **summary** (mirrors tree summary:
+ * keep all dirs; expand leaves only when small folder or depth ≥ maxLeafDepth).
+ * Full leaves require presentation=full (`--tree-full` on CLI).
  */
 
 import {
@@ -21,10 +26,23 @@ import type { AgentDigestSource } from '@core/export/agentDigest.ts';
 
 const DEFAULT_LIMIT = 40;
 
+/**
+ * Same thresholds as agentDigest `summarizeTree` / CLI tree summary default.
+ * Keep in sync so toolkit vocabulary stays one policy.
+ */
+const SUMMARY_MAX_LEAF_DEPTH = 3;
+const SUMMARY_SMALL_FOLDER_MAX = 8;
+
 export type BuildAgentMermaidInput = {
 	graph: CodeGraph;
 	/** Projection mode. Default preserves the dependency rollup. */
 	mode?: 'dependencies' | 'containment';
+	/**
+	 * Containment presentation. Default `summary` (dir skeleton + selective
+	 * leaves). `full` expands leaves (CLI: `--tree-full` with `--containment`).
+	 * Ignored for dependency mode.
+	 */
+	presentation?: 'summary' | 'full';
 	/** Prefer catalog.cycles.runtime when present; else catalogCycles(graph, limit). */
 	catalog?: MapCatalog;
 	source: AgentDigestSource;
@@ -34,7 +52,11 @@ export type BuildAgentMermaidInput = {
 		includeTests?: boolean;
 		presets?: string[];
 	};
-	/** Max prefix nodes in the diagram. Default 40. */
+	/**
+	 * Dependencies: max prefix nodes. Containment summary: max expanded file
+	 * leaves (dir skeleton always complete). Containment full: max file leaves
+	 * under balanced selection. Default 40.
+	 */
 	limit?: number;
 };
 
@@ -42,6 +64,16 @@ type PrefixedEdge = {
 	from: string;
 	to: string;
 	count: number;
+};
+
+/** Intermediate containment render tree (path-true; counts are index mass). */
+type ContainmentNode = {
+	name: string;
+	path: string;
+	kind: 'dir' | 'file';
+	/** Descendant file count for dir labels (observed index mass). */
+	fileCount?: number;
+	children: ContainmentNode[];
 };
 
 function escapeLabel(label: string): string {
@@ -60,22 +92,156 @@ function collectFilePaths(node: FileTreeNode, paths: string[]): void {
 	for (const child of node.children) collectFilePaths(child, paths);
 }
 
+function countTreeFiles(node: FileTreeNode): number {
+	if (node.kind === 'file') return 1;
+	let n = 0;
+	for (const c of node.children) n += countTreeFiles(c);
+	return n;
+}
+
+/**
+ * Round-robin leaf selection across top-level (first path segment) folders so
+ * early alphabet cannot consume the whole leaf budget. Paths within each
+ * group stay localeCompare order. Result is sorted for stable tree rebuild.
+ */
+function selectBalancedLeaves(filePaths: string[], limit: number): string[] {
+	if (limit <= 0) return [];
+	const sorted = [...filePaths].sort((a, b) => a.localeCompare(b));
+	if (sorted.length <= limit) return sorted;
+
+	const groups = new Map<string, string[]>();
+	for (const p of sorted) {
+		const top = p.split('/').filter(Boolean)[0] ?? p;
+		const list = groups.get(top);
+		if (list) list.push(p);
+		else groups.set(top, [p]);
+	}
+	const keys = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+	const cursors = new Map<string, number>();
+	for (const k of keys) cursors.set(k, 0);
+
+	const kept: string[] = [];
+	while (kept.length < limit) {
+		let progress = false;
+		for (const k of keys) {
+			const list = groups.get(k)!;
+			const i = cursors.get(k)!;
+			if (i < list.length) {
+				kept.push(list[i]!);
+				cursors.set(k, i + 1);
+				progress = true;
+				if (kept.length >= limit) break;
+			}
+		}
+		if (!progress) break;
+	}
+	return kept.sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Mirror agentDigest summarizeTree: keep all dirs; expand file leaves only
+ * when depth ≥ maxLeafDepth or folder is small (fileCount ≤ smallFolderMax).
+ */
+function summarizeContainmentTree(
+	node: FileTreeNode,
+	depth: number,
+): ContainmentNode {
+	if (node.kind === 'file') {
+		return {
+			name: node.name,
+			path: node.path,
+			kind: 'file',
+			children: [],
+		};
+	}
+	const fileCount = countTreeFiles(node);
+	const keepLeaves =
+		depth >= SUMMARY_MAX_LEAF_DEPTH ||
+		fileCount <= SUMMARY_SMALL_FOLDER_MAX;
+	const children: ContainmentNode[] = [];
+	for (const c of node.children) {
+		if (c.kind === 'dir') {
+			children.push(summarizeContainmentTree(c, depth + 1));
+		} else if (keepLeaves) {
+			children.push({
+				name: c.name,
+				path: c.path,
+				kind: 'file',
+				children: [],
+			});
+		}
+	}
+	return {
+		name: node.name,
+		path: node.path,
+		kind: 'dir',
+		fileCount,
+		children,
+	};
+}
+
+function fileTreeToContainment(node: FileTreeNode): ContainmentNode {
+	if (node.kind === 'file') {
+		return {
+			name: node.name,
+			path: node.path,
+			kind: 'file',
+			children: [],
+		};
+	}
+	return {
+		name: node.name,
+		path: node.path,
+		kind: 'dir',
+		fileCount: countTreeFiles(node),
+		children: node.children.map(fileTreeToContainment),
+	};
+}
+
+function collectContainmentLeaves(
+	node: ContainmentNode,
+	paths: string[],
+): void {
+	if (node.kind === 'file') {
+		paths.push(node.path);
+		return;
+	}
+	for (const c of node.children) collectContainmentLeaves(c, paths);
+}
+
+/** Drop file leaves not in keptSet; retain every directory (skeleton complete). */
+function filterContainmentLeaves(
+	node: ContainmentNode,
+	keptSet: Set<string>,
+): ContainmentNode {
+	if (node.kind === 'file') {
+		return node;
+	}
+	const children: ContainmentNode[] = [];
+	for (const c of node.children) {
+		if (c.kind === 'dir') {
+			children.push(filterContainmentLeaves(c, keptSet));
+		} else if (keptSet.has(c.path)) {
+			children.push(c);
+		}
+	}
+	return { ...node, children };
+}
+
 function buildContainmentMermaid(
 	input: BuildAgentMermaidInput,
 	limit: number,
 ): string {
+	const presentation = input.presentation ?? 'summary';
 	const fullTree = buildFileTree([...input.graph.files.keys()]);
-	const filePaths: string[] = [];
-	collectFilePaths(fullTree, filePaths);
-	filePaths.sort((a, b) => a.localeCompare(b));
+	const allFilePaths: string[] = [];
+	collectFilePaths(fullTree, allFilePaths);
+	allFilePaths.sort((a, b) => a.localeCompare(b));
+	const totalFiles = allFilePaths.length;
 
-	const keptPaths = filePaths.slice(0, limit);
-	const tree = buildFileTree(keptPaths);
-	let dirIndex = 0;
-	let fileIndex = 0;
 	const lines = [
 		'flowchart TB',
-		'%% arch-atlas structure · mode=containment · indexed paths only',
+		`%% arch-atlas structure · mode=containment · presentation=${presentation} · indexed paths only`,
 		'%% analysis: observed file containment · no dependency edges · not a domain map',
 		`%% source: ${input.source.kind} ${input.source.path}`,
 	];
@@ -85,25 +251,80 @@ function buildContainmentMermaid(
 	if (input.scope?.presets?.length) {
 		lines.push(`%% scope.presets: ${input.scope.presets.join(', ')}`);
 	}
-	if (keptPaths.length < filePaths.length) {
+	if (presentation === 'summary') {
 		lines.push(
-			`%% truncated: showing ${keptPaths.length} of ${filePaths.length} files (limit=${limit})`,
+			`%% presentation=summary: dense folders rolled (maxLeafDepth=${SUMMARY_MAX_LEAF_DEPTH} · smallFolderMax=${SUMMARY_SMALL_FOLDER_MAX}); --tree-full for full leaves`,
 		);
 	}
 
-	const renderNode = (node: FileTreeNode, depth: number): void => {
+	if (limit === 0) {
+		if (totalFiles > 0) {
+			lines.push(
+				`%% truncated: showing 0 of ${totalFiles} files (limit=0)`,
+			);
+		}
+		return lines.join('\n') + '\n';
+	}
+
+	let renderRoot: ContainmentNode;
+	let shownLeaves: number;
+
+	if (presentation === 'full') {
+		const keptPaths = selectBalancedLeaves(allFilePaths, limit);
+		shownLeaves = keptPaths.length;
+		if (shownLeaves < totalFiles) {
+			lines.push(
+				`%% truncated: showing ${shownLeaves} of ${totalFiles} files (limit=${limit} · balanced)`,
+			);
+		}
+		renderRoot = fileTreeToContainment(buildFileTree(keptPaths));
+	} else {
+		// Summary: full dir skeleton; selective leaves; limit caps expanded leaves.
+		const summarized = summarizeContainmentTree(fullTree, 0);
+		const expandedPaths: string[] = [];
+		collectContainmentLeaves(summarized, expandedPaths);
+		expandedPaths.sort((a, b) => a.localeCompare(b));
+
+		const keptPaths =
+			expandedPaths.length <= limit
+				? expandedPaths
+				: selectBalancedLeaves(expandedPaths, limit);
+		shownLeaves = keptPaths.length;
+		const keptSet = new Set(keptPaths);
+		renderRoot = filterContainmentLeaves(summarized, keptSet);
+
+		if (shownLeaves < totalFiles) {
+			const capNote =
+				expandedPaths.length > limit
+					? `limit=${limit} · expanded-leaf cap`
+					: `rollup · limit=${limit}`;
+			lines.push(
+				`%% truncated: showing ${shownLeaves} of ${totalFiles} files as leaves (${capNote})`,
+			);
+		}
+	}
+
+	let dirIndex = 0;
+	let fileIndex = 0;
+
+	const renderNode = (node: ContainmentNode, depth: number): void => {
 		const indent = '  '.repeat(depth);
 		if (node.kind === 'file') {
 			lines.push(`${indent}n${fileIndex++}["${escapeLabel(node.name)}"]`);
 			return;
 		}
 		const id = `d${dirIndex++}`;
-		lines.push(`${indent}subgraph ${id}["${escapeLabel(node.name)}"]`);
+		const count = node.fileCount ?? 0;
+		const label =
+			count > 0
+				? `${node.name} (${count} files)`
+				: node.name;
+		lines.push(`${indent}subgraph ${id}["${escapeLabel(label)}"]`);
 		for (const child of node.children) renderNode(child, depth + 1);
 		lines.push(`${indent}end`);
 	};
 
-	for (const child of tree.children) renderNode(child, 1);
+	for (const child of renderRoot.children) renderNode(child, 1);
 	return lines.join('\n') + '\n';
 }
 
