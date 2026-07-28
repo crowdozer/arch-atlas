@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { VirtualFile } from '@core/graph/types.ts';
 import { indexFiles } from '@core/index.ts';
 import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { projectFileHub } from '@core/view/fileHub.ts';
 import {
 	carbonAlluvialLabelTitleOffset,
@@ -284,8 +285,8 @@ describe('rewriteLinkRibbons', () => {
 			y1: 85,
 			width: 90,
 		};
-		path.style.stroke = '#14b8a6';
-		path.setAttribute('stroke', '#14b8a6');
+		path.style.stroke = CHART_PALETTE.start;
+		path.setAttribute('stroke', CHART_PALETTE.start);
 		path.setAttribute('stroke-width', '90');
 		path.setAttribute('fill', 'none');
 		path.setAttribute(
@@ -299,7 +300,7 @@ describe('rewriteLinkRibbons', () => {
 		const d = path.getAttribute('d') ?? '';
 		expect(d.includes('Z')).toBe(true);
 		expect(d.startsWith('M104,')).toBe(true);
-		expect(path.getAttribute('fill')).toBe('#14b8a6');
+		expect(path.getAttribute('fill')).toBe(CHART_PALETTE.start);
 		expect(path.getAttribute('stroke')).toBe('none');
 		expect(path.getAttribute('stroke-width')).toBe('0');
 		expect(path.getAttribute('fill-opacity')).toBe('0.8');
@@ -807,13 +808,13 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 					source: 'src/lib/redis.ts',
 					target: '\u200b·in-rail·h1',
 					width: 12,
-					stroke: '#14b8a6',
+					stroke: CHART_PALETTE.start,
 				},
 				{
 					source: '\u200b·in-rail·h1',
 					target: 'ioredis',
 					width: 12,
-					stroke: '#14b8a6',
+					stroke: CHART_PALETTE.start,
 				},
 			],
 		);

@@ -10,7 +10,7 @@
  * See `.grok/reference/hub-alluvial-behavior.md` and field notes E1.
  */
 
-import { TEAL } from '@core/view/alluvial.ts';
+import { CHART_PALETTE, TEAL } from '@core/view/chartPalette.ts';
 
 /**
  * Outer import-side column for pure external package/unresolved leaves
@@ -62,10 +62,10 @@ export function displayHubCategory(category: string): string {
 /** Cyan hop gradient (Imports / left) — closer to File is brighter. */
 export function importHopColor(dist: number, maxDist: number): string {
 	const t = dist / Math.max(maxDist, 1);
-	if (t > 0.75) return '#0e7490'; // cyan-700
-	if (t > 0.5) return '#0891b2'; // cyan-600
-	if (t > 0.25) return '#06b6d4'; // cyan-500
-	return '#22d3ee'; // cyan-400
+	if (t > 0.75) return CHART_PALETTE.importHopFar;
+	if (t > 0.5) return CHART_PALETTE.importHopMidFar;
+	if (t > 0.25) return CHART_PALETTE.importHopMid;
+	return CHART_PALETTE.importHopNear;
 }
 
 /** Yellow hop gradient (Exports / right) — closer to File is brighter. */

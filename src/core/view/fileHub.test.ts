@@ -15,6 +15,7 @@ import {
 	isAlluvialRailName,
 	isImportPadScaffoldLink,
 	isOutRailName,
+	TEAL,
 } from '@core/view/alluvial.ts';
 import {
 	exportHopCategory,
@@ -618,7 +619,7 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		const scale = payload.options.color.scale;
 		const zodImport = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(zodImport).toHaveLength(1);
-		expect(scale[zodImport[0]!.name] ?? '').toBe('#0d9488'); // TEAL.package
+		expect(scale[zodImport[0]!.name] ?? '').toBe(TEAL.package);
 		const exportZod = packageNodesOnCategory(
 			payload,
 			'zod',

@@ -46,6 +46,7 @@ import {
 	uniqueFileLabels,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
@@ -416,10 +417,10 @@ export function projectMultiHopAlluvial(
 
 	const hopColor = (stage: number): string => {
 		const t = stage / Math.max(stagesUsed, 1);
-		if (t > 0.75) return '#0f766e';
-		if (t > 0.5) return '#0d9488';
-		if (t > 0.25) return '#14b8a6';
-		return '#2dd4bf';
+		if (t > 0.75) return CHART_PALETTE.hopFar;
+		if (t > 0.5) return CHART_PALETTE.hopMidFar;
+		if (t > 0.25) return CHART_PALETTE.hopMid;
+		return CHART_PALETTE.hopNear;
 	};
 
 	// Only materialize rails that appear in links
