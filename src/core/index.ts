@@ -150,6 +150,7 @@ export {
 	evidenceForEdges,
 	importedCodeForEdge,
 	snippetsForEdges,
+	statementSpan,
 } from '@core/view/inspect.ts';
 export type {
 	CallSiteSnippet,

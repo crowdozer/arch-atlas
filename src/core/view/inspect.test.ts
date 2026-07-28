@@ -7,6 +7,7 @@ import {
 	evidenceForEdges,
 	importedCodeForEdge,
 	snippetsForEdges,
+	statementSpan,
 } from '@core/view/inspect.ts';
 
 const sample = [
@@ -65,8 +66,75 @@ describe('inspect evidence', () => {
 		const snips = snippetsForEdges(graph, edges);
 		expect(snips).toHaveLength(1);
 		expect(snips[0]!.line).toBe(2);
+		expect(snips[0]!.endLine).toBe(2);
 		expect(snips[0]!.text).toContain('zod');
 		expect(snips[0]!.path).toBe('src/main.ts');
+	});
+
+	it('multi-line import statement expands full clause (not just import {)', () => {
+		const multi = [
+			{
+				path: 'client/savegame/savegame.ts',
+				content: `import type {
+  AimInput,
+  AlienShip,
+  Vec2,
+  WeaponType,
+} from '../sim/types';
+export type SavePath = Vec2[];
+const aim: AimInput | null = null;
+`,
+				byteLength: 0,
+			},
+			{
+				path: 'client/sim/types.ts',
+				content: `export type AimInput = { x: number };
+export type AlienShip = { id: string };
+export type Vec2 = { x: number; y: number };
+export type WeaponType = 'laser';
+`,
+				byteLength: 0,
+			},
+		];
+		const g = buildGraph(multi);
+		const edge = g.edges.find((e) => e.from.includes('savegame'))!;
+		expect(edge).toBeTruthy();
+		expect(edge.line).toBe(1);
+
+		const span = statementSpan(
+			g.contents.get(edge.from)!,
+			edge.line,
+			edge.form,
+			edge.specifier,
+		);
+		expect(span.text).toContain('AimInput');
+		expect(span.text).toContain('WeaponType');
+		expect(span.text).toContain("from '../sim/types'");
+		expect(span.text).not.toMatch(/^import type \{\s*$/);
+		expect(span.endLine).toBeGreaterThan(span.startLine);
+
+		const [ev] = evidenceForEdges(g, [edge], 'estimate');
+		expect(ev!.import.text).toContain('AimInput');
+		expect(ev!.import.endLine).toBe(span.endLine);
+		// Binding lines inside the import clause must not be callsites
+		const clauseLines = new Set(
+			Array.from(
+				{ length: span.endLine - span.startLine + 1 },
+				(_, i) => span.startLine + i,
+			),
+		);
+		expect(ev!.callsites.every((c) => !clauseLines.has(c.line))).toBe(true);
+		// Real use outside the clause still counts
+		expect(ev!.callsites.some((c) => c.symbol === 'AimInput')).toBe(true);
+		expect(ev!.callsites.some((c) => c.symbol === 'Vec2')).toBe(true);
+	});
+
+	it('statementSpan keeps single-line imports on one line', () => {
+		const src = "import { x } from './lib/util';\nconst y = x;\n";
+		const span = statementSpan(src, 1, 'import', './lib/util');
+		expect(span.startLine).toBe(1);
+		expect(span.endLine).toBe(1);
+		expect(span.text).toBe("import { x } from './lib/util';");
 	});
 
 	it('file→file reverse band', () => {

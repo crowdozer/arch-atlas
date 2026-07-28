@@ -485,9 +485,13 @@ function appendEvidenceSections(
 	impH.className = 'atlas-inspect__section-title';
 	impH.textContent = 'Statement';
 	impSec.appendChild(impH);
+	const stmtLine =
+		ev.import.endLine > ev.import.line
+			? `L${ev.import.line}–${ev.import.endLine}`
+			: `L${ev.import.line}`;
 	appendCodeBlock(
 		impSec,
-		`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">L${ev.import.line}</span>`,
+		`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">${stmtLine}</span>`,
 		ev.import.text,
 		createFormTriEl(ev.import.form, direction),
 	);

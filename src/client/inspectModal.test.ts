@@ -33,6 +33,7 @@ function sampleEvidence(
 		import: {
 			path: 'src/client/app.ts',
 			line: 42,
+			endLine: 42,
 			text: "import { x } from './x';",
 			form: 'import',
 			specifier: './x',

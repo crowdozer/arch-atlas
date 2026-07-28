@@ -61,10 +61,15 @@ function inModule(
 const MAX_SNIPPETS = 40;
 const MAX_IMPORTED_LINES = 48;
 const MAX_CALLSITES_PER_EDGE = 24;
+/** Cap multi-line statement expansion (inspect display + callsite exclusion). */
+const MAX_STATEMENT_LINES = 48;
 
 export type ImportSnippet = {
 	path: string;
+	/** 1-based start line of the statement in `path`. */
 	line: number;
+	/** 1-based end line (inclusive); same as `line` for single-line statements. */
+	endLine: number;
 	text: string;
 	form: ImportEdge['form'];
 	specifier: string;
@@ -131,6 +136,102 @@ export function sourceLines(source: string): string[] {
 	return parts;
 }
 
+/**
+ * Bracket / paren balance outside strings (best-effort).
+ * Used so multi-line `import { … } from` is not truncated mid-clause.
+ */
+function bracketsBalanced(text: string): boolean {
+	let depth = 0;
+	let inStr: "'" | '"' | '`' | null = null;
+	for (let i = 0; i < text.length; i++) {
+		const c = text[i]!;
+		if (inStr) {
+			if (c === '\\') {
+				i++;
+				continue;
+			}
+			if (c === inStr) inStr = null;
+			continue;
+		}
+		if (c === "'" || c === '"' || c === '`') {
+			inStr = c;
+			continue;
+		}
+		if (c === '{' || c === '(' || c === '[') depth++;
+		else if (c === '}' || c === ')' || c === ']') {
+			if (depth > 0) depth--;
+		}
+	}
+	return depth === 0;
+}
+
+/**
+ * Whether `text` looks like a complete import-family statement for this edge.
+ * Matches form + specifier so progressive line join can stop at the real end.
+ */
+function isCompleteStatement(
+	text: string,
+	form: ImportEdge['form'],
+	specifier: string,
+): boolean {
+	if (!bracketsBalanced(text)) return false;
+	const esc = escapeRegExp(specifier);
+	if (form === 'import' || form === 'export') {
+		// Static: … from 'spec' | side-effect import 'spec'
+		const fromRe = new RegExp(`\\bfrom\\s+['"]${esc}['"]`);
+		const sideRe = new RegExp(`\\bimport\\s+(?:type\\s+)?['"]${esc}['"]`);
+		return fromRe.test(text) || sideRe.test(text);
+	}
+	if (form === 'require') {
+		return new RegExp(`\\brequire\\s*\\(\\s*['"]${esc}['"]`).test(text);
+	}
+	if (form === 'dynamic') {
+		return new RegExp(`\\bimport\\s*\\(\\s*['"]${esc}['"]`).test(text);
+	}
+	return false;
+}
+
+/**
+ * Expand a statement starting at `startLine` through multi-line import/export
+ * clauses. Graph edges store only the start line; inspect must not show
+ * `import {` alone for brace-wrapped named lists.
+ */
+export function statementSpan(
+	source: string,
+	startLine: number,
+	form: ImportEdge['form'],
+	specifier: string,
+): { text: string; startLine: number; endLine: number } {
+	const lines = sourceLines(source);
+	if (startLine < 1 || startLine > lines.length) {
+		return {
+			text: `// (line ${startLine}) ${form} '${specifier}'`,
+			startLine,
+			endLine: startLine,
+		};
+	}
+
+	const maxEnd = Math.min(lines.length, startLine + MAX_STATEMENT_LINES - 1);
+	for (let end = startLine; end <= maxEnd; end++) {
+		const text = lines.slice(startLine - 1, end).join('\n');
+		if (isCompleteStatement(text, form, specifier)) {
+			return { text, startLine, endLine: end };
+		}
+	}
+
+	// Incomplete / exotic: fall back to first line only (prior behavior) when
+	// the progressive join never matched — avoids dumping unrelated body.
+	const first = lines[startLine - 1] ?? '';
+	if (first.trim()) {
+		return { text: first, startLine, endLine: startLine };
+	}
+	return {
+		text: `// (line ${startLine}) ${form} '${specifier}'`,
+		startLine,
+		endLine: startLine,
+	};
+}
+
 function toLabel(e: ImportEdge): string {
 	if (e.toKind === 'unresolved') return e.specifier;
 	if (e.toKind === 'package') return e.to.replace(/^unresolved:/, '');
@@ -139,10 +240,15 @@ function toLabel(e: ImportEdge): string {
 
 function snippetForEdge(graph: CodeGraph, e: ImportEdge): ImportSnippet {
 	const src = graph.contents.get(e.from) ?? '';
+	const span = statementSpan(src, e.line, e.form, e.specifier);
 	return {
 		path: e.from,
-		line: e.line,
-		text: lineText(src, e.line) || `// (line ${e.line}) ${e.form} '${e.specifier}'`,
+		line: span.startLine,
+		endLine: span.endLine,
+		text:
+			span.text ||
+			lineText(src, e.line) ||
+			`// (line ${e.line}) ${e.form} '${e.specifier}'`,
 		form: e.form,
 		specifier: e.specifier,
 		toLabel: toLabel(e),
@@ -219,10 +325,12 @@ export function callSitesForEdge(
 	const lines = sourceLines(src);
 	const out: CallSiteSnippet[] = [];
 	const nameSet = new Set(names);
+	// Exclude the whole multi-line statement (not only the start line).
+	const span = statementSpan(src, e.line, e.form, e.specifier);
 
 	for (let i = 0; i < lines.length; i++) {
 		const lineNo = i + 1;
-		if (lineNo === e.line) continue;
+		if (lineNo >= span.startLine && lineNo <= span.endLine) continue;
 		const line = lines[i]!;
 		// Skip obvious comment-only lines
 		const trimmed = line.trim();

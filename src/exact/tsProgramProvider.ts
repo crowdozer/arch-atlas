@@ -17,7 +17,10 @@
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
-import type { CallSiteSnippet } from '@core/view/inspect.ts';
+import {
+	statementSpan,
+	type CallSiteSnippet,
+} from '@core/view/inspect.ts';
 import {
 	collectExportSpansFromText,
 	massForBindings,
@@ -348,15 +351,19 @@ export function createTsProgramProvider(
 			if (!locals.length) return [];
 			const out: CallSiteSnippet[] = [];
 			const lines = content.split(/\n/);
+			// Exclude full multi-line import clause (not only the start line).
+			const span = statementSpan(content, edge.line, edge.form, edge.specifier);
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i] ?? '';
-				if (i + 1 === edge.line) continue;
+				const lineNo = i + 1;
+				if (lineNo >= span.startLine && lineNo <= span.endLine) continue;
 				for (const sym of locals) {
 					const re = new RegExp(`\\b${escapeRegExp(sym)}\\b`);
 					if (re.test(line)) {
 						out.push({
+							epistemic: 'inferred',
 							path: edge.from,
-							line: i + 1,
+							line: lineNo,
 							symbol: sym,
 							text: line,
 						});
