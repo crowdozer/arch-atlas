@@ -44,6 +44,7 @@ import {
 	type Session,
 	type SessionProgramMeta,
 } from '@shell/index.ts';
+import { runAlluvialDebugDump } from './debugDump.ts';
 import {
 	createAlluvialStage,
 	drillTargetFromLine,
@@ -887,4 +888,22 @@ wireUi({
 	closeInspectModal: () => inspect.closeInspectModal(),
 	updateBackButton,
 	tryRestoreSession: () => lifecycle.tryRestoreSession(),
+	dumpAlluvialDebug: () =>
+		runAlluvialDebugDump({
+			payload: stage.getPayload(),
+			holder: stage.getHolder(),
+			host: {
+				viewStack: [...viewStack],
+				currentView: currentView(),
+				weightAxis,
+				bandSort,
+				locPrecision,
+				vizMaxDepth,
+				interactionMode,
+				includeTests,
+				pendingPackageFocusLabel,
+				programExactMass,
+				engineFailed,
+			},
+		}),
 });

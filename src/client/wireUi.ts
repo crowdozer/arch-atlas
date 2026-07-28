@@ -74,6 +74,10 @@ export type WireUiDeps = {
 	closeInspectModal: () => void;
 	updateBackButton: () => void;
 	tryRestoreSession: () => boolean;
+	/**
+	 * Dev-only alluvial dump (payload + Carbon). No-op if button absent (prod).
+	 */
+	dumpAlluvialDebug?: () => void | Promise<void>;
 };
 
 function wirePersistCheckbox(deps: WireUiDeps): void {
@@ -265,6 +269,11 @@ export function wireUi(deps: WireUiDeps): void {
 
 	$('atlas-inspect-close')?.addEventListener('click', () => {
 		deps.closeInspectModal();
+	});
+
+	// Dev-only Dump chart → .atlas-debug/ (button only rendered when import.meta.env.DEV)
+	$('atlas-debug-dump')?.addEventListener('click', () => {
+		void deps.dumpAlluvialDebug?.();
 	});
 
 	$('atlas-demo-react-simple')?.addEventListener('click', () => {

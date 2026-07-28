@@ -432,6 +432,21 @@ import Tag from '../components/ui/Tag.astro';
 								title="When off, drop *.test/spec, __tests__, __mocks__ from the index. Does not change CLI defaults."
 							/>
 						</div>
+						{
+							/* Dev-only: dump payload + Carbon layout to .atlas-debug/ */
+							import.meta.env.DEV && (
+								<div class="atlas-stage__control-group">
+									<button
+										id="atlas-debug-dump"
+										type="button"
+										class="atlas-stage__mode-btn"
+										title="Dev: write payload + Carbon geometry to .atlas-debug/alluvial-latest.json (POST /api/debug/alluvial-dump). 500 outside dev."
+									>
+										Dump chart
+									</button>
+								</div>
+							)
+						}
 						<div
 							id="atlas-interaction-mode"
 							class="atlas-stage__mode"

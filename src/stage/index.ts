@@ -33,3 +33,10 @@ export {
 } from './focus/bindAlluvialFocus.ts';
 
 export { polishAlluvialHolder } from './polish/index.ts';
+
+export {
+	dumpCarbonRender,
+	type CarbonRenderDump,
+	type CarbonNodeDump,
+	type CarbonLinkDump,
+} from './debugCarbonDump.ts';

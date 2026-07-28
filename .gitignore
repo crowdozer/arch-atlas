@@ -48,3 +48,5 @@ public/vendor/typescript/
 .pytest_cache/
 __pycache__/
 *.pyc
+# dev alluvial debug dumps (POST /api/debug/alluvial-dump)
+.atlas-debug/
