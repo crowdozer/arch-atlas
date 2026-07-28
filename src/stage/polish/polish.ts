@@ -52,12 +52,21 @@ export function polishAlluvialHolder(
 		 * @see straightenExternalPackageBands / planExternalStraightBands
 		 */
 		externalStraightPairs?: readonly ExternalStraightPair[];
+		/**
+		 * Semantic node mass for label honesty when Carbon painted layout-scaled
+		 * values (display-mass scale at stage mount).
+		 */
+		semanticByNodeName?: ReadonlyMap<string, number>;
 	},
 ): void {
 	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
 	// Always ribbon-ize Carbon path.link (not only when File moved) — mass in fill
 	rewriteLinkRibbons(holder);
-	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
+	rightTruncateAlluvialLabels(
+		holder,
+		opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS,
+		opts?.semanticByNodeName,
+	);
 	// Undraw scaffolds + any pair-covered parent→package (incl. direct deepest attaches)
 	hideAlluvialRails(holder, { pairs: opts?.externalStraightPairs });
 	// Then paint one straight parent→package band per construction pair (also ribbons)

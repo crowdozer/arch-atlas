@@ -125,6 +125,99 @@ describe('carbonAlluvialLabelTitleOffset', () => {
 	});
 });
 
+describe('rightTruncateAlluvialLabels semantic mass restore', () => {
+	it('rewrites layout-scaled (value) suffix to semantic integer', () => {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+
+		const nodeG = new MiniEl('g', ['node-group']);
+		nodeG.__data__ = {
+			name: 'foo',
+			category: 'Imports',
+			x0: 0,
+			x1: 10,
+			y0: 0,
+			y1: 40,
+		};
+		const titleG = new MiniEl('g');
+		titleG.setAttribute('id', 'alluvial-node-title-0');
+		titleG.setAttribute('transform', 'translate(14, 11)');
+
+		const text = new MiniEl('text', ['node-text']);
+		// Carbon painted sqrt(10) ≈ 3.16 after display-mass scale
+		text.textContent = 'foo (3.16)';
+		text.getComputedTextLength = function (this: MiniEl) {
+			return (this.textContent?.length ?? 0) * 6.5;
+		};
+		const bg = new MiniEl('rect', ['node-text-bg']);
+		bg.setAttribute('width', '80');
+		bg.setAttribute('height', '18');
+
+		titleG.appendChild(text);
+		titleG.appendChild(bg);
+		nodeG.appendChild(titleG);
+		svg.appendChild(nodeG);
+
+		const semanticByNodeName = new Map<string, number>([['foo', 10]]);
+		rightTruncateAlluvialLabels(
+			holder as unknown as HTMLElement,
+			36,
+			semanticByNodeName,
+		);
+
+		expect(text.textContent).toBe('foo (10)');
+		expect(text.getAttribute('title')).toBe('foo (10)');
+		expect(text.getAttribute('aria-label')).toBe('foo (10)');
+	});
+
+	it('restores semantic mass on truncated long names', () => {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+
+		const longName = 'client/sim/very/deep/nested/module/public.ts';
+		const nodeG = new MiniEl('g', ['node-group']);
+		nodeG.__data__ = {
+			name: longName,
+			category: 'Exports',
+			x0: 200,
+			x1: 210,
+			y0: 10,
+			y1: 40,
+		};
+		const titleG = new MiniEl('g');
+		titleG.setAttribute('id', 'alluvial-node-title-1');
+		titleG.setAttribute('transform', 'translate(-186, 6)');
+
+		const text = new MiniEl('text', ['node-text']);
+		text.textContent = `${longName} (70.71)`; // sqrt(5000)
+		text.getComputedTextLength = function (this: MiniEl) {
+			return (this.textContent?.length ?? 0) * 6.5;
+		};
+		const bg = new MiniEl('rect', ['node-text-bg']);
+		bg.setAttribute('width', '200');
+		bg.setAttribute('height', '18');
+
+		titleG.appendChild(text);
+		titleG.appendChild(bg);
+		nodeG.appendChild(titleG);
+		svg.appendChild(nodeG);
+
+		rightTruncateAlluvialLabels(
+			holder as unknown as HTMLElement,
+			20,
+			new Map([[longName, 5000]]),
+		);
+
+		const painted = text.textContent ?? '';
+		expect(painted.startsWith('…')).toBe(true);
+		expect(painted).toContain('(5000)');
+		expect(painted).not.toContain('70.71');
+		expect(text.getAttribute('title')).toBe(`${longName} (5000)`);
+	});
+});
+
 describe('rightTruncateAlluvialLabels re-anchors Carbon title chips', () => {
 	it('shrinks bg and rewrites title transform for truncated hang-left labels', () => {
 		const holder = new MiniEl('div');
