@@ -65,6 +65,19 @@ Historical scale export `TEAL` re-exports a subset of `CHART_PALETTE` for minima
 - Shell maps support to those same status tokens (error/success/warning/info).
 - `statusIndicator` contract: never brand teal/emerald for PASS/FAIL; hollow yellow diamond is locked for indication WATCH.
 
+## Chart label chips (footgun)
+
+Carbon **g100** on `.cds--chart-holder[data-carbon-theme=g100]` sets:
+
+| Token | g100 chart-holder value | Meaning for alluvial defaults |
+| ----- | ----------------------- | ----------------------------- |
+| `--cds-layer-inverse-absolute` | `#ffffff` | White label chip |
+| `--cds-layer-01-absolute` | `#000000` | Black label text |
+
+Atlas paints **light text on dark zinc chips**. Do **not** drive `rect.node-text-bg` from `--cds-layer-inverse-absolute` (resolves to white under the holder). Chart also forces `--cds-layer-01: transparent` on `.ui-carbon-chart`, so shell layer tokens are unusable for chips.
+
+**Current paint:** pin zinc-900 (`rgb(24 24 27 / 0.92)`) on `rect.node-text-bg`; selection/drill chips use `--atlas-select-deep` / `--atlas-drill-deep`. See `carbon-theme.css` alluvial label rules.
+
 ## Shade modification (heatmap precedent)
 
 Prefer **`color-mix`** or opacity on existing status/product tokens when a wash is needed — do not invent new hues per surface.
