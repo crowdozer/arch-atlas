@@ -143,7 +143,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 				payload.data,
 				payload.meta.labelLoc,
 			);
-			const bandSort = payload.meta.bandSort ?? 'flow';
+			const bandSort = payload.meta.bandSort ?? 'name';
 
 			const applyPolish = () => {
 				// Chart may have been destroyed between schedule and fire.

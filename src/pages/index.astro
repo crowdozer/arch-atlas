@@ -414,14 +414,12 @@ import Tag from '../components/ui/Tag.astro';
 								size="sm"
 								hideLabel
 								labelText="Band order"
-								titleText="In-column stack (payload + polish lock). Flow mass = thickest ribbon leaving the node (max outbound link). Flow mass (inputs) = thickest ribbon arriving (max inbound). Node size = whole-file LOC. Name = alpha. Overflow last. Session-only."
-								value="flow"
+								titleText="In-column stack (payload + polish lock). Name = alpha + overflow last (prior default / unsorted feel). Node size = whole-file LOC. Session-only."
+								value="name"
 								aria-labelledby="atlas-band-sort-label"
 							>
-								<DropdownItem value="flow">Flow mass</DropdownItem>
-								<DropdownItem value="flow-target">Flow mass (inputs)</DropdownItem>
-								<DropdownItem value="node">Node size</DropdownItem>
 								<DropdownItem value="name">Name</DropdownItem>
+								<DropdownItem value="node">Node size</DropdownItem>
 							</Dropdown>
 						</div>
 						<div class="atlas-stage__control-group atlas-stage__control-group--tests">

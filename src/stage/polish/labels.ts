@@ -62,7 +62,7 @@ export function formatAlluvialLocNumber(n: number): string {
  */
 export function formatAlluvialLabelSuffix(
 	stats: AlluvialLabelStats,
-	mode: BandSortMode = 'flow',
+	mode: BandSortMode = 'name',
 ): string {
 	const maxOut = Math.max(0, stats.maxOut);
 	const maxIn = Math.max(0, stats.maxIn);
@@ -232,7 +232,7 @@ export function rightTruncateAlluvialLabels(
 	opts?: LabelRewriteOpts,
 ): void {
 	hideAlluvialRails(holder);
-	const mode = opts?.bandSort ?? 'flow';
+	const mode = opts?.bandSort ?? 'name';
 
 	for (const text of holder.querySelectorAll<SVGTextElement>('text.node-text')) {
 		const full = text.textContent ?? '';

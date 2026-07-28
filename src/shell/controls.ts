@@ -17,12 +17,8 @@ import type { InteractionMode } from '@shell/types.ts';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
 const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact', 'program'];
-const BAND_SORT_MODES: BandSortMode[] = [
-	'name',
-	'flow',
-	'flow-target',
-	'node',
-];
+/** Product-live modes (dropdown). API still accepts flow* via BandSortMode. */
+const BAND_SORT_MODES: BandSortMode[] = ['name', 'node'];
 
 /** Exported for UI lists / tests. */
 export { LOC_PRECISIONS, BAND_SORT_MODES };
@@ -33,18 +29,16 @@ export function parseWeightAxis(raw: string): WeightAxis {
 }
 
 /**
- * Parse stage band-order mode.
- * - Known: name | flow | flow-target | node
- * - `flow` = thickest leaving ribbon (max outbound link)
- * - `flow-target` = thickest arriving ribbon (max inbound link)
- * - Legacy `mass` → flow
- * - Unknown → flow (default)
+ * Parse stage band-order mode (product surface).
+ * - Live: name | node
+ * - Legacy / experiment: mass | flow | flow-target | dir-walk | unknown → name
+ * Flow mass helpers remain callable via API `bandSort: 'flow'|…` for tests;
+ * host parse never returns them so old dumps cannot select broken UX.
  */
 export function parseBandSortMode(raw: string): BandSortMode {
-	if (raw === 'mass') return 'flow';
 	return (BAND_SORT_MODES as string[]).includes(raw)
 		? (raw as BandSortMode)
-		: 'flow';
+		: 'name';
 }
 
 /** Parse spine formula select value; unknown → default modules-then-in. */

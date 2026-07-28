@@ -87,16 +87,13 @@ export function isOverflowNodeName(name: string): boolean {
 /**
  * In-column band stack order (global mode for all columns).
  *
- * - `flow` — **thickest leaving ribbon first**: max outbound link value (source).
- *   Pure sinks (no out) share mass 0 → name among themselves; overflow still last.
- * - `flow-target` — **thickest incoming ribbon first**: max inbound link value
- *   (target). Pure free sources (no in) → name among zeros.
+ * Product-live (UI):
+ * - `name` — alpha + overflow last + rails after real (prior / default order)
  * - `node` — whole-file LOC (Estimate); packages/buckets 0
- * - `name` — alpha
  *
- * Product intent: within a column, bands that leave (flow) or enter (flow-target)
- * stack thick→thin top→bottom. Uses **max single-link width** so order tracks the
- * fat ribbon you hover, not sum of all edges (which jumps when multi-edge).
+ * API / experiment only (not in product dropdown; host parse maps to name):
+ * - `flow` — thickest leaving ribbon first (max outbound link value)
+ * - `flow-target` — thickest arriving ribbon first (max inbound link value)
  */
 export type BandSortMode = 'name' | 'flow' | 'flow-target' | 'node';
 
@@ -241,7 +238,7 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
-	/** In-column band order; default flow (overflow last, rails after real). */
+	/** In-column band order; default name (alpha + overflow last, rails after real). */
 	bandSort?: BandSortMode;
 	/**
 	 * Needed for `bandSort: 'node'` (file LOC). Optional — without it node mode
@@ -272,7 +269,7 @@ export function buildAlluvialPayload(args: {
 		startId,
 		units = 'package imports',
 		ariaLabel,
-		bandSort = 'flow',
+		bandSort = 'name',
 		graph = null,
 		terminators,
 		exportTerminators,
