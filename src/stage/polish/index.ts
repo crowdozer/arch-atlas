@@ -28,9 +28,14 @@ export {
 
 export {
 	ALLUVIAL_LABEL_MAX_CHARS,
+	buildAlluvialLabelStats,
 	carbonAlluvialLabelTitleOffset,
+	formatAlluvialLabelSuffix,
+	formatAlluvialMassNumber,
 	rightTruncateAlluvialLabels,
 	rightTruncateLabel,
+	type AlluvialLabelStats,
+	type LabelRewriteOpts,
 } from './labels.ts';
 
 export { hideAlluvialRails, isImportRailLabel } from './rails.ts';

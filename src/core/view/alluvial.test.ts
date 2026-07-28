@@ -623,6 +623,8 @@ describe('band sort (name / flow / flow-target / node)', () => {
 			.filter((n) => n.category === 'Exports')
 			.map((n) => n.name);
 		expect(exports).toEqual(['heavy', 'light', overflow]);
+		// Stage label polish reads these without CodeGraph
+		expect(payload.meta.bandSort).toBe('flow');
 	});
 
 	it('buildAlluvialPayload flow-target ranks import leaves by max inbound ribbon', () => {

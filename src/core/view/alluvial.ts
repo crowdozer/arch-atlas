@@ -311,6 +311,13 @@ export function buildAlluvialPayload(args: {
 	const colorScale: Record<string, string> = {};
 	for (const [name, meta] of nodeMeta) colorScale[name] = meta.color;
 
+	// Label polish needs LOC for every file band, independent of bandSort mode.
+	const labelLocMass = nodeBandMass(nodeMeta.keys(), nodeRef, graph);
+	const labelLoc: Record<string, number> = {};
+	for (const [name, loc] of labelLocMass) {
+		if (loc > 0) labelLoc[name] = loc;
+	}
+
 	return {
 		data: links,
 		options: {
@@ -344,6 +351,8 @@ export function buildAlluvialPayload(args: {
 			focus,
 			nodeRef,
 			nodeRank,
+			bandSort,
+			...(Object.keys(labelLoc).length ? { labelLoc } : {}),
 			...(terminators?.length ? { terminators: [...terminators] } : {}),
 			...(exportTerminators?.length
 				? { exportTerminators: [...exportTerminators] }

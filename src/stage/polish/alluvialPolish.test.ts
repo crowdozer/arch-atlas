@@ -8,8 +8,11 @@ import { isAlluvialRailName } from '@core/view/alluvial.ts';
 import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { projectFileHub } from '@core/view/fileHub.ts';
 import {
+	buildAlluvialLabelStats,
 	carbonAlluvialLabelTitleOffset,
 	centerHubFileSpine,
+	formatAlluvialLabelSuffix,
+	formatAlluvialMassNumber,
 	hideAlluvialRails,
 	horizontalLinkPath,
 	horizontalLinkRibbonPath,
@@ -126,6 +129,52 @@ describe('carbonAlluvialLabelTitleOffset', () => {
 	});
 });
 
+describe('formatAlluvialLabelSuffix', () => {
+	it('formats flow as leave ↓ and flow-target as arrive ↑', () => {
+		const stats = { maxOut: 50, maxIn: 99, loc: 120 };
+		expect(formatAlluvialLabelSuffix(stats, 'flow')).toBe('(↓50, 120LOC)');
+		expect(formatAlluvialLabelSuffix(stats, 'flow-target')).toBe(
+			'(↑99, 120LOC)',
+		);
+	});
+
+	it('node/name pick dominant ribbon (tie → leave ↓)', () => {
+		expect(
+			formatAlluvialLabelSuffix({ maxOut: 10, maxIn: 20, loc: 0 }, 'node'),
+		).toBe('(↑20, 0LOC)');
+		expect(
+			formatAlluvialLabelSuffix({ maxOut: 10, maxIn: 10, loc: 5 }, 'name'),
+		).toBe('(↓10, 5LOC)');
+	});
+
+	it('compacts large mass like Carbon-ish k', () => {
+		expect(formatAlluvialMassNumber(1_200)).toBe('1.2k');
+		expect(formatAlluvialMassNumber(12_000)).toBe('12k');
+		expect(
+			formatAlluvialLabelSuffix(
+				{ maxOut: 1200, maxIn: 0, loc: 15_000 },
+				'flow',
+			),
+		).toBe('(↓1.2k, 15kLOC)');
+	});
+});
+
+describe('buildAlluvialLabelStats', () => {
+	it('takes max single-link leave/arrive and merges loc', () => {
+		const stats = buildAlluvialLabelStats(
+			[
+				{ source: 'a', target: 'b', value: 10 },
+				{ source: 'a', target: 'c', value: 40 },
+				{ source: 'x', target: 'b', value: 25 },
+			],
+			{ a: 100, b: 50 },
+		);
+		expect(stats.get('a')).toEqual({ maxOut: 40, maxIn: 0, loc: 100 });
+		expect(stats.get('b')).toEqual({ maxOut: 0, maxIn: 25, loc: 50 });
+		expect(stats.get('c')).toEqual({ maxOut: 0, maxIn: 40, loc: 0 });
+	});
+});
+
 describe('rightTruncateAlluvialLabels re-anchors Carbon title chips', () => {
 	it('shrinks bg and rewrites title transform for truncated hang-left labels', () => {
 		const holder = new MiniEl('div');
@@ -186,6 +235,52 @@ describe('rightTruncateAlluvialLabels re-anchors Carbon title chips', () => {
 		expect(Number(bg.getAttribute('width'))).toBe(Math.ceil(textW + 8));
 		// Must not leave the full-string hang offset
 		expect(titleG.getAttribute('transform')).not.toBe('translate(-186, 6)');
+	});
+
+	it('rewrites Carbon (value) to (↓flow, locLOC) when stats provided', () => {
+		const holder = new MiniEl('div');
+		const svg = new MiniEl('svg');
+		holder.appendChild(svg);
+
+		const nodeG = new MiniEl('g', ['node-group']);
+		nodeG.__data__ = {
+			name: 'src/app.ts',
+			category: 'File',
+			x0: 100,
+			x1: 110,
+			y0: 10,
+			y1: 40,
+		};
+		const titleG = new MiniEl('g');
+		titleG.setAttribute('id', 'alluvial-node-title-1');
+		titleG.setAttribute('transform', 'translate(14, 6)');
+
+		const text = new MiniEl('text', ['node-text']);
+		text.textContent = 'src/app.ts (42)';
+		text.getComputedTextLength = function (this: MiniEl) {
+			return (this.textContent?.length ?? 0) * 6.5;
+		};
+		const bg = new MiniEl('rect', ['node-text-bg']);
+		bg.setAttribute('width', '100');
+		titleG.appendChild(text);
+		titleG.appendChild(bg);
+		nodeG.appendChild(titleG);
+		svg.appendChild(nodeG);
+
+		const stats = buildAlluvialLabelStats(
+			[
+				{ source: 'src/app.ts', target: 'lib', value: 50 },
+				{ source: 'other', target: 'src/app.ts', value: 10 },
+			],
+			{ 'src/app.ts': 120 },
+		);
+		rightTruncateAlluvialLabels(holder as unknown as HTMLElement, 36, {
+			bandSort: 'flow',
+			stats,
+		});
+
+		expect(text.textContent).toBe('src/app.ts (↓50, 120LOC)');
+		expect(text.getAttribute('title')).toBe('src/app.ts (↓50, 120LOC)');
 	});
 });
 

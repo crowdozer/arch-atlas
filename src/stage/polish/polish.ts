@@ -18,6 +18,7 @@ import { centerHubFileSpineInHolder } from './fileSpine.ts';
 import {
 	ALLUVIAL_LABEL_MAX_CHARS,
 	rightTruncateAlluvialLabels,
+	type LabelRewriteOpts,
 } from './labels.ts';
 import { hideAlluvialRails } from './rails.ts';
 import { rewriteLinkRibbons } from './sankeyDom.ts';
@@ -44,6 +45,8 @@ export function polishAlluvialHolder(
 		 * crossing reduction so Band order (name/mass) matches the chart.
 		 */
 		nodeRank?: Record<string, number>;
+		/** Rewrite Carbon `(value)` → `(↑|↓flow, locLOC)`. */
+		labelRewrite?: LabelRewriteOpts;
 		/**
 		 * Reverse free-source pad targets (Exports* left) → cyan wrap.
 		 * @see markAlluvialTerminators
@@ -67,7 +70,11 @@ export function polishAlluvialHolder(
 	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
 	// Always ribbon-ize Carbon path.link (not only when File moved) — mass in fill
 	rewriteLinkRibbons(holder);
-	rightTruncateAlluvialLabels(holder, opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS);
+	rightTruncateAlluvialLabels(
+		holder,
+		opts?.labelMaxChars ?? ALLUVIAL_LABEL_MAX_CHARS,
+		opts?.labelRewrite,
+	);
 	// Undraw scaffolds + any pair-covered parent→package (incl. direct deepest attaches)
 	hideAlluvialRails(holder, { pairs: opts?.externalStraightPairs });
 	// Then paint one straight parent→package band per construction pair (also ribbons)

@@ -22,6 +22,7 @@ import {
 	type DrillResolvers,
 } from './focus/bindAlluvialFocus.ts';
 import { alluvialHeightPx } from './height.ts';
+import { buildAlluvialLabelStats } from './polish/labels.ts';
 import { polishAlluvialHolder } from './polish/index.ts';
 
 export type AlluvialStageHost = {
@@ -136,12 +137,24 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 			const nextFocus = createHubAlluvialFocus(nextHolder, payload, drill);
 			focusApi = nextFocus;
 
+			// Label stats from projection links + meta.labelLoc (stamped at build
+			// when graph was available). Stage has no CodeGraph — LOC travels on meta.
+			const labelStats = buildAlluvialLabelStats(
+				payload.data,
+				payload.meta.labelLoc,
+			);
+			const bandSort = payload.meta.bandSort ?? 'flow';
+
 			const applyPolish = () => {
 				// Chart may have been destroyed between schedule and fire.
 				if (!chart) return;
 				polishAlluvialHolder(nextHolder, {
 					colorScale,
 					nodeRank: payload.meta.nodeRank,
+					labelRewrite: {
+						bandSort,
+						stats: labelStats,
+					},
 					terminators,
 					exportTerminators,
 					externalStraightPairs,

@@ -1,13 +1,127 @@
 /**
  * Right-truncate node labels and re-anchor Carbon title chips.
+ * Rewrites Carbon's `name (value)` suffix to `(↑|↓flow, locLOC)`.
  */
 
-import { isAlluvialRailName } from '@core/view/alluvial.ts';
+import {
+	flowBandMass,
+	flowTargetBandMass,
+	isAlluvialRailName,
+	isOverflowNodeName,
+	type BandSortMode,
+} from '@core/view/alluvial.ts';
 import { hideAlluvialRails } from './rails.ts';
 import { readData, type SankeyNode } from './sankeyDom.ts';
 
 /** Max visible characters for node name (value suffix kept). Right end wins. */
 export const ALLUVIAL_LABEL_MAX_CHARS = 36;
+
+/** Per-node ribbon + LOC stats for label suffix (from payload links + optional loc). */
+export type AlluvialLabelStats = {
+	/** Max outbound link value (thickest leaving ribbon). */
+	maxOut: number;
+	/** Max inbound link value (thickest arriving ribbon). */
+	maxIn: number;
+	/** Whole-file LOC when known; 0 if unknown / non-file. */
+	loc: number;
+};
+
+export type LabelRewriteOpts = {
+	/** Band sort mode — picks which arrow/number is primary. */
+	bandSort?: BandSortMode;
+	/** name → stats; missing names keep Carbon's original (value). */
+	stats?: ReadonlyMap<string, AlluvialLabelStats> | Record<string, AlluvialLabelStats>;
+};
+
+/** Compact mass for chip (matches Carbon-ish k suffix). */
+export function formatAlluvialMassNumber(n: number): string {
+	const v = Math.max(0, Math.round(n));
+	if (v >= 10_000) return `${Math.round(v / 1000)}k`;
+	if (v >= 1000) {
+		const k = v / 1000;
+		const s = k >= 10 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '');
+		return `${s}k`;
+	}
+	return String(v);
+}
+
+/**
+ * Suffix after the path: `(↓50, 120LOC)` or `(↑99, 45LOC)`.
+ * - flow: ↓ maxOut (leaving)
+ * - flow-target: ↑ maxIn (arriving)
+ * - node / name: arrow of the larger of in/out (tie → leave ↓)
+ */
+export function formatAlluvialLabelSuffix(
+	stats: AlluvialLabelStats,
+	mode: BandSortMode = 'flow',
+): string {
+	const maxOut = Math.max(0, stats.maxOut);
+	const maxIn = Math.max(0, stats.maxIn);
+	const loc = Math.max(0, Math.floor(stats.loc));
+
+	let arrow: '↑' | '↓';
+	let flow: number;
+	if (mode === 'flow-target') {
+		arrow = '↑';
+		flow = maxIn;
+	} else if (mode === 'flow') {
+		arrow = '↓';
+		flow = maxOut;
+	} else {
+		// node / name: show the dominant ribbon direction
+		if (maxIn > maxOut) {
+			arrow = '↑';
+			flow = maxIn;
+		} else {
+			arrow = '↓';
+			flow = maxOut;
+		}
+	}
+
+	const locPart = `${formatAlluvialMassNumber(loc)}LOC`;
+	return `(${arrow}${formatAlluvialMassNumber(flow)}, ${locPart})`;
+}
+
+function statsForName(
+	name: string,
+	stats?: LabelRewriteOpts['stats'],
+): AlluvialLabelStats | null {
+	if (!stats) return null;
+	if (stats instanceof Map) return stats.get(name) ?? null;
+	return stats[name] ?? null;
+}
+
+/**
+ * Build max-in / max-out / loc maps for label polish from payload links + loc map.
+ */
+export function buildAlluvialLabelStats(
+	links: readonly { source: string; target: string; value: number }[],
+	locByName?: ReadonlyMap<string, number> | Record<string, number> | null,
+): Map<string, AlluvialLabelStats> {
+	const maxOut = flowBandMass(links);
+	const maxIn = flowTargetBandMass(links);
+	const names = new Set<string>([...maxOut.keys(), ...maxIn.keys()]);
+	if (locByName) {
+		if (locByName instanceof Map) {
+			for (const k of locByName.keys()) names.add(k);
+		} else {
+			for (const k of Object.keys(locByName)) names.add(k);
+		}
+	}
+	const out = new Map<string, AlluvialLabelStats>();
+	for (const name of names) {
+		if (isAlluvialRailName(name) || isOverflowNodeName(name)) continue;
+		let loc = 0;
+		if (locByName instanceof Map) loc = locByName.get(name) ?? 0;
+		else if (locByName) loc = locByName[name] ?? 0;
+		out.set(name, {
+			maxOut: maxOut.get(name) ?? 0,
+			maxIn: maxIn.get(name) ?? 0,
+			loc,
+		});
+	}
+	return out;
+}
 
 /**
  * Keep the right end of a label (paths show basename side); prefix ellipsis.
@@ -98,8 +212,8 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 }
 
 /**
- * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
- * Full original string goes on title + aria-label for hover/a11y.
+ * Carbon paints `name (value)`. Truncate only the name; rewrite the value suffix
+ * to `(↑|↓flow, locLOC)` when stats are provided. Full original on title/aria.
  *
  * Also undraws rails/pad scaffolds **without** construction pairs (pairs
  * undraw is applied later from the polish facade with meta pairs).
@@ -107,8 +221,10 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 export function rightTruncateAlluvialLabels(
 	holder: HTMLElement,
 	maxChars: number = ALLUVIAL_LABEL_MAX_CHARS,
+	opts?: LabelRewriteOpts,
 ): void {
 	hideAlluvialRails(holder);
+	const mode = opts?.bandSort ?? 'flow';
 
 	for (const text of holder.querySelectorAll<SVGTextElement>('text.node-text')) {
 		const full = text.textContent ?? '';
@@ -116,7 +232,7 @@ export function rightTruncateAlluvialLabels(
 		// Match "label (value)" — value may be "1.2k" etc.
 		const m = full.match(/^(.*) \(([^()]*)\)$/);
 		const name = m ? m[1]! : full;
-		const value = m ? m[2]! : null;
+		const carbonValue = m ? m[2]! : null;
 
 		if (isAlluvialRailName(name)) {
 			text.textContent = '';
@@ -124,15 +240,24 @@ export function rightTruncateAlluvialLabels(
 		}
 
 		const truncName = rightTruncateLabel(name, maxChars);
-		if (truncName === name) {
-			// Still expose full name for hover when already short
-			if (!text.getAttribute('title')) text.setAttribute('title', name);
+		const stats = statsForName(name, opts?.stats);
+		let suffix: string | null = null;
+		if (stats && !isOverflowNodeName(name)) {
+			suffix = formatAlluvialLabelSuffix(stats, mode);
+		} else if (carbonValue !== null) {
+			suffix = `(${carbonValue})`;
+		}
+
+		const next = suffix !== null ? `${truncName} ${suffix}` : truncName;
+		const hover =
+			stats && suffix ? `${name} ${suffix}` : name;
+		if (next === full) {
+			if (!text.getAttribute('title')) text.setAttribute('title', hover);
 			continue;
 		}
-		const next = value !== null ? `${truncName} (${value})` : truncName;
 		text.textContent = next;
-		text.setAttribute('title', name);
-		text.setAttribute('aria-label', full);
+		text.setAttribute('title', hover);
+		text.setAttribute('aria-label', stats && suffix ? hover : full);
 		// Carbon laid out with full string width — re-anchor chip to the bar
 		// with the truncated measure (bg width + title-group transform).
 		repositionAlluvialLabelChip(text);
