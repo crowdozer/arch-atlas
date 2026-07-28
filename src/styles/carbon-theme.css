@@ -1410,7 +1410,7 @@ cds-inline-notification.atlas-inspect__banner {
 /*
  * Import/export form markers — Carbon status triangles (ui-status-indicator).
  * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
- * Colors: blue (cds-status-blue) / cyan (Carbon cyan, not brand teal PASS).
+ * Colors: blue import / yellow export (matches outbound chips + export bands).
  */
 .atlas-inspect__form-tri.ui-status-indicator {
   flex-shrink: 0;
@@ -1432,9 +1432,9 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-inspect__form-tri--export {
-  /* Carbon cyan (g100) — distinct from blue import and brand teal */
-  --ui-status-color: #3ddbd9;
-  color: #3ddbd9;
+  /* Product export yellow (Carbon support-warning / status-yellow) */
+  --ui-status-color: var(--cds-status-yellow, #f1c21b);
+  color: var(--cds-status-yellow, #f1c21b);
 }
 
 .atlas-inspect__form-tri--mixed {

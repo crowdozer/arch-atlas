@@ -46,7 +46,7 @@ export type DirectionKind = 'import' | 'export' | 'mixed';
 /**
  * Direction marker for an observed edge form.
  * - import / require / dynamic → right-facing blue triangle (inbound)
- * - export → left-facing cyan triangle (outbound)
+ * - export → left-facing yellow triangle (outbound; product export color)
  * - mixed → purple solid circle (indeterminate — both directions)
  * Carbon triangle glyphs point up; rotation is applied via CSS class.
  */
@@ -54,7 +54,7 @@ export type FormDirectionMarker = {
 	direction: DirectionKind;
 	label: string;
 	title: string;
-	/** Host class: rotate + color (blue import / cyan export / purple mixed). */
+	/** Host class: rotate + color (blue import / yellow export / purple mixed). */
 	className: string;
 };
 
@@ -321,12 +321,17 @@ function directionTriStatus(marker: FormDirectionMarker): StatusPresentation {
 
 function createDirectionMarkerEl(
 	kind: DirectionKind,
-	opts: { showLabel?: boolean; /** Syntax label override (statement form). */ form?: ImportForm } = {},
+	opts: {
+		showLabel?: boolean;
+		/** When direction is import, refine label (require / dynamic). */
+		form?: ImportForm;
+	} = {},
 ): HTMLElement {
-	// Chrome class follows perspective `kind`; label may keep statement form.
+	// Chrome + primary label follow perspective `kind` (export never says "import").
 	const chrome = directionMarker(kind);
+	// Only import-family keeps form-specific labels (require / dynamic / import).
 	const labelSource =
-		opts.form !== undefined && kind !== 'mixed'
+		kind === 'import' && opts.form !== undefined
 			? formDirectionMarker(opts.form)
 			: chrome;
 	const status = directionTriStatus({
@@ -340,14 +345,15 @@ function createDirectionMarkerEl(
 		className: chrome.className,
 	});
 	// Atom sets inline --ui-status-color from StatusColorToken.
-	// Clear so host classes own blue / cyan / purple.
+	// Clear so host classes own blue / yellow / purple.
 	el.style.removeProperty('--ui-status-color');
 	return el;
 }
 
 /**
  * Path-row direction marker (labeled).
- * Chrome = focus-relative direction; label keeps statement `form` when present.
+ * Chrome + label follow focus-relative direction; import-family form refines
+ * require/dynamic labels only when direction is import.
  */
 function createFormTriEl(
 	form: ImportForm,

@@ -213,13 +213,25 @@ describe('formDirectionMarker', () => {
 		expect(formDirectionMarker('dynamic').label).toBe('dynamic');
 	});
 
-	it('maps export to outbound (left) cyan class', () => {
+	it('maps export to outbound (left) yellow/export class', () => {
 		const m = formDirectionMarker('export');
 		expect(m.direction).toBe('export');
 		expect(m.label).toBe('export');
 		expect(m.title).toBe('Export');
 		expect(m.className).toContain('atlas-inspect__form-tri--export');
 		expect(m.className).not.toContain('--import');
+	});
+});
+
+describe('directionMarker labels (perspective chrome)', () => {
+	it('export perspective label is export even when statement form is import', () => {
+		// Inbound consumer of App: form=import, perspective=export
+		const chrome = directionMarker('export');
+		expect(chrome.label).toBe('export');
+		expect(chrome.title).toBe('Export');
+		expect(chrome.className).toContain('--export');
+		// Form-only would still say import — paint must use perspective chrome
+		expect(formDirectionMarker('import').label).toBe('import');
 	});
 });
 
