@@ -1437,6 +1437,12 @@ cds-inline-notification.atlas-inspect__banner {
   color: #3ddbd9;
 }
 
+.atlas-inspect__form-tri--mixed {
+  /* Indeterminate purple dot when both import + export facets apply */
+  --ui-status-color: var(--cds-status-purple, #a78bfa);
+  color: var(--cds-status-purple, #a78bfa);
+}
+
 /* Up-triangle → right (import / require / dynamic) */
 .atlas-inspect__form-tri--import .ui-status-indicator__shape {
   transform: rotate(90deg);
@@ -1445,6 +1451,23 @@ cds-inline-notification.atlas-inspect__banner {
 /* Up-triangle → left (export) */
 .atlas-inspect__form-tri--export .ui-status-indicator__shape {
   transform: rotate(-90deg);
+}
+
+/* Accordion title: marker + path · Lline in the Carbon title slot */
+.atlas-inspect__accordion-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.atlas-inspect__accordion-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .atlas-inspect__code {

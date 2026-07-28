@@ -40,21 +40,25 @@ export type InspectModalDeps = {
 
 export type ImportForm = ImportEvidence['import']['form'];
 
+/** Direction chrome for path rows / accordion titles. */
+export type DirectionKind = 'import' | 'export' | 'mixed';
+
 /**
  * Direction marker for an observed edge form.
  * - import / require / dynamic → right-facing blue triangle (inbound)
  * - export → left-facing cyan triangle (outbound)
+ * - mixed → purple solid circle (indeterminate — both directions)
  * Carbon triangle glyphs point up; rotation is applied via CSS class.
  */
 export type FormDirectionMarker = {
-	direction: 'import' | 'export';
+	direction: DirectionKind;
 	label: string;
 	title: string;
-	/** Host class: rotate + color (blue import / cyan export). */
+	/** Host class: rotate + color (blue import / cyan export / purple mixed). */
 	className: string;
 };
 
-/** Pure map: edge form → direction marker chrome. */
+/** Pure map: edge form → direction marker chrome (never mixed). */
 export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 	if (form === 'export') {
 		return {
@@ -88,8 +92,61 @@ export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 	};
 }
 
-/** Carbon solid blue triangle presentation (color/rotate overridden by form class). */
-function formTriStatus(marker: FormDirectionMarker): StatusPresentation {
+/**
+ * Accordion title direction for one evidence row.
+ * Facets: statement form + export facet when imported-code present + import
+ * facet when callsites present. Both directions → purple mixed/indeterminate.
+ */
+export function accordionDirectionKind(ev: ImportEvidence): DirectionKind {
+	const facets = new Set<DirectionKind>();
+	facets.add(formDirectionMarker(ev.import.form).direction);
+	if (ev.importedCode) facets.add('export');
+	if (ev.callsites.length > 0) facets.add('import');
+	if (facets.has('import') && facets.has('export')) return 'mixed';
+	if (facets.has('export')) return 'export';
+	return 'import';
+}
+
+/** Marker chrome for a resolved direction kind (import / export / mixed). */
+export function directionMarker(kind: DirectionKind): FormDirectionMarker {
+	if (kind === 'export') {
+		return {
+			direction: 'export',
+			label: 'export',
+			title: 'Export',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--export',
+		};
+	}
+	if (kind === 'mixed') {
+		return {
+			direction: 'mixed',
+			label: 'mixed',
+			title: 'Import and export',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--mixed',
+		};
+	}
+	return {
+		direction: 'import',
+		label: 'import',
+		title: 'Import',
+		className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
+	};
+}
+
+/** Status presentation for direction chrome (color/rotate via host class). */
+function directionTriStatus(marker: FormDirectionMarker): StatusPresentation {
+	if (marker.direction === 'mixed') {
+		// Indeterminate purple dot (solid circle — not PASS triangle).
+		return {
+			kind: 'incomplete',
+			axis: 'indication',
+			shape: 'circle',
+			variant: 'solid',
+			color: 'purple',
+			label: marker.label,
+			title: marker.title,
+		};
+	}
 	return {
 		kind: 'informative',
 		axis: 'indication',
@@ -101,17 +158,32 @@ function formTriStatus(marker: FormDirectionMarker): StatusPresentation {
 	};
 }
 
-function createFormTriEl(form: ImportForm): HTMLElement {
-	const marker = formDirectionMarker(form);
-	const el = createStatusIndicatorEl(formTriStatus(marker), {
+function createDirectionMarkerEl(
+	kind: DirectionKind,
+	opts: { showLabel?: boolean; form?: ImportForm } = {},
+): HTMLElement {
+	// Prefer form-specific label when painting a concrete edge form.
+	const marker =
+		opts.form !== undefined && kind !== 'mixed'
+			? formDirectionMarker(opts.form)
+			: directionMarker(kind);
+	const el = createStatusIndicatorEl(directionTriStatus(marker), {
 		size: 'xs',
-		showLabel: true,
+		showLabel: opts.showLabel ?? true,
 		className: marker.className,
 	});
-	// Atom sets inline --ui-status-color from StatusColorToken (blue only here).
-	// Clear so .atlas-inspect__form-tri--export/--import CSS can own blue vs cyan.
+	// Atom sets inline --ui-status-color from StatusColorToken.
+	// Clear so host classes own blue / cyan / purple.
 	el.style.removeProperty('--ui-status-color');
 	return el;
+}
+
+/** Path-row form marker (labeled) for statement / imported code / callsites. */
+function createFormTriEl(form: ImportForm): HTMLElement {
+	return createDirectionMarkerEl(formDirectionMarker(form).direction, {
+		showLabel: true,
+		form,
+	});
 }
 
 function appendCodeBlock(
@@ -184,20 +256,21 @@ export function emptyCallsitesNote(
 }
 
 /**
- * Accordion item title for one import site (path · Lline · form).
+ * Accordion item title text for one import site (path · Lline).
+ * Form is shown as the leading direction marker, not in the string.
  * Prefers full path when short; otherwise basename; optional specifier/toLabel;
  * hard-capped ~80 chars.
  */
 export function importSiteAccordionTitle(ev: ImportEvidence): string {
-	const { path, line, form, specifier, toLabel } = ev.import;
-	const lineForm = `L${line} · ${form}`;
-	const full = `${path} · ${lineForm}`;
+	const { path, line, specifier, toLabel } = ev.import;
+	const linePart = `L${line}`;
+	const full = `${path} · ${linePart}`;
 	if (full.length <= ACCORDION_TITLE_MAX) return full;
 
 	const base = path.includes('/')
 		? path.slice(path.lastIndexOf('/') + 1)
 		: path;
-	let title = `${base} · ${lineForm}`;
+	let title = `${base} · ${linePart}`;
 	const extra = specifier || toLabel;
 	if (extra) {
 		const withExtra = `${title} · ${extra}`;
@@ -207,6 +280,24 @@ export function importSiteAccordionTitle(ev: ImportEvidence): string {
 		return `${title.slice(0, ACCORDION_TITLE_MAX - 1)}…`;
 	}
 	return title;
+}
+
+/** Title slot content: [direction marker] path · Lline */
+function createAccordionTitleEl(ev: ImportEvidence): HTMLElement {
+	const host = document.createElement('span');
+	host.setAttribute('slot', 'title');
+	host.className = 'atlas-inspect__accordion-title';
+	// Compact glyph only — path text carries the rest
+	host.appendChild(
+		createDirectionMarkerEl(accordionDirectionKind(ev), {
+			showLabel: false,
+		}),
+	);
+	const text = document.createElement('span');
+	text.className = 'atlas-inspect__accordion-title-text';
+	text.textContent = importSiteAccordionTitle(ev);
+	host.appendChild(text);
+	return host;
 }
 
 /** Import → Imported code → Callsites sections for one evidence row. */
@@ -243,6 +334,8 @@ function appendEvidenceSections(
 			codeSec,
 			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(ev.importedCode.note)}</span>`,
 			ev.importedCode.text,
+			// Same form-direction chrome as statement / callsites
+			createFormTriEl(ev.import.form),
 		);
 	} else {
 		const note = document.createElement('p');
@@ -272,6 +365,7 @@ function appendEvidenceSections(
 				callSec,
 				`${escapeHtml(cs.path)} <span class="atlas-inspect__line-num">L${cs.line}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(cs.symbol)}</span>`,
 				cs.text,
+				createFormTriEl(ev.import.form),
 			);
 		}
 	} else {
@@ -411,6 +505,9 @@ export function createInspectModals(deps: InspectModalDeps): {
 
 		for (const ev of evidence) {
 			const item = document.createElement('cds-accordion-item');
+			// Named title slot (Carbon) so we can lead with a direction marker
+			item.appendChild(createAccordionTitleEl(ev));
+			// Accessible fallback when slot paint lags / screen readers use attr
 			item.setAttribute('title', importSiteAccordionTitle(ev));
 			if (openFirstOnly) item.setAttribute('open', '');
 

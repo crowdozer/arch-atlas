@@ -12,7 +12,9 @@ import {
 } from '@core/index.ts';
 import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
+	accordionDirectionKind,
 	callsitesTitle,
+	directionMarker,
 	emptyCallsitesNote,
 	formDirectionMarker,
 	importSiteAccordionTitle,
@@ -133,9 +135,9 @@ describe('inspect surface-claim precision (Program + mass)', () => {
 });
 
 describe('importSiteAccordionTitle', () => {
-	it('uses full path · Lline · form when short enough', () => {
+	it('uses full path · Lline when short enough (form is the marker)', () => {
 		expect(importSiteAccordionTitle(sampleEvidence())).toBe(
-			'src/client/app.ts · L42 · import',
+			'src/client/app.ts · L42',
 		);
 	});
 
@@ -145,12 +147,13 @@ describe('importSiteAccordionTitle', () => {
 		const title = importSiteAccordionTitle(
 			sampleEvidence({ path: longPath, line: 7, form: 'require' }),
 		);
-		expect(title.startsWith('module.ts · L7 · require')).toBe(true);
+		expect(title.startsWith('module.ts · L7')).toBe(true);
 		expect(title.length).toBeLessThanOrEqual(80);
 		expect(title).not.toContain('very/deeply');
+		expect(title).not.toContain('require');
 	});
 
-	it('keeps full path without specifier when path · Lline · form fits under the cap', () => {
+	it('keeps full path without specifier when path · Lline fits under the cap', () => {
 		const title = importSiteAccordionTitle(
 			sampleEvidence({
 				path: 'src/deep/nested/importer.ts',
@@ -159,7 +162,7 @@ describe('importSiteAccordionTitle', () => {
 				specifier: './helpers',
 			}),
 		);
-		expect(title).toBe('src/deep/nested/importer.ts · L3 · import');
+		expect(title).toBe('src/deep/nested/importer.ts · L3');
 	});
 
 	it('includes specifier on basename fallback when it fits', () => {
@@ -174,7 +177,7 @@ describe('importSiteAccordionTitle', () => {
 				toLabel: 'util',
 			}),
 		);
-		expect(title).toBe('importer.ts · L9 · import · ./util');
+		expect(title).toBe('importer.ts · L9 · ./util');
 		expect(title.length).toBeLessThanOrEqual(80);
 	});
 
@@ -213,5 +216,79 @@ describe('formDirectionMarker', () => {
 		expect(m.title).toBe('Export');
 		expect(m.className).toContain('atlas-inspect__form-tri--export');
 		expect(m.className).not.toContain('--import');
+	});
+});
+
+describe('accordionDirectionKind / directionMarker', () => {
+	it('statement-only import edge → import', () => {
+		expect(accordionDirectionKind(sampleEvidence())).toBe('import');
+	});
+
+	it('statement-only export edge → export', () => {
+		expect(
+			accordionDirectionKind(sampleEvidence({ form: 'export' })),
+		).toBe('export');
+	});
+
+	it('import form + imported code + callsites → mixed (both facets)', () => {
+		const ev: ImportEvidence = {
+			...sampleEvidence(),
+			importedCode: {
+				epistemic: 'observed',
+				path: 'src/hooks/useUser.ts',
+				startLine: 1,
+				endLine: 10,
+				text: 'export function useUser() {}',
+				note: 'export surface',
+			},
+			callsites: [
+				{
+					epistemic: 'inferred',
+					path: 'src/pages/Profile.tsx',
+					line: 4,
+					symbol: 'useUser',
+					text: 'useUser();',
+				},
+			],
+		};
+		expect(accordionDirectionKind(ev)).toBe('mixed');
+	});
+
+	it('import form + imported code only → mixed (import form + export facet)', () => {
+		const ev: ImportEvidence = {
+			...sampleEvidence(),
+			importedCode: {
+				epistemic: 'observed',
+				path: 'src/hooks/useUser.ts',
+				startLine: 1,
+				endLine: 4,
+				text: 'export const x = 1;',
+				note: 'export surface',
+			},
+		};
+		expect(accordionDirectionKind(ev)).toBe('mixed');
+	});
+
+	it('export form + callsites → mixed', () => {
+		const ev: ImportEvidence = {
+			...sampleEvidence({ form: 'export' }),
+			callsites: [
+				{
+					epistemic: 'inferred',
+					path: 'src/a.ts',
+					line: 2,
+					symbol: 'x',
+					text: 'x',
+				},
+			],
+		};
+		expect(accordionDirectionKind(ev)).toBe('mixed');
+	});
+
+	it('directionMarker mixed uses purple indeterminate class', () => {
+		const m = directionMarker('mixed');
+		expect(m.direction).toBe('mixed');
+		expect(m.className).toContain('--mixed');
+		expect(m.title).toMatch(/import and export/i);
 	});
 });
