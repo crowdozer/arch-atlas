@@ -103,11 +103,15 @@ function formTriStatus(marker: FormDirectionMarker): StatusPresentation {
 
 function createFormTriEl(form: ImportForm): HTMLElement {
 	const marker = formDirectionMarker(form);
-	return createStatusIndicatorEl(formTriStatus(marker), {
+	const el = createStatusIndicatorEl(formTriStatus(marker), {
 		size: 'xs',
 		showLabel: true,
 		className: marker.className,
 	});
+	// Atom sets inline --ui-status-color from StatusColorToken (blue only here).
+	// Clear so .atlas-inspect__form-tri--export/--import CSS can own blue vs cyan.
+	el.style.removeProperty('--ui-status-color');
+	return el;
 }
 
 function appendCodeBlock(
