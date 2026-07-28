@@ -1,0 +1,96 @@
+/*
+ * ---- Arch Atlas palette bridge (zinc shell + teal interactive + purple select) ----
+ * Hex values in this block are canonical for product tokens.
+ * TS chart/SVG mirror: `src/core/view/chartPalette.ts` — must stay in lockstep.
+ * g100 dump above is left raw; overrides apply only under .cds--g100.
+ */
+html.cds--g100,
+body.cds--g100,
+.cds--g100 {
+  /* Product accents (selection is purple — not brand teal) */
+  --atlas-select: #c4b5fd; /* violet-300 — labels / icons on zinc */
+  --atlas-select-strong: #a78bfa; /* violet-400 — borders, alluvial stroke */
+  --atlas-select-deep: #5b21b6; /* violet-800 — filled spine bar */
+  --atlas-select-soft: rgb(139 92 246 / 0.18); /* violet-500 @ 18% tile bg */
+  --atlas-select-ring: rgb(167 139 250 / 0.45);
+
+  /* Drill-target affordance (hover preview of where a click navigates) */
+  --atlas-drill: #67e8f9; /* cyan-300 — label text */
+  --atlas-drill-strong: #22d3ee; /* cyan-400 — chip border / export terminator stroke */
+  --atlas-drill-deep: #155e75; /* cyan-800 — chip fill */
+
+  /*
+   * Chart band families (alluvial) — same hues as chartPalette TEAL / hops.
+   * Terminators use contrast family (yellow wrap on import; cyan wrap on export).
+   */
+  --atlas-export: #eab308; /* yellow-500 — export bands + import terminator stroke */
+  --atlas-export-pkg: #ca8a04; /* yellow-600 */
+  --atlas-export-other: #a16207; /* yellow-700 */
+  --atlas-export-term-text: #fde68a; /* yellow-200 — terminator label */
+  --atlas-export-term-bg-stroke: #ca8a04; /* yellow-600 — terminator chip border */
+  /* Direction · import — brand teal (not CDS status-blue) for UI markers */
+  --atlas-import: var(--cds-interactive, #14b8a6); /* teal-500 = brand interactive */
+  --atlas-import-term-stroke: #22d3ee; /* cyan-400 — export-column terminator */
+  --atlas-import-term-text: #a5f3fc; /* cyan-200 */
+  --atlas-import-term-bg-stroke: #06b6d4; /* cyan-500 */
+  /* Import hop ladder lives only in chartPalette (Carbon color.scale); no CSS hop paint */
+
+  --cds-background: #09090b; /* zinc-950 */
+  --cds-background-hover: rgba(63, 63, 70, 0.35);
+  --cds-background-active: rgba(63, 63, 70, 0.5);
+  --cds-background-selected: rgba(63, 63, 70, 0.4);
+  --cds-background-brand: #0d9488; /* teal-600 — brand, not emerald */
+  --cds-layer-01: #18181b; /* zinc-900 */
+  --cds-layer-02: #27272a; /* zinc-800 */
+  --cds-layer-03: #3f3f46; /* zinc-700 */
+  --cds-layer: var(--cds-layer-01);
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
+  --cds-layer-selected: #27272a;
+  --cds-field-01: #09090b;
+  --cds-field-02: #18181b;
+  --cds-field: var(--cds-field-01);
+  --cds-field-hover: #18181b;
+  --cds-border-subtle-00: #27272a;
+  --cds-border-subtle-01: #3f3f46;
+  --cds-border-strong-01: #52525b;
+  --cds-border-interactive: #2dd4bf; /* teal-400 */
+  --cds-text-primary: #fafafa; /* zinc-50 */
+  --cds-text-secondary: #a1a1aa; /* zinc-400 */
+  --cds-text-placeholder: #71717a; /* zinc-500 */
+  --cds-text-on-color: #f0fdfa; /* teal-50 */
+  --cds-text-helper: #71717a;
+  --cds-link-primary: #2dd4bf;
+  --cds-link-primary-hover: #5eead4;
+  --cds-link-secondary: #a1a1aa;
+  --cds-link-inverse: #0d9488;
+  --cds-icon-primary: #e4e4e7;
+  --cds-icon-secondary: #a1a1aa;
+  --cds-icon-on-color: #f0fdfa;
+  --cds-icon-interactive: #2dd4bf;
+  --cds-interactive: #14b8a6; /* teal-500 */
+  --cds-focus: #2dd4bf;
+  --cds-focus-inset: #09090b;
+  --cds-focus-inverse: #14b8a6;
+  --cds-button-primary: #0d9488;
+  --cds-button-primary-hover: #14b8a6;
+  --cds-button-primary-active: #0f766e;
+  --cds-button-secondary: #3f3f46;
+  --cds-button-secondary-hover: #52525b;
+  --cds-button-secondary-active: #27272a;
+  --cds-button-tertiary: #e4e4e7;
+  --cds-button-tertiary-hover: #fafafa;
+  /* Status = CDS presets (never brand teal for PASS/FAIL) */
+  --cds-status-red: #fa4d56;
+  --cds-status-orange: #ff832b;
+  --cds-status-yellow: #f1c21b;
+  --cds-status-green: #42be65;
+  --cds-status-blue: #4589ff;
+  --cds-status-purple: #a78bfa; /* align with --atlas-select-strong */
+  --cds-status-gray: #8d8d8d;
+  /* Support aliases status (Sentinel pattern) */
+  --cds-support-error: var(--cds-status-red, #fa4d56);
+  --cds-support-success: var(--cds-status-green, #42be65);
+  --cds-support-warning: var(--cds-status-yellow, #f1c21b);
+  --cds-support-info: var(--cds-status-blue, #4589ff);
+}

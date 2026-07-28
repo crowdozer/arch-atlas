@@ -1,0 +1,37 @@
+/* FOUC gate: cds-* only upgrade after deferred register.ts. Hide unstyled
+ * light-DOM hosts until customElements define (shadow + CE styles attach).
+ * Modals: display:none so closed slot text never takes layout space.
+ * Other hosts: visibility:hidden to reduce pop-in jump vs wrong chrome. */
+cds-modal:not(:defined) {
+  display: none !important;
+}
+
+:where(
+  cds-skip-to-content,
+  cds-header,
+  cds-header-name,
+  cds-button,
+  cds-tag,
+  cds-checkbox,
+  cds-file-uploader,
+  cds-file-uploader-drop-container,
+  cds-dropdown,
+  cds-dropdown-item,
+  cds-search,
+  cds-accordion,
+  cds-accordion-item,
+  cds-content-switcher,
+  cds-content-switcher-item,
+  cds-inline-notification,
+  cds-code-snippet,
+  cds-contained-list,
+  cds-modal-header,
+  cds-modal-close-button,
+  cds-modal-label,
+  cds-modal-heading,
+  cds-modal-body,
+  cds-modal-footer,
+  cds-modal-footer-button
+):not(:defined) {
+  visibility: hidden;
+}

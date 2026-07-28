@@ -39,8 +39,12 @@ TS chart/SVG → chartPalette hex        must match CSS token values; no getComp
 
 | Layer | Owner file | Owns |
 | ----- | ---------- | ---- |
-| g100 dump | `src/styles/carbon-theme.css` (upper block) | Stock Carbon g100 token table |
-| Bridge + product | same file, `.cds--g100` bridge block | Zinc/teal CDS overrides, `--atlas-*`, support aliases |
+| FOUC gate | `src/styles/carbon-fouc.css` | `cds-*:not(:defined)` hide until CE register |
+| g100 dump | `src/styles/carbon-g100.css` | Stock Carbon g100 token table — do not product-edit |
+| Bridge + product tokens | `src/styles/atlas-bridge.css` | Zinc/teal CDS overrides, `--atlas-*`, support aliases |
+| Product component CSS | `src/styles/components/product.css` | Shell, chart, catalog, inspect, splash (post-bridge rules) |
+| Theme barrel | `src/styles/carbon-theme.css` | Ordered `@import` only (FOUC → g100 → bridge → product) |
+| Entry | `src/styles/global.css` | Tailwind + carbon-theme barrel + motion |
 | Chart hex mirror | `src/core/view/chartPalette.ts` | Carbon `color.scale` + SVG (scale, hops, spine, ribbon fallbacks) |
 | Status geometry | `src/shell/statusIndicator.ts` | Shape + `--cds-status-*` via `statusColorCssVar` |
 
@@ -87,7 +91,7 @@ Carbon **g100** on `.cds--chart-holder[data-carbon-theme=g100]` sets:
 
 Atlas paints **light text on dark zinc chips**. Do **not** drive `rect.node-text-bg` from `--cds-layer-inverse-absolute` (resolves to white under the holder). Chart also forces `--cds-layer-01: transparent` on `.ui-carbon-chart`, so shell layer tokens are unusable for chips.
 
-**Current paint:** pin zinc-900 (`rgb(24 24 27 / 0.92)`) on `rect.node-text-bg`; selection/drill chips use `--atlas-select-deep` / `--atlas-drill-deep`. See `carbon-theme.css` alluvial label rules.
+**Current paint:** pin zinc-900 (`rgb(24 24 27 / 0.92)`) on `rect.node-text-bg`; selection/drill chips use `--atlas-select-deep` / `--atlas-drill-deep`. See `components/product.css` alluvial label rules.
 
 ## Shade modification (heatmap precedent)
 
@@ -109,6 +113,11 @@ Full heatmap / severity-ramp helpers are **not** landed yet; when a consumer app
 
 | Concern | Path |
 | ------- | ---- |
-| Theme + bridge | `src/styles/carbon-theme.css` |
+| Theme barrel (compat) | `src/styles/carbon-theme.css` |
+| FOUC gate | `src/styles/carbon-fouc.css` |
+| g100 dump | `src/styles/carbon-g100.css` |
+| Palette bridge | `src/styles/atlas-bridge.css` |
+| Product components | `src/styles/components/product.css` |
+| Global entry | `src/styles/global.css` |
 | Chart hex | `src/core/view/chartPalette.ts` |
 | Status presentation | `src/shell/statusIndicator.ts` |

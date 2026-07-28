@@ -1,0 +1,1798 @@
+/* Shell */
+body.cds--g100 {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--cds-background, #09090b);
+  color: var(--cds-text-primary, #fafafa);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+/* UI shell — zinc header with teal product name.
+ * Carbon cds-header defaults to position:fixed (covers the next sibling).
+ * Keep it in document flow so the workspace sub-bar (Clear session) stays visible.
+ */
+cds-header,
+cds-header.atlas-header,
+.atlas-header {
+  --cds-background: #18181b;
+  --cds-background-hover: #27272a;
+  --cds-border-subtle: #27272a;
+  --cds-text-primary: #fafafa;
+  --cds-text-secondary: #a1a1aa;
+  --cds-link-primary: #fafafa;
+  --cds-link-primary-hover: #2dd4bf;
+  /* Carbon :host(cds-header) is position:fixed + inset 0 — must beat shadow cascade */
+  position: relative !important;
+  inset: auto !important;
+  z-index: 10;
+  background: var(--cds-background, #18181b);
+  border-block-end: 1px solid var(--cds-border-subtle, #27272a);
+  /* Light-DOM siblings (tagline / on-device note) sit beside HeaderName */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-block-size: 3rem;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Workspace sub-bar: visible only when session active (JS toggles .hidden / .flex) */
+#atlas-subbar {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  min-block-size: 2.5rem;
+  background: var(--cds-background, #09090b);
+}
+
+#atlas-subbar.flex {
+  display: flex;
+}
+
+/* Ensure Clear session remains visible against the sub-bar */
+#atlas-subbar .atlas-reset,
+cds-button.atlas-reset {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+/* Carbon header-name: prefix "Arch" (zinc) + product slot "Atlas" (teal) */
+.ui-header-name,
+cds-header-name.ui-header-name {
+  color: var(--cds-link-primary, #2dd4bf) !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  --cds-link-primary: #2dd4bf;
+}
+
+cds-header-name.ui-header-name::part(prefix) {
+  color: var(--cds-text-primary, #fafafa);
+}
+
+/* Tiles — Carbon layer surface, square corners (g100 / product shell) */
+.ui-tile,
+cds-tile.ui-tile {
+  display: block;
+  background: var(--cds-layer-01, #18181b);
+  border: 1px solid var(--cds-border-subtle, #27272a);
+  border-radius: 0;
+  color: var(--cds-text-primary, #fafafa);
+}
+
+.ui-tile--padding-sm { padding: 0.75rem; }
+.ui-tile--padding-md { padding: 1rem; }
+.ui-tile--padding-lg { padding: 1.25rem; }
+.ui-tile--dashed { border-style: dashed; border-color: var(--cds-layer-03, #3f3f46); }
+.ui-tile--muted { opacity: 0.65; }
+
+.ui-tile__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cds-text-secondary, #a1a1aa);
+  margin-bottom: 0.35rem;
+}
+
+/*
+ * Tags — host-level fixes for Carbon cds-tag.
+ * Default sm height (1.125rem) clips label glyphs; open the host box so text
+ * sits clear of the pill radius everywhere tags appear (splash, catalog, subbar).
+ */
+.ui-tag,
+cds-tag.ui-tag,
+cds-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  /* Beat :host(cds-tag) min-block-size: 1.125rem + tight padding */
+  min-block-size: 1.375rem !important;
+  height: auto !important;
+  max-inline-size: none;
+  padding-block: 0.15rem !important;
+  padding-inline: 0.55rem !important;
+  line-height: 1.25;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+/* Product export yellow (Carbon has no type=yellow) — outbound direction chips */
+cds-tag.ui-tag--yellow {
+  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, #000) !important;
+  color: var(--atlas-export, #eab308) !important;
+}
+
+/* Carbon charts on zinc */
+.ui-carbon-chart .cds--cc--chart-wrapper,
+.ui-carbon-chart .cds--chart-holder,
+.ui-carbon-chart [class*='chart-holder'],
+.ui-carbon-chart [class*='chart-wrapper'] {
+  background: transparent !important;
+}
+
+.ui-carbon-chart {
+  --cds-layer: transparent;
+  --cds-layer-01: transparent;
+  --cds-background: transparent;
+  /*
+   * Carbon chart-holder[data-carbon-theme=g100] redefines absolute layers
+   * (inverse → white). Label chips pin zinc via rgb() below; these tokens
+   * remain for any non-overridden chart chrome.
+   */
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
+}
+
+/* Beat Carbon theme absolute-layer flip on the chart holder itself. */
+.ui-carbon-chart .cds--chart-holder,
+.ui-carbon-chart [class*='chart-holder'] {
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
+}
+
+.ui-carbon-chart__holder {
+  width: 100%;
+  min-height: 200px;
+}
+
+.ui-carbon-chart__loading {
+  font-size: 0.875rem;
+  color: var(--cds-text-placeholder, #71717a);
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  min-height: 8rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Program enrich: keep stage from collapsing while chart is cleared. */
+.atlas-stage__chart--loading {
+  min-height: 12rem;
+}
+
+.ui-carbon-chart .cds--cc--alluvial rect.node {
+  fill: var(--cds-layer-02, #27272a) !important;
+  stroke: var(--cds-layer-03, #3f3f46) !important;
+  stroke-width: 1px;
+}
+
+.ui-carbon-chart .cds--cc--alluvial rect.node-text-bg {
+  /*
+   * Zinc-900 chip under light labels. Do NOT use --cds-layer-inverse-absolute:
+   * Carbon g100 sets that to #ffffff on .cds--chart-holder[data-carbon-theme=g100]
+   * (white chip + black text). Chart also forces --cds-layer-01 transparent, so
+   * shell layer tokens are unusable here — pin zinc-900 explicitly.
+   */
+  fill: rgb(24 24 27 / 0.92) !important;
+  stroke: none;
+}
+
+.ui-carbon-chart .cds--cc--alluvial text.node-text {
+  fill: var(--cds-icon-primary, #e4e4e7) !important;
+  font-weight: 500;
+}
+
+/*
+ * Focus-file spine (category File): purple selection accent so the hub
+ * center reads as the active selection delineator (not brand teal).
+ */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node {
+  fill: var(--atlas-select-deep, #5b21b6) !important;
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
+  stroke-width: 2.5px !important;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node-text-bg {
+  fill: color-mix(
+    in srgb,
+    var(--atlas-select-deep, #5b21b6) 92%,
+    transparent
+  ) !important;
+  stroke: var(--atlas-select-strong, #a78bfa);
+  stroke-width: 1px;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine text.node-text {
+  fill: var(--atlas-select, #c4b5fd) !important;
+  font-weight: 600;
+}
+
+/*
+ * Drill-target label (hover): cyan chip for the row a click would open.
+ * Exclude active File spine — purple selection wins there.
+ */
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-drill-target:not(.atlas-alluvial-file-spine)
+  rect.node-text-bg {
+  fill: color-mix(
+    in srgb,
+    var(--atlas-drill-deep, #155e75) 92%,
+    transparent
+  ) !important;
+  stroke: var(--atlas-drill-strong, #22d3ee);
+  stroke-width: 1px;
+}
+
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-drill-target:not(.atlas-alluvial-file-spine)
+  text.node-text {
+  fill: var(--atlas-drill, #67e8f9) !important;
+  font-weight: 600;
+}
+
+/* Column header "File" (when text remains) + Carbon document icon inject */
+.ui-carbon-chart .cds--cc--alluvial text.atlas-alluvial-file-header {
+  fill: var(--atlas-select-strong, #a78bfa) !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon {
+  pointer-events: none;
+}
+
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon svg,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-header-icon path {
+  fill: var(--atlas-select-strong, #a78bfa);
+  stroke: var(--atlas-select-strong, #a78bfa);
+}
+
+/*
+ * Pad rails: layer holders only. Bars/chips hidden; no hit target (in + out).
+ * Pad bands = **import free-source scaffolding only** (in-rail endpoints).
+ * Export File→out-rail→target ribbons stay painted (real File mass).
+ * Residual rail tooltips cleaned in alluvialTooltipCustomHTML.
+ */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail {
+  pointer-events: none !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail * {
+  pointer-events: none !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail rect.node-text-bg {
+  opacity: 0 !important;
+  stroke: none !important;
+  fill: none !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail text.node-text,
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail g[id*='alluvial-node-title'] {
+  display: none !important;
+}
+/* Import free-source scaffold ribbons only — not export out-rail mass.
+ * Bands are filled ribbons (mass in fill); zero fill-opacity + stroke-opacity. */
+.ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-pad-band,
+.ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-rail-link {
+  pointer-events: none !important;
+  stroke-opacity: 0 !important;
+  fill-opacity: 0 !important;
+  opacity: 0 !important;
+}
+
+/*
+ * Hub terminators — contrast with column family (not same-family fill):
+ * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
+ * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
+ * - .atlas-alluvial-export-terminator = **cyan** wrap → Exports* free sources (yellow side)
+ * Tokens: --atlas-export* / --atlas-import-term* (mirror chartPalette).
+ */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node {
+  stroke: var(--atlas-export, #eab308) !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: var(--atlas-export-term-text, #fde68a) !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node-text-bg {
+  stroke: var(--atlas-export-term-bg-stroke, #ca8a04) !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Cyan wrap on yellow export columns (reverse free sources) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node {
+  stroke: var(--atlas-import-term-stroke, #22d3ee) !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: var(--atlas-import-term-text, #a5f3fc) !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node-text-bg {
+  stroke: var(--atlas-import-term-bg-stroke, #06b6d4) !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Purple wrap for package / node_modules terminators (External leaves) */
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 1 !important;
+  paint-order: stroke fill;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator text.node-text {
+  font-weight: 600 !important;
+  fill: var(--atlas-select, #c4b5fd) !important;
+}
+.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node-text-bg {
+  stroke: var(--atlas-select-strong, #a78bfa) !important;
+  stroke-width: 1.5px !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Drill-down affordance: clickable nodes and bands */
+.ui-carbon-chart .cds--cc--alluvial .node-group,
+.ui-carbon-chart .cds--cc--alluvial g.node,
+.ui-carbon-chart .cds--cc--alluvial rect.node,
+.ui-carbon-chart .cds--cc--alluvial text.node-text,
+.ui-carbon-chart .cds--cc--alluvial path.link {
+  cursor: pointer;
+}
+
+/*
+ * Label focus: client sets opacity on title groups during ribbon/node hover
+ * (Carbon only dims path.link). Smooth the transition. Port of Sentinel.
+ */
+.ui-carbon-chart .cds--cc--alluvial g[id*='alluvial-node-title'] {
+  transition: opacity 120ms ease;
+}
+
+/*
+ * Hub focus class contract (SoR: .grok/reference/hub-focus-behavior.md §5).
+ * Holder gets .ui-alluvial-label-dimming while a FocusPlan is active.
+ * Classes applied by src/stage/focus/focusApply.ts — not Carbon sourceLinks.
+ *
+ * | Target        | Focus                              | Dim                                      |
+ * |---------------|------------------------------------|------------------------------------------|
+ * | label group   | .ui-alluvial-label-focus           | non-focus titles opacity 0.3 !important  |
+ * | carbon path   | .atlas-alluvial-carbon-link-focus  | .atlas-alluvial-carbon-link-dim          |
+ * | straighten    | .atlas-alluvial-external-straight--focus | non-focus straighten 0.3           |
+ * | pad-band      | never focus                        | undrawn (pointer-events none)            |
+ *
+ * No .ui-alluvial-external-pkg-focus blanket tree-dim — package reverse-path
+ * plan lights the correct file bands (LogicalFocusGraph).
+ */
+/* External straighten: filled ribbons (pointer-events on fill area) */
+.ui-carbon-chart path.link.atlas-alluvial-external-straight,
+.ui-carbon-chart__holder path.link.atlas-alluvial-external-straight {
+  pointer-events: fill;
+  transition: fill-opacity 120ms ease, stroke-opacity 120ms ease;
+}
+.ui-alluvial-label-dimming
+  path.link.atlas-alluvial-external-straight:not(
+    .atlas-alluvial-external-straight--focus
+  ) {
+  fill-opacity: 0.3 !important;
+  stroke-opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming
+  path.link.atlas-alluvial-external-straight.atlas-alluvial-external-straight--focus {
+  fill-opacity: 0.95 !important;
+  stroke-opacity: 0.95 !important;
+}
+
+/* Label chips: class-driven so Carbon cannot re-brighten unfocused titles */
+.ui-alluvial-label-dimming
+  g.node-group:not(.ui-alluvial-label-focus)
+  g[id*='alluvial-node-title'] {
+  opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming g.node-group.ui-alluvial-label-focus g[id*='alluvial-node-title'] {
+  opacity: 1 !important;
+}
+
+/* Carbon file→file ribbons — FocusPlan both-ends / reverse-path subset.
+ * Mass is fill (rewriteLinkRibbons); keep stroke-opacity for residual stroke. */
+.ui-alluvial-label-dimming path.link.atlas-alluvial-carbon-link-dim {
+  fill-opacity: 0.3 !important;
+  stroke-opacity: 0.3 !important;
+}
+.ui-alluvial-label-dimming path.link.atlas-alluvial-carbon-link-focus {
+  fill-opacity: 0.95 !important;
+  stroke-opacity: 0.95 !important;
+}
+
+/* Back is now cds-button ghost — keep layout + hide when at root */
+.atlas-alluvial-back {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.atlas-alluvial-back.hidden {
+  display: none !important;
+}
+
+/* —— Workspace shell: left drawer + full-bleed stage —— */
+/* Base is flex when visible; .hidden (two-class) beats Tailwind .hidden alone
+   and the old always-none rule that blocked upload reveal. */
+.atlas-workspace {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.atlas-workspace.hidden {
+  display: none;
+}
+
+.atlas-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, 100%);
+  min-width: 16rem;
+  max-width: 26rem;
+  flex-shrink: 0;
+  border-inline-end: 1px solid var(--cds-border-subtle-00, #27272a);
+  /* Near zinc-950; slightly elevated from --cds-background */
+  background: color-mix(in srgb, var(--cds-background, #09090b) 92%, #fff);
+  min-height: 0;
+}
+
+.atlas-drawer__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.atlas-drawer__panel--tree {
+  flex: 1 1 48%;
+  border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
+  min-height: 12rem;
+}
+
+.atlas-drawer__panel--catalog {
+  flex: 1 1 52%;
+  min-height: 12rem;
+}
+
+.atlas-drawer__head {
+  padding: 0.65rem 0.75rem 0.35rem;
+  flex-shrink: 0;
+}
+
+.atlas-drawer__tools {
+  padding: 0 0.75rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.atlas-drawer__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.75rem 0.75rem;
+}
+
+/* Tree filter: Carbon search fills drawer tools row */
+.atlas-tree-search,
+cds-search.atlas-tree-search {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  --cds-field: #09090b;
+  --cds-field-hover: #18181b;
+  --cds-border-strong: #3f3f46;
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-text-placeholder: #52525b;
+  --cds-icon-primary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+}
+
+.atlas-section-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+}
+
+.atlas-section-label__hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #52525b;
+}
+
+.atlas-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  /* Clip both axes so a tall Carbon SVG cannot push past the viewport */
+  overflow: hidden;
+  background: var(--cds-background, #09090b);
+  /* Stage width drives label collapse (drawer steals viewport width) */
+  container-type: inline-size;
+  container-name: atlas-stage;
+}
+
+/*
+ * Stacked stage bar: title/caption band full width, tools band below.
+ * Tools never share a row with title → no text/control collision.
+ */
+.atlas-stage__bar {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
+}
+
+.atlas-stage__title-band {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.atlas-stage__title-cluster {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.atlas-stage__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+/* Exact AtlasView.type — softer than the uppercase title */
+.atlas-stage__view-type {
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--cds-text-placeholder, #71717a);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/*
+ * Tools band: full width, right-aligned, wrap under pressure.
+ * External label + hide-label dropdown avoids Carbon form-item stacking
+ * the label above the field.
+ */
+.atlas-stage__controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem 0.65rem;
+  min-width: 0;
+  width: 100%;
+  min-height: 2rem;
+}
+
+.atlas-stage__control-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  height: 2rem;
+  min-width: 0;
+}
+
+/* Depth leaves layout when disabled (package/module views free space) */
+.atlas-stage__control-group.is-depth-disabled {
+  display: none;
+}
+
+.atlas-stage__control-label {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #a1a1aa; /* zinc-400 */
+  white-space: nowrap;
+  line-height: 2rem;
+  user-select: none;
+}
+
+/* Mid stage widths: rely on titleText / aria; free ~12rem of strip */
+@container atlas-stage (max-width: 52rem) {
+  .atlas-stage__control-label {
+    display: none;
+  }
+}
+
+/*
+ * Carbon form-items default to flex: 1 1 auto + column layout.
+ * Fixed field widths — sized for honest labels (Export surface / Exact …)
+ * so selected text is not clipped in the closed trigger.
+ */
+cds-dropdown.atlas-stage__weight,
+.atlas-stage__weight {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 12.5rem !important;
+  flex-direction: row !important;
+  width: 12.5rem !important;
+  max-width: 12.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
+cds-dropdown.atlas-stage__depth,
+.atlas-stage__depth {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 5rem !important;
+  flex-direction: row !important;
+  width: 5rem !important;
+  max-width: 5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
+cds-dropdown.atlas-stage__precision,
+.atlas-stage__precision {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 0 0 11.5rem !important;
+  flex-direction: row !important;
+  width: 11.5rem !important;
+  max-width: 11.5rem !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+
+/* Compact segmented Drill|Inspect — native <button> so aria-pressed is on the focusable control */
+.atlas-stage__mode {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  align-self: center;
+  height: 2rem;
+  border: 1px solid var(--cds-layer-03, #3f3f46);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  background: var(--cds-layer-01, #18181b);
+  position: relative;
+  z-index: 1;
+}
+
+button.atlas-stage__mode-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 0;
+  height: 2rem;
+  max-block-size: 2rem;
+  margin: 0;
+  padding: 0 0.65rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cds-text-secondary, #a1a1aa);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+}
+
+button.atlas-stage__mode-btn + button.atlas-stage__mode-btn {
+  border-inline-start: 1px solid var(--cds-layer-03, #3f3f46);
+}
+
+button.atlas-stage__mode-btn:hover {
+  background: rgba(141, 141, 141, 0.12);
+  color: var(--cds-icon-primary, #e4e4e7);
+}
+
+button.atlas-stage__mode-btn:focus {
+  outline: none;
+}
+
+button.atlas-stage__mode-btn:focus-visible {
+  outline: 2px solid var(--cds-focus, #2dd4bf);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Active selection — purple (house selection accent, not brand teal) */
+button.atlas-stage__mode-btn.is-active {
+  background: var(--atlas-select-soft, rgb(139 92 246 / 0.18));
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+button.atlas-stage__mode-btn.is-active:hover {
+  background: color-mix(
+    in srgb,
+    var(--atlas-select-strong, #a78bfa) 26%,
+    transparent
+  );
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+cds-dropdown.atlas-stage__weight,
+cds-dropdown.atlas-stage__depth,
+cds-dropdown.atlas-stage__precision {
+  position: relative;
+  z-index: 2; /* open list above mode segment */
+}
+
+/* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
+/* Unavailable feature alert — thinner than sm, more airy padding */
+.atlas-unavailable-modal::part(dialog) {
+  max-inline-size: 18rem; /* ~288px; Carbon xs is still wide on some builds */
+  inline-size: min(18rem, calc(100vw - 2rem));
+  overflow: hidden; /* clip any footer/button edge overflow */
+}
+
+/* Light-DOM children (header/body/footer) sit inside the dialog */
+.atlas-unavailable-modal cds-modal-header {
+  padding: 1.35rem 1.35rem 0.85rem !important;
+}
+
+.atlas-unavailable-modal cds-modal-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.atlas-unavailable-modal cds-modal-heading {
+  margin: 0.25rem 0 0 !important;
+  padding-right: 1.75rem; /* clear close button */
+  line-height: 1.35;
+}
+
+.atlas-unavailable-modal cds-modal-body {
+  padding: 0.85rem 1.35rem 1.35rem !important;
+}
+
+/*
+ * Carbon modal footers are a fixed 4rem row with edge-to-edge 4rem buttons.
+ * Padding on the footer host (or shrinking the dialog) made the OK button
+ * overflow the dialog bounds. Keep the footer flush; air lives in header/body.
+ */
+.atlas-unavailable-modal cds-modal-footer {
+  box-sizing: border-box;
+  block-size: 4rem !important;
+  padding: 0 !important;
+  gap: 0;
+  overflow: hidden;
+}
+
+.atlas-unavailable-modal cds-modal-footer-button {
+  /* Single primary action: still half-width (Carbon alert pattern), never wider than the dialog */
+  flex: 0 1 50%;
+  box-sizing: border-box;
+  block-size: 4rem !important;
+  inline-size: 50% !important;
+  max-inline-size: 50%;
+  min-inline-size: 0;
+}
+
+.atlas-unavailable-modal__body-text {
+  margin: 0;
+  padding: 0.35rem 0 0.15rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--cds-icon-primary, #e4e4e7);
+}
+
+.atlas-inspect-modal cds-modal-header,
+.atlas-inspect-modal__header {
+  display: block;
+  box-sizing: border-box;
+  padding: 1rem 3rem 0.5rem 1rem;
+  margin: 0 0 0.25rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.atlas-inspect-modal cds-modal-label {
+  display: block;
+  margin: 0 0 0.25rem;
+  color: var(--cds-text-secondary, #a1a1aa);
+  font-size: 0.75rem;
+  line-height: 1.333;
+  letter-spacing: 0.02em;
+}
+
+.atlas-inspect-modal cds-modal-heading {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #f4f4f5;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.atlas-inspect-modal cds-modal-body,
+.atlas-inspect-modal__body {
+  display: block;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem 1rem;
+  margin: 0;
+}
+
+/* Inspect modal body content */
+.atlas-inspect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-block-size: min(60vh, 28rem);
+  overflow: auto;
+  font-size: 0.8125rem;
+}
+
+.atlas-inspect__empty {
+  color: #a1a1aa;
+  margin: 0;
+}
+
+.atlas-inspect__meta {
+  margin: 0;
+  color: #71717a;
+  font-size: 0.75rem;
+}
+
+/* Inspect banner is cds-inline-notification */
+.atlas-inspect__banner,
+cds-inline-notification.atlas-inspect__banner {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+/* Per-site accordion (mirrors catalog accordion zinc/teal tokens) */
+.atlas-inspect-accordion {
+  width: 100%;
+  --cds-layer: #18181b;
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
+  --cds-layer-selected: rgb(13 148 136 / 0.15);
+  --cds-border-subtle: #27272a;
+  --cds-border-subtle-selected: #3f3f46;
+  --cds-text-primary: #f4f4f5;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #e4e4e7;
+  --cds-icon-secondary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+  --cds-link-primary: #2dd4bf;
+}
+
+.atlas-inspect-accordion cds-accordion-item {
+  border-color: #27272a;
+}
+
+/* Expanded site body: Statement → Imported code → Callsites */
+.atlas-inspect__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.15rem 0 0.35rem;
+  padding-left: 16px;
+  min-width: 0;
+}
+
+.atlas-inspect__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.atlas-inspect__section-title {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  margin: 0 0 0.15rem;
+}
+
+.atlas-inspect__section-empty {
+  margin: 0;
+  padding: 0.35rem 0.15rem;
+  color: #71717a;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.atlas-inspect__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid #27272a;
+  border-bottom: none;
+  border-radius: 0.2rem 0.2rem 0 0;
+  background: #09090b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+  color: #a1a1aa;
+}
+
+.atlas-inspect__path-text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+}
+
+.atlas-inspect__line-num {
+  color: var(--cds-interactive, #14b8a6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Non-direction path chips (surface note, symbol) — not form markers */
+.atlas-inspect__meta-chip {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+  color: var(--cds-text-placeholder, #71717a);
+}
+
+/*
+ * Import/export form markers — Carbon status triangles (ui-status-indicator).
+ * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
+ * Colors: brand teal import / alluvial yellow export (direction tokens — not status-*).
+ */
+.atlas-inspect__form-tri.ui-status-indicator {
+  flex-shrink: 0;
+  gap: 0.3rem;
+}
+
+.atlas-inspect__form-tri .ui-status-indicator__label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  color: inherit;
+}
+
+.atlas-inspect__form-tri--import {
+  --ui-status-color: var(--atlas-import, var(--cds-interactive, #14b8a6));
+  color: var(--atlas-import, var(--cds-interactive, #14b8a6));
+}
+
+.atlas-inspect__form-tri--export {
+  /* Alluvial export yellow (direction token — not status-yellow) */
+  --ui-status-color: var(--atlas-export, #eab308);
+  color: var(--atlas-export, #eab308);
+}
+
+.atlas-inspect__form-tri--mixed {
+  /* Indeterminate purple dot when both import + export facets apply */
+  --ui-status-color: var(--cds-status-purple, #a78bfa);
+  color: var(--cds-status-purple, #a78bfa);
+}
+
+/* Up-triangle → right (import / require / dynamic) */
+.atlas-inspect__form-tri--import .ui-status-indicator__shape {
+  transform: rotate(90deg);
+}
+
+/* Up-triangle → left (export) */
+.atlas-inspect__form-tri--export .ui-status-indicator__shape {
+  transform: rotate(-90deg);
+}
+
+/* Accordion title: marker + path · Lline in the Carbon title slot */
+.atlas-inspect__accordion-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.atlas-inspect__accordion-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-inspect__code {
+  margin: 0 0 0.35rem;
+  padding: 0.5rem 0.65rem;
+  overflow-x: auto;
+  max-block-size: 12rem;
+  overflow-y: auto;
+  border: 1px solid #27272a;
+  border-radius: 0 0 0.2rem 0.2rem;
+  background: #09090b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #e4e4e7;
+  white-space: pre;
+}
+
+.atlas-stage__chart {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Chart sits under the stage bar, not vertically centered in leftover space */
+  justify-content: flex-start;
+  overflow: hidden;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+/*
+ * min-height: auto (flex default) lets Carbon’s SVG content force the holder
+ * taller than the stage — chart runs off the bottom of the screen. Force
+ * shrink-to-fit; chart height is set in px from available stage space.
+ *
+ * Padding clears hanging entry labels (config.ts (186), + N more) without
+ * touching SVG viewBox (Carbon width="100%" breaks viewBox math → zoom).
+ */
+.atlas-stage__holder {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  max-height: 100%;
+  width: 100%;
+  padding: 0.35rem 1rem 1rem 0.75rem;
+  overflow: hidden;
+}
+
+.atlas-stage__holder .cds--chart-holder,
+.atlas-stage__holder .cds--cc--chart-wrapper,
+.atlas-stage__holder [class*='chart-holder'],
+.atlas-stage__holder [class*='chart-wrapper'] {
+  max-height: 100%;
+  /* Let labels paint into holder padding; stage still clips viewport */
+  overflow: visible;
+}
+
+.atlas-stage__holder svg {
+  overflow: visible;
+}
+
+/* Hierarchical file tree */
+.atlas-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  padding: 0 0.35rem 0.5rem;
+}
+
+.atlas-tree__row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  /* ≈ zinc-300: no CDS text step between primary and secondary */
+  color: color-mix(
+    in srgb,
+    var(--cds-text-primary, #fafafa) 55%,
+    var(--cds-text-secondary, #a1a1aa)
+  );
+  padding: 0.22rem 0.35rem;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  font: inherit;
+  min-height: 1.5rem;
+}
+
+.atlas-tree__row:hover {
+  background: color-mix(in srgb, var(--cds-layer-02, #27272a) 85%, transparent);
+  color: var(--cds-text-primary, #fafafa);
+}
+
+/* Folders (collapsed or expanded off-path): white labels */
+.atlas-tree__row--dir {
+  color: var(--cds-text-primary, #fafafa);
+  font-weight: 500;
+}
+
+.atlas-tree__row--dir:hover {
+  color: var(--cds-text-primary, #fafafa);
+}
+
+.atlas-tree__row--dir .atlas-tree__name {
+  color: inherit;
+}
+
+.atlas-tree__row--dir .atlas-tree__icon {
+  color: var(--cds-icon-primary, #e4e4e7);
+}
+
+.atlas-tree__row--dir .atlas-tree__chevron {
+  color: var(--cds-text-secondary, #a1a1aa);
+}
+
+/*
+ * Breadcrumb path: folders leading to the active file (expanded or collapsed).
+ * Other folders stay white.
+ */
+.atlas-tree__row--dir.is-active-path {
+  color: var(--atlas-select, #c4b5fd);
+}
+
+.atlas-tree__row--dir.is-active-path .atlas-tree__name {
+  color: var(--atlas-select, #c4b5fd);
+}
+
+.atlas-tree__row--dir.is-active-path .atlas-tree__icon {
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+.atlas-tree__row--dir.is-active-path .atlas-tree__chevron {
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+.atlas-tree__row--file.is-source {
+  color: var(--cds-icon-primary, #e4e4e7);
+}
+
+/* Disabled / unparseable: use the former collapsed-folder grey */
+.atlas-tree__row--file.is-unparseable {
+  color: var(--cds-text-secondary, #a1a1aa);
+  opacity: 0.85;
+  cursor: default;
+}
+
+.atlas-tree__row--file.is-unparseable:hover {
+  background: color-mix(in srgb, var(--cds-layer-02, #27272a) 45%, transparent);
+  color: var(--cds-text-secondary, #a1a1aa);
+  opacity: 0.95;
+}
+
+.atlas-tree__row--file.is-unparseable .atlas-tree__icon,
+.atlas-tree__icon--muted {
+  color: var(--cds-text-placeholder, #71717a);
+  opacity: 0.95;
+}
+
+/* Folder with no import-parseable descendants */
+.atlas-tree__row--dir.is-unparseable {
+  color: var(--cds-text-secondary, #a1a1aa);
+  opacity: 0.8;
+}
+
+.atlas-tree__row--dir.is-unparseable:hover {
+  color: var(--cds-text-secondary, #a1a1aa);
+}
+
+.atlas-tree__row--dir.is-unparseable .atlas-tree__icon,
+.atlas-tree__row--dir.is-unparseable .atlas-tree__chevron {
+  color: var(--cds-text-placeholder, #71717a);
+}
+
+/* Selected file (active start): purple label + tile */
+.atlas-tree__row--file.is-selected {
+  background: var(--atlas-select-soft, rgb(139 92 246 / 0.18));
+  color: var(--atlas-select, #c4b5fd);
+  outline: 1px solid var(--atlas-select-ring, rgb(167 139 250 / 0.45));
+  opacity: 1;
+}
+
+.atlas-tree__chevron {
+  flex-shrink: 0;
+  width: 0.85rem;
+  font-size: 0.65rem;
+  color: var(--cds-text-placeholder, #71717a);
+  text-align: center;
+}
+
+.atlas-tree__chevron--spacer {
+  visibility: hidden;
+}
+
+.atlas-tree__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--cds-text-secondary, #a1a1aa);
+  opacity: 0.95;
+}
+
+.atlas-tree__icon svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.atlas-tree__row--file.is-source .atlas-tree__icon,
+.atlas-tree__icon--source {
+  color: var(--cds-icon-primary, #e4e4e7);
+}
+
+.atlas-tree__row--file.is-selected .atlas-tree__icon {
+  color: var(--atlas-select-strong, #a78bfa);
+}
+
+.atlas-tree__row--file.is-selected .atlas-tree__name {
+  color: var(--atlas-select, #c4b5fd);
+  font-weight: 500;
+}
+
+.atlas-tree__name {
+  min-width: 0;
+  flex: 1;
+}
+
+/* File LOC caption after name — cyan, caption size, readable (not greyed out) */
+.atlas-tree__loc {
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  font-size: 0.6875rem; /* ~11px — slightly under tree 13px body */
+  line-height: 1.2;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--atlas-drill, #67e8f9); /* cyan-300 */
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.atlas-tree__row--file.is-unparseable .atlas-tree__loc {
+  opacity: 0.55;
+}
+
+.atlas-tree__row--file.is-selected .atlas-tree__loc {
+  /* Keep cyan caption (meta), not purple selection paint */
+  color: var(--atlas-drill, #67e8f9);
+  opacity: 0.85;
+}
+
+.atlas-tree__badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: var(--cds-border-strong-01, #52525b);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Catalog list tiles — square corners (match ui-tile / Carbon shell) */
+.atlas-list-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--cds-layer-01, #18181b);
+  border: 1px solid var(--cds-border-subtle-00, #27272a);
+  color: var(--cds-icon-primary, #e4e4e7);
+  padding: 0.5rem 0.65rem;
+  border-radius: 0;
+  cursor: pointer;
+  font: inherit;
+  margin-bottom: 0.35rem;
+}
+
+.atlas-list-btn:hover {
+  border-color: var(--cds-layer-03, #3f3f46);
+}
+
+.atlas-list-btn.is-selected {
+  border-color: var(--atlas-select-strong, #a78bfa);
+  background: var(--atlas-select-soft, rgb(139 92 246 / 0.18));
+  color: var(--atlas-select, #c4b5fd);
+  box-shadow: inset 0 0 0 1px var(--atlas-select-ring, rgb(167 139 250 / 0.25));
+}
+
+.atlas-list-btn.is-selected .meta {
+  color: color-mix(in srgb, var(--atlas-select, #c4b5fd) 75%, transparent);
+}
+
+.atlas-list-btn .meta {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--cds-text-secondary, #a1a1aa);
+  margin-top: 0.15rem;
+}
+
+.atlas-list-btn__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Catalog in/out chips: cyan = in, yellow = out (count only) */
+.atlas-edge-badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+}
+
+.atlas-edge-badge,
+cds-tag.atlas-edge-badge {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-inline-size: 1.5rem;
+  justify-content: center;
+}
+
+/* Outbound yellow inherits cds-tag.ui-tag--yellow (--atlas-export color-mix) */
+
+.atlas-summary-tag,
+cds-tag.atlas-summary-tag {
+  flex-shrink: 0;
+}
+
+/* Language chip row: status glyph + teal language tag */
+.atlas-lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Sentinel-rehomed shape status (indication / lifecycle geometry) */
+.ui-status-indicator {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.35rem;
+  vertical-align: middle;
+  color: var(--ui-status-color, var(--cds-status-gray));
+}
+
+.ui-status-indicator__shape {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.ui-status-indicator__shape svg,
+.ui-status-indicator__svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.ui-status-indicator--xs .ui-status-indicator__shape svg,
+.ui-status-indicator--xs .ui-status-indicator__svg {
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px;
+  min-height: 10px;
+}
+
+.ui-status-indicator__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--cds-text-secondary, #a1a1aa);
+}
+
+.ui-status-indicator--xs .ui-status-indicator__label {
+  font-size: 0.625rem;
+}
+
+.ui-status-indicator--sm .ui-status-indicator__label {
+  font-size: 0.75rem;
+}
+
+.ui-status-indicator--md .ui-status-indicator__label {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #fafafa);
+}
+
+/* Upload / catalog warning stack */
+.atlas-warning-notification,
+cds-inline-notification.atlas-warning-notification {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.atlas-catalog-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #71717a;
+}
+
+/* Spine formula toolbar — single row: dropdown + ghost info (no field label) */
+.atlas-spine-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0 0.5rem;
+  position: relative;
+  z-index: 2; /* open list above catalog rows */
+}
+/* width:0 + flex-grow: share row with the info button (Carbon wants 100% width) */
+cds-dropdown.atlas-spine-formula,
+.atlas-spine-formula {
+  box-sizing: border-box;
+  display: block !important;
+  flex: 1 1 0 !important;
+  flex-direction: row !important;
+  width: 0 !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 2rem;
+  align-self: center;
+}
+cds-button.atlas-spine-info-btn,
+.atlas-spine-info-btn {
+  flex: 0 0 2rem;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-inline-size: 2rem !important;
+  max-inline-size: 2rem;
+  inline-size: 2rem;
+  block-size: 2rem !important;
+  border-radius: 0;
+  color: #2dd4bf;
+  align-self: center;
+}
+/* Ghost label padding is start-heavy (icon slot reserved on the end) — center the glyph */
+cds-button.atlas-spine-info-btn::part(button) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 2rem;
+  max-inline-size: 2rem;
+  inline-size: 2rem;
+  block-size: 2rem;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Spine formula help modal — match inspect/unavailable air + zinc type */
+.atlas-spine-formula-modal cds-modal-header,
+.atlas-spine-formula-modal__header {
+  display: block;
+  box-sizing: border-box;
+  padding: 1rem 3rem 0.5rem 1rem;
+  margin: 0;
+}
+.atlas-spine-formula-modal cds-modal-label {
+  display: block;
+  margin: 0 0 0.25rem;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  line-height: 1.333;
+  letter-spacing: 0.02em;
+}
+.atlas-spine-formula-modal cds-modal-heading {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #f4f4f5;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.atlas-spine-formula-modal cds-modal-body,
+.atlas-spine-formula-modal__body-host {
+  display: block;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem 1rem;
+  margin: 0;
+}
+.atlas-spine-formula-modal__body {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: #e4e4e7;
+}
+.atlas-spine-formula-modal__keys {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #27272a;
+  border-radius: 0;
+  background: #09090b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+.atlas-spine-formula-modal__honesty {
+  margin: 0.85rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid #27272a;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #71717a;
+}
+
+/* Carbon accordion in drawer — g100 + zinc shell */
+.atlas-catalog-accordion {
+  width: 100%;
+  --cds-layer: #18181b;
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
+  --cds-layer-selected: rgb(13 148 136 / 0.15);
+  --cds-border-subtle: #27272a;
+  --cds-border-subtle-selected: #3f3f46;
+  --cds-text-primary: #f4f4f5;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #e4e4e7;
+  --cds-icon-secondary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+  --cds-link-primary: #2dd4bf;
+}
+
+.atlas-catalog-accordion cds-accordion-item {
+  border-color: #27272a;
+}
+
+.atlas-catalog .atlas-list-btn:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .atlas-workspace {
+    flex-direction: column;
+  }
+  .atlas-drawer {
+    width: 100%;
+    max-width: none;
+    max-height: 45vh;
+    border-inline-end: 0;
+    border-block-end: 1px solid #27272a;
+  }
+  .atlas-stage__holder {
+    min-height: 0;
+  }
+}
+
+/* Carbon file uploader drop area — zinc layer + teal focus */
+.atlas-drop-host,
+.atlas-file-uploader,
+cds-file-uploader.atlas-file-uploader {
+  display: block;
+  width: 100%;
+  --cds-text-primary: #f4f4f5;
+  --cds-text-secondary: #a1a1aa;
+  --cds-link-primary: #2dd4bf;
+  --cds-link-primary-hover: #5eead4;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-layer: #18181b;
+}
+
+.atlas-file-drop,
+cds-file-uploader-drop-container.atlas-file-drop {
+  display: block;
+  width: 100%;
+  min-block-size: 8rem;
+  --cds-link-primary: #e4e4e7;
+  --cds-link-primary-hover: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-layer: rgb(24 24 27 / 0.6);
+  --cds-layer-hover: rgb(13 148 136 / 0.08);
+}
+
+/* Drop label: keep text clear of dashed/rounded border edges */
+.atlas-file-drop::part(label),
+cds-file-uploader-drop-container.atlas-file-drop::part(label) {
+  padding-inline: 0.75rem;
+  line-height: 1.4;
+}
+
+/* Stage bar: include-tests checkbox (Carbon) */
+.atlas-stage__control-group--tests {
+  height: auto;
+  min-height: 2rem;
+}
+
+cds-checkbox.atlas-include-tests {
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-interactive: #14b8a6;
+  white-space: nowrap;
+}
+
+/* Persist checkbox spacing under upload form */
+.atlas-persist,
+cds-checkbox.atlas-persist {
+  display: block;
+  width: 100%;
+  max-width: 36rem;
+  --cds-text-primary: #e4e4e7;
+  --cds-text-secondary: #a1a1aa;
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-interactive: #14b8a6;
+}
+
+/* Splash: supported-language chips (Level-1 import parse) */
+.atlas-lang-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.atlas-lang-row__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+  flex-shrink: 0;
+}
+
+.atlas-lang-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Built-in demo cards — button host, Carbon tile layer (square, no radius) */
+.atlas-demo__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 560px) {
+  .atlas-demo__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/*
+ * Clickable demo = Carbon tile surface (same tokens as .ui-tile / cds-tile).
+ * Keep native <button> for app.ts ids; square corners per product shell.
+ */
+.atlas-demo__card {
+  display: block;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 0;
+  border: 1px solid var(--cds-border-subtle, #27272a);
+  background: var(--cds-layer-01, #18181b);
+  color: var(--cds-text-primary, #fafafa);
+  cursor: pointer;
+  font: inherit;
+  overflow: visible;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.atlas-demo__card:hover {
+  border-color: var(--cds-border-interactive, #2dd4bf);
+  background: var(--cds-layer-hover, #27272a);
+}
+
+.atlas-demo__card:focus-visible {
+  outline: 2px solid var(--cds-focus, #2dd4bf);
+  outline-offset: 2px;
+}
+
+.atlas-demo__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* Title + complexity tag on one row */
+.atlas-demo__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.atlas-demo__heading cds-tag,
+.atlas-demo__heading .ui-tag {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.atlas-demo__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--cds-text-primary, #fafafa);
+}
+
+.atlas-demo__blurb {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--cds-text-secondary, #a1a1aa);
+}
+
+.atlas-eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2dd4bf;
+  font-weight: 600;
+}
+
+/* List empty states — muted Carbon secondary text */
+.atlas-catalog .text-xs.text-zinc-600 {
+  color: var(--cds-text-secondary, #71717a);
+}
