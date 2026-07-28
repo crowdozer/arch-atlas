@@ -1254,20 +1254,10 @@ cds-dropdown.atlas-stage__precision {
 .atlas-inspect-modal__header {
   display: block;
   box-sizing: border-box;
-  position: relative;
-  /* Close 3rem + gap + “Exit fullscreen” sm ghost (~6.5rem) ≈ 11rem */
-  padding: 1rem 11rem 0.5rem 1rem;
+  padding: 1rem 3rem 0.5rem 1rem;
   margin: 0 0 0.25rem;
   max-height: 50vh;
   overflow-y: auto;
-}
-
-/* Fullscreen toggle — left of Carbon close (3rem box at inset-inline-end: 0) */
-.atlas-inspect-modal__fullscreen-btn {
-  position: absolute;
-  top: 0.55rem;
-  right: 3.25rem; /* clear close footprint + small gap */
-  z-index: 2;
 }
 
 .atlas-inspect-modal cds-modal-label {
@@ -1297,13 +1287,6 @@ cds-dropdown.atlas-stage__precision {
   margin: 0;
 }
 
-/* Near-viewport inspect dialog (Carbon size max is lg) */
-.atlas-inspect-modal--fullscreen::part(dialog) {
-  inline-size: min(96vw, 72rem);
-  max-inline-size: min(96vw, 72rem);
-  max-block-size: min(92vh, 56rem);
-}
-
 /* Inspect modal body content */
 .atlas-inspect {
   display: flex;
@@ -1312,10 +1295,6 @@ cds-dropdown.atlas-stage__precision {
   max-block-size: min(60vh, 28rem);
   overflow: auto;
   font-size: 0.8125rem;
-}
-
-.atlas-inspect-modal--fullscreen .atlas-inspect {
-  max-block-size: min(75vh, 48rem);
 }
 
 .atlas-inspect__empty {
@@ -1395,7 +1374,7 @@ cds-inline-notification.atlas-inspect__banner {
 .atlas-inspect__path {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0.35rem 0.75rem;
   padding: 0.25rem 0.35rem;
   border: 1px solid #27272a;
@@ -1407,16 +1386,65 @@ cds-inline-notification.atlas-inspect__banner {
   color: #a1a1aa;
 }
 
+.atlas-inspect__path-text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+}
+
 .atlas-inspect__line-num {
   color: #14b8a6;
   font-variant-numeric: tabular-nums;
 }
 
-.atlas-inspect__form {
+/* Non-direction path chips (surface note, symbol) — not form markers */
+.atlas-inspect__meta-chip {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 0.65rem;
   color: #71717a;
+}
+
+/*
+ * Import/export form markers — Carbon status triangles (ui-status-indicator).
+ * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
+ * Colors: blue (cds-status-blue) / cyan (Carbon cyan, not brand teal PASS).
+ */
+.atlas-inspect__form-tri.ui-status-indicator {
+  flex-shrink: 0;
+  gap: 0.3rem;
+}
+
+.atlas-inspect__form-tri .ui-status-indicator__label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  color: inherit;
+}
+
+.atlas-inspect__form-tri--import {
+  --ui-status-color: var(--cds-status-blue, #4589ff);
+  color: var(--cds-status-blue, #4589ff);
+}
+
+.atlas-inspect__form-tri--export {
+  /* Carbon cyan (g100) — distinct from blue import and brand teal */
+  --ui-status-color: #3ddbd9;
+  color: #3ddbd9;
+}
+
+/* Up-triangle → right (import / require / dynamic) */
+.atlas-inspect__form-tri--import .ui-status-indicator__shape {
+  transform: rotate(90deg);
+}
+
+/* Up-triangle → left (export) */
+.atlas-inspect__form-tri--export .ui-status-indicator__shape {
+  transform: rotate(-90deg);
 }
 
 .atlas-inspect__code {
@@ -1433,10 +1461,6 @@ cds-inline-notification.atlas-inspect__banner {
   line-height: 1.45;
   color: #e4e4e7;
   white-space: pre;
-}
-
-.atlas-inspect-modal--fullscreen .atlas-inspect__code {
-  max-block-size: 18rem;
 }
 
 .atlas-stage__chart {

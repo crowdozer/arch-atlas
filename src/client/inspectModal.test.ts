@@ -1,9 +1,9 @@
 /**
  * Inspect surface-claim precision: Program + rehydrated Exact mass uses exact
  * evidence path and callsite copy (not estimate wording).
- * Accordion title + fullscreen sessionStorage prefs are pure helpers.
+ * Accordion title + form direction markers are pure helpers.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	evidenceForEdges,
 	indexFiles,
@@ -14,35 +14,9 @@ import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
 	callsitesTitle,
 	emptyCallsitesNote,
+	formDirectionMarker,
 	importSiteAccordionTitle,
-	INSPECT_MODAL_FULLSCREEN_KEY,
-	readInspectModalFullscreen,
-	writeInspectModalFullscreen,
 } from './inspectModal.ts';
-
-function memStorage(): Storage {
-	const map = new Map<string, string>();
-	return {
-		get length() {
-			return map.size;
-		},
-		clear() {
-			map.clear();
-		},
-		getItem(k: string) {
-			return map.has(k) ? map.get(k)! : null;
-		},
-		setItem(k: string, v: string) {
-			map.set(k, String(v));
-		},
-		removeItem(k: string) {
-			map.delete(k);
-		},
-		key(i: number) {
-			return [...map.keys()][i] ?? null;
-		},
-	};
-}
 
 function sampleEvidence(
 	overrides: Partial<ImportEvidence['import']> = {},
@@ -219,25 +193,25 @@ describe('importSiteAccordionTitle', () => {
 	});
 });
 
-describe('inspect modal fullscreen pref (sessionStorage)', () => {
-	beforeEach(() => {
-		vi.stubGlobal('sessionStorage', memStorage());
-	});
-	afterEach(() => {
-		vi.unstubAllGlobals();
+describe('formDirectionMarker', () => {
+	it('maps import/require/dynamic to inbound (right) blue class', () => {
+		for (const form of ['import', 'require', 'dynamic'] as const) {
+			const m = formDirectionMarker(form);
+			expect(m.direction).toBe('import');
+			expect(m.className).toContain('atlas-inspect__form-tri--import');
+			expect(m.className).not.toContain('--export');
+		}
+		expect(formDirectionMarker('import').label).toBe('import');
+		expect(formDirectionMarker('require').label).toBe('require');
+		expect(formDirectionMarker('dynamic').label).toBe('dynamic');
 	});
 
-	it('defaults off when unset', () => {
-		expect(readInspectModalFullscreen()).toBe(false);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
-	});
-
-	it('writes 1 and reads true; remove clears', () => {
-		writeInspectModalFullscreen(true);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBe('1');
-		expect(readInspectModalFullscreen()).toBe(true);
-		writeInspectModalFullscreen(false);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
-		expect(readInspectModalFullscreen()).toBe(false);
+	it('maps export to outbound (left) cyan class', () => {
+		const m = formDirectionMarker('export');
+		expect(m.direction).toBe('export');
+		expect(m.label).toBe('export');
+		expect(m.title).toBe('Export');
+		expect(m.className).toContain('atlas-inspect__form-tri--export');
+		expect(m.className).not.toContain('--import');
 	});
 });
