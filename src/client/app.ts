@@ -134,11 +134,6 @@ let interactionMode: InteractionMode = 'drill';
  * Default false (web only) — CLI still includes tests unless --omit.
  */
 let includeTests = false;
-/**
- * When true, stage applies √ display-mass scale for band thickness.
- * Default true — off is linear semantic thickness (labels always true mass).
- */
-let clampBandScale = true;
 /** Spine ranking formula (session-local; not persisted). */
 let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
 /**
@@ -165,7 +160,6 @@ const stage = createAlluvialStage({
 	getInteractionMode: () => interactionMode,
 	onNodeClick: (name) => handleNodeClick(name),
 	onLineClick: (source, target) => handleLineClick(source, target),
-	getClampBandScale: () => clampBandScale,
 });
 
 // ── Paint modules (late-bound; assigned after lifecycle for selectStart) ──────
@@ -459,10 +453,6 @@ function enginePrefCheckbox(): (HTMLElement & { checked?: boolean }) | null {
 
 function includeTestsCheckbox(): (HTMLElement & { checked?: boolean }) | null {
 	return $('atlas-include-tests') as (HTMLElement & { checked?: boolean }) | null;
-}
-
-function clampBandScaleCheckbox(): (HTMLElement & { checked?: boolean }) | null {
-	return $('atlas-clamp-band-scale') as (HTMLElement & { checked?: boolean }) | null;
 }
 
 function isPersistEnabled(): boolean {
@@ -871,11 +861,6 @@ wireUi({
 		includeTests = on;
 	},
 	reindexWithTestInclusion: () => lifecycle.reindexWithTestInclusion(),
-	clampBandScaleCheckbox,
-	getClampBandScale: () => clampBandScale,
-	setClampBandScale: (on) => {
-		clampBandScale = on;
-	},
 	persistSessionIfEnabled,
 	syncWeightDropdown,
 	syncPrecisionDropdown,

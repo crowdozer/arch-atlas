@@ -37,11 +37,6 @@ export type AlluvialStageHost = {
 	getHeightPx?: (root: HTMLElement) => number;
 	/** Optional holder DOM prep (e.g. e2e fixed width/height styles). */
 	prepareHolder?: (holder: HTMLElement) => void;
-	/**
-	 * When true (default), layout mass uses √ compress for readable band ratios.
-	 * When false, linear semantic values (display-mass identity). Labels stay honest either way.
-	 */
-	getClampBandScale?: () => boolean;
 };
 
 export type AlluvialStage = {
@@ -115,11 +110,8 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 				: alluvialHeightPx(root);
 			// Display-only mass compress for Carbon thickness; semantic payload
 			// stays on currentPayload for getPayload / focus / drill.
-			const clampBandScale = host.getClampBandScale?.() ?? true;
-			const { layoutPayload, semanticByNodeName } = scaleAlluvialDisplayMass(
-				payload,
-				{ mode: clampBandScale ? 'sqrt' : 'identity' },
-			);
+			const { layoutPayload, semanticByNodeName } =
+				scaleAlluvialDisplayMass(payload);
 			// Reuse options object (spread only height/animations) so tooltip
 			// customHTML and other functions remain live — do not deep-clone options.
 			const options = {
