@@ -8,6 +8,11 @@
 export { polishAlluvialHolder } from './polish.ts';
 
 export {
+	stackBandsByNodeRank,
+	stackBandsByNodeRankInHolder,
+} from './bandOrder.ts';
+
+export {
 	isExternalStraightPairLink,
 	planExternalStraightBands,
 	straightenExternalPackageBands,

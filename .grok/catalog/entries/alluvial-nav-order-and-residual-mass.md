@@ -44,10 +44,9 @@ open_questions:
   - Does "Not exported" live on the File spine, Imports side, Exports side, or a dedicated residual rail?
   - Sort scope — per column independently, global stable key, or sticky order across drill/focus changes?
   - Dir-walk sort — relative to focus file path, repo root, or package boundary? (v0: focus file path via string path segments)
-  - Default sort when user never touches the dropdown? (landed: `name`)
+  - Default sort when user never touches the dropdown? (landed: `mass`)
   - Does residual-band UI require Exact, or is Estimate whole-file residual honest enough to ship first?
   - Interaction with pad rails, External straighten, terminators, multi-instance hubs — residual bands must not retcon membership law
-  - Does Carbon/d3-sankey crossing reduction defeat mass/dir-walk enough on real hubs to require polish Y-enforce by `meta.nodeRank`?
 related:
   - analysis-capability-honesty
   - exact-surface-mode-futures
@@ -96,46 +95,50 @@ shipped.
    make the gap legible rather than mysterious. **Not landed.**
 
 2. **Stable, controllable band order:** Offer a **dropdown** to choose how bands
-   within columns are ordered, with at least:
+   within columns are ordered:
+   - sort by **LOC / mass** (default)
    - sort by **name**
-   - sort by **LOC / mass**
-   - sort by **directory walk toward target** (path proximity / tree walk)
 
    Goal: stabilize output in an intuitive way so band traverse is learnable.
-   **Landed as payload SoR + session control** (see Realization).
+   **Landed** — payload SoR + polish Y-lock + session control (see Realization).
+   Path/dir-walk mode was cut after field use (user preference for mass).
 
 3. **Control surface:**
-   - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`)
+   - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`: Mass / Name)
    - Residual not-exported / not-imported bands → **checkbox** (off by default;
      experimental) — **not landed**
 
 ## Realization (problem #2 — band sort)
 
 Ship `ship/f8f093b4-alluvial-band-sort` / commits `7825f9a` (feat) + `7849d73`
-(merge on main).
+(merge on main). Follow-up on main: drop dir-walk, default mass, polish
+`stackBandsByNodeRank` so Carbon crossing reduction no longer defeats the
+dropdown.
 
 | Surface | What landed |
 | ------- | ----------- |
-| Core | `BandSortMode = 'name' \| 'mass' \| 'dir-walk'`; `compareAlluvialBands`, `pathSegmentProximity`, `incidentBandMass`; `buildAlluvialPayload({ bandSort })` sorts **per category** and writes `rank` + `meta.nodeRank` |
+| Core | `BandSortMode = 'name' \| 'mass'`; `compareAlluvialBands`, `incidentBandMass`; `buildAlluvialPayload({ bandSort })` sorts **per category** and writes `rank` + `meta.nodeRank` (default **`mass`**) |
 | Shell | `parseBandSortMode` / `BAND_SORT_MODES`; `PayloadProjectOpts.bandSort` threaded through project → view builders |
-| Web UI | Stage control **Band order** — dropdown id `atlas-band-sort` (Name / Mass / Path toward focus); session-only state in `app.ts` + `wireUi` remount |
+| Web UI | Stage control **Band order** — dropdown id `atlas-band-sort` (Mass / Name); session-only state in `app.ts` + `wireUi` remount |
+| Stage polish | `stackBandsByNodeRank` / `stackBandsByNodeRankInHolder` — restack peers by `meta.nodeRank` **before** File spine center |
 | Views threaded | `fileHub`, `packageHub`, `moduleFocus`, `multiHop`, `fileImporters` |
 
 **Honesty / limits (do not overclaim):**
 
 - **Payload + `meta.nodeRank` are the source of record** for intended in-column
   order (unit-tested). Membership / hub column matrix is unchanged.
-- **Carbon / d3-sankey may still cross-reduce Y** after mount. Stage polish does
-  **not** read `nodeRank` or re-stack bands; visual order can diverge from
-  payload rank on dense hubs.
-- **Polish Y-enforce not landed** — plan allowed payload-first; add restack by
-  `meta.nodeRank` only if field smoke shows mass/dir-walk are unusable.
+- **Polish restacks** column peers to match `nodeRank` after Carbon layout so
+  visual stack tracks Mass/Name. File spine center and External straighten still
+  run afterward and may move specific bands for geometry.
+- **Mass key** is **total incident link value** on the display name in the
+  payload (not a single edge width alone). A fatter single ribbon can still sit
+  below a peer with higher total incident mass.
 - **Session-only** preference (not `PersistedSessionV1` / localStorage; no CLI
   flag).
-- Default when unset / unknown parse: **`name`**.
+- Default when unset / unknown parse: **`mass`**.
 - Sort tiers (all modes): overflow last → pad rails after real nodes → mode key
-  → stable name (mass is incident non–rail↔rail link value; dir-walk is common
-  path-prefix then segment delta then path id).
+  → stable name.
+- **Dir-walk / path-toward-focus mode removed** (user cut).
 
 ## Reasoning
 

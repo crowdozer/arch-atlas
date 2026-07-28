@@ -141,6 +141,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 				if (!chart) return;
 				polishAlluvialHolder(nextHolder, {
 					colorScale,
+					nodeRank: payload.meta.nodeRank,
 					terminators,
 					exportTerminators,
 					externalStraightPairs,

@@ -85,32 +85,9 @@ export function isOverflowNodeName(name: string): boolean {
 
 /**
  * In-column band stack order (global mode for all columns).
- * Default `name` matches historical alpha + overflow-last law.
+ * Default `mass` ranks by incident link value (fat bands first).
  */
-export type BandSortMode = 'name' | 'mass' | 'dir-walk';
-
-/** Named nodes first (alpha); overflow buckets last (still alpha among themselves). */
-export function compareAlluvialNodeNames(a: string, b: string): number {
-	const ao = isOverflowNodeName(a) ? 1 : 0;
-	const bo = isOverflowNodeName(b) ? 1 : 0;
-	if (ao !== bo) return ao - bo;
-	return a.localeCompare(b);
-}
-
-/**
- * Path-segment proximity for dir-walk sort (no tree SoR).
- * Closer = longer common prefix, then smaller |len(a)−len(b)|, then path alpha.
- */
-export function pathSegmentProximity(
-	path: string,
-	focusPath: string,
-): { commonPrefix: number; segmentDelta: number } {
-	const a = path.split('/').filter(Boolean);
-	const b = focusPath.split('/').filter(Boolean);
-	let L = 0;
-	while (L < a.length && L < b.length && a[L] === b[L]) L++;
-	return { commonPrefix: L, segmentDelta: Math.abs(a.length - b.length) };
-}
+export type BandSortMode = 'name' | 'mass';
 
 /**
  * Sum incident link values per display name (payload-local mass for sort).
@@ -134,8 +111,8 @@ export function incidentBandMass(
  * Mode-aware in-column compare. Tiers (all modes):
  * 1. Overflow last
  * 2. Pad rails after real (non-overflow) nodes
- * 3. Mode key (name / mass desc / dir-walk proximity)
- * 4. Stable name; mass/dir-walk key multi-instance on nodeRef.id then label
+ * 3. Mode key (name alpha / mass desc)
+ * 4. Stable name; mass keys multi-instance on nodeRef.id then label
  */
 export function compareAlluvialBands(
 	a: string,
@@ -144,7 +121,6 @@ export function compareAlluvialBands(
 		mode: BandSortMode;
 		mass: Map<string, number>;
 		nodeRef: Record<string, AlluvialNodeRef>;
-		focusPath: string;
 	},
 ): number {
 	const ao = isOverflowNodeName(a) ? 1 : 0;
@@ -157,11 +133,10 @@ export function compareAlluvialBands(
 	const ar = isAlluvialRailName(a) ? 1 : 0;
 	const br = isAlluvialRailName(b) ? 1 : 0;
 	if (ar !== br) return ar - br;
-	// Both rails: pin by name (do not apply user mass/dir-walk to ZWSP rails)
+	// Both rails: pin by name (do not apply user mass to ZWSP rails)
 	if (ar === 1) return a.localeCompare(b);
 
-	const mode = ctx.mode;
-	if (mode === 'mass') {
+	if (ctx.mode === 'mass') {
 		const ma = ctx.mass.get(a) ?? 0;
 		const mb = ctx.mass.get(b) ?? 0;
 		if (ma !== mb) return mb - ma;
@@ -172,30 +147,7 @@ export function compareAlluvialBands(
 		return a.localeCompare(b);
 	}
 
-	if (mode === 'dir-walk') {
-		const refA = ctx.nodeRef[a];
-		const refB = ctx.nodeRef[b];
-		// Files first; packages / modules / buckets after (weaker path rules)
-		const fileA = refA?.kind === 'file' ? 0 : 1;
-		const fileB = refB?.kind === 'file' ? 0 : 1;
-		if (fileA !== fileB) return fileA - fileB;
-
-		const pathA = refA?.id ?? a;
-		const pathB = refB?.id ?? b;
-		const pa = pathSegmentProximity(pathA, ctx.focusPath);
-		const pb = pathSegmentProximity(pathB, ctx.focusPath);
-		if (pa.commonPrefix !== pb.commonPrefix) {
-			return pb.commonPrefix - pa.commonPrefix;
-		}
-		if (pa.segmentDelta !== pb.segmentDelta) {
-			return pa.segmentDelta - pb.segmentDelta;
-		}
-		// Multi-instance: same path id → stable secondary on display label
-		if (pathA !== pathB) return pathA.localeCompare(pathB);
-		return a.localeCompare(b);
-	}
-
-	// name (default)
+	// name
 	return a.localeCompare(b);
 }
 
@@ -213,7 +165,7 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
-	/** In-column band order; default name (overflow last, rails after real). */
+	/** In-column band order; default mass (overflow last, rails after real). */
 	bandSort?: BandSortMode;
 	/** Reverse free-source pad targets (meta.terminators). */
 	terminators?: string[];
@@ -239,7 +191,7 @@ export function buildAlluvialPayload(args: {
 		startId,
 		units = 'package imports',
 		ariaLabel,
-		bandSort = 'name',
+		bandSort = 'mass',
 		terminators,
 		exportTerminators,
 		externalStraightPairs,
@@ -248,14 +200,12 @@ export function buildAlluvialPayload(args: {
 
 	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
 	const nodeRank: Record<string, number> = {};
-	const focusPath = startId ?? focus.id;
 	const mass =
 		bandSort === 'mass' ? incidentBandMass(links) : new Map<string, number>();
 	const sortCtx = {
 		mode: bandSort,
 		mass,
 		nodeRef,
-		focusPath,
 	};
 
 	for (const category of categoryOrder) {

@@ -17,7 +17,7 @@ import type { InteractionMode } from '@shell/types.ts';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
 const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact', 'program'];
-const BAND_SORT_MODES: BandSortMode[] = ['name', 'mass', 'dir-walk'];
+const BAND_SORT_MODES: BandSortMode[] = ['name', 'mass'];
 
 /** Exported for UI lists / tests. */
 export { LOC_PRECISIONS, BAND_SORT_MODES };
@@ -27,11 +27,11 @@ export function parseWeightAxis(raw: string): WeightAxis {
 	return (WEIGHT_AXES as string[]).includes(raw) ? (raw as WeightAxis) : 'target-loc';
 }
 
-/** Parse stage band-order mode; unknown → name (historical default). */
+/** Parse stage band-order mode; unknown → mass (default). */
 export function parseBandSortMode(raw: string): BandSortMode {
 	return (BAND_SORT_MODES as string[]).includes(raw)
 		? (raw as BandSortMode)
-		: 'name';
+		: 'mass';
 }
 
 /** Parse spine formula select value; unknown → default modules-then-in. */

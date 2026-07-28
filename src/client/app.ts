@@ -96,7 +96,7 @@ let viewStack: AtlasView[] = [];
 /** Band-width axis for all projectors (session-local; not persisted). */
 let weightAxis: WeightAxis = 'target-loc';
 /** In-column band stack order (session-local; not persisted). */
-let bandSort: BandSortMode = 'name';
+let bandSort: BandSortMode = 'mass';
 /**
  * Imported-surface honesty: estimate (Level-1) vs exact (export-surface provider).
  * Exact / export-surface weight entry loads engines and installs {@link surfaceProvider}.

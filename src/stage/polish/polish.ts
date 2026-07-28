@@ -2,10 +2,12 @@
  * Ordered post-mount polish facade for Carbon alluvial holders.
  *
  * Pipeline (exact order — do not reorder):
- * center spine → **link ribbons** → truncate labels → hide rails with pairs
- * → straighten → terminators → File chrome → export recolor → svg overflow
+ * **band order by nodeRank** → center spine → **link ribbons** → truncate labels
+ * → hide rails with pairs → straighten → terminators → File chrome → export
+ * recolor → svg overflow
  */
 
+import { stackBandsByNodeRankInHolder } from './bandOrder.ts';
 import { straightenExternalPackageBands } from './externalStraighten.ts';
 import type { ExternalStraightPair } from './externalStraighten.ts';
 import {
@@ -38,6 +40,11 @@ export function polishAlluvialHolder(
 		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
 		labelMaxChars?: number;
 		/**
+		 * Payload in-column ranks (`meta.nodeRank`). Restacks peers after Carbon
+		 * crossing reduction so Band order (name/mass) matches the chart.
+		 */
+		nodeRank?: Record<string, number>;
+		/**
 		 * Reverse free-source pad targets (Exports* left) → cyan wrap.
 		 * @see markAlluvialTerminators
 		 */
@@ -54,6 +61,9 @@ export function polishAlluvialHolder(
 		externalStraightPairs?: readonly ExternalStraightPair[];
 	},
 ): void {
+	// Before spine center: lock column Y to payload order (Carbon otherwise
+	// reshuffles for crossing reduction and defeats Band order).
+	stackBandsByNodeRankInHolder(holder, opts?.nodeRank);
 	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
 	// Always ribbon-ize Carbon path.link (not only when File moved) — mass in fill
 	rewriteLinkRibbons(holder);

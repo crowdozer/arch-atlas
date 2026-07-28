@@ -1278,3 +1278,30 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		expect(outToDeep?.classList.contains('atlas-alluvial-pad-band')).toBe(true);
 	});
 });
+
+describe('stackBandsByNodeRank', () => {
+	it('restacks column peers top→bottom by rank (0 first)', async () => {
+		const { stackBandsByNodeRank } = await import('./bandOrder.ts');
+		const a = node('heavy', 100, 80, 20, 'Imports');
+		const b = node('light', 100, 20, 15, 'Imports');
+		const c = node('mid', 100, 50, 18, 'Imports');
+		// Carbon left them y-sorted light, mid, heavy — ranks want heavy, mid, light
+		const rank = { heavy: 0, mid: 1, light: 2 };
+		const moved = stackBandsByNodeRank([a, b, c], rank);
+		expect(moved).toBe(true);
+		const byY = [a, b, c].sort((x, y) => x.y0 - y.y0);
+		expect(byY.map((n) => n.name)).toEqual(['heavy', 'mid', 'light']);
+		// heights preserved
+		expect(a.y1 - a.y0).toBe(20);
+		expect(b.y1 - b.y0).toBe(15);
+		expect(c.y1 - c.y0).toBe(18);
+	});
+
+	it('no-op when already ranked', async () => {
+		const { stackBandsByNodeRank } = await import('./bandOrder.ts');
+		const a = node('a', 0, 0, 10, 'Imports');
+		const b = node('b', 0, 20, 10, 'Imports');
+		const moved = stackBandsByNodeRank([a, b], { a: 0, b: 1 });
+		expect(moved).toBe(false);
+	});
+});
