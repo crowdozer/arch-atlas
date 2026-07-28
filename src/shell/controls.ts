@@ -17,7 +17,12 @@ import type { InteractionMode } from '@shell/types.ts';
 
 const WEIGHT_AXES: WeightAxis[] = ['import-edges', 'importer-loc', 'target-loc'];
 const LOC_PRECISIONS: LocPrecision[] = ['estimate', 'exact', 'program'];
-const BAND_SORT_MODES: BandSortMode[] = ['name', 'flow', 'node'];
+const BAND_SORT_MODES: BandSortMode[] = [
+	'name',
+	'flow',
+	'flow-target',
+	'node',
+];
 
 /** Exported for UI lists / tests. */
 export { LOC_PRECISIONS, BAND_SORT_MODES };
@@ -29,12 +34,13 @@ export function parseWeightAxis(raw: string): WeightAxis {
 
 /**
  * Parse stage band-order mode.
- * - Known: name | flow | node
- * - Legacy `mass` → flow (old incident/flow umbrella)
- * - Unknown → flow (default)
+ * - Known: name | flow | flow-target | node
+ * - Legacy `mass` → flow-target (old hybrid ranked import leaves by destination)
+ * - Unknown → flow (default: mass at link start / outbound)
  */
 export function parseBandSortMode(raw: string): BandSortMode {
-	if (raw === 'mass') return 'flow';
+	// Pre-split "mass" behaved like destination for import-side leaves
+	if (raw === 'mass') return 'flow-target';
 	return (BAND_SORT_MODES as string[]).includes(raw)
 		? (raw as BandSortMode)
 		: 'flow';

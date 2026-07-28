@@ -9,6 +9,7 @@ import {
 	buildAlluvialPayload,
 	compareAlluvialBands,
 	flowBandMass,
+	flowTargetBandMass,
 	nodeBandMass,
 	isAlluvialRailName,
 	isImportPadScaffoldLink,
@@ -482,24 +483,37 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 	});
 });
 
-describe('band sort (name / flow / node)', () => {
+describe('band sort (name / flow / flow-target / node)', () => {
 	const rail = '\u200b·in-rail·h2';
 	const overflow = '+ 3 more';
 	const other = '(other ends)';
 
-	it('flowBandMass prefers leaving; sinks use inbound; skips rail↔rail', () => {
-		// a → mid → b  (mid intermediate) + sink leaf
+	it('flowBandMass is outbound only (start of edges)', () => {
+		// a → mid → b  + a → leaf
 		const mass = flowBandMass([
 			{ source: 'a', target: 'mid', value: 10 },
 			{ source: 'mid', target: 'b', value: 10 },
 			{ source: 'a', target: 'leaf', value: 3 },
 			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
 		]);
-		// a leaves 13; mid leaves 10 (not 20 in+out); leaf sink arrives 3
 		expect(mass.get('a')).toBe(13);
 		expect(mass.get('mid')).toBe(10);
-		expect(mass.get('b')).toBe(10); // sink: inbound
+		expect(mass.has('b')).toBe(false); // pure sink: no outbound
+		expect(mass.has('leaf')).toBe(false);
+		expect(mass.has(rail)).toBe(false);
+	});
+
+	it('flowTargetBandMass is inbound only (destination of edges)', () => {
+		const mass = flowTargetBandMass([
+			{ source: 'a', target: 'mid', value: 10 },
+			{ source: 'mid', target: 'b', value: 10 },
+			{ source: 'a', target: 'leaf', value: 3 },
+			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
+		]);
+		expect(mass.get('mid')).toBe(10);
+		expect(mass.get('b')).toBe(10);
 		expect(mass.get('leaf')).toBe(3);
+		expect(mass.has('a')).toBe(false); // pure free source
 		expect(mass.has(rail)).toBe(false);
 	});
 
@@ -533,7 +547,7 @@ describe('band sort (name / flow / node)', () => {
 			['z-file', 1],
 			['a-file', 10],
 		]);
-		for (const mode of ['name', 'flow', 'node'] as const) {
+		for (const mode of ['name', 'flow', 'flow-target', 'node'] as const) {
 			const sorted = [...names].sort((a, b) =>
 				compareAlluvialBands(a, b, {
 					mode,
@@ -564,7 +578,7 @@ describe('band sort (name / flow / node)', () => {
 		expect(sorted).toEqual(['alpha.ts', 'mid.ts', 'zebra.ts']);
 	});
 
-	it('flow mode orders higher flow mass first', () => {
+	it('flow mode orders higher source mass first', () => {
 		const names = ['light', 'heavy', 'mid'];
 		const mass = new Map([
 			['light', 1],
@@ -581,29 +595,21 @@ describe('band sort (name / flow / node)', () => {
 		expect(sorted).toEqual(['heavy', 'mid', 'light']);
 	});
 
-	it('flow vs node produce different ranks for fat-edge small file', () => {
-		// small file with fat leaving edge ranks high on flow, low on node
-		const names = ['tiny-fat', 'huge-thin'];
-		const flow = new Map([
-			['tiny-fat', 100],
-			['huge-thin', 2],
-		]);
-		const node = new Map([
-			['tiny-fat', 5],
-			['huge-thin', 500],
-		]);
-		const byFlow = [...names].sort((a, b) =>
-			compareAlluvialBands(a, b, { mode: 'flow', mass: flow, nodeRef: {} }),
-		);
-		const byNode = [...names].sort((a, b) =>
-			compareAlluvialBands(a, b, { mode: 'node', mass: node, nodeRef: {} }),
-		);
-		expect(byFlow).toEqual(['tiny-fat', 'huge-thin']);
-		expect(byNode).toEqual(['huge-thin', 'tiny-fat']);
+	it('flow vs flow-target invert attribution of the same links', () => {
+		const links = [
+			{ source: 'session', target: 'redis', value: 50 },
+			{ source: 'session', target: 'types', value: 5 },
+		];
+		const byStart = flowBandMass(links);
+		const byDest = flowTargetBandMass(links);
+		expect(byStart.get('session')).toBe(55);
+		expect(byStart.has('redis')).toBe(false);
+		expect(byDest.get('redis')).toBe(50);
+		expect(byDest.get('types')).toBe(5);
+		expect(byDest.has('session')).toBe(false);
 	});
 
-	it('buildAlluvialPayload writes rank + nodeRank under flow mode', () => {
-		// free sources on left: heavy/light leave into focus (export-style)
+	it('buildAlluvialPayload flow ranks free sources by outbound', () => {
 		const links = [
 			{ source: 'heavy', target: 'focus', value: 10 },
 			{ source: 'light', target: 'focus', value: 1 },
@@ -636,12 +642,9 @@ describe('band sort (name / flow / node)', () => {
 			.map((n) => n.name);
 		expect(exports).toEqual(['heavy', 'light', overflow]);
 		expect(payload!.meta.nodeRank!['heavy']).toBe(0);
-		expect(payload!.meta.nodeRank!['light']).toBe(1);
-		expect(payload!.meta.nodeRank![overflow]).toBe(2);
 	});
 
-	it('buildAlluvialPayload default bandSort is flow (fat first)', () => {
-		// import-side leaves: focus → peer (sinks use inbound)
+	it('buildAlluvialPayload flow-target ranks import leaves by inbound', () => {
 		const links = [
 			{ source: 'focus', target: 'zebra', value: 1 },
 			{ source: 'focus', target: 'alpha', value: 99 },
@@ -662,12 +665,44 @@ describe('band sort (name / flow / node)', () => {
 				zebra: { kind: 'file', id: 'zebra' },
 				alpha: { kind: 'file', id: 'alpha' },
 			},
-			startId: 'focus',
+			bandSort: 'flow-target',
 		});
 		const imports = payload!.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
 		expect(imports).toEqual(['alpha', 'zebra']);
+	});
+
+	it('buildAlluvialPayload default flow ranks sources not import leaves', () => {
+		// under pure source flow, import leaves have 0 out → name tie-break
+		const links = [
+			{ source: 'focus', target: 'zebra', value: 1 },
+			{ source: 'focus', target: 'alpha', value: 99 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['zebra', { category: 'Imports', color: '#1' }],
+			['alpha', { category: 'Imports', color: '#2' }],
+		]);
+		const payload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['File', 'Imports'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				zebra: { kind: 'file', id: 'zebra' },
+				alpha: { kind: 'file', id: 'alpha' },
+			},
+		});
+		const imports = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		// both leaves mass 0 under flow → alpha first by name
+		expect(imports).toEqual(['alpha', 'zebra']);
+		expect(payload!.meta.nodeRank!['focus']).toBe(0);
+		// focus has outbound 100
 	});
 
 	it('buildAlluvialPayload node mode ranks by file LOC not link fatness', () => {
@@ -692,14 +727,14 @@ describe('band sort (name / flow / node)', () => {
 			'small-fat': { kind: 'file' as const, id: 'small-fat' },
 			'big-thin': { kind: 'file' as const, id: 'big-thin' },
 		};
-		const flowPayload = buildAlluvialPayload({
+		const targetPayload = buildAlluvialPayload({
 			heightPx: 200,
 			links,
 			nodeMeta,
 			categoryOrder: ['File', 'Imports'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
 			nodeRef,
-			bandSort: 'flow',
+			bandSort: 'flow-target',
 			graph,
 		})!;
 		const nodePayload = buildAlluvialPayload({
@@ -712,13 +747,13 @@ describe('band sort (name / flow / node)', () => {
 			bandSort: 'node',
 			graph,
 		})!;
-		const flowOrder = flowPayload.options.alluvial.nodes
+		const targetOrder = targetPayload.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
 		const nodeOrder = nodePayload.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
-		expect(flowOrder).toEqual(['small-fat', 'big-thin']);
+		expect(targetOrder).toEqual(['small-fat', 'big-thin']);
 		expect(nodeOrder).toEqual(['big-thin', 'small-fat']);
 	});
 });

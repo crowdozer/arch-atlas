@@ -96,18 +96,19 @@ shipped.
 
 2. **Stable, controllable band order:** Offer a **dropdown** to choose how bands
    within columns are ordered:
-   - sort by **flow mass** (default) — ribbon / mass leaving the node
+   - sort by **flow mass** (default) — mass at link **start** (outbound)
+   - sort by **flow mass (target)** — mass at link **destination** (inbound)
    - sort by **node size** — whole-file LOC of the band’s file
    - sort by **name**
 
    Goal: stabilize output in an intuitive way so band traverse is learnable.
    **Landed** — payload SoR + polish Y-lock + session control (see Realization).
-   Flow vs node are distinct graph shapes (not one “mass” umbrella).
+   Flow / flow-target / node are distinct attributions (not one “mass” umbrella).
    Path/dir-walk mode was cut after field use.
 
 3. **Control surface:**
    - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`: Flow mass /
-     Node size / Name)
+     Flow mass (target) / Node size / Name)
    - Residual not-exported / not-imported bands → **checkbox** (off by default;
      experimental) — **not landed**
 
@@ -119,21 +120,20 @@ Ship `ship/f8f093b4-alluvial-band-sort` / commits `7825f9a` (feat) + `7849d73`
 
 | Surface | What landed |
 | ------- | ----------- |
-| Core | `BandSortMode = 'name' \| 'flow' \| 'node'`; `flowBandMass`, `nodeBandMass`, `compareAlluvialBands`; `buildAlluvialPayload({ bandSort, graph })` sorts per category + `meta.nodeRank` (default **`flow`**) |
-| Shell | `parseBandSortMode` (legacy `mass` → `flow`); `PayloadProjectOpts.bandSort` |
-| Web UI | **Band order** `atlas-band-sort`: Flow mass / Node size / Name |
+| Core | `BandSortMode = 'name' \| 'flow' \| 'flow-target' \| 'node'`; `flowBandMass` (outbound), `flowTargetBandMass` (inbound), `nodeBandMass`; default **`flow`** |
+| Shell | `parseBandSortMode` (legacy `mass` → `flow-target`); `PayloadProjectOpts.bandSort` |
+| Web UI | **Band order** `atlas-band-sort`: Flow mass / Flow mass (target) / Node size / Name |
 | Stage polish | `stackBandsByNodeRank` before File spine center |
 | Views threaded | `fileHub`, `packageHub`, `moduleFocus`, `multiHop`, `fileImporters` (+ `graph` for node LOC) |
 
 **Honesty / limits (do not overclaim):**
 
 - **Payload + `meta.nodeRank`** are the order SoR; polish restacks Y to match.
-- **`flow`**: mass **leaving** hub L→R (outbound link sum). True sinks (no out)
-  use **inbound** so External / leaves still rank by ribbon into them. Does **not**
-  sum in+out (that double-counted intermediates).
+- **`flow`**: mass at link **start** (outbound only). Pure sinks rank 0 under flow.
+- **`flow-target`**: mass at link **destination** (inbound only). Import leaves /
+  External rank by ribbon into them (the prior hybrid “mass” behavior on that side).
 - **`node`**: whole-file LOC from `graph.contents` for file refs only; packages /
-  buckets 0. **Estimate** file size — not Exact export-surface (Weight/Precision
-  own that honesty).
+  buckets 0. **Estimate** file size — not Exact export-surface.
 - Membership / hub column matrix unchanged.
 - Session-only preference; default **`flow`**.
 - Dir-walk removed (user cut).

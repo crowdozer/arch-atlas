@@ -87,25 +87,24 @@ export function isOverflowNodeName(name: string): boolean {
 /**
  * In-column band stack order (global mode for all columns).
  *
- * - `flow` — ribbon / leaving mass (hub L→R): outbound link sum; sinks use inbound
+ * - `flow` — mass at the **start** of each link (outbound / source sum)
+ * - `flow-target` — mass at the **destination** (inbound / target sum); secondary view
  * - `node` — intrinsic file size (whole-file LOC from graph); packages/buckets 0
  * - `name` — alpha
  *
- * Default `flow` (matches ribbon fatness). These are **not** the same graph shape:
- * a small file with a fat import edge ranks high under flow, low under node.
+ * Default `flow`. Flow vs flow-target are inverted attributions of the same links;
+ * both differ from node LOC.
  */
-export type BandSortMode = 'name' | 'flow' | 'node';
+export type BandSortMode = 'name' | 'flow' | 'flow-target' | 'node';
 
-/**
- * Flow mass for sort: mass **leaving** the node in hub L→R (sum of outbound
- * link values). True sinks (External packages, leaves with no out) use **inbound**
- * so their ribbon into the node still ranks. Skips pure rail↔rail links.
- *
- * Does **not** sum in+out (that double-counted intermediates vs leaves).
- */
-export function flowBandMass(
+type LinkEnds = {
+	inn: Map<string, number>;
+	out: Map<string, number>;
+};
+
+function accumulateLinkEnds(
 	links: readonly { source: string; target: string; value: number }[],
-): Map<string, number> {
+): LinkEnds {
 	const inn = new Map<string, number>();
 	const out = new Map<string, number>();
 	for (const l of links) {
@@ -115,20 +114,46 @@ export function flowBandMass(
 		out.set(l.source, (out.get(l.source) ?? 0) + v);
 		inn.set(l.target, (inn.get(l.target) ?? 0) + v);
 	}
+	return { inn, out };
+}
+
+/**
+ * Flow mass at the **start** of edges: sum of outbound link values (node as source).
+ * Pure sinks (no out) rank 0 under this mode — use `flow-target` for destination ribbons.
+ * Skips pure rail↔rail links.
+ */
+export function flowBandMass(
+	links: readonly { source: string; target: string; value: number }[],
+): Map<string, number> {
+	const { out } = accumulateLinkEnds(links);
 	const mass = new Map<string, number>();
-	for (const n of new Set([...out.keys(), ...inn.keys()])) {
+	for (const [n, v] of out) {
 		if (isAlluvialRailName(n)) continue;
-		const o = out.get(n) ?? 0;
-		const i = inn.get(n) ?? 0;
-		// Prefer leaving (export consumers, import intermediates). Sinks: arriving.
-		mass.set(n, o > 0 ? o : i);
+		mass.set(n, v);
 	}
 	return mass;
 }
 
 /**
- * @deprecated Use {@link flowBandMass}. Kept name for any external greps; sums
- * in+out (double-counts). Prefer flowBandMass.
+ * Flow mass at the **destination** of edges: sum of inbound link values (node as target).
+ * What import-side leaves / External packages rank by (ribbon into the band).
+ * Free sources with only outbound rank 0 — use `flow` for leaving mass.
+ */
+export function flowTargetBandMass(
+	links: readonly { source: string; target: string; value: number }[],
+): Map<string, number> {
+	const { inn } = accumulateLinkEnds(links);
+	const mass = new Map<string, number>();
+	for (const [n, v] of inn) {
+		if (isAlluvialRailName(n)) continue;
+		mass.set(n, v);
+	}
+	return mass;
+}
+
+/**
+ * @deprecated Prefer {@link flowBandMass} / {@link flowTargetBandMass}. Sums in+out
+ * (double-counts intermediates).
  */
 export function incidentBandMass(
 	links: readonly { source: string; target: string; value: number }[],
@@ -172,8 +197,8 @@ export function nodeBandMass(
  * Mode-aware in-column compare. Tiers (all modes):
  * 1. Overflow last
  * 2. Pad rails after real (non-overflow) nodes
- * 3. Mode key (name alpha / flow desc / node LOC desc)
- * 4. Stable name; flow/node key multi-instance on nodeRef.id then label
+ * 3. Mode key (name alpha / flow·flow-target·node desc)
+ * 4. Stable name; numeric modes key multi-instance on nodeRef.id then label
  */
 export function compareAlluvialBands(
 	a: string,
@@ -197,7 +222,11 @@ export function compareAlluvialBands(
 	// Both rails: pin by name (do not apply user mass to ZWSP rails)
 	if (ar === 1) return a.localeCompare(b);
 
-	if (ctx.mode === 'flow' || ctx.mode === 'node') {
+	if (
+		ctx.mode === 'flow' ||
+		ctx.mode === 'flow-target' ||
+		ctx.mode === 'node'
+	) {
 		const ma = ctx.mass.get(a) ?? 0;
 		const mb = ctx.mass.get(b) ?? 0;
 		if (ma !== mb) return mb - ma;
@@ -270,9 +299,11 @@ export function buildAlluvialPayload(args: {
 	const mass =
 		bandSort === 'flow'
 			? flowBandMass(links)
-			: bandSort === 'node'
-				? nodeBandMass(nodeMeta.keys(), nodeRef, graph)
-				: new Map<string, number>();
+			: bandSort === 'flow-target'
+				? flowTargetBandMass(links)
+				: bandSort === 'node'
+					? nodeBandMass(nodeMeta.keys(), nodeRef, graph)
+					: new Map<string, number>();
 	const sortCtx = {
 		mode: bandSort,
 		mass,
