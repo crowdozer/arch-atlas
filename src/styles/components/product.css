@@ -1,8 +1,8 @@
 /*
- * Product component rules (post bridge). Prefer var(--cds-*) / var(--atlas-*).
- * Residual raw hex only on CE host custom-property *assignments* that re-bind
- * tokens for shadow/light-DOM chrome (cannot self-reference circularly).
- * Canonical hex lives in atlas-bridge.css + carbon-g100.css.
+ * Product component rules (post bridge). Prefer var(--cds-*) / var(--atlas-*)
+ * on property *uses*. Custom-property *assignments* on CE hosts keep raw hex
+ * (token rebinds for shadow/light-DOM; no same-element var chains).
+ * Canonical hex: atlas-bridge.css + carbon-g100.css.
  */
 /* Shell */
 body.cds--g100 {
@@ -20,13 +20,13 @@ body.cds--g100 {
 cds-header,
 cds-header.atlas-header,
 .atlas-header {
-  --cds-background: var(--cds-layer-01, #18181b);
-  --cds-background-hover: var(--cds-layer-02, #27272a);
-  --cds-border-subtle: var(--cds-layer-02, #27272a);
+  --cds-background: #18181b;
+  --cds-background-hover: #27272a;
+  --cds-border-subtle: #27272a;
   --cds-text-primary: #fafafa;
   --cds-text-secondary: #a1a1aa;
-  --cds-link-primary: var(--cds-text-primary, #fafafa);
-  --cds-link-primary-hover: var(--cds-border-interactive, #2dd4bf);
+  --cds-link-primary: #fafafa;
+  --cds-link-primary-hover: #2dd4bf;
   /* Carbon :host(cds-header) is position:fixed + inset 0 — must beat shadow cascade */
   position: relative !important;
   inset: auto !important;
@@ -70,7 +70,7 @@ cds-header-name.ui-header-name {
   color: var(--cds-link-primary, #2dd4bf) !important;
   font-weight: 600;
   letter-spacing: 0.02em;
-  --cds-link-primary: var(--cds-border-interactive, #2dd4bf);
+  --cds-link-primary: #2dd4bf;
 }
 
 cds-header-name.ui-header-name::part(prefix) {
@@ -126,7 +126,7 @@ cds-tag {
 
 /* Product export yellow (Carbon has no type=yellow) — outbound direction chips */
 cds-tag.ui-tag--yellow {
-  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, var(--cds-background, #000)) !important;
+  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, #000) !important;
   color: var(--atlas-export, #eab308) !important;
 }
 
@@ -147,15 +147,15 @@ cds-tag.ui-tag--yellow {
    * (inverse → white). Label chips pin zinc via rgb() below; these tokens
    * remain for any non-overridden chart chrome.
    */
-  --cds-layer-01-absolute: var(--cds-icon-primary, #e4e4e7);
-  --cds-layer-inverse-absolute: var(--cds-layer-01, #18181b);
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
 }
 
 /* Beat Carbon theme absolute-layer flip on the chart holder itself. */
 .ui-carbon-chart .cds--chart-holder,
 .ui-carbon-chart [class*='chart-holder'] {
-  --cds-layer-01-absolute: var(--cds-icon-primary, #e4e4e7);
-  --cds-layer-inverse-absolute: var(--cds-layer-01, #18181b);
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
 }
 
 .ui-carbon-chart__holder {
@@ -188,7 +188,7 @@ cds-tag.ui-tag--yellow {
 .ui-carbon-chart .cds--cc--alluvial rect.node-text-bg {
   /*
    * Zinc-900 chip under light labels. Do NOT use --cds-layer-inverse-absolute:
-   * Carbon g100 sets that to var(--cds-text-primary, #ffffff) on .cds--chart-holder[data-carbon-theme=g100]
+   * Carbon g100 sets that to #ffffff on .cds--chart-holder[data-carbon-theme=g100]
    * (white chip + black text). Chart also forces --cds-layer-01 transparent, so
    * shell layer tokens are unusable here — pin zinc-900 explicitly.
    */
@@ -463,7 +463,7 @@ cds-tag.ui-tag--yellow {
   flex-shrink: 0;
   border-inline-end: 1px solid var(--cds-border-subtle-00, #27272a);
   /* Near zinc-950; slightly elevated from --cds-background */
-  background: color-mix(in srgb, var(--cds-background, #09090b) 92%, var(--cds-text-primary, #fff));
+  background: color-mix(in srgb, var(--cds-background, #09090b) 92%, #fff);
   min-height: 0;
 }
 
@@ -507,14 +507,14 @@ cds-search.atlas-tree-search {
   display: block;
   width: 100%;
   max-width: 100%;
-  --cds-field: var(--cds-background, #09090b);
-  --cds-field-hover: var(--cds-layer-01, #18181b);
-  --cds-border-strong: var(--cds-layer-03, #3f3f46);
-  --cds-text-primary: var(--cds-icon-primary, #e4e4e7);
+  --cds-field: #09090b;
+  --cds-field-hover: #18181b;
+  --cds-border-strong: #3f3f46;
+  --cds-text-primary: #e4e4e7;
   --cds-text-secondary: #a1a1aa;
-  --cds-text-placeholder: var(--cds-border-strong-01, #52525b);
-  --cds-icon-primary: var(--cds-text-secondary, #a1a1aa);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
+  --cds-text-placeholder: #52525b;
+  --cds-icon-primary: #a1a1aa;
+  --cds-focus: #2dd4bf;
 }
 
 .atlas-section-label {
@@ -905,18 +905,18 @@ cds-inline-notification.atlas-inspect__banner {
 /* Per-site accordion (mirrors catalog accordion zinc/teal tokens) */
 .atlas-inspect-accordion {
   width: 100%;
-  --cds-layer: var(--cds-layer-01, #18181b);
-  --cds-layer-hover: var(--cds-layer-02, #27272a);
-  --cds-layer-active: var(--cds-layer-03, #3f3f46);
+  --cds-layer: #18181b;
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
   --cds-layer-selected: rgb(13 148 136 / 0.15);
-  --cds-border-subtle: var(--cds-layer-02, #27272a);
-  --cds-border-subtle-selected: var(--cds-layer-03, #3f3f46);
+  --cds-border-subtle: #27272a;
+  --cds-border-subtle-selected: #3f3f46;
   --cds-text-primary: #f4f4f5;
   --cds-text-secondary: #a1a1aa;
   --cds-icon-primary: #e4e4e7;
-  --cds-icon-secondary: var(--cds-text-secondary, #a1a1aa);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-link-primary: var(--cds-border-interactive, #2dd4bf);
+  --cds-icon-secondary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+  --cds-link-primary: #2dd4bf;
 }
 
 .atlas-inspect-accordion cds-accordion-item {
@@ -1581,18 +1581,18 @@ cds-button.atlas-spine-info-btn::part(button) {
 /* Carbon accordion in drawer — g100 + zinc shell */
 .atlas-catalog-accordion {
   width: 100%;
-  --cds-layer: var(--cds-layer-01, #18181b);
-  --cds-layer-hover: var(--cds-layer-02, #27272a);
-  --cds-layer-active: var(--cds-layer-03, #3f3f46);
+  --cds-layer: #18181b;
+  --cds-layer-hover: #27272a;
+  --cds-layer-active: #3f3f46;
   --cds-layer-selected: rgb(13 148 136 / 0.15);
-  --cds-border-subtle: var(--cds-layer-02, #27272a);
-  --cds-border-subtle-selected: var(--cds-layer-03, #3f3f46);
+  --cds-border-subtle: #27272a;
+  --cds-border-subtle-selected: #3f3f46;
   --cds-text-primary: #f4f4f5;
   --cds-text-secondary: #a1a1aa;
   --cds-icon-primary: #e4e4e7;
-  --cds-icon-secondary: var(--cds-text-secondary, #a1a1aa);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-link-primary: var(--cds-border-interactive, #2dd4bf);
+  --cds-icon-secondary: #a1a1aa;
+  --cds-focus: #2dd4bf;
+  --cds-link-primary: #2dd4bf;
 }
 
 .atlas-catalog-accordion cds-accordion-item {
@@ -1627,11 +1627,11 @@ cds-file-uploader.atlas-file-uploader {
   width: 100%;
   --cds-text-primary: #f4f4f5;
   --cds-text-secondary: #a1a1aa;
-  --cds-link-primary: var(--cds-border-interactive, #2dd4bf);
+  --cds-link-primary: #2dd4bf;
   --cds-link-primary-hover: #5eead4;
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-border-strong: var(--cds-layer-03, #3f3f46);
-  --cds-layer: var(--cds-layer-01, #18181b);
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
+  --cds-layer: #18181b;
 }
 
 .atlas-file-drop,
@@ -1639,10 +1639,10 @@ cds-file-uploader-drop-container.atlas-file-drop {
   display: block;
   width: 100%;
   min-block-size: 8rem;
-  --cds-link-primary: var(--cds-icon-primary, #e4e4e7);
-  --cds-link-primary-hover: var(--cds-border-interactive, #2dd4bf);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-border-strong: var(--cds-layer-03, #3f3f46);
+  --cds-link-primary: #e4e4e7;
+  --cds-link-primary-hover: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
   --cds-layer: rgb(24 24 27 / 0.6);
   --cds-layer-hover: rgb(13 148 136 / 0.08);
 }
@@ -1661,11 +1661,11 @@ cds-file-uploader-drop-container.atlas-file-drop::part(label) {
 }
 
 cds-checkbox.atlas-include-tests {
-  --cds-text-primary: var(--cds-icon-primary, #e4e4e7);
+  --cds-text-primary: #e4e4e7;
   --cds-text-secondary: #a1a1aa;
-  --cds-icon-primary: var(--cds-border-interactive, #2dd4bf);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-border-strong: var(--cds-layer-03, #3f3f46);
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
   --cds-interactive: #14b8a6;
   white-space: nowrap;
 }
@@ -1676,11 +1676,11 @@ cds-checkbox.atlas-persist {
   display: block;
   width: 100%;
   max-width: 36rem;
-  --cds-text-primary: var(--cds-icon-primary, #e4e4e7);
+  --cds-text-primary: #e4e4e7;
   --cds-text-secondary: #a1a1aa;
-  --cds-icon-primary: var(--cds-border-interactive, #2dd4bf);
-  --cds-focus: var(--cds-border-interactive, #2dd4bf);
-  --cds-border-strong: var(--cds-layer-03, #3f3f46);
+  --cds-icon-primary: #2dd4bf;
+  --cds-focus: #2dd4bf;
+  --cds-border-strong: #3f3f46;
   --cds-interactive: #14b8a6;
 }
 
