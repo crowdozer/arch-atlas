@@ -1338,12 +1338,13 @@ cds-inline-notification.atlas-inspect__banner {
   border-color: #27272a;
 }
 
-/* Expanded site body: Import → Imported code → Callsites */
+/* Expanded site body: Statement → Imported code → Callsites */
 .atlas-inspect__sections {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   padding: 0.15rem 0 0.35rem;
+  padding-left: 16px;
   min-width: 0;
 }
 
