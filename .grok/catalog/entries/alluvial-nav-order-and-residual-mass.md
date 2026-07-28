@@ -96,16 +96,17 @@ shipped.
 
 2. **Stable, controllable band order:** Offer a **dropdown** to choose how bands
    within columns are ordered:
-   - sort by **flow mass** (default) — **spine-facing** stage mass (column-relative:
-     left of File/External pivot → outbound; right → inbound; pivot → max(in,out))
-   - sort by **flow mass (inputs)** — **spine-away** inverse of flow
+   - sort by **flow mass** (default) — thickest **leaving** ribbon first
+     (max outbound link value per node)
+   - sort by **flow mass (inputs)** — thickest **arriving** ribbon first
+     (max inbound link value)
    - sort by **node size** — whole-file LOC of the band’s file
    - sort by **name**
 
-   Goal: stabilize output in an intuitive way so band traverse is learnable.
+   Goal: thick→thin vertical stack matching the fat ribbons you hover.
    **Landed** — payload SoR + polish Y-lock + session control (see Realization).
-   Flow / flow-target are a facing/away pair (not pure global source/target).
-   Path/dir-walk mode was cut after field use.
+   Path/dir-walk mode was cut after field use. Spine-facing pivot experiment
+   rejected (looked “stuck” where out≈in; free sources under inputs all zero).
 
 3. **Control surface:**
    - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`: Flow mass /
@@ -117,12 +118,12 @@ shipped.
 
 Ship `ship/f8f093b4-alluvial-band-sort` / commits `7825f9a` (feat) + `7849d73`
 (merge on main). Follow-ups: drop dir-walk; polish Y-lock; split mass into
-**flow** vs **node**.
+**flow** vs **node**; dump-driven retune to **max single-link** leave/arrive.
 
 | Surface | What landed |
 | ------- | ----------- |
-| Core | `BandSortMode = 'name' \| 'flow' \| 'flow-target' \| 'node'`; product mass via `spineFacingBandMass` / `spineAwayBandMass` (pivot File then External); pure `flowBandMass` / `flowTargetBandMass` remain as primitives + non-hub fallback; `nodeBandMass`; default **`flow`** |
-| Shell | `parseBandSortMode` (legacy `mass` → `flow-target`); `PayloadProjectOpts.bandSort` |
+| Core | `BandSortMode = 'name' \| 'flow' \| 'flow-target' \| 'node'`; `flowBandMass` = max outbound link; `flowTargetBandMass` = max inbound link; `nodeBandMass`; default **`flow`** |
+| Shell | `parseBandSortMode` (legacy `mass` → `flow`); `PayloadProjectOpts.bandSort` |
 | Web UI | **Band order** `atlas-band-sort`: Flow mass / Flow mass (inputs) / Node size / Name |
 | Stage polish | `stackBandsByNodeRank` before File spine center |
 | Views threaded | `fileHub`, `packageHub`, `moduleFocus`, `multiHop`, `fileImporters` (+ `graph` for node LOC) |
@@ -130,13 +131,14 @@ Ship `ship/f8f093b4-alluvial-band-sort` / commits `7825f9a` (feat) + `7849d73`
 **Honesty / limits (do not overclaim):**
 
 - **Payload + `meta.nodeRank`** are the order SoR; polish restacks Y to match.
-- **`flow` (spine-facing):** left of File (or package-hub External) → outbound;
-  right → inbound; pivot category → max(in, out). One mode ranks both Exports
-  free sources and Imports sinks. Non-hub (no File/External in categoryOrder) →
-  pure outbound fallback. Rails excluded; pure rail↔rail skipped.
-- **`flow-target` (spine-away / inputs):** inverse of flow. Non-hub → pure inbound.
+- **`flow`:** max **outbound** ribbon width (source). Pure sinks (no out) share
+  mass 0 → name among themselves; overflow last. Multi-edge: **max not sum** so
+  stack tracks the fat ribbon you hover (sum jumped).
+- **`flow-target`:** max **inbound** ribbon width (target). Pure free sources
+  (no in) → name among zeros.
 - **`node`**: whole-file LOC from `graph.contents` for file refs only; packages /
-  buckets 0. **Estimate** file size — not Exact export-surface.
+  buckets 0. **Estimate** file size — not Exact export-surface. Not painted on
+  chips yet (order can look opaque).
 - Membership / hub column matrix unchanged.
 - Session-only preference; default **`flow`**.
 - Dir-walk removed (user cut).

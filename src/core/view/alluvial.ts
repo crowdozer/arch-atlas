@@ -85,186 +85,61 @@ export function isOverflowNodeName(name: string): boolean {
 }
 
 /**
- * In-column band stack order (global mode for all columns; mass is column-aware).
+ * In-column band stack order (global mode for all columns).
  *
- * - `flow` — **spine-facing** stage mass (default): left of File/External pivot →
- *   outbound; right → inbound; pivot category → max(in, out). Non-hub fallback →
- *   pure outbound.
- * - `flow-target` — **spine-away** / inputs: inverse of flow (left → inbound;
- *   right → outbound; pivot → max; no pivot → pure inbound).
- * - `node` — intrinsic file size (whole-file LOC from graph); packages/buckets 0
+ * - `flow` — **thickest leaving ribbon first**: max outbound link value (source).
+ *   Pure sinks (no out) share mass 0 → name among themselves; overflow still last.
+ * - `flow-target` — **thickest incoming ribbon first**: max inbound link value
+ *   (target). Pure free sources (no in) → name among zeros.
+ * - `node` — whole-file LOC (Estimate); packages/buckets 0
  * - `name` — alpha
  *
- * Default `flow`. Mode ids stay stable; pure global source/target maps remain as
- * helpers ({@link flowBandMass} / {@link flowTargetBandMass}) for fallback + tests.
+ * Product intent: within a column, bands that leave (flow) or enter (flow-target)
+ * stack thick→thin top→bottom. Uses **max single-link width** so order tracks the
+ * fat ribbon you hover, not sum of all edges (which jumps when multi-edge).
  */
 export type BandSortMode = 'name' | 'flow' | 'flow-target' | 'node';
 
-type LinkEnds = {
-	inn: Map<string, number>;
-	out: Map<string, number>;
-};
-
-type NodeMetaLike = { category: string };
-
-function accumulateLinkEnds(
-	links: readonly { source: string; target: string; value: number }[],
-): LinkEnds {
-	const inn = new Map<string, number>();
-	const out = new Map<string, number>();
-	for (const l of links) {
-		if (isAlluvialRailName(l.source) && isAlluvialRailName(l.target)) continue;
-		const v = l.value;
-		if (!(v > 0)) continue;
-		out.set(l.source, (out.get(l.source) ?? 0) + v);
-		inn.set(l.target, (inn.get(l.target) ?? 0) + v);
-	}
-	return { inn, out };
-}
-
 /**
- * Hub pivot index for column-relative flow mass.
- * Prefer `"File"` (file-hub); else `"External"` (package-hub); else null.
- */
-export function hubFlowPivotIndex(
-	categoryOrder: readonly string[],
-): number | null {
-	const fileIdx = categoryOrder.indexOf('File');
-	if (fileIdx >= 0) return fileIdx;
-	const extIdx = categoryOrder.indexOf('External');
-	if (extIdx >= 0) return extIdx;
-	return null;
-}
-
-/**
- * Pure outbound mass (node as link **start**). Non-hub fallback for `flow`;
- * also used as left-of-pivot contribution under spine-facing.
- * Skips pure rail↔rail; excludes rail node names.
+ * Flow mass: max **outbound** link value per node (thickest band leaving).
+ * Skips pure rail↔rail; excludes rail node names as keys.
  */
 export function flowBandMass(
 	links: readonly { source: string; target: string; value: number }[],
 ): Map<string, number> {
-	const { out } = accumulateLinkEnds(links);
 	const mass = new Map<string, number>();
-	for (const [n, v] of out) {
-		if (isAlluvialRailName(n)) continue;
-		mass.set(n, v);
+	for (const l of links) {
+		if (isAlluvialRailName(l.source) && isAlluvialRailName(l.target)) continue;
+		const v = l.value;
+		if (!(v > 0)) continue;
+		if (isAlluvialRailName(l.source)) continue;
+		const prev = mass.get(l.source) ?? 0;
+		if (v > prev) mass.set(l.source, v);
 	}
 	return mass;
 }
 
 /**
- * Pure inbound mass (node as link **destination**). Non-hub fallback for
- * `flow-target`; also used as right-of-pivot contribution under spine-facing.
- * Skips pure rail↔rail; excludes rail node names.
+ * Flow-target mass: max **inbound** link value per node (thickest band arriving).
+ * Skips pure rail↔rail; excludes rail node names as keys.
  */
 export function flowTargetBandMass(
 	links: readonly { source: string; target: string; value: number }[],
 ): Map<string, number> {
-	const { inn } = accumulateLinkEnds(links);
 	const mass = new Map<string, number>();
-	for (const [n, v] of inn) {
-		if (isAlluvialRailName(n)) continue;
-		mass.set(n, v);
+	for (const l of links) {
+		if (isAlluvialRailName(l.source) && isAlluvialRailName(l.target)) continue;
+		const v = l.value;
+		if (!(v > 0)) continue;
+		if (isAlluvialRailName(l.target)) continue;
+		const prev = mass.get(l.target) ?? 0;
+		if (v > prev) mass.set(l.target, v);
 	}
 	return mass;
 }
 
 /**
- * Column-relative **spine-facing** mass (product meaning of `flow`).
- *
- * - left of pivot → outbound sum (emissions toward spine)
- * - right of pivot → inbound sum (attachment from left)
- * - pivot category itself → max(in, out)
- * - no File/External pivot → pure outbound ({@link flowBandMass})
- *
- * Skip pure rail↔rail when accumulating; exclude rail names from the map.
- */
-export function spineFacingBandMass(
-	links: readonly { source: string; target: string; value: number }[],
-	nodeMeta: ReadonlyMap<string, NodeMetaLike>,
-	categoryOrder: readonly string[],
-): Map<string, number> {
-	const pivot = hubFlowPivotIndex(categoryOrder);
-	if (pivot === null) return flowBandMass(links);
-
-	const { inn, out } = accumulateLinkEnds(links);
-	const names = new Set<string>();
-	for (const n of inn.keys()) names.add(n);
-	for (const n of out.keys()) names.add(n);
-	for (const n of nodeMeta.keys()) names.add(n);
-
-	const mass = new Map<string, number>();
-	for (const n of names) {
-		if (isAlluvialRailName(n)) continue;
-		const o = out.get(n) ?? 0;
-		const i = inn.get(n) ?? 0;
-		const cat = nodeMeta.get(n)?.category;
-		const catIdx = cat != null ? categoryOrder.indexOf(cat) : -1;
-		let m: number;
-		if (catIdx < 0) {
-			// Unknown category: outbound fallback (legacy flow)
-			m = o;
-		} else if (catIdx < pivot) {
-			m = o;
-		} else if (catIdx > pivot) {
-			m = i;
-		} else {
-			m = Math.max(i, o);
-		}
-		if (m > 0) mass.set(n, m);
-	}
-	return mass;
-}
-
-/**
- * Column-relative **spine-away** / inputs mass (product meaning of `flow-target`).
- * Inverse of {@link spineFacingBandMass}:
- *
- * - left of pivot → inbound
- * - right of pivot → outbound
- * - pivot → max(in, out)
- * - no pivot → pure inbound ({@link flowTargetBandMass})
- */
-export function spineAwayBandMass(
-	links: readonly { source: string; target: string; value: number }[],
-	nodeMeta: ReadonlyMap<string, NodeMetaLike>,
-	categoryOrder: readonly string[],
-): Map<string, number> {
-	const pivot = hubFlowPivotIndex(categoryOrder);
-	if (pivot === null) return flowTargetBandMass(links);
-
-	const { inn, out } = accumulateLinkEnds(links);
-	const names = new Set<string>();
-	for (const n of inn.keys()) names.add(n);
-	for (const n of out.keys()) names.add(n);
-	for (const n of nodeMeta.keys()) names.add(n);
-
-	const mass = new Map<string, number>();
-	for (const n of names) {
-		if (isAlluvialRailName(n)) continue;
-		const o = out.get(n) ?? 0;
-		const i = inn.get(n) ?? 0;
-		const cat = nodeMeta.get(n)?.category;
-		const catIdx = cat != null ? categoryOrder.indexOf(cat) : -1;
-		let m: number;
-		if (catIdx < 0) {
-			m = i;
-		} else if (catIdx < pivot) {
-			m = i;
-		} else if (catIdx > pivot) {
-			m = o;
-		} else {
-			m = Math.max(i, o);
-		}
-		if (m > 0) mass.set(n, m);
-	}
-	return mass;
-}
-
-/**
- * @deprecated Prefer spine-facing / pure flow helpers. Sums in+out
- * (double-counts intermediates).
+ * @deprecated Double-counts in+out. Prefer {@link flowBandMass} / {@link flowTargetBandMass}.
  */
 export function incidentBandMass(
 	links: readonly { source: string; target: string; value: number }[],
@@ -409,9 +284,9 @@ export function buildAlluvialPayload(args: {
 	const nodeRank: Record<string, number> = {};
 	const mass =
 		bandSort === 'flow'
-			? spineFacingBandMass(links, nodeMeta, categoryOrder)
+			? flowBandMass(links)
 			: bandSort === 'flow-target'
-				? spineAwayBandMass(links, nodeMeta, categoryOrder)
+				? flowTargetBandMass(links)
 				: bandSort === 'node'
 					? nodeBandMass(nodeMeta.keys(), nodeRef, graph)
 					: new Map<string, number>();

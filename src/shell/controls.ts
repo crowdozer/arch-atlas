@@ -35,13 +35,13 @@ export function parseWeightAxis(raw: string): WeightAxis {
 /**
  * Parse stage band-order mode.
  * - Known: name | flow | flow-target | node
- * - `flow` = spine-facing stage mass; `flow-target` = spine-away (inputs)
- * - Legacy `mass` → flow-target
+ * - `flow` = thickest leaving ribbon (max outbound link)
+ * - `flow-target` = thickest arriving ribbon (max inbound link)
+ * - Legacy `mass` → flow
  * - Unknown → flow (default)
  */
 export function parseBandSortMode(raw: string): BandSortMode {
-	// Pre-split "mass" behaved like destination for import-side leaves
-	if (raw === 'mass') return 'flow-target';
+	if (raw === 'mass') return 'flow';
 	return (BAND_SORT_MODES as string[]).includes(raw)
 		? (raw as BandSortMode)
 		: 'flow';

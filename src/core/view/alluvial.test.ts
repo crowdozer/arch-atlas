@@ -10,7 +10,6 @@ import {
 	compareAlluvialBands,
 	flowBandMass,
 	flowTargetBandMass,
-	hubFlowPivotIndex,
 	nodeBandMass,
 	isAlluvialRailName,
 	isImportPadScaffoldLink,
@@ -18,8 +17,6 @@ import {
 	isOutRailName,
 	isOverflowNodeName,
 	projectAlluvial,
-	spineAwayBandMass,
-	spineFacingBandMass,
 } from '@core/view/alluvial.ts';
 import {
 	carbonColumnHeader,
@@ -491,198 +488,47 @@ describe('band sort (name / flow / flow-target / node)', () => {
 	const overflow = '+ 3 more';
 	const other = '(other ends)';
 
-	/** Dual-side file-hub fixture: free sources left + pure sinks right. */
-	const dualHub = {
-		categoryOrder: ['Exports', 'File', 'Imports'] as const,
-		links: [
-			// Exports free sources → File (out only on export side)
-			{ source: 'RootShell', target: 'focus', value: 16 },
-			{ source: 'session-exp', target: 'focus', value: 13 },
-			{ source: 'logger', target: 'focus', value: 8 },
-			// File → Imports pure sinks (in only on import side)
-			{ source: 'focus', target: 'session-imp', value: 10 },
-			{ source: 'focus', target: 'SiteHeader', value: 8 },
-			{ source: 'focus', target: 'zod', value: 2 },
-			// pure rail↔rail must not contribute
-			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
-		],
-		nodeMeta: new Map([
-			['focus', { category: 'File', color: '#0' }],
-			['RootShell', { category: 'Exports', color: '#1' }],
-			['session-exp', { category: 'Exports', color: '#2' }],
-			['logger', { category: 'Exports', color: '#3' }],
-			['session-imp', { category: 'Imports', color: '#4' }],
-			['SiteHeader', { category: 'Imports', color: '#5' }],
-			['zod', { category: 'Imports', color: '#6' }],
-		]),
-		nodeRef: {
-			focus: { kind: 'file' as const, id: 'focus' },
-			RootShell: { kind: 'file' as const, id: 'RootShell' },
-			'session-exp': { kind: 'file' as const, id: 'session-exp' },
-			logger: { kind: 'file' as const, id: 'logger' },
-			'session-imp': { kind: 'file' as const, id: 'session-imp' },
-			SiteHeader: { kind: 'file' as const, id: 'SiteHeader' },
-			zod: { kind: 'package' as const, id: 'zod' },
-		},
-	};
-
-	it('hubFlowPivotIndex prefers File then External', () => {
-		expect(hubFlowPivotIndex(['Exports', 'File', 'Imports'])).toBe(1);
-		expect(hubFlowPivotIndex(['Export hop 2', 'Exports', 'External'])).toBe(
-			2,
-		);
-		expect(hubFlowPivotIndex(['Ends', 'Modules', 'Code'])).toBeNull();
-	});
-
-	it('flowBandMass is pure outbound (primitive)', () => {
-		// a → mid → b  + a → leaf
+	it('flowBandMass is max outbound link (thickest band leaving)', () => {
 		const mass = flowBandMass([
 			{ source: 'a', target: 'mid', value: 10 },
-			{ source: 'mid', target: 'b', value: 10 },
 			{ source: 'a', target: 'leaf', value: 3 },
+			{ source: 'mid', target: 'b', value: 10 },
+			// multi-edge: max is 50 not sum 55
+			{ source: 'session', target: 'redis', value: 50 },
+			{ source: 'session', target: 'types', value: 5 },
 			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
 		]);
-		expect(mass.get('a')).toBe(13);
+		expect(mass.get('a')).toBe(10); // max(10, 3)
 		expect(mass.get('mid')).toBe(10);
-		expect(mass.has('b')).toBe(false); // pure sink: no outbound
+		expect(mass.get('session')).toBe(50); // not 55
+		expect(mass.has('b')).toBe(false);
 		expect(mass.has('leaf')).toBe(false);
 		expect(mass.has(rail)).toBe(false);
 	});
 
-	it('flowTargetBandMass is pure inbound (primitive)', () => {
+	it('flowTargetBandMass is max inbound link (thickest band arriving)', () => {
 		const mass = flowTargetBandMass([
 			{ source: 'a', target: 'mid', value: 10 },
 			{ source: 'mid', target: 'b', value: 10 },
 			{ source: 'a', target: 'leaf', value: 3 },
+			{ source: 'focus', target: 'heavy', value: 99 },
+			{ source: 'focus', target: 'light', value: 1 },
 			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
 		]);
 		expect(mass.get('mid')).toBe(10);
 		expect(mass.get('b')).toBe(10);
 		expect(mass.get('leaf')).toBe(3);
-		expect(mass.has('a')).toBe(false); // pure free source
+		expect(mass.get('heavy')).toBe(99);
+		expect(mass.get('light')).toBe(1);
+		expect(mass.has('a')).toBe(false);
 		expect(mass.has(rail)).toBe(false);
-	});
-
-	it('spineFacing: dual-side hub ranks Exports by out AND Imports by in', () => {
-		const mass = spineFacingBandMass(
-			dualHub.links,
-			dualHub.nodeMeta,
-			dualHub.categoryOrder,
-		);
-		// left of File → outbound
-		expect(mass.get('RootShell')).toBe(16);
-		expect(mass.get('session-exp')).toBe(13);
-		expect(mass.get('logger')).toBe(8);
-		// right of File → inbound
-		expect(mass.get('session-imp')).toBe(10);
-		expect(mass.get('SiteHeader')).toBe(8);
-		expect(mass.get('zod')).toBe(2);
-		// File pivot → max(in, out) = max(37, 20) = 37
-		expect(mass.get('focus')).toBe(37);
-		expect(mass.has(rail)).toBe(false);
-	});
-
-	it('spineAway: dual-side hub inverts each side vs spineFacing', () => {
-		const facing = spineFacingBandMass(
-			dualHub.links,
-			dualHub.nodeMeta,
-			dualHub.categoryOrder,
-		);
-		const away = spineAwayBandMass(
-			dualHub.links,
-			dualHub.nodeMeta,
-			dualHub.categoryOrder,
-		);
-		// free sources: facing out > 0; away in = 0 → absent
-		expect(facing.get('RootShell')).toBe(16);
-		expect(away.has('RootShell')).toBe(false);
-		// pure sinks: facing in > 0; away out = 0 → absent
-		expect(facing.get('session-imp')).toBe(10);
-		expect(away.has('session-imp')).toBe(false);
-		// pivot still max
-		expect(away.get('focus')).toBe(37);
-	});
-
-	it('spineAway multi-hop: left ranks by inbound; right by outbound', () => {
-		const categoryOrder = [
-			'Export hop 2',
-			'Exports',
-			'File',
-			'Imports',
-			'Import hop 2',
-		];
-		const links = [
-			{ source: 'outer-parent', target: 'RootShell', value: 20 },
-			{ source: 'RootShell', target: 'focus', value: 16 },
-			{ source: 'focus', target: 'session', value: 10 },
-			{ source: 'session', target: 'redis', value: 50 },
-			{ source: 'session', target: 'types', value: 5 },
-		];
-		const nodeMeta = new Map([
-			['outer-parent', { category: 'Export hop 2', color: '#1' }],
-			['RootShell', { category: 'Exports', color: '#2' }],
-			['focus', { category: 'File', color: '#0' }],
-			['session', { category: 'Imports', color: '#3' }],
-			['redis', { category: 'Import hop 2', color: '#4' }],
-			['types', { category: 'Import hop 2', color: '#5' }],
-		]);
-		const away = spineAwayBandMass(links, nodeMeta, categoryOrder);
-		// left of File → inbound (inputs into export consumers)
-		expect(away.get('RootShell')).toBe(20);
-		// right of File → outbound (emissions deeper)
-		expect(away.get('session')).toBe(55);
-		// pure sink under out → absent (mass 0 not stored)
-		expect(away.has('redis')).toBe(false);
-	});
-
-	it('package-hub External pivot: Exports rank by outbound under flow', () => {
-		const categoryOrder = ['Export hop 2', 'Exports', 'External'];
-		const links = [
-			{ source: 'consumer-a', target: 'pkg', value: 30 },
-			{ source: 'consumer-b', target: 'pkg', value: 5 },
-			{ source: 'outer', target: 'consumer-a', value: 12 },
-		];
-		const nodeMeta = new Map([
-			['outer', { category: 'Export hop 2', color: '#1' }],
-			['consumer-a', { category: 'Exports', color: '#2' }],
-			['consumer-b', { category: 'Exports', color: '#3' }],
-			['pkg', { category: 'External', color: '#4' }],
-		]);
-		const facing = spineFacingBandMass(links, nodeMeta, categoryOrder);
-		// left of External → outbound
-		expect(facing.get('outer')).toBe(12);
-		expect(facing.get('consumer-a')).toBe(30);
-		expect(facing.get('consumer-b')).toBe(5);
-		// External pivot → max(in, out) = 35
-		expect(facing.get('pkg')).toBe(35);
-	});
-
-	it('non-hub fallback: no File/External → pure outbound / inbound', () => {
-		const categoryOrder = ['Ends', 'Modules', 'Code'];
-		const links = [
-			{ source: 'a', target: 'mid', value: 10 },
-			{ source: 'mid', target: 'b', value: 4 },
-		];
-		const nodeMeta = new Map([
-			['a', { category: 'Ends', color: '#1' }],
-			['mid', { category: 'Modules', color: '#2' }],
-			['b', { category: 'Code', color: '#3' }],
-		]);
-		const facing = spineFacingBandMass(links, nodeMeta, categoryOrder);
-		const away = spineAwayBandMass(links, nodeMeta, categoryOrder);
-		expect(facing).toEqual(flowBandMass(links));
-		expect(away).toEqual(flowTargetBandMass(links));
-		expect(facing.get('a')).toBe(10);
-		expect(facing.has('b')).toBe(false);
-		expect(away.get('b')).toBe(4);
-		expect(away.has('a')).toBe(false);
 	});
 
 	it('nodeBandMass uses file LOC; packages 0', () => {
 		const graph = {
 			contents: new Map([
-				['big.ts', 'a\nb\nc\nd\ne\n'], // 5 lines
-				['small.ts', 'x\n'], // 1 line
+				['big.ts', 'a\nb\nc\nd\ne\n'],
+				['small.ts', 'x\n'],
 			]),
 		} as unknown as import('@core/graph/types.ts').CodeGraph;
 		const names = ['big.ts', 'small.ts', 'lodash', overflow];
@@ -710,11 +556,7 @@ describe('band sort (name / flow / flow-target / node)', () => {
 		]);
 		for (const mode of ['name', 'flow', 'flow-target', 'node'] as const) {
 			const sorted = [...names].sort((a, b) =>
-				compareAlluvialBands(a, b, {
-					mode,
-					mass,
-					nodeRef,
-				}),
+				compareAlluvialBands(a, b, { mode, mass, nodeRef }),
 			);
 			expect(isOverflowNodeName(sorted[sorted.length - 1]!)).toBe(true);
 			expect(isOverflowNodeName(sorted[sorted.length - 2]!)).toBe(true);
@@ -739,7 +581,7 @@ describe('band sort (name / flow / flow-target / node)', () => {
 		expect(sorted).toEqual(['alpha.ts', 'mid.ts', 'zebra.ts']);
 	});
 
-	it('flow mode orders higher mass first (desc via compare)', () => {
+	it('flow mode orders by thickest leaving ribbon (max out)', () => {
 		const names = ['light', 'heavy', 'mid'];
 		const mass = new Map([
 			['light', 1],
@@ -747,180 +589,12 @@ describe('band sort (name / flow / flow-target / node)', () => {
 			['heavy', 20],
 		]);
 		const sorted = [...names].sort((a, b) =>
-			compareAlluvialBands(a, b, {
-				mode: 'flow',
-				mass,
-				nodeRef: {},
-			}),
+			compareAlluvialBands(a, b, { mode: 'flow', mass, nodeRef: {} }),
 		);
 		expect(sorted).toEqual(['heavy', 'mid', 'light']);
 	});
 
-	it('buildAlluvialPayload flow: dual-side ranks Exports by out AND Imports by in', () => {
-		const payload = buildAlluvialPayload({
-			heightPx: 200,
-			links: dualHub.links,
-			nodeMeta: dualHub.nodeMeta,
-			categoryOrder: [...dualHub.categoryOrder],
-			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef: dualHub.nodeRef,
-			startId: 'focus',
-			bandSort: 'flow',
-		});
-		expect(payload).not.toBeNull();
-		const exports = payload!.options.alluvial.nodes
-			.filter((n) => n.category === 'Exports')
-			.map((n) => n.name);
-		const imports = payload!.options.alluvial.nodes
-			.filter((n) => n.category === 'Imports')
-			.map((n) => n.name);
-		// one mode, both sides correct (the bug fix)
-		expect(exports).toEqual(['RootShell', 'session-exp', 'logger']);
-		expect(imports).toEqual(['session-imp', 'SiteHeader', 'zod']);
-		expect(payload!.meta.nodeRank!['RootShell']).toBe(0);
-		expect(payload!.meta.nodeRank!['session-imp']).toBe(0);
-	});
-
-	it('buildAlluvialPayload flow-target inverts dual-side relative to flow', () => {
-		// multi-hop so both sides have non-zero spine-away mass
-		const categoryOrder = [
-			'Export hop 2',
-			'Exports',
-			'File',
-			'Imports',
-			'Import hop 2',
-		];
-		const links = [
-			{ source: 'outer-heavy', target: 'RootShell', value: 20 },
-			{ source: 'outer-light', target: 'RootShell', value: 3 },
-			{ source: 'RootShell', target: 'focus', value: 16 },
-			{ source: 'focus', target: 'session', value: 10 },
-			{ source: 'session', target: 'redis', value: 50 },
-			{ source: 'session', target: 'types', value: 5 },
-		];
-		const nodeMeta = new Map([
-			['outer-heavy', { category: 'Export hop 2', color: '#1' }],
-			['outer-light', { category: 'Export hop 2', color: '#2' }],
-			['RootShell', { category: 'Exports', color: '#3' }],
-			['focus', { category: 'File', color: '#0' }],
-			['session', { category: 'Imports', color: '#4' }],
-			['redis', { category: 'Import hop 2', color: '#5' }],
-			['types', { category: 'Import hop 2', color: '#6' }],
-		]);
-		const nodeRef = {
-			'outer-heavy': { kind: 'file' as const, id: 'outer-heavy' },
-			'outer-light': { kind: 'file' as const, id: 'outer-light' },
-			RootShell: { kind: 'file' as const, id: 'RootShell' },
-			focus: { kind: 'file' as const, id: 'focus' },
-			session: { kind: 'file' as const, id: 'session' },
-			redis: { kind: 'package' as const, id: 'redis' },
-			types: { kind: 'file' as const, id: 'types' },
-		};
-		const flowPayload = buildAlluvialPayload({
-			heightPx: 200,
-			links,
-			nodeMeta,
-			categoryOrder,
-			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef,
-			bandSort: 'flow',
-		})!;
-		const awayPayload = buildAlluvialPayload({
-			heightPx: 200,
-			links,
-			nodeMeta,
-			categoryOrder,
-			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef,
-			bandSort: 'flow-target',
-		})!;
-		// flow (facing): Export hop free sources by out; Import hop pure sinks by in
-		const flowHop2 = flowPayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Export hop 2')
-			.map((n) => n.name);
-		const flowImportHop = flowPayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Import hop 2')
-			.map((n) => n.name);
-		expect(flowHop2).toEqual(['outer-heavy', 'outer-light']);
-		expect(flowImportHop).toEqual(['redis', 'types']);
-
-		// flow-target (away): Export hop by in (both 0 → name); Exports by in;
-		// Imports by out (session tops); Import hop by out (both 0 → name)
-		const awayExports = awayPayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Exports')
-			.map((n) => n.name);
-		const awayImports = awayPayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Imports')
-			.map((n) => n.name);
-		expect(awayExports).toEqual(['RootShell']); // in=23
-		expect(awayImports).toEqual(['session']); // out=55
-		// facing ranks RootShell by out=16; away by in=23 — both present; import hop
-		// under facing uses in (redis 50 > types 5); under away out=0 → name
-		const awayImportHop = awayPayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Import hop 2')
-			.map((n) => n.name);
-		expect(awayImportHop).toEqual(['redis', 'types']); // name tie
-	});
-
-	it('buildAlluvialPayload package-hub External pivot under flow', () => {
-		const links = [
-			{ source: 'consumer-a', target: 'pkg', value: 30 },
-			{ source: 'consumer-b', target: 'pkg', value: 5 },
-		];
-		const nodeMeta = new Map([
-			['consumer-a', { category: 'Exports', color: '#1' }],
-			['consumer-b', { category: 'Exports', color: '#2' }],
-			['pkg', { category: 'External', color: '#3' }],
-		]);
-		const payload = buildAlluvialPayload({
-			heightPx: 200,
-			links,
-			nodeMeta,
-			categoryOrder: ['Exports', 'External'],
-			focus: { kind: 'package', id: 'pkg', label: 'pkg' },
-			nodeRef: {
-				'consumer-a': { kind: 'file' as const, id: 'consumer-a' },
-				'consumer-b': { kind: 'file' as const, id: 'consumer-b' },
-				pkg: { kind: 'package' as const, id: 'pkg' },
-			},
-			bandSort: 'flow',
-		})!;
-		const exports = payload.options.alluvial.nodes
-			.filter((n) => n.category === 'Exports')
-			.map((n) => n.name);
-		expect(exports).toEqual(['consumer-a', 'consumer-b']);
-	});
-
-	it('buildAlluvialPayload non-hub fallback uses pure outbound for flow', () => {
-		const links = [
-			{ source: 'zebra', target: 'code', value: 1 },
-			{ source: 'alpha', target: 'code', value: 99 },
-		];
-		const nodeMeta = new Map([
-			['zebra', { category: 'Ends', color: '#1' }],
-			['alpha', { category: 'Ends', color: '#2' }],
-			['code', { category: 'Code', color: '#0' }],
-		]);
-		const payload = buildAlluvialPayload({
-			heightPx: 200,
-			links,
-			nodeMeta,
-			categoryOrder: ['Ends', 'Code'],
-			focus: { kind: 'file', id: 'code', label: 'code' },
-			nodeRef: {
-				zebra: { kind: 'file' as const, id: 'zebra' },
-				alpha: { kind: 'file' as const, id: 'alpha' },
-				code: { kind: 'file' as const, id: 'code' },
-			},
-			bandSort: 'flow',
-		})!;
-		const ends = payload.options.alluvial.nodes
-			.filter((n) => n.category === 'Ends')
-			.map((n) => n.name);
-		expect(ends).toEqual(['alpha', 'zebra']);
-	});
-
-	it('buildAlluvialPayload flow ranks free sources by outbound (overflow last)', () => {
+	it('buildAlluvialPayload flow ranks free sources by max outbound ribbon', () => {
 		const links = [
 			{ source: 'heavy', target: 'focus', value: 10 },
 			{ source: 'light', target: 'focus', value: 1 },
@@ -932,31 +606,26 @@ describe('band sort (name / flow / flow-target / node)', () => {
 			['light', { category: 'Exports', color: '#2' }],
 			[overflow, { category: 'Exports', color: '#3' }],
 		]);
-		const nodeRef = {
-			focus: { kind: 'file' as const, id: 'focus' },
-			heavy: { kind: 'file' as const, id: 'heavy' },
-			light: { kind: 'file' as const, id: 'light' },
-		};
 		const payload = buildAlluvialPayload({
 			heightPx: 200,
 			links,
 			nodeMeta,
 			categoryOrder: ['Exports', 'File'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef,
-			startId: 'focus',
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				heavy: { kind: 'file', id: 'heavy' },
+				light: { kind: 'file', id: 'light' },
+			},
 			bandSort: 'flow',
-		});
-		expect(payload).not.toBeNull();
-		const exports = payload!.options.alluvial.nodes
+		})!;
+		const exports = payload.options.alluvial.nodes
 			.filter((n) => n.category === 'Exports')
 			.map((n) => n.name);
 		expect(exports).toEqual(['heavy', 'light', overflow]);
-		expect(payload!.meta.nodeRank!['heavy']).toBe(0);
 	});
 
-	it('buildAlluvialPayload default flow ranks import leaves by inbound', () => {
-		// spine-facing right-of-File uses inbound (not pure global outbound)
+	it('buildAlluvialPayload flow-target ranks import leaves by max inbound ribbon', () => {
 		const links = [
 			{ source: 'focus', target: 'zebra', value: 1 },
 			{ source: 'focus', target: 'alpha', value: 99 },
@@ -977,64 +646,118 @@ describe('band sort (name / flow / flow-target / node)', () => {
 				zebra: { kind: 'file', id: 'zebra' },
 				alpha: { kind: 'file', id: 'alpha' },
 			},
-		});
-		const imports = payload!.options.alluvial.nodes
+			bandSort: 'flow-target',
+		})!;
+		const imports = payload.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
+		// thickest arriving ribbon first
 		expect(imports).toEqual(['alpha', 'zebra']);
-		expect(payload!.meta.nodeRank!['focus']).toBe(0);
 	});
 
-	it('buildAlluvialPayload node mode ranks by file LOC not link fatness', () => {
-		const graph = {
-			contents: new Map([
-				['focus', 'f\n'],
-				['small-fat', 'a\n'], // 1 LOC
-				['big-thin', '1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n'], // 10 LOC
-			]),
-		} as unknown as import('@core/graph/types.ts').CodeGraph;
+	it('buildAlluvialPayload flow uses max not sum for multi-edge source', () => {
+		// session has ribbons 50 and 5 — rank by 50; other node single 40
 		const links = [
-			{ source: 'focus', target: 'small-fat', value: 99 },
-			{ source: 'focus', target: 'big-thin', value: 1 },
+			{ source: 'session', target: 'redis', value: 50 },
+			{ source: 'session', target: 'types', value: 5 },
+			{ source: 'other', target: 'redis', value: 40 },
+			{ source: 'focus', target: 'session', value: 55 },
+			{ source: 'focus', target: 'other', value: 40 },
 		];
 		const nodeMeta = new Map([
 			['focus', { category: 'File', color: '#0' }],
-			['small-fat', { category: 'Imports', color: '#1' }],
-			['big-thin', { category: 'Imports', color: '#2' }],
+			['session', { category: 'Imports', color: '#1' }],
+			['other', { category: 'Imports', color: '#2' }],
+			['redis', { category: 'Import hop 2', color: '#3' }],
+			['types', { category: 'Import hop 2', color: '#4' }],
 		]);
-		const nodeRef = {
-			focus: { kind: 'file' as const, id: 'focus' },
-			'small-fat': { kind: 'file' as const, id: 'small-fat' },
-			'big-thin': { kind: 'file' as const, id: 'big-thin' },
-		};
-		// flow (spine-facing) ranks import leaves by inbound fatness
-		const flowPayload = buildAlluvialPayload({
+		const payload = buildAlluvialPayload({
 			heightPx: 200,
 			links,
 			nodeMeta,
-			categoryOrder: ['File', 'Imports'],
+			categoryOrder: ['File', 'Imports', 'Import hop 2'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef,
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				session: { kind: 'file', id: 'session' },
+				other: { kind: 'file', id: 'other' },
+				redis: { kind: 'package', id: 'redis' },
+				types: { kind: 'file', id: 'types' },
+			},
 			bandSort: 'flow',
-			graph,
 		})!;
-		const nodePayload = buildAlluvialPayload({
+		const imports = payload.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		// session max out=50 > other max out=40 (sum would still be 55>40)
+		expect(imports[0]).toBe('session');
+		expect(imports[1]).toBe('other');
+		const hop = payload.options.alluvial.nodes
+			.filter((n) => n.category === 'Import hop 2')
+			.map((n) => n.name);
+		// pure sinks under flow: out=0 → name among zeros
+		expect(hop).toEqual(['redis', 'types']); // alpha among out=0
+	});
+
+	it('buildAlluvialPayload flow-target ranks hop leaves by thickest arrival', () => {
+		const links = [
+			{ source: 'focus', target: 'session', value: 10 },
+			{ source: 'session', target: 'redis', value: 50 },
+			{ source: 'session', target: 'types', value: 5 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['session', { category: 'Imports', color: '#1' }],
+			['redis', { category: 'Import hop 2', color: '#2' }],
+			['types', { category: 'Import hop 2', color: '#3' }],
+		]);
+		const payload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['File', 'Imports', 'Import hop 2'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				session: { kind: 'file', id: 'session' },
+				redis: { kind: 'package', id: 'redis' },
+				types: { kind: 'file', id: 'types' },
+			},
+			bandSort: 'flow-target',
+		})!;
+		const hop = payload.options.alluvial.nodes
+			.filter((n) => n.category === 'Import hop 2')
+			.map((n) => n.name);
+		expect(hop).toEqual(['redis', 'types']);
+	});
+
+	it('buildAlluvialPayload flow on pure import leaves is name among zeros (out=0)', () => {
+		const links = [
+			{ source: 'focus', target: 'zebra', value: 1 },
+			{ source: 'focus', target: 'alpha', value: 99 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['zebra', { category: 'Imports', color: '#1' }],
+			['alpha', { category: 'Imports', color: '#2' }],
+		]);
+		const payload = buildAlluvialPayload({
 			heightPx: 200,
 			links,
 			nodeMeta,
 			categoryOrder: ['File', 'Imports'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
-			nodeRef,
-			bandSort: 'node',
-			graph,
+			nodeRef: {
+				focus: { kind: 'file', id: 'focus' },
+				zebra: { kind: 'file', id: 'zebra' },
+				alpha: { kind: 'file', id: 'alpha' },
+			},
+			bandSort: 'flow',
 		})!;
-		const flowOrder = flowPayload.options.alluvial.nodes
+		const imports = payload.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
-		const nodeOrder = nodePayload.options.alluvial.nodes
-			.filter((n) => n.category === 'Imports')
-			.map((n) => n.name);
-		expect(flowOrder).toEqual(['small-fat', 'big-thin']);
-		expect(nodeOrder).toEqual(['big-thin', 'small-fat']);
+		// no outbound → alpha (not inbound thickness)
+		expect(imports).toEqual(['alpha', 'zebra']);
 	});
 });
