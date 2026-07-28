@@ -378,12 +378,19 @@ export function projectMultiHopAlluvial(
 				continue;
 			}
 
-			const base = Math.floor(m / parents.length);
-			let rem = m - base * parents.length;
-			for (const p of parents) {
-				const share = base + (rem > 0 ? 1 : 0);
-				if (rem > 0) rem -= 1;
-				if (share <= 0) continue;
+			// Fractional equal split among reverse parents (scarce-safe)
+			const orderedParents = [...parents].sort((a, b) =>
+				a.localeCompare(b),
+			);
+			let assigned = 0;
+			for (let i = 0; i < orderedParents.length; i++) {
+				const p = orderedParents[i]!;
+				const share =
+					i === orderedParents.length - 1
+						? m - assigned
+						: m / orderedParents.length;
+				assigned += share;
+				if (!(share > 0)) continue;
 
 				if (p === startId || (dist.get(p) ?? 0) === 0) {
 					addLink(fromLabel, startLabel, share);

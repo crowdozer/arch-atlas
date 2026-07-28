@@ -22,6 +22,7 @@ import {
 	importRailId,
 } from '@core/view/hubCategories.ts';
 import {
+	allocateEqual,
 	allocateProportional,
 	claimName,
 	edgeWeightFromSet,
@@ -352,10 +353,11 @@ export function addExportRings(
 			// that share a "+N more" lab still get separate keys so remainder
 			// lands on the bucket in proportion to each collapsed edge.
 			//
-			// When all raws are equal (import-edges, same-LOC siblings), fall back
-			// to package-first equal-split so scarce remainder prefers package-
-			// bearing children (redis→ioredis dual-spend). allocateProportional
-			// alone would hand the unit to the alphabetically first path.
+			// Fractional split (Phase 1B): every uncapped child keeps a positive
+			// share when fileMass > 0. Integer floor used to drop siblings under
+			// unit-mass fan-out (a→b, a→c with mass 1 → only one ribbon).
+			// Equal raws → equal fractions; unequal → proportional. Overflow
+			// bucket members still share keys so remainder lands proportionally.
 			const weighted = targets.map((t) => ({
 				t,
 				raw:
@@ -369,33 +371,22 @@ export function addExportRings(
 			}));
 			const firstRaw = weighted[0]!.raw;
 			const allEqual = weighted.every((w) => w.raw === firstRaw);
-			if (allEqual) {
-				const base = Math.floor(fileMass / targets.length);
-				let rem = fileMass - base * targets.length;
-				// targets already sorted package-bearing first
-				for (const { t } of weighted) {
-					const share = base + (rem > 0 ? 1 : 0);
-					if (rem > 0) rem -= 1;
-					if (share <= 0) continue;
-					addLink(fromLab, t.lab, share);
-					if (nodeRef[t.lab]?.kind !== 'bucket') {
-						mass.set(t.key, (mass.get(t.key) ?? 0) + share);
-						noteArrived(t.path, share);
-					}
-				}
-			} else {
-				const shares = allocateProportional(
-					fileMass,
-					weighted.map(({ t, raw }) => ({ key: t.key, raw })),
-				);
-				for (const { t } of weighted) {
-					const share = shares.get(t.key) ?? 0;
-					if (share <= 0) continue;
-					addLink(fromLab, t.lab, share);
-					if (nodeRef[t.lab]?.kind !== 'bucket') {
-						mass.set(t.key, (mass.get(t.key) ?? 0) + share);
-						noteArrived(t.path, share);
-					}
+			const shares = allEqual
+				? allocateEqual(
+						fileMass,
+						weighted.map(({ t }) => t.key),
+					)
+				: allocateProportional(
+						fileMass,
+						weighted.map(({ t, raw }) => ({ key: t.key, raw })),
+					);
+			for (const { t } of weighted) {
+				const share = shares.get(t.key) ?? 0;
+				if (!(share > 0)) continue;
+				addLink(fromLab, t.lab, share);
+				if (nodeRef[t.lab]?.kind !== 'bucket') {
+					mass.set(t.key, (mass.get(t.key) ?? 0) + share);
+					noteArrived(t.path, share);
 				}
 			}
 			mass.set(fromKey, 0);

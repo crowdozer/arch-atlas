@@ -86,36 +86,63 @@ export function edgeWeightFromSet(
 }
 
 /**
- * Integer proportional split of `budget` by raw weights (largest remainder).
- * Keys with raw≤0 are skipped; if all raw≤0, split budget evenly.
+ * Proportional split of `budget` by raw weights.
+ *
+ * **Fractional (Phase 1B):** every item with raw>0 receives a positive share when
+ * budget>0, so scarce unit-mass fan-out cannot drop uncapped siblings. Shares
+ * sum exactly to `budget` (last key absorbs float remainder).
+ *
+ * Keys with raw≤0 are skipped; if all raw≤0, split budget evenly across items.
+ *
+ * Previously integer largest-remainder: with budget 1 and n>1 children, n-1 got 0
+ * and vanished after unlinked-node prune — topology loss under conservation.
  */
 export function allocateProportional(
 	budget: number,
 	items: { key: string; raw: number }[],
 ): Map<string, number> {
 	const out = new Map<string, number>();
-	if (budget <= 0 || !items.length) return out;
+	if (!(budget > 0) || !items.length) return out;
 	const positive = items.filter((it) => it.raw > 0);
-	const use = positive.length ? positive : items.map((it) => ({ ...it, raw: 1 }));
+	const use = positive.length
+		? positive
+		: items.map((it) => ({ ...it, raw: 1 }));
 	const totalRaw = use.reduce((s, it) => s + it.raw, 0);
-	if (totalRaw <= 0) return out;
+	if (!(totalRaw > 0)) return out;
+
+	// Stable key order so last-remainder assignment is deterministic
+	const ordered = [...use].sort((a, b) => a.key.localeCompare(b.key));
 	let assigned = 0;
-	const frac: { key: string; floor: number; rem: number }[] = [];
-	for (const it of use) {
-		const exact = (budget * it.raw) / totalRaw;
-		const floor = Math.floor(exact);
-		frac.push({ key: it.key, floor, rem: exact - floor });
-		assigned += floor;
+	for (let i = 0; i < ordered.length; i++) {
+		const it = ordered[i]!;
+		const share =
+			i === ordered.length - 1
+				? budget - assigned
+				: (budget * it.raw) / totalRaw;
+		assigned += share;
+		if (share > 0) out.set(it.key, (out.get(it.key) ?? 0) + share);
 	}
-	frac.sort((a, b) => b.rem - a.rem || a.key.localeCompare(b.key));
-	let left = budget - assigned;
-	for (const f of frac) {
-		let w = f.floor;
-		if (left > 0) {
-			w += 1;
-			left -= 1;
-		}
-		if (w > 0) out.set(f.key, (out.get(f.key) ?? 0) + w);
+	return out;
+}
+
+/**
+ * Equal fractional split of `budget` across keys (scarce-safe equal-raw fan-out).
+ * Every key gets budget/n > 0 when budget > 0; sum equals budget exactly.
+ */
+export function allocateEqual(
+	budget: number,
+	keys: readonly string[],
+): Map<string, number> {
+	const out = new Map<string, number>();
+	if (!(budget > 0) || !keys.length) return out;
+	const ordered = [...keys].sort((a, b) => a.localeCompare(b));
+	let assigned = 0;
+	for (let i = 0; i < ordered.length; i++) {
+		const key = ordered[i]!;
+		const share =
+			i === ordered.length - 1 ? budget - assigned : budget / ordered.length;
+		assigned += share;
+		if (share > 0) out.set(key, (out.get(key) ?? 0) + share);
 	}
 	return out;
 }

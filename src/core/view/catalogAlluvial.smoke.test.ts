@@ -168,7 +168,7 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
 		if (focusNames.has(name)) continue;
-		// Overflow / aggregate buckets may under-draw under integer multi-parent
+		// Overflow / aggregate buckets may under-draw under multi-parent
 		// split (accepted hub default) — skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
 		if (isPackageLike(name)) continue;
@@ -177,9 +177,11 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {
-			expect(inn.get(name), `${label}: ${name} (${categories.get(name)}) in`).toBe(
-				out.get(name),
-			);
+			// Fractional shares (Phase 1B) — allow float epsilon on Kirchhoff
+			expect(
+				inn.get(name),
+				`${label}: ${name} (${categories.get(name)}) in`,
+			).toBeCloseTo(out.get(name)!, 10);
 		}
 	}
 }

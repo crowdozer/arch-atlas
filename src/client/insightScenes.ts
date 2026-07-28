@@ -70,7 +70,7 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Unit-mass parent fans to two children — integer split drops a branch.',
 		triagePacket: '1B',
 		lookFor:
-			'Broken: root→a has unit mass; only one of b/c appears on Import hop 2 (no overflow).',
+			'Fixed (1B): root→a unit mass; both b and c on Import hop 2 with positive fractional shares.',
 		expectAfterFix:
 			'Both b and c present as uncapped dependency branches with positive shares.',
 		open: {
@@ -88,9 +88,9 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Diamond + cycle under-reports longest simple path; hop for c collapses.',
 		triagePacket: '1A',
 		lookFor:
-			'Fixed (1A): longest path to c is 3; hub shows Import hop 3 multi-instances. c itself may still vanish under scarce fan-out (1B).',
+			'Fixed (1A+1B): longest path to c is 3; hub shows c on import hops with positive ribbons.',
 		expectAfterFix:
-			'c reachable as a depth-3 instance with positive ribbon (needs 1B if unit-mass sibling fan-out).',
+			'c reachable as a depth-3 instance with positive ribbon.',
 		open: {
 			kind: 'file-hub',
 			fileId: 'src/root.ts',

@@ -1025,8 +1025,9 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		)?.[0];
 		expect(redisLab, 'redis on import tree').toBeTruthy();
 
-		// Unit mass: reserve would starve logger — dual-spend routes full m to
-		// file children AND keeps package residual so External still appears.
+		// Unit mass: reserve would starve files — dual-spend routes full m to
+		// file children (fractional among siblings, Phase 1B) AND keeps package
+		// residual so External still appears.
 		const loggerOut = payload.data.filter(
 			(l) =>
 				l.source === redisLab &&
@@ -1036,7 +1037,7 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		expect(
 			loggerOut.reduce((s, l) => s + l.value, 0),
 			'redis→logger hop mass under scarce dual-spend',
-		).toBeGreaterThanOrEqual(1);
+		).toBeGreaterThan(0);
 
 		const pairs = payload.meta.externalStraightPairs ?? [];
 		const ioredisLab = Object.entries(payload.meta.nodeRef).find(
@@ -1047,7 +1048,7 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 			(p) => p.parent === redisLab && p.packageName === ioredisLab,
 		);
 		expect(redisPair, 'redis→ioredis pair under import-edges').toBeTruthy();
-		expect(redisPair!.width).toBeGreaterThanOrEqual(1);
+		expect(redisPair!.width).toBeGreaterThan(0);
 	});
 
 	it('legacyHelpers: all direct file deps on Imports; packages External far right', () => {

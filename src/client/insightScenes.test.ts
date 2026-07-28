@@ -67,7 +67,7 @@ describe('insight scene catalog', () => {
 });
 
 describe('insight scene characterizations (known broken today)', () => {
-	it('scarce-fanout: unit-mass fan-out drops a sibling branch', () => {
+	it('scarce-fanout: unit-mass fan-out keeps both sibling branches (Phase 1B)', () => {
 		const files = loadSceneFiles('scarce-fanout');
 		const { graph } = indexFiles(files);
 		const payload = projectFileHub(graph, 'src/root.ts', {
@@ -76,24 +76,67 @@ describe('insight scene characterizations (known broken today)', () => {
 		});
 		expect(payload).not.toBeNull();
 		const nodeRef = payload!.meta.nodeRef;
-		// a→b and a→c in graph; hop-2 from root only keeps one after integer split
-		const hop2Children = payload!.data
-			.filter((l) => {
-				const src = nodeRef[l.source];
-				return src?.kind === 'file' && src.id === 'src/a.ts';
-			})
-			.map((l) => nodeRef[l.target]?.id)
-			.filter((id) => id === 'src/b.ts' || id === 'src/c.ts');
-		expect(hop2Children.length).toBe(1);
+		const hop2Children = new Set(
+			payload!.data
+				.filter((l) => {
+					const src = nodeRef[l.source];
+					return src?.kind === 'file' && src.id === 'src/a.ts';
+				})
+				.map((l) => nodeRef[l.target]?.id)
+				.filter((id) => id === 'src/b.ts' || id === 'src/c.ts'),
+		);
+		expect(hop2Children.has('src/b.ts')).toBe(true);
+		expect(hop2Children.has('src/c.ts')).toBe(true);
+		// Fractional shares, positive, conserved from a
+		const fromA = payload!.data.filter((l) => {
+			const src = nodeRef[l.source];
+			return src?.kind === 'file' && src.id === 'src/a.ts';
+		});
+		const sum = fromA.reduce((s, l) => s + l.value, 0);
+		expect(sum).toBeCloseTo(1);
+		expect(fromA.every((l) => l.value > 0)).toBe(true);
 	});
 
-	it('cyclic-depth: longest simple path places c at depth 3 (Phase 1A fixed)', () => {
+	it('scarce-fanout topology stable across weight axes', () => {
+		const files = loadSceneFiles('scarce-fanout');
+		const { graph } = indexFiles(files);
+		const idsFor = (axis: 'import-edges' | 'target-loc' | 'importer-loc') => {
+			const payload = projectFileHub(graph, 'src/root.ts', {
+				maxDepth: 3,
+				weightAxis: axis,
+			})!;
+			const nodeRef = payload.meta.nodeRef;
+			return new Set(
+				payload.data
+					.filter((l) => nodeRef[l.source]?.id === 'src/a.ts')
+					.map((l) => nodeRef[l.target]?.id)
+					.filter((id): id is string => !!id),
+			);
+		};
+		const edges = idsFor('import-edges');
+		const target = idsFor('target-loc');
+		const importer = idsFor('importer-loc');
+		// Uncapped topology membership (b and c) present on every axis
+		for (const set of [edges, target, importer]) {
+			expect(set.has('src/b.ts')).toBe(true);
+			expect(set.has('src/c.ts')).toBe(true);
+		}
+	});
+
+	it('cyclic-depth: c appears on long path after 1A+1B', () => {
 		const files = loadSceneFiles('cyclic-depth');
 		const { graph } = indexFiles(files);
 		const { dist, maxHops } = fileLongestDistances(graph, 'src/root.ts');
-		// root→b→a→c
 		expect(dist.get('src/c.ts')).toBe(3);
 		expect(maxHops).toBe(3);
+		const payload = projectFileHub(graph, 'src/root.ts', {
+			maxDepth: 4,
+			weightAxis: 'import-edges',
+		})!;
+		const cNodes = payload.options.alluvial.nodes.filter(
+			(n) => payload.meta.nodeRef[n.name]?.id === 'src/c.ts',
+		);
+		expect(cNodes.length).toBeGreaterThan(0);
 	});
 
 	it('label-collision: module react + package react collapses display identity', () => {

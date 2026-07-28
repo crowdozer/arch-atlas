@@ -424,12 +424,15 @@ function addPackageExportRings(args: {
 			);
 			if (!outer.length) continue;
 
-			const base = Math.floor(m / outer.length);
-			let rem = m - base * outer.length;
-			for (const p of outer) {
-				const share = base + (rem > 0 ? 1 : 0);
-				if (rem > 0) rem -= 1;
-				if (share <= 0) continue;
+			// Fractional equal split (Phase 1B scarce-safe reverse analogue)
+			const ordered = [...outer].sort((a, b) => a.localeCompare(b));
+			let assigned = 0;
+			for (let i = 0; i < ordered.length; i++) {
+				const p = ordered[i]!;
+				const share =
+					i === ordered.length - 1 ? m - assigned : m / ordered.length;
+				assigned += share;
+				if (!(share > 0)) continue;
 				const outerLab = display.get(p)!;
 				addLink(outerLab, innerLab, share);
 				mass.set(p, (mass.get(p) ?? 0) + share);

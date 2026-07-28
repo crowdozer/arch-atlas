@@ -15,7 +15,7 @@ const scenes = [
 		description:
 			'Unit-mass parent fans to two children — integer split drops a branch.',
 		lookFor:
-			'Broken: root→a has unit mass; only one of b/c appears on Import hop 2 (no overflow).',
+			'Fixed (1B): root→a unit mass; both b and c on Import hop 2 with fractional shares.',
 	},
 	{
 		id: 'cyclic-depth',
@@ -24,7 +24,7 @@ const scenes = [
 		description:
 			'Diamond + cycle under-reports longest simple path; hop for c collapses.',
 		lookFor:
-			'Fixed (1A): longest path to c is 3; hub shows Import hop 3. c may still vanish under scarce fan-out (1B).',
+			'Fixed (1A+1B): longest path to c is 3; c visible on import hops.',
 	},
 	{
 		id: 'label-collision',

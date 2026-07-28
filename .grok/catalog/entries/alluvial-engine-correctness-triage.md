@@ -84,7 +84,9 @@ realized_by:
   - path: src/core/catalog/deepest.ts
     note: Phase 1A fileLongestDistances simple-path fix + maxDepth bound
   - path: src/core/view/hubImportRings.ts
-    note: Phase 1A pass hubRadius as maxDepth for forward longest path
+    note: Phase 1A pass hubRadius as maxDepth for forward longest path; 1B fractional fan-out
+  - path: src/core/view/hubLinkUtils.ts
+    note: Phase 1B fractional allocateProportional / allocateEqual
 superseded_by: null
 rationale_quality: full
 ---
@@ -253,23 +255,23 @@ the preceding gate is green.
 - Any catalog metric semantic change is explicit and documented; no silent
   relabeling of a different algorithm as “longest simple path.”
 
-#### Packet 1B — Scarce fan-out
+#### Packet 1B — Scarce fan-out ✅ landed
 
 **Ship prompt**
 
 > Preserve every uncapped dependency branch when arrived mass is smaller than
 > fan-out while retaining honest ribbon accounting and explicit overflow.
 
-**Engineer acceptance**
+**Landed**
 
-- Pin unit-mass fan-out, unequal weights, package-reserve fan-out, and reverse
-  package-hub analogues.
-- Assert uncapped normalized topology is the same across supported weight axes.
-- Assert every graph edge becomes a displayed instance edge or is accounted for
-  by a cap bucket.
-- Prefer positive fractional shares if Carbon and downstream invariants accept
-  them; if they do not, stop on the product choice rather than duplicating mass
-  silently.
+- `allocateProportional` / `allocateEqual` use **positive fractional** shares
+  (exact sum = budget). Integer largest-remainder no longer zeros uncapped
+  siblings under unit mass.
+- Forward import rings, reverse package-hub, multiHop parent split updated.
+- Scarce dual-spend reserve law unchanged (file path + package residual).
+- Characterizations: scarce-fanout keeps b+c; topology across weight axes;
+  cyclic scene shows `c` on the hub.
+- Rejected inventing integer mass=1 per child (silent mass creation).
 
 **Czar gate**
 
