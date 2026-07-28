@@ -16,6 +16,7 @@ import {
 	buildAlluvialPayload,
 	TEAL,
 	topFolder,
+	type BandSortMode,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
@@ -40,6 +41,8 @@ export function projectModuleFocus(
 		weightAxis?: WeightAxis;
 		precision?: LocPrecision;
 		surface?: ImportedSurfaceProvider | null;
+		/** In-column band stack order; default name. */
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	const heightPx = opts?.heightPx ?? 360;
@@ -126,5 +129,6 @@ export function projectModuleFocus(
 		nodeRef,
 		units,
 		ariaLabel: `Package ends for module ${moduleFolder}`,
+		bandSort: opts?.bandSort,
 	});
 }

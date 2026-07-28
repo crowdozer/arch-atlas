@@ -63,6 +63,7 @@ import {
 	buildAlluvialPayload,
 	TEAL,
 	uniqueFileLabels,
+	type BandSortMode,
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import {
@@ -147,6 +148,8 @@ export function projectFileHub(
 		weightAxis?: WeightAxis;
 		precision?: LocPrecision;
 		surface?: ImportedSurfaceProvider | null;
+		/** In-column band stack order; default name. */
+		bandSort?: BandSortMode;
 	},
 ): AlluvialPayload | null {
 	if (!graph.files.has(fileId)) return null;
@@ -389,6 +392,7 @@ export function projectFileHub(
 		startId: fileId,
 		units,
 		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius})`,
+		bandSort: opts?.bandSort,
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: exportTerminators.length
 			? exportTerminators

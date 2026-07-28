@@ -6,6 +6,7 @@ import {
 	projectModuleFocus,
 	projectPackageHub,
 	type AlluvialPayload,
+	type BandSortMode,
 	type CodeGraph,
 	type ImportedSurfaceProvider,
 	type LocPrecision,
@@ -21,6 +22,8 @@ export type PayloadProjectOpts = {
 	precision?: LocPrecision;
 	/** Exact provider when precision is exact + target-loc. */
 	surface?: ImportedSurfaceProvider | null;
+	/** In-column band stack order; default name inside projectors. */
+	bandSort?: BandSortMode;
 };
 
 /** Project the current stack-top view against a graph. */
@@ -33,6 +36,7 @@ export function payloadForView(
 		weightAxis: opts.weightAxis,
 		precision: opts.precision,
 		surface: opts.surface,
+		bandSort: opts.bandSort,
 	};
 	switch (view.type) {
 		case 'file-hub':

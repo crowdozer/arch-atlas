@@ -22,9 +22,11 @@ export type { PayloadProjectOpts } from '@shell/project.ts';
 export { payloadForView } from '@shell/project.ts';
 
 export {
+	BAND_SORT_MODES,
 	LOC_PRECISIONS,
 	canMountWeight,
 	isShakenWeightUi,
+	parseBandSortMode,
 	parseInteractionMode,
 	parseLocPrecision,
 	parseSpineFormula,
@@ -32,6 +34,7 @@ export {
 	parseWeightAxis,
 	precisionForSurfaceClaims,
 } from '@shell/controls.ts';
+export type { BandSortMode } from '@shell/controls.ts';
 
 export {
 	SPINE_FORMULA_HONESTY_FOOTER,
