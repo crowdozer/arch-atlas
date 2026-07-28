@@ -1,13 +1,13 @@
 /**
- * Chart / SVG hex palette — pure-core mirror of `carbon-theme.css` product tokens.
+ * Chart / SVG hex palette — pure-core owner for Carbon `color.scale` + SVG paint.
  *
- * Carbon Charts `color.scale` and SVG paint attrs need concrete colors (no CSS vars).
- * Hex values here are the single TS source of truth and **must match** the
- * `--atlas-*` / teal CDS interactive overrides in `src/styles/carbon-theme.css`.
+ * Carbon Charts need concrete colors (no CSS vars). Hex here is the sole TS source
+ * for scale / hop / spine / ribbon fallbacks. Values that also paint in CSS must
+ * match `carbon-theme.css` product tokens (`--atlas-*`, teal CDS interactive).
  *
  * Family grammar (unchanged):
  * - Brand interactive: teal (not emerald)
- * - Import / left hops: cyan ladder
+ * - Import / left hops: cyan ladder (TS-only; no CSS hop tokens)
  * - Export / right bands: yellow ladder
  * - Active selection / File spine / package terminators: purple (`selectStrong`)
  */
@@ -27,11 +27,15 @@ export const CHART_PALETTE = {
 	exportPkg: '#ca8a04', // yellow-600 = --atlas-export-pkg
 	exportOther: '#a16207', // yellow-700 = --atlas-export-other
 
-	/** Import cyan hop ladder (Imports / left) — closer to File is brighter. */
+	/**
+	 * Import cyan hop ladder (Imports / left) — closer to File is brighter.
+	 * CSS cousins (not hop paint): --atlas-import-term-bg-stroke / drill-strong
+	 * share the mid/near steps for terminators + drill chips only.
+	 */
 	importHopFar: '#0e7490', // cyan-700
 	importHopMidFar: '#0891b2', // cyan-600
-	importHopMid: '#06b6d4', // cyan-500
-	importHopNear: '#22d3ee', // cyan-400 = --atlas-drill-strong
+	importHopMid: '#06b6d4', // cyan-500 ≈ --atlas-import-term-bg-stroke
+	importHopNear: '#22d3ee', // cyan-400 = --atlas-drill-strong / --atlas-import-term-stroke
 
 	/** Multi-hop teal ladder (depth stages). */
 	hopFar: '#0f766e', // teal-700 = --cds-button-primary-active

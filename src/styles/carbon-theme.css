@@ -410,10 +410,7 @@ body.cds--g100,
   --atlas-import-term-stroke: #22d3ee; /* cyan-400 — export-column terminator */
   --atlas-import-term-text: #a5f3fc; /* cyan-200 */
   --atlas-import-term-bg-stroke: #06b6d4; /* cyan-500 */
-  --atlas-import-hop-far: #0e7490; /* cyan-700 */
-  --atlas-import-hop-mid-far: #0891b2; /* cyan-600 */
-  --atlas-import-hop-mid: #06b6d4; /* cyan-500 */
-  --atlas-import-hop-near: #22d3ee; /* cyan-400 */
+  /* Import hop ladder lives only in chartPalette (Carbon color.scale); no CSS hop paint */
 
   --cds-background: #09090b; /* zinc-950 */
   --cds-background-hover: rgba(63, 63, 70, 0.35);
@@ -1591,7 +1588,12 @@ cds-inline-notification.atlas-inspect__banner {
   text-align: left;
   background: transparent;
   border: 0;
-  color: var(--cds-icon-primary, #e4e4e7);
+  /* ≈ zinc-300: no CDS text step between primary and secondary */
+  color: color-mix(
+    in srgb,
+    var(--cds-text-primary, #fafafa) 55%,
+    var(--cds-text-secondary, #a1a1aa)
+  );
   padding: 0.22rem 0.35rem;
   border-radius: 0.2rem;
   cursor: pointer;
@@ -1834,11 +1836,7 @@ cds-tag.atlas-edge-badge {
   justify-content: center;
 }
 
-/* Outbound chip — product yellow (matches export bands) */
-cds-tag.atlas-edge-badge--out.ui-tag--yellow {
-  background-color: #5c4d00 !important;
-  color: #f1c21b !important;
-}
+/* Outbound yellow inherits cds-tag.ui-tag--yellow (status-yellow color-mix) */
 
 .atlas-summary-tag,
 cds-tag.atlas-summary-tag {
