@@ -124,6 +124,97 @@ import Tag from '../components/ui/Tag.astro';
 				</div>
 			</div>
 
+			<div class="atlas-demo atlas-demo--insights mt-6">
+				<p class="atlas-section-label mb-1">Engine insight scenes</p>
+				<p class="mb-3 text-xs text-zinc-500">
+					Minimal fixtures that land on known alluvial defects (triage).
+					Share via <code class="text-zinc-400">?scene=…</code>
+					· <a class="text-teal-400 underline-offset-2 hover:underline" href="/scenes">all scenes</a>
+				</p>
+				<div class="atlas-demo__grid">
+					<button
+						type="button"
+						id="atlas-scene-scarce-fanout"
+						class="atlas-demo__card"
+						data-scene="scarce-fanout"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Scarce fan-out</span>
+								<Tag tone="red" size="sm">1B</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								root→a unit mass drops a hop-2 branch (import-edges).
+							</span>
+						</span>
+					</button>
+					<button
+						type="button"
+						id="atlas-scene-cyclic-depth"
+						class="atlas-demo__card"
+						data-scene="cyclic-depth"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Cyclic depth</span>
+								<Tag tone="red" size="sm">1A</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								Diamond + cycle under-reports longest path for c.
+							</span>
+						</span>
+					</button>
+					<button
+						type="button"
+						id="atlas-scene-label-collision"
+						class="atlas-demo__card"
+						data-scene="label-collision"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Label collision</span>
+								<Tag tone="red" size="sm">2A</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								Module folder react + package react identity clash.
+							</span>
+						</span>
+					</button>
+					<button
+						type="button"
+						id="atlas-scene-sticky-package"
+						class="atlas-demo__card"
+						data-scene="sticky-package"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Sticky package</span>
+								<Tag tone="red" size="sm">2B</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								react · package sticky fails after package-hub remount.
+							</span>
+						</span>
+					</button>
+					<button
+						type="button"
+						id="atlas-scene-omitted-ends"
+						class="atlas-demo__card"
+						data-scene="omitted-ends"
+					>
+						<span class="atlas-demo__inner">
+							<span class="atlas-demo__heading">
+								<span class="atlas-demo__title">Omitted ends</span>
+								<Tag tone="red" size="sm">2A</Tag>
+							</span>
+							<span class="atlas-demo__blurb">
+								Feed-omitted import leaks into module architecture ends.
+							</span>
+						</span>
+					</button>
+				</div>
+			</div>
+
 			<div class="atlas-settings mt-6">
 				<p class="atlas-section-label mb-3">Settings</p>
 				<div class="atlas-persist space-y-3">

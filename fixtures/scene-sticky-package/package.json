@@ -1,0 +1,8 @@
+{
+  "name": "scene-sticky-package",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}

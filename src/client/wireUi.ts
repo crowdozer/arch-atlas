@@ -23,6 +23,11 @@ import {
 	writeEnginePrefEnabled,
 } from './enginePrefs.ts';
 import {
+	listInsightScenes,
+	parseSceneQuery,
+	type SceneId,
+} from './insightScenes.ts';
+import {
 	clearPersistedSession,
 	readPersistPreference,
 	writePersistPreference,
@@ -69,6 +74,7 @@ export type WireUiDeps = {
 	resetSession: () => void;
 	handleZip: (file: File) => Promise<void>;
 	handleDemo: (id: DemoId) => void;
+	handleInsightScene: (id: SceneId) => void;
 	renderTree: () => void;
 	closeUnavailableModal: () => void;
 	closeInspectModal: () => void;
@@ -289,6 +295,27 @@ export function wireUi(deps: WireUiDeps): void {
 		deps.handleDemo('python-app');
 	});
 
+	// Insight scenes: gallery cards + any [data-scene] control
+	const loadScene = (id: SceneId) => {
+		// Keep URL shareable (Artillery-style)
+		const url = new URL(location.href);
+		url.searchParams.set('scene', id);
+		history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+		deps.handleInsightScene(id);
+	};
+	for (const scene of listInsightScenes()) {
+		$(`atlas-scene-${scene.id}`)?.addEventListener('click', () => {
+			loadScene(scene.id);
+		});
+	}
+	document.querySelectorAll<HTMLElement>('[data-scene]').forEach((el) => {
+		const id = el.getAttribute('data-scene');
+		if (!id || !listInsightScenes().some((s) => s.id === id)) return;
+		// Avoid double-bind when id is also atlas-scene-*
+		if (el.id === `atlas-scene-${id}`) return;
+		el.addEventListener('click', () => loadScene(id as SceneId));
+	});
+
 	const treeFilter = $('atlas-tree-filter');
 	// Carbon search: cds-search-input; also listen for input if it bubbles
 	const onTreeFilter = () => {
@@ -310,5 +337,11 @@ export function wireUi(deps: WireUiDeps): void {
 	});
 
 	deps.updateBackButton();
-	deps.tryRestoreSession();
+	// Scene query wins over localStorage restore (shareable triage presets)
+	const bootScene = parseSceneQuery(location.search);
+	if (bootScene) {
+		deps.handleInsightScene(bootScene);
+	} else {
+		deps.tryRestoreSession();
+	}
 }

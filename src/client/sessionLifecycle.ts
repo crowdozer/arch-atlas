@@ -12,6 +12,7 @@ import {
 	filterFilesByTestInclusion,
 	indexFiles,
 	ingestZip,
+	type IndexHostFeedOpts,
 	type LocPrecision,
 	type MapCatalog,
 	type VirtualFile,
@@ -23,6 +24,13 @@ import {
 } from '@shell/index.ts';
 import { $ } from './dom.ts';
 import { type DemoId, loadDemoFiles } from './demoFixtures.ts';
+import {
+	getInsightScene,
+	loadSceneFiles,
+	sceneOmitMatcher,
+	type InsightScene,
+	type SceneId,
+} from './insightScenes.ts';
 import {
 	clearPersistedSession,
 	loadPersistedSession,
@@ -87,11 +95,18 @@ export type SessionLifecycleDeps = {
 	updateCaption: (view: AtlasView | null) => void;
 	updateBackButton: () => void;
 	syncDepthDropdown: () => void;
+	/**
+	 * After insight-scene index + default start open: apply weight/depth and
+	 * land on the defect view (module / package-hub sticky path).
+	 */
+	applyInsightSceneOpen?: (scene: InsightScene) => void;
 };
 
 export type SessionLifecycle = {
 	handleZip: (file: File) => Promise<void>;
 	handleDemo: (id: DemoId) => void;
+	/** Load a triage insight scene (`/?scene=<id>`). Skips persist by default. */
+	handleInsightScene: (id: SceneId) => void;
 	tryRestoreSession: () => boolean;
 	resetSession: () => void;
 	/** Catalog / tree / restore: replace stack with file-hub at startId. */
@@ -274,7 +289,17 @@ export function createSessionLifecycle(
 
 	function openFromFiles(
 		files: VirtualFile[],
-		opts?: { warnings?: string[]; statusPrefix?: string },
+		opts?: {
+			warnings?: string[];
+			statusPrefix?: string;
+			/** Prefer this file as catalog/tree start when present in graph. */
+			preferredStartId?: string | null;
+			/** Forwarded to buildGraph (scene omit stamps). */
+			indexOpts?: IndexHostFeedOpts;
+			skipPersist?: boolean;
+			/** After activate (default start open); insight scenes land on defect view. */
+			afterActivate?: () => void;
+		},
 	): void {
 		if (!files.length) {
 			deps.setStatus('No readable text files.');
@@ -291,23 +316,61 @@ export function createSessionLifecycle(
 			return;
 		}
 		deps.setStatus(`Indexing ${indexed.length} files…`);
-		const { graph, catalog: cat } = indexFiles(indexed);
+		const { graph, catalog: cat } = indexFiles(indexed, opts?.indexOpts);
 		const paths = [...graph.files.keys()];
 		const prefix = opts?.statusPrefix ?? 'Indexed';
 		const excluded = files.length - indexed.length;
 		const exclusionNote =
 			!includeTests && excluded > 0 ? ` · tests off (−${excluded})` : '';
+		const preferred = opts?.preferredStartId;
+		const startId =
+			preferred && graph.files.has(preferred)
+				? preferred
+				: (cat.starts[0]?.id ?? null);
 		activateSession(
 			{
 				graph,
 				catalog: cat,
-				startId: cat.starts[0]?.id ?? null,
+				startId,
 				warnings: opts?.warnings ?? [],
 				expanded: expandPathsForFilter(paths, ''),
 				files,
 			},
 			`${prefix} ${graph.stats.parseableCount ?? graph.stats.sourceCount} parseable · ${graph.stats.unparseableCount ?? 0} unparseable · ${graph.stats.edgeCount} edges${exclusionNote}`,
+			{ skipPersist: opts?.skipPersist },
 		);
+		opts?.afterActivate?.();
+	}
+
+	function handleInsightScene(id: SceneId): void {
+		deps.showWarnings([]);
+		try {
+			const scene = getInsightScene(id);
+			deps.setStatus(`Loading scene “${id}”…`);
+			const files = loadSceneFiles(id);
+			const open = scene.open;
+			const preferredStartId =
+				open.kind === 'file-hub' || open.kind === 'package-hub-via-file'
+					? open.fileId
+					: null;
+			const isOmittedPath = sceneOmitMatcher(scene.omitPathPrefixes);
+			openFromFiles(files, {
+				statusPrefix: `Scene ${id} ·`,
+				warnings: [
+					`Insight scene · triage ${scene.triagePacket}`,
+					scene.lookFor,
+					`After fix: ${scene.expectAfterFix}`,
+				],
+				preferredStartId,
+				indexOpts: isOmittedPath ? { isOmittedPath } : undefined,
+				// URL is the source of truth for shareable scenes
+				skipPersist: true,
+				afterActivate: () => deps.applyInsightSceneOpen?.(scene),
+			});
+		} catch (err) {
+			console.error(err);
+			deps.setStatus(err instanceof Error ? err.message : String(err));
+		}
 	}
 
 	/** Re-index full feed when Include tests toggles (preserves expanded when possible). */
@@ -479,6 +542,7 @@ export function createSessionLifecycle(
 	return {
 		handleZip,
 		handleDemo,
+		handleInsightScene,
 		tryRestoreSession,
 		resetSession,
 		selectStart,

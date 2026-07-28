@@ -71,6 +71,7 @@ import {
 	readEnginePrefs,
 	stickyOpenAction,
 } from './enginePrefs.ts';
+import type { InsightScene } from './insightScenes.ts';
 import {
 	readPersistPreference,
 	savePersistedSession,
@@ -623,6 +624,78 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
  * (hover restore; geometry already includes all kept importers).
  * sameView keys on packageId.
  */
+/**
+ * Land an insight scene on its defect view after index + default start open.
+ * Sets weight/depth first so projectors match the triage fixture recipe.
+ */
+function applyInsightSceneOpen(scene: InsightScene): void {
+	if (!session) return;
+	const open = scene.open;
+	if (open.weightAxis) {
+		weightAxis = open.weightAxis;
+		const weightEl = $('atlas-weight-axis') as
+			| (HTMLElement & { value?: string })
+			| null;
+		if (weightEl) syncWeightDropdown(weightEl, weightAxis);
+	}
+
+	if (open.kind === 'file-hub') {
+		if (open.maxDepth != null) {
+			depthUserSet = true;
+			vizMaxDepth = Math.max(1, Math.floor(open.maxDepth));
+			syncDepthDropdown();
+		}
+		navigateReplace(
+			{ type: 'file-hub', fileId: open.fileId },
+			{ skipPersist: true },
+		);
+	} else if (open.kind === 'module') {
+		navigateReplace(
+			{ type: 'module', moduleId: open.moduleId },
+			{ skipPersist: true },
+		);
+	} else {
+		// package-hub-via-file: file hub first (for painted label), then package open
+		if (open.maxDepth != null) {
+			depthUserSet = true;
+			vizMaxDepth = Math.max(1, Math.floor(open.maxDepth));
+			syncDepthDropdown();
+		}
+		navigateReplace(
+			{ type: 'file-hub', fileId: open.fileId },
+			{ skipPersist: true },
+		);
+		const hubPayload = payloadForView({
+			type: 'file-hub',
+			fileId: open.fileId,
+		});
+		const nodeRef = hubPayload?.meta.nodeRef;
+		let painted =
+			nodeRef &&
+			Object.entries(nodeRef).find(
+				([, ref]) =>
+					(ref.kind === 'package' || ref.kind === 'unresolved') &&
+					ref.id === open.packageId,
+			)?.[0];
+		if (!painted) {
+			// Fallback: any package node whose id/label matches
+			painted =
+				(nodeRef &&
+					Object.entries(nodeRef).find(
+						([name, ref]) =>
+							ref.kind === 'package' &&
+							(ref.id === open.packageId || name === open.packageId),
+					)?.[0]) ??
+				open.packageId;
+		}
+		openPackageAsHub(open.packageId, painted, 'push');
+	}
+
+	setStatus(
+		`Scene ${scene.id} · triage ${scene.triagePacket} · ${scene.lookFor}`,
+	);
+}
+
 function openPackageAsHub(
 	packageId: string,
 	label: string,
@@ -811,6 +884,7 @@ lifecycle = createSessionLifecycle({
 	updateCaption,
 	updateBackButton,
 	syncDepthDropdown,
+	applyInsightSceneOpen,
 });
 
 tree = createTreeRenderer({
@@ -883,6 +957,7 @@ wireUi({
 	resetSession: () => lifecycle.resetSession(),
 	handleZip: (f) => lifecycle.handleZip(f),
 	handleDemo: (id) => lifecycle.handleDemo(id),
+	handleInsightScene: (id) => lifecycle.handleInsightScene(id),
 	renderTree: () => tree.renderTree(),
 	closeUnavailableModal: () => inspect.closeUnavailableModal(),
 	closeInspectModal: () => inspect.closeInspectModal(),

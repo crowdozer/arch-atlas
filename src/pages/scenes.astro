@@ -1,0 +1,100 @@
+---
+/**
+ * Insight scene gallery (Artillery /scenes analogue).
+ * Catalog is duplicated as static markup so Astro stays free of client-module
+ * globs; keep ids in sync with src/client/insightScenes.ts.
+ */
+import Layout from '../layouts/Layout.astro';
+import Tag from '../components/ui/Tag.astro';
+
+const scenes = [
+	{
+		id: 'scarce-fanout',
+		label: 'Scarce fan-out',
+		packet: '1B',
+		description:
+			'Unit-mass parent fans to two children — integer split drops a branch.',
+		lookFor:
+			'Broken: root→a has unit mass; only one of b/c appears on Import hop 2 (no overflow).',
+	},
+	{
+		id: 'cyclic-depth',
+		label: 'Cyclic depth',
+		packet: '1A',
+		description:
+			'Diamond + cycle under-reports longest simple path; hop for c collapses.',
+		lookFor:
+			'Broken: root hub — c lands at import hop 2 (via a) instead of hop 3 via root→b→a→c.',
+	},
+	{
+		id: 'label-collision',
+		label: 'Label collision',
+		packet: '2A',
+		description:
+			'Module folder `react` imports package `react` — display name overwrites identity.',
+		lookFor:
+			'Broken: module view may self-link react→react or overwrite the module node kind.',
+	},
+	{
+		id: 'sticky-package',
+		label: 'Sticky package label',
+		packet: '2B',
+		description:
+			'Module leaf `react` + package `react` → painted `react · package` sticky fails remount.',
+		lookFor:
+			'Broken: package-hub opens fully dimmed / sticky seed matches zero bands (painted vs raw).',
+	},
+	{
+		id: 'omitted-ends',
+		label: 'Omitted ends leak',
+		packet: '2A',
+		description:
+			'Feed-omitted relative import leaks into module package ends.',
+		lookFor:
+			'Broken: module `src` ends include the omitted `./hidden` target as an architecture end.',
+	},
+] as const;
+---
+
+<Layout title="Insight scenes · Arch Atlas">
+	<main class="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
+		<p class="mb-2 text-sm text-zinc-500">
+			<a href="/" class="text-teal-400 underline-offset-2 hover:underline"
+				>← Arch Atlas</a
+			>
+		</p>
+		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
+			Engine insight scenes
+		</h1>
+		<p class="mb-6 text-sm text-zinc-400">
+			Shareable presets that open minimal fixtures on known alluvial engine
+			defects (pre–Phase 0 triage). Same contract as Artillery
+			<code class="text-zinc-300">?scene=</code> world presets.
+		</p>
+
+		<ul class="space-y-4">
+			{
+				scenes.map((scene) => (
+					<li class="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<a
+								class="text-base font-medium text-teal-300 underline-offset-2 hover:underline"
+								href={`/?scene=${scene.id}`}
+							>
+								{scene.label}
+							</a>
+							<Tag tone="red" size="sm">
+								{scene.packet}
+							</Tag>
+						</div>
+						<p class="mb-2 text-sm text-zinc-300">{scene.description}</p>
+						<p class="mb-2 text-xs text-zinc-500">{scene.lookFor}</p>
+						<p class="font-mono text-xs text-zinc-500">
+							<code>?scene={scene.id}</code>
+						</p>
+					</li>
+				))
+			}
+		</ul>
+	</main>
+</Layout>

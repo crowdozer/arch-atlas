@@ -1,0 +1,8 @@
+{
+  "name": "scene-label-collision",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}
