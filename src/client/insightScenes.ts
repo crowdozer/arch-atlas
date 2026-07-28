@@ -120,7 +120,7 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Module leaf `react` + package `react` → painted `react · package` sticky fails remount.',
 		triagePacket: '2B',
 		lookFor:
-			'Broken: package-hub opens fully dimmed / sticky seed matches zero bands (painted `react · package` vs raw `react`).',
+			'Fixed (2B): package-hub sticky seeds by stable id; remount resolves raw `react` (not painted `react · package`).',
 		expectAfterFix:
 			'Sticky package focus restores via stable package id; at least one focused band.',
 		open: {

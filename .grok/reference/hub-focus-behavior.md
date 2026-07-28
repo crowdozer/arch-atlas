@@ -5,7 +5,8 @@
 `src/stage/focus/displayInventory.ts` + `focusApply.ts` (drawn bands),  
 `src/stage/focus/bindAlluvialFocus.ts` (hover wire + sticky `defaultSeed`),  
 `src/stage/focus/focusHarness.ts` (test observation: plan + inventory classify + MiniEl apply),  
-host wire in `src/client/app.ts` (`pendingPackageFocusLabel` / `openPackageAsHub`)  
+host wire in `src/client/app.ts` (`pendingPackageFocus` / `openPackageAsHub` /
+`resolvePackageSeedName`)  
 **Geometry matrix (file-hub, orthogonal):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)  
 **Geometry matrix (package-hub, orthogonal):** [hub-package-hub-behavior.md](./hub-package-hub-behavior.md)  
 **Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
@@ -53,17 +54,21 @@ Package focus is **not** hover-only. When the host opens a package as hub
 `projectPackageHub` — **not** file-hub on the primary importer. After that
 mount it applies a **sticky default** package FocusSeed:
 
-1. Host stores painted External label in `pendingPackageFocusLabel` (not on
-   `AtlasView`; not persisted).
-2. Stage `setDefaultSeed({ kind: 'package', name: label })` then `applySeed`
-   (same reverse-path FocusPlan as §3c).
+1. Host stores **stable package/unresolved id** in `pendingPackageFocus`
+   (`{ packageId, kind }`) — not painted file-hub labels (Phase 2B). Not on
+   `AtlasView`; not persisted.
+2. On mount / remount / sticky restore, host **resolves** the mounted display
+   name via `resolvePackageSeedName(packageId, payload)` (nodeRef / focus /
+   pairs), then stage `setDefaultSeed({ kind: 'package', name })` + `applySeed`
+   (same reverse-path FocusPlan as §3c). Painted `react · package` from
+   file-hub must not seed package-hub raw `react`.
 3. **Geometry** already includes all kept importers as pair parents
    (Export hop\* → Exports → External). See
    [hub-package-hub-behavior.md](./hub-package-hub-behavior.md).
 4. **Selection chrome ≠ FocusPlan seed.** Tree/catalog file selection remains
    `nearestFileFocus` (underlying file-hub when present on the stack; may be
    `null` on a pure package-hub stack). Export Roots catalog chrome uses
-   `selectedPackage: pendingPackageFocusLabel`. Sticky package seed is
+   `selectedPackage: pendingPackageFocus.packageId`. Sticky package seed is
    hover-restore / open-time highlight only — not “which file is selected.”
 
 | Interaction | Behavior |

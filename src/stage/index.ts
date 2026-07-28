@@ -32,6 +32,11 @@ export {
 	type DrillResolvers,
 } from './focus/bindAlluvialFocus.ts';
 
+export {
+	resolvePackageSeedName,
+	type PackageFocusIntent,
+} from './focus/resolvePackageSeedName.ts';
+
 export { polishAlluvialHolder } from './polish/index.ts';
 
 export {

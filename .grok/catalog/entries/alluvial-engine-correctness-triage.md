@@ -91,6 +91,10 @@ realized_by:
     note: Phase 2A claimName collision safety + omit omitted ends
   - path: src/core/view/packageImporters.ts
     note: Phase 2A edgeMatchesPackage excludes omitted
+  - path: src/stage/focus/resolvePackageSeedName.ts
+    note: Phase 2B resolve mounted package label from stable id
+  - path: src/client/app.ts
+    note: Phase 2B pendingPackageFocus by packageId + resolve on apply
 superseded_by: null
 rationale_quality: full
 ---
@@ -310,7 +314,7 @@ the preceding gate is green.
   remains a separate exploratory concern.
 - Shared integrity checks pass across all projectors.
 
-#### Packet 2B — Cross-view sticky package identity
+#### Packet 2B — Cross-view sticky package identity ✅ landed
 
 **Ship prompt**
 
@@ -318,15 +322,14 @@ the preceding gate is green.
 > file-hub to package-hub remounts, then resolve the mounted payload label before
 > applying sticky focus.
 
-**Engineer acceptance**
+**Landed**
 
-- Replace durable use of painted display text with a stable node reference or
-  equivalent existing identity.
-- Add a host-level collision test that drills a decorated package label,
-  remounts package-hub, applies its default seed, temporarily hovers another
-  node, and restores the correct package on leave.
-- Assert the sticky plan has at least one focused band and every expected pair
-  parent participates.
+- Host `pendingPackageFocus` stores `{ packageId, kind }` (not painted label).
+- `resolvePackageSeedName` maps id → mounted display name from nodeRef / focus /
+  pairs before `setDefaultSeed` + `applySeed`.
+- Sticky-package scene: painted `react · package` no longer seeds package-hub;
+  resolved `react` yields focused bands.
+- Export Roots chrome selects by package id. Stage focus API still sole seed owner.
 
 **Czar gate**
 

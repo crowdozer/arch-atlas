@@ -49,6 +49,8 @@ import {
 	createAlluvialStage,
 	drillTargetFromLine,
 	isDrillableRef,
+	resolvePackageSeedName,
+	type PackageFocusIntent,
 } from '@stage/index.ts';
 import {
 	collectExportSpansFromText,
@@ -147,11 +149,12 @@ let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
  */
 let exportSurfaceLocCache: Map<string, number> | null = null;
 /**
- * Sticky package open intent: painted External label (pair packageName) after
- * Export Roots / package drill. Not on AtlasView; cleared on ordinary file/module nav.
- * Not persisted.
+ * Sticky package open intent after Export Roots / package drill.
+ * Keys by **stable package/unresolved id** (not painted file-hub labels).
+ * Resolved to the mounted payload display name before FocusSeed apply (Phase 2B).
+ * Not on AtlasView; not persisted; cleared on ordinary file/module nav.
  */
-let pendingPackageFocusLabel: string | null = null;
+let pendingPackageFocus: PackageFocusIntent | null = null;
 /**
  * True while {@link openPackageAsHub} is navigating so replace/push do not
  * clear the package intent they just set (selectStart/file nav still clear).
@@ -277,27 +280,35 @@ function paintCatalog(selectedStart?: string | null): void {
 	};
 	catalog.renderCatalog(cat, fileId, {
 		massExactReady,
-		selectedPackage: pendingPackageFocusLabel,
+		// Export Roots chrome: match by catalog end id (stable)
+		selectedPackage: pendingPackageFocus?.packageId ?? null,
 		locPrecision,
 		programLoading: exactEnableInFlight && locPrecision === 'program',
 		engineFailed,
 	});
 }
 
-/** Apply sticky package FocusSeed on the current stage focus API (post-mount). */
+/**
+ * Apply sticky package FocusSeed on the current stage focus API (post-mount).
+ * Resolves painted name from the **mounted** payload so file-hub claimName
+ * decoration does not miss package-hub raw labels.
+ */
 function applyPendingPackageFocus(): void {
-	const label = pendingPackageFocusLabel;
-	if (!label) return;
+	const intent = pendingPackageFocus;
+	if (!intent) return;
 	const api = stage.getFocusApi();
 	if (!api) return;
-	const seed = { kind: 'package' as const, name: label };
+	const payload = stage.getPayload();
+	const name =
+		resolvePackageSeedName(intent.packageId, payload) ?? intent.packageId;
+	const seed = { kind: 'package' as const, name };
 	api.setDefaultSeed(seed);
 	api.applySeed(seed, null);
 }
 
 /** Drop package open intent (file/module nav, pop, reset). */
 function clearPackageFocusIntent(): void {
-	pendingPackageFocusLabel = null;
+	pendingPackageFocus = null;
 	const api = stage.getFocusApi();
 	if (!api) return;
 	api.setDefaultSeed(null);
@@ -551,13 +562,16 @@ function commitNavigation(opts?: { skipPersist?: boolean }): boolean {
 	const payload = payloadForView(view);
 	const mounted = mountAlluvialGated(payload);
 	if (mounted) {
-		if (pendingPackageFocusLabel) {
+		if (pendingPackageFocus) {
 			applyPendingPackageFocus();
+			const seedName =
+				resolvePackageSeedName(pendingPackageFocus.packageId, payload) ??
+				pendingPackageFocus.packageId;
 			const hubLabel =
 				view.type === 'package-hub'
 					? view.packageId
 					: (fileId ?? (view.type === 'file-hub' ? view.fileId : ''));
-			setStatus(`Package · ${pendingPackageFocusLabel} · hub ${hubLabel}`);
+			setStatus(`Package · ${seedName} · hub ${hubLabel}`);
 		} else {
 			setStatus(statusForView(view));
 		}
@@ -618,13 +632,6 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 }
 
 /**
- * Package / unresolved sink → package-hub (Export* → External).
- * Catalog Export Roots use replace (like Import Roots); alluvial drill uses push.
- * Sticky package FocusSeed + Export Roots chrome via pendingPackageFocusLabel
- * (hover restore; geometry already includes all kept importers).
- * sameView keys on packageId.
- */
-/**
  * Land an insight scene on its defect view after index + default start open.
  * Sets weight/depth first so projectors match the triage fixture recipe.
  */
@@ -655,7 +662,7 @@ function applyInsightSceneOpen(scene: InsightScene): void {
 			{ skipPersist: true },
 		);
 	} else {
-		// package-hub-via-file: file hub first (for painted label), then package open
+		// package-hub-via-file: open file hub then package by stable id (2B)
 		if (open.maxDepth != null) {
 			depthUserSet = true;
 			vizMaxDepth = Math.max(1, Math.floor(open.maxDepth));
@@ -665,30 +672,7 @@ function applyInsightSceneOpen(scene: InsightScene): void {
 			{ type: 'file-hub', fileId: open.fileId },
 			{ skipPersist: true },
 		);
-		const hubPayload = payloadForView({
-			type: 'file-hub',
-			fileId: open.fileId,
-		});
-		const nodeRef = hubPayload?.meta.nodeRef;
-		let painted =
-			nodeRef &&
-			Object.entries(nodeRef).find(
-				([, ref]) =>
-					(ref.kind === 'package' || ref.kind === 'unresolved') &&
-					ref.id === open.packageId,
-			)?.[0];
-		if (!painted) {
-			// Fallback: any package node whose id/label matches
-			painted =
-				(nodeRef &&
-					Object.entries(nodeRef).find(
-						([name, ref]) =>
-							ref.kind === 'package' &&
-							(ref.id === open.packageId || name === open.packageId),
-					)?.[0]) ??
-				open.packageId;
-		}
-		openPackageAsHub(open.packageId, painted, 'push');
+		openPackageAsHub(open.packageId, open.packageId, 'push', 'package');
 	}
 
 	setStatus(
@@ -696,10 +680,16 @@ function applyInsightSceneOpen(scene: InsightScene): void {
 	);
 }
 
+/**
+ * Package / unresolved sink → package-hub (Export* → External).
+ * Catalog Export Roots use replace; alluvial drill uses push.
+ * Sticky FocusSeed keys stable packageId; mounted label resolved at apply (2B).
+ */
 function openPackageAsHub(
 	packageId: string,
 	label: string,
 	mode: 'push' | 'replace' = 'push',
+	kind: 'package' | 'unresolved' = 'package',
 ): void {
 	if (!session) return;
 	const hasImporters = session.graph.edges.some((e) =>
@@ -709,8 +699,8 @@ function openPackageAsHub(
 		setStatus(`No importers for ${label}`);
 		return;
 	}
-	// Display label matches pair packageName / External chip (not unresolved: id).
-	pendingPackageFocusLabel = label;
+	// Durable identity only — painted label may not survive remount (Phase 2B)
+	pendingPackageFocus = { packageId, kind };
 	const view: AtlasView = { type: 'package-hub', packageId };
 	packageOpenInFlight = true;
 	let navigated = false;
@@ -721,9 +711,11 @@ function openPackageAsHub(
 		packageOpenInFlight = false;
 	}
 	// Push sameView early-return skips commit — still update sticky package seed.
-	if (!navigated && pendingPackageFocusLabel) {
+	if (!navigated && pendingPackageFocus) {
 		applyPendingPackageFocus();
-		setStatus(`Package · ${label} · hub ${packageId}`);
+		const seedName =
+			resolvePackageSeedName(packageId, stage.getPayload()) ?? label;
+		setStatus(`Package · ${seedName} · hub ${packageId}`);
 		tree.renderTree();
 		paintCatalog(nearestFileFocus(viewStack));
 	}
@@ -740,7 +732,7 @@ function drillFromRef(ref: AlluvialNodeRef, displayName: string): void {
 		return;
 	}
 	if (ref.kind === 'package' || ref.kind === 'unresolved') {
-		openPackageAsHub(ref.id, displayName);
+		openPackageAsHub(ref.id, displayName, 'push', ref.kind);
 		return;
 	}
 	if (ref.kind === 'module') {
@@ -808,7 +800,7 @@ function remountCurrentView(): void {
 	if (!view || !session) return;
 	const mounted = mountAlluvialGated(payloadForView(view));
 	// New focus API starts defaultSeed=null — re-apply sticky package if still pending.
-	if (mounted && pendingPackageFocusLabel) applyPendingPackageFocus();
+	if (mounted && pendingPackageFocus) applyPendingPackageFocus();
 	paintCatalog();
 }
 
@@ -976,7 +968,7 @@ wireUi({
 				vizMaxDepth,
 				interactionMode,
 				includeTests,
-				pendingPackageFocusLabel,
+				pendingPackageFocusLabel: pendingPackageFocus?.packageId ?? null,
 				programExactMass,
 				engineFailed,
 			},
