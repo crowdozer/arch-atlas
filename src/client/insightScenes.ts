@@ -1,30 +1,26 @@
 /**
- * Engine insight scenes — Artillery-style shareable presets for triage bugs.
+ * Engine insight scenes — Artillery-style shareable presets.
  *
- * Load via `/?scene=<id>` (or gallery cards on the upload step). Each scene is a
- * minimal synthetic fixture that opens on the view where the defect is visible.
+ * Product catalog is empty (triage packets 1A–2B closed). Underlying support
+ * stays: types, `?scene=` parse, gallery bind hooks, open recipes, and
+ * fixture load. Re-register entries in {@link INSIGHT_SCENES} (and matching
+ * `import.meta.glob` loaders) when shipping new presets.
  *
- * These do **not** fix geometry; they make known failures one-click reproducible
- * for browser inspection and later E2E. See catalog
- * `alluvial-engine-correctness-triage` Pre-phase 0.
+ * Load via `/?scene=<id>` (or gallery cards with `data-scene` / `atlas-scene-*`).
  */
 import type { VirtualFile } from '@core/graph/types.ts';
 import type { WeightAxis } from '@core/view/weight.ts';
 import type { AtlasView } from '@shell/atlasView.ts';
 
-export type SceneId =
-	| 'scarce-fanout'
-	| 'cyclic-depth'
-	| 'label-collision'
-	| 'sticky-package'
-	| 'omitted-ends';
+/** Catalog id (open string; validity is {@link isSceneId}). */
+export type SceneId = string;
 
 /** Where to land after indexing the fixture. */
 export type SceneOpen =
 	| {
 			kind: 'file-hub';
 			fileId: string;
-			/** Optional hub radius override (cyclic-depth wants ≥3). */
+			/** Optional hub radius override. */
 			maxDepth?: number;
 			weightAxis?: WeightAxis;
 	  }
@@ -38,7 +34,7 @@ export type SceneOpen =
 			kind: 'package-hub-via-file';
 			fileId: string;
 			packageId: string;
-			/** File-hub radius before package open (1 = module collapse / collision). */
+			/** File-hub radius before package open. */
 			maxDepth?: number;
 			weightAxis?: WeightAxis;
 	  };
@@ -48,112 +44,33 @@ export type InsightScene = {
 	label: string;
 	/** One-line gallery blurb. */
 	description: string;
-	/** Triage packet that will close this (1A, 1B, 2A, 2B, …). */
+	/** Optional triage / packet label for status chrome. */
 	triagePacket: string;
-	/** What wrong looks like today (status / warnings). */
+	/** What to inspect when the scene loads. */
 	lookFor: string;
-	/** What correct should look like after the repair ship. */
+	/** Expected correct outcome (docs / status). */
 	expectAfterFix: string;
 	open: SceneOpen;
 	/**
 	 * Relative path prefixes stamped `toKind: 'omitted'` when the target is
-	 * missing from the feed (omitted-ends scene).
+	 * missing from the feed.
 	 */
 	omitPathPrefixes?: string[];
 };
 
-export const INSIGHT_SCENES: readonly InsightScene[] = [
-	{
-		id: 'scarce-fanout',
-		label: 'Scarce fan-out',
-		description:
-			'Unit-mass parent fans to two children — integer split drops a branch.',
-		triagePacket: '1B',
-		lookFor:
-			'Fixed (1B): root→a unit mass; both b and c on Import hop 2 with positive fractional shares.',
-		expectAfterFix:
-			'Both b and c present as uncapped dependency branches with positive shares.',
-		open: {
-			kind: 'file-hub',
-			// Focus root so a arrives with mass 1 and fans out under integer split
-			fileId: 'src/root.ts',
-			maxDepth: 3,
-			weightAxis: 'import-edges',
-		},
-	},
-	{
-		id: 'cyclic-depth',
-		label: 'Cyclic depth',
-		description:
-			'Diamond + cycle under-reports longest simple path; hop for c collapses.',
-		triagePacket: '1A',
-		lookFor:
-			'Fixed (1A+1B): longest path to c is 3; hub shows c on import hops with positive ribbons.',
-		expectAfterFix:
-			'c reachable as a depth-3 instance with positive ribbon.',
-		open: {
-			kind: 'file-hub',
-			fileId: 'src/root.ts',
-			maxDepth: 4,
-			weightAxis: 'import-edges',
-		},
-	},
-	{
-		id: 'label-collision',
-		label: 'Label collision',
-		description:
-			'Module folder `react` imports package `react` — display name overwrites identity.',
-		triagePacket: '2A',
-		lookFor:
-			'Fixed (2A): module and package react keep distinct claimed labels; no self-link.',
-		expectAfterFix:
-			'Module and package keep distinct claimed labels; nodeRef ids stay stable.',
-		open: {
-			kind: 'module',
-			moduleId: 'react',
-		},
-	},
-	{
-		id: 'sticky-package',
-		label: 'Sticky package label',
-		description:
-			'Module leaf `react` + package `react` → painted `react · package` sticky fails remount.',
-		triagePacket: '2B',
-		lookFor:
-			'Fixed (2B): package-hub sticky seeds by stable id; remount resolves raw `react` (not painted `react · package`).',
-		expectAfterFix:
-			'Sticky package focus restores via stable package id; at least one focused band.',
-		open: {
-			kind: 'package-hub-via-file',
-			fileId: 'app.ts',
-			packageId: 'react',
-			// depth=1 triggers module collapse so Exports claims "react" first
-			maxDepth: 1,
-			weightAxis: 'import-edges',
-		},
-	},
-	{
-		id: 'omitted-ends',
-		label: 'Omitted ends leak',
-		description:
-			'Feed-omitted relative import leaks into module package ends.',
-		triagePacket: '2A',
-		lookFor:
-			'Fixed (2A): module `src` ends exclude omitted `./hidden`; lodash remains.',
-		expectAfterFix:
-			'Omitted edges never appear as module/package architecture ends (catalog already excludes them).',
-		open: {
-			kind: 'module',
-			moduleId: 'src',
-		},
-		omitPathPrefixes: ['src/hidden'],
-	},
-] as const;
+/**
+ * Active product catalog. Empty after engine-triage closeout.
+ *
+ * To re-enable a scene: push an {@link InsightScene} here and register its
+ * fixture under {@link SCENE_FIXTURE_GLOBS} (Vite `import.meta.glob` must be
+ * static — add a new eager glob entry when adding a fixture dir).
+ */
+export const INSIGHT_SCENES: readonly InsightScene[] = [];
 
 const BY_ID = new Map(INSIGHT_SCENES.map((s) => [s.id, s]));
 
 export function isSceneId(raw: string | null | undefined): raw is SceneId {
-	return typeof raw === 'string' && BY_ID.has(raw as SceneId);
+	return typeof raw === 'string' && BY_ID.has(raw);
 }
 
 export function getInsightScene(id: SceneId): InsightScene {
@@ -180,57 +97,17 @@ export function sceneHref(id: SceneId): string {
 }
 
 // ── Fixture globs (Vite raw, same pattern as demoFixtures) ───────────────────
+// Catalog empty: no globs registered. Re-add with e.g.:
+//   const scarceModules = import.meta.glob(
+//     '../../fixtures/scene-scarce-fanout/**/*',
+//     { query: '?raw', import: 'default', eager: true },
+//   ) as Record<string, string>;
+// and map id → { modules, marker: 'fixtures/scene-scarce-fanout/' }.
 
-const scarceModules = import.meta.glob(
-	'../../fixtures/scene-scarce-fanout/**/*',
-	{ query: '?raw', import: 'default', eager: true },
-) as Record<string, string>;
-
-const cyclicModules = import.meta.glob(
-	'../../fixtures/scene-cyclic-depth/**/*',
-	{ query: '?raw', import: 'default', eager: true },
-) as Record<string, string>;
-
-const labelModules = import.meta.glob(
-	'../../fixtures/scene-label-collision/**/*',
-	{ query: '?raw', import: 'default', eager: true },
-) as Record<string, string>;
-
-const stickyModules = import.meta.glob(
-	'../../fixtures/scene-sticky-package/**/*',
-	{ query: '?raw', import: 'default', eager: true },
-) as Record<string, string>;
-
-const omittedModules = import.meta.glob(
-	'../../fixtures/scene-omitted-ends/**/*',
-	{ query: '?raw', import: 'default', eager: true },
-) as Record<string, string>;
-
-const GLOBS: Record<
-	SceneId,
+const SCENE_FIXTURE_GLOBS: Record<
+	string,
 	{ modules: Record<string, string>; marker: string }
-> = {
-	'scarce-fanout': {
-		modules: scarceModules,
-		marker: 'fixtures/scene-scarce-fanout/',
-	},
-	'cyclic-depth': {
-		modules: cyclicModules,
-		marker: 'fixtures/scene-cyclic-depth/',
-	},
-	'label-collision': {
-		modules: labelModules,
-		marker: 'fixtures/scene-label-collision/',
-	},
-	'sticky-package': {
-		modules: stickyModules,
-		marker: 'fixtures/scene-sticky-package/',
-	},
-	'omitted-ends': {
-		modules: omittedModules,
-		marker: 'fixtures/scene-omitted-ends/',
-	},
-};
+> = {};
 
 function toVirtualFiles(
 	modules: Record<string, string>,
@@ -257,8 +134,12 @@ function toVirtualFiles(
 
 /** Load scene fixture as VirtualFile[] (same shape as ZIP / demo ingest). */
 export function loadSceneFiles(id: SceneId): VirtualFile[] {
-	const entry = GLOBS[id];
-	if (!entry) throw new Error(`Unknown scene: ${id}`);
+	const entry = SCENE_FIXTURE_GLOBS[id];
+	if (!entry) {
+		throw new Error(
+			`Scene "${id}" has no fixture loader — register import.meta.glob in insightScenes.ts`,
+		);
+	}
 	const files = toVirtualFiles(entry.modules, entry.marker);
 	if (!files.length) {
 		throw new Error(

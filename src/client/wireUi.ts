@@ -337,7 +337,7 @@ export function wireUi(deps: WireUiDeps): void {
 	});
 
 	deps.updateBackButton();
-	// Scene query wins over localStorage restore (shareable triage presets)
+	// Scene query wins over localStorage restore (shareable insight presets)
 	const bootScene = parseSceneQuery(location.search);
 	if (bootScene) {
 		deps.handleInsightScene(bootScene);

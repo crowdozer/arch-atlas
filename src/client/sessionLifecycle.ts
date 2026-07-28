@@ -97,7 +97,7 @@ export type SessionLifecycleDeps = {
 	syncDepthDropdown: () => void;
 	/**
 	 * After insight-scene index + default start open: apply weight/depth and
-	 * land on the defect view (module / package-hub sticky path).
+	 * land on the scene open recipe (module / package-hub sticky path).
 	 */
 	applyInsightSceneOpen?: (scene: InsightScene) => void;
 };
@@ -105,7 +105,7 @@ export type SessionLifecycleDeps = {
 export type SessionLifecycle = {
 	handleZip: (file: File) => Promise<void>;
 	handleDemo: (id: DemoId) => void;
-	/** Load a triage insight scene (`/?scene=<id>`). Skips persist by default. */
+	/** Load an insight scene (`/?scene=<id>`). Skips persist by default. */
 	handleInsightScene: (id: SceneId) => void;
 	tryRestoreSession: () => boolean;
 	resetSession: () => void;
@@ -297,7 +297,7 @@ export function createSessionLifecycle(
 			/** Forwarded to buildGraph (scene omit stamps). */
 			indexOpts?: IndexHostFeedOpts;
 			skipPersist?: boolean;
-			/** After activate (default start open); insight scenes land on defect view. */
+			/** After activate (default start open); insight scenes land on open recipe. */
 			afterActivate?: () => void;
 		},
 	): void {

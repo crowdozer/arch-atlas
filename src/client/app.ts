@@ -632,8 +632,8 @@ function navigatePop(opts?: { skipPersist?: boolean }): boolean {
 }
 
 /**
- * Land an insight scene on its defect view after index + default start open.
- * Sets weight/depth first so projectors match the triage fixture recipe.
+ * Land an insight scene on its open recipe after index + default start open.
+ * Sets weight/depth first so projectors match the scene fixture recipe.
  */
 function applyInsightSceneOpen(scene: InsightScene): void {
 	if (!session) return;
