@@ -93,17 +93,49 @@ export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 }
 
 /**
- * Accordion title direction for one evidence row = the edge's observed form.
+ * Accordion title direction for one evidence row without a focus file.
+ * Defaults to the edge's observed form (not section presence).
  *
- * Do **not** treat `importedCode` / `callsites` as opposite-direction facets:
- * those sections are hierarchy under the same form. A normal `import` edge with
- * a target excerpt was incorrectly painted purple mixed.
- *
- * `mixed` is reserved for an explicit multi-form collapse (see
- * {@link accordionDirectionFromForms}) — not for section presence.
+ * Prefer {@link perspectiveDirectionKind} when the inspected file is known —
+ * inbound consumers of the focus file are **export** from the focus POV.
  */
 export function accordionDirectionKind(ev: ImportEvidence): DirectionKind {
 	return formDirectionMarker(ev.import.form).direction;
+}
+
+/**
+ * Direction relative to the inspected file (alluvial node focus).
+ *
+ * Edge geometry: statement lives at `ev.import.path` (`from`); target is
+ * `ev.import.toLabel` / `ev.importedCode.path`.
+ *
+ * - Focus owns the statement → form as-is (import/require/dynamic = import;
+ *   export-from = export).
+ * - Focus is the **target** of an import-family edge → **export** (someone
+ *   imports us; e.g. `main.tsx` → `App.tsx` while inspecting App).
+ * - Focus is the target of an export-from edge → still export-family chrome
+ *   (re-export of our bindings) — treat as export.
+ * - No focus / unmatched → form fallback.
+ */
+export function perspectiveDirectionKind(
+	focusFileId: string | null | undefined,
+	ev: ImportEvidence,
+): DirectionKind {
+	const formDir = formDirectionMarker(ev.import.form).direction;
+	if (!focusFileId) return formDir;
+
+	const statementFile = ev.import.path;
+	if (focusFileId === statementFile) return formDir;
+
+	const targetIds = new Set<string>();
+	if (ev.import.toLabel) targetIds.add(ev.import.toLabel);
+	if (ev.importedCode?.path) targetIds.add(ev.importedCode.path);
+
+	if (targetIds.has(focusFileId)) {
+		// Inbound: consumer statement elsewhere targets this file.
+		return 'export';
+	}
+	return formDir;
 }
 
 /**
@@ -120,6 +152,120 @@ export function accordionDirectionFromForms(
 	if (dirs.has('import') && dirs.has('export')) return 'mixed';
 	if (dirs.has('export') && !dirs.has('import')) return 'export';
 	return 'import';
+}
+
+/** Per-site row for inspect modal summaries / tests. */
+export type InspectSiteSummary = {
+	edgeId: string;
+	statementPath: string;
+	line: number;
+	form: ImportForm;
+	/** Form-only direction (syntax). */
+	formDirection: DirectionKind;
+	/** Perspective direction vs focus file (import / export / mixed). */
+	direction: DirectionKind;
+	toLabel: string;
+	title: string;
+	/** Callsite symbols (name-scan), unique stable order. */
+	symbols: string[];
+	hasImportedCode: boolean;
+	callsiteCount: number;
+};
+
+/** Aggregate chrome counts for the modal meta line + tests. */
+export type InspectEvidenceSummary = {
+	total: number;
+	importCount: number;
+	exportCount: number;
+	mixedCount: number;
+	/** Human meta line painted above the accordion. */
+	metaLabel: string;
+	sites: InspectSiteSummary[];
+};
+
+/**
+ * Pure summary of modal evidence: per-site symbols + import/export counts
+ * relative to an optional focus file.
+ */
+export function summarizeInspectEvidence(
+	evidence: readonly ImportEvidence[],
+	focusFileId?: string | null,
+): InspectEvidenceSummary {
+	const sites: InspectSiteSummary[] = evidence.map((ev) => {
+		const formDirection = formDirectionMarker(ev.import.form).direction;
+		const direction = perspectiveDirectionKind(focusFileId, ev);
+		const symbolSet = new Set<string>();
+		for (const cs of ev.callsites) {
+			if (cs.symbol) symbolSet.add(cs.symbol);
+		}
+		return {
+			edgeId: ev.edgeId,
+			statementPath: ev.import.path,
+			line: ev.import.line,
+			form: ev.import.form,
+			formDirection,
+			direction,
+			toLabel: ev.import.toLabel,
+			title: importSiteAccordionTitle(ev),
+			symbols: [...symbolSet].sort((a, b) => a.localeCompare(b)),
+			hasImportedCode: Boolean(ev.importedCode),
+			callsiteCount: ev.callsites.length,
+		};
+	});
+
+	let importCount = 0;
+	let exportCount = 0;
+	let mixedCount = 0;
+	for (const s of sites) {
+		if (s.direction === 'import') importCount += 1;
+		else if (s.direction === 'export') exportCount += 1;
+		else mixedCount += 1;
+	}
+
+	return {
+		total: sites.length,
+		importCount,
+		exportCount,
+		mixedCount,
+		metaLabel: formatInspectMetaLabel({
+			total: sites.length,
+			importCount,
+			exportCount,
+			mixedCount,
+		}),
+		sites,
+	};
+}
+
+/** Meta caption: prefers direction counts when focus distinguishes them. */
+export function formatInspectMetaLabel(counts: {
+	total: number;
+	importCount: number;
+	exportCount: number;
+	mixedCount: number;
+}): string {
+	const { total, importCount, exportCount, mixedCount } = counts;
+	if (total === 0) return '0 observed statements';
+	// Single bucket or no directional split yet → legacy wording
+	if (
+		(importCount === total && exportCount === 0 && mixedCount === 0) ||
+		(exportCount === total && importCount === 0 && mixedCount === 0)
+	) {
+		const noun =
+			importCount === total
+				? total === 1
+					? '1 observed import'
+					: `${total} observed imports`
+				: total === 1
+					? '1 observed export'
+					: `${total} observed exports`;
+		return `${noun} (relative to selection)`;
+	}
+	const parts: string[] = [];
+	if (importCount) parts.push(`${importCount} import${importCount === 1 ? '' : 's'}`);
+	if (exportCount) parts.push(`${exportCount} export${exportCount === 1 ? '' : 's'}`);
+	if (mixedCount) parts.push(`${mixedCount} mixed`);
+	return `${total} observed · ${parts.join(' · ')} (relative to selection)`;
 }
 
 /** Marker chrome for a resolved direction kind (import / export / mixed). */
@@ -175,17 +321,23 @@ function directionTriStatus(marker: FormDirectionMarker): StatusPresentation {
 
 function createDirectionMarkerEl(
 	kind: DirectionKind,
-	opts: { showLabel?: boolean; form?: ImportForm } = {},
+	opts: { showLabel?: boolean; /** Syntax label override (statement form). */ form?: ImportForm } = {},
 ): HTMLElement {
-	// Prefer form-specific label when painting a concrete edge form.
-	const marker =
+	// Chrome class follows perspective `kind`; label may keep statement form.
+	const chrome = directionMarker(kind);
+	const labelSource =
 		opts.form !== undefined && kind !== 'mixed'
 			? formDirectionMarker(opts.form)
-			: directionMarker(kind);
-	const el = createStatusIndicatorEl(directionTriStatus(marker), {
+			: chrome;
+	const status = directionTriStatus({
+		...chrome,
+		label: labelSource.label,
+		title: labelSource.title,
+	});
+	const el = createStatusIndicatorEl(status, {
 		size: 'xs',
 		showLabel: opts.showLabel ?? true,
-		className: marker.className,
+		className: chrome.className,
 	});
 	// Atom sets inline --ui-status-color from StatusColorToken.
 	// Clear so host classes own blue / cyan / purple.
@@ -193,9 +345,16 @@ function createDirectionMarkerEl(
 	return el;
 }
 
-/** Path-row form marker (labeled) for statement / imported code / callsites. */
-function createFormTriEl(form: ImportForm): HTMLElement {
-	return createDirectionMarkerEl(formDirectionMarker(form).direction, {
+/**
+ * Path-row direction marker (labeled).
+ * Chrome = focus-relative direction; label keeps statement `form` when present.
+ */
+function createFormTriEl(
+	form: ImportForm,
+	direction?: DirectionKind,
+): HTMLElement {
+	const dir = direction ?? formDirectionMarker(form).direction;
+	return createDirectionMarkerEl(dir, {
 		showLabel: true,
 		form,
 	});
@@ -298,13 +457,16 @@ export function importSiteAccordionTitle(ev: ImportEvidence): string {
 }
 
 /** Title slot content: [direction marker] path · Lline */
-function createAccordionTitleEl(ev: ImportEvidence): HTMLElement {
+function createAccordionTitleEl(
+	ev: ImportEvidence,
+	direction: DirectionKind,
+): HTMLElement {
 	const host = document.createElement('span');
 	host.setAttribute('slot', 'title');
 	host.className = 'atlas-inspect__accordion-title';
 	// Compact glyph only — path text carries the rest
 	host.appendChild(
-		createDirectionMarkerEl(accordionDirectionKind(ev), {
+		createDirectionMarkerEl(direction, {
 			showLabel: false,
 		}),
 	);
@@ -321,6 +483,8 @@ function appendEvidenceSections(
 	ev: ImportEvidence,
 	claimPrecision: LocPrecision,
 	surfaceLive: boolean,
+	/** Focus-relative direction for markers (not raw form alone). */
+	direction: DirectionKind,
 ): void {
 	// Statement (observed import / export / require / dynamic)
 	const impSec = document.createElement('div');
@@ -333,7 +497,7 @@ function appendEvidenceSections(
 		impSec,
 		`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">L${ev.import.line}</span>`,
 		ev.import.text,
-		createFormTriEl(ev.import.form),
+		createFormTriEl(ev.import.form, direction),
 	);
 	parent.appendChild(impSec);
 
@@ -349,8 +513,7 @@ function appendEvidenceSections(
 			codeSec,
 			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(ev.importedCode.note)}</span>`,
 			ev.importedCode.text,
-			// Same form-direction chrome as statement / callsites
-			createFormTriEl(ev.import.form),
+			createFormTriEl(ev.import.form, direction),
 		);
 	} else {
 		const note = document.createElement('p');
@@ -380,7 +543,7 @@ function appendEvidenceSections(
 				callSec,
 				`${escapeHtml(cs.path)} <span class="atlas-inspect__line-num">L${cs.line}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(cs.symbol)}</span>`,
 				cs.text,
-				createFormTriEl(ev.import.form),
+				createFormTriEl(ev.import.form, direction),
 			);
 		}
 	} else {
@@ -408,6 +571,8 @@ export function createInspectModals(deps: InspectModalDeps): {
 		title: string,
 		evidence: ImportEvidence[],
 		emptyHint: string,
+		/** File id for perspective import/export chrome (optional). */
+		focusFileId?: string | null,
 	) => void;
 	openUnavailableModal: (opts: {
 		label?: string;
@@ -457,6 +622,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 		title: string,
 		evidence: ImportEvidence[],
 		emptyHint: string,
+		focusFileId?: string | null,
 	): void {
 		const modal = $('atlas-inspect-modal') as
 			| (HTMLElement & { open?: boolean })
@@ -491,12 +657,10 @@ export function createInspectModals(deps: InspectModalDeps): {
 			return;
 		}
 
+		const summary = summarizeInspectEvidence(evidence, focusFileId);
 		const meta = document.createElement('p');
 		meta.className = 'atlas-inspect__meta';
-		meta.textContent =
-			evidence.length === 1
-				? '1 observed import statement'
-				: `${evidence.length} observed import statements`;
+		meta.textContent = summary.metaLabel;
 		body.appendChild(meta);
 
 		// Banner only when engine is truly missing (not per-edge unresolved)
@@ -519,11 +683,15 @@ export function createInspectModals(deps: InspectModalDeps): {
 		const openFirstOnly = evidence.length === 1;
 
 		for (const ev of evidence) {
+			const direction = perspectiveDirectionKind(focusFileId, ev);
 			const item = document.createElement('cds-accordion-item');
 			// Named title slot (Carbon) so we can lead with a direction marker
-			item.appendChild(createAccordionTitleEl(ev));
+			item.appendChild(createAccordionTitleEl(ev, direction));
 			// Accessible fallback when slot paint lags / screen readers use attr
 			item.setAttribute('title', importSiteAccordionTitle(ev));
+			item.dataset.direction = direction;
+			item.dataset.form = ev.import.form;
+			item.dataset.statementPath = ev.import.path;
 			if (openFirstOnly) item.setAttribute('open', '');
 
 			const sections = document.createElement('div');
@@ -533,6 +701,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 				ev,
 				claimPrecision,
 				surfaceLive,
+				direction,
 			);
 			item.appendChild(sections);
 			accordion.appendChild(item);
@@ -565,10 +734,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 			claimPrecision(),
 			surface,
 		);
+		const focusFileId = ref.kind === 'file' ? ref.id : null;
 		openInspectModal(
 			name,
 			evidence,
 			'No observed import lines for this node in the current graph.',
+			focusFileId,
 		);
 	}
 
@@ -590,10 +761,18 @@ export function createInspectModals(deps: InspectModalDeps): {
 			claimPrecision(),
 			surface,
 		);
+		// Prefer file focus when either end is a concrete file
+		const focusFileId =
+			sourceRef?.kind === 'file'
+				? sourceRef.id
+				: targetRef?.kind === 'file'
+					? targetRef.id
+					: null;
 		openInspectModal(
 			title,
 			evidence,
 			'No observed import lines for this band (aggregate or unresolved topology).',
+			focusFileId,
 		);
 	}
 
