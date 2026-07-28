@@ -176,18 +176,15 @@ describe('importSiteAccordionTitle', () => {
 		expect(title).not.toContain('very/deeply');
 	});
 
-	it('appends specifier when basename form fits under the cap', () => {
+	it('keeps full path without specifier when path · Lline · form fits under the cap', () => {
 		const title = importSiteAccordionTitle(
 			sampleEvidence({
 				path: 'src/deep/nested/importer.ts',
-				// Force basename path: make full path long
-				// (importer.ts alone is short — use a longer base path)
 				line: 3,
 				form: 'import',
 				specifier: './helpers',
 			}),
 		);
-		// Full path still short enough here
 		expect(title).toBe('src/deep/nested/importer.ts · L3 · import');
 	});
 

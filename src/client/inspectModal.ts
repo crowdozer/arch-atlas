@@ -269,11 +269,12 @@ export function createInspectModals(deps: InspectModalDeps): {
 	}
 
 	function toggleFullscreen(): void {
-		const next = !readInspectModalFullscreen();
-		writeInspectModalFullscreen(next);
 		const modal = $('atlas-inspect-modal');
 		if (!modal) return;
 		const btn = $('atlas-inspect-fullscreen');
+		// Derive from live chrome so blocked sessionStorage can still exit
+		const next = !modal.classList.contains('atlas-inspect-modal--fullscreen');
+		writeInspectModalFullscreen(next); // best-effort sticky
 		syncFullscreenChrome(modal, btn, next);
 	}
 
