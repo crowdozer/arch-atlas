@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildGraph } from '@core/graph/build.ts';
 import {
+	IMPORTED_SURFACE_CHIPS,
 	callSitesForEdge,
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
 	importedCodeForEdge,
+	importedSurfaceChipTitle,
 	snippetsForEdges,
 	statementSpan,
 } from '@core/view/inspect.ts';
@@ -152,7 +154,24 @@ export type WeaponType = 'laser';
 		expect(code).toBeTruthy();
 		expect(code!.path).toBe('src/lib/util.ts');
 		expect(code!.text).toContain('export const x');
-		expect(code!.note).toMatch(/whole file/i);
+		expect(code!.note).toBe(IMPORTED_SURFACE_CHIPS.estimateWhole);
+		expect(importedSurfaceChipTitle(code!.note)).toMatch(/estimate/i);
+	});
+
+	it('imported surface chips are a closed set with honesty titles', () => {
+		const chips = Object.values(IMPORTED_SURFACE_CHIPS);
+		expect(chips).toEqual([
+			'Exact · AST surface',
+			'Exact · text surface',
+			'Estimate · whole file',
+			'Estimate · whole file (capped)',
+		]);
+		for (const chip of chips) {
+			const title = importedSurfaceChipTitle(chip);
+			expect(title).toBeTruthy();
+			expect(title!.length).toBeGreaterThan(chip.length);
+		}
+		expect(importedSurfaceChipTitle('custom mock')).toBeUndefined();
 	});
 
 	it('callSitesForEdge finds local uses of named import', () => {

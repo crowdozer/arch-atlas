@@ -76,13 +76,46 @@ export type ImportSnippet = {
 	toLabel: string;
 };
 
+/**
+ * Closed set of Imported-code honesty chips (inspect meta-chip).
+ * Short fingerprint; long anti-claims live on modal header + chip `title`.
+ */
+export const IMPORTED_SURFACE_CHIPS = {
+	exactAst: 'Exact · AST surface',
+	exactText: 'Exact · text surface',
+	estimateWhole: 'Estimate · whole file',
+	estimateCapped: 'Estimate · whole file (capped)',
+} as const;
+
+export type ImportedSurfaceChip =
+	(typeof IMPORTED_SURFACE_CHIPS)[keyof typeof IMPORTED_SURFACE_CHIPS];
+
+const IMPORTED_SURFACE_CHIP_TITLES: Record<ImportedSurfaceChip, string> = {
+	[IMPORTED_SURFACE_CHIPS.exactAst]:
+		'Export-declaration spans via classic createSourceFile AST. Not LSP / not type-check / not bundler tree-shake.',
+	[IMPORTED_SURFACE_CHIPS.exactText]:
+		'Export-declaration spans via text scan (no classic AST). Not LSP / not type-check / not bundler tree-shake.',
+	[IMPORTED_SURFACE_CHIPS.estimateWhole]:
+		'Whole target file as imported-code proxy (estimate). Fuzzy by design.',
+	[IMPORTED_SURFACE_CHIPS.estimateCapped]:
+		'Whole target file excerpt, capped for display (estimate). Fuzzy by design.',
+};
+
+/** Tooltip / title for a known surface chip; undefined for custom/mock notes. */
+export function importedSurfaceChipTitle(note: string): string | undefined {
+	return IMPORTED_SURFACE_CHIP_TITLES[note as ImportedSurfaceChip];
+}
+
 export type ImportedCodeSnippet = {
 	epistemic: 'observed' | 'inferred';
 	path: string;
 	startLine: number;
 	endLine: number;
 	text: string;
-	/** e.g. "whole file (estimate)" */
+	/**
+	 * Honesty fingerprint chip. Production paths use
+	 * {@link IMPORTED_SURFACE_CHIPS} only.
+	 */
 	note: string;
 };
 
@@ -290,7 +323,7 @@ export function importedCodeForEdge(
 			startLine: 1,
 			endLine: 1,
 			text: '',
-			note: 'whole file (estimate)',
+			note: IMPORTED_SURFACE_CHIPS.estimateWhole,
 		};
 	}
 	const slice = lines.slice(0, MAX_IMPORTED_LINES);
@@ -305,8 +338,8 @@ export function importedCodeForEdge(
 		endLine: Math.min(lines.length, MAX_IMPORTED_LINES),
 		text: body,
 		note: truncated
-			? `whole file excerpt (estimate; ${lines.length} lines total)`
-			: 'whole file (estimate)',
+			? IMPORTED_SURFACE_CHIPS.estimateCapped
+			: IMPORTED_SURFACE_CHIPS.estimateWhole,
 	};
 }
 

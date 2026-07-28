@@ -335,7 +335,7 @@ describe('perspectiveDirectionKind (focus-relative)', () => {
 				startLine: 1,
 				endLine: 8,
 				text: 'export function App() {}',
-				note: 'whole file (estimate)',
+				note: 'Estimate · whole file',
 			},
 		};
 		// Form alone would say import — wrong chrome on App's modal

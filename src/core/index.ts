@@ -144,11 +144,13 @@ export {
 } from '@core/view/fileHub.ts';
 export { projectMultiHopAlluvial, stageForDepth } from '@core/view/multiHop.ts';
 export {
+	IMPORTED_SURFACE_CHIPS,
 	callSitesForEdge,
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
 	importedCodeForEdge,
+	importedSurfaceChipTitle,
 	snippetsForEdges,
 	statementSpan,
 } from '@core/view/inspect.ts';
@@ -158,6 +160,7 @@ export type {
 	ImportEvidence,
 	ImportSnippet,
 	ImportedCodeSnippet,
+	ImportedSurfaceChip,
 } from '@core/view/inspect.ts';
 export {
 	extractImports,

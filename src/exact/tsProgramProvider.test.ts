@@ -67,7 +67,7 @@ describe('createTsProgramProvider (Program-backed)', () => {
 		expect(mass!).toBeLessThanOrEqual(5);
 
 		const surf = provider.importedSurface?.(graph, edge!);
-		expect(surf?.note).toMatch(/Program|createSourceFile/i);
+		expect(surf?.note).toBe('Exact · AST surface');
 		expect(surf?.text).toMatch(/used/);
 		// File line range (not excerpt-relative 1..n only)
 		expect(surf?.startLine).toBeGreaterThanOrEqual(1);
@@ -93,7 +93,7 @@ describe('createTsProgramProvider (Program-backed)', () => {
 		const edge = graph.edges.find((e) => e.to === 'b.ts');
 		expect(provider.targetSurfaceMass(graph, edge!)).not.toBeNull();
 		const surf = provider.importedSurface?.(graph, edge!);
-		expect(surf?.note).toMatch(/fallback/i);
+		expect(surf?.note).toBe('Exact · text surface');
 	});
 
 	it('side-effect import returns mass 1', () => {

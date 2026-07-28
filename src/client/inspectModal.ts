@@ -7,6 +7,7 @@ import {
 	edgesForBand,
 	edgesForNode,
 	evidenceForEdges,
+	importedSurfaceChipTitle,
 	type AlluvialNodeRef,
 	type ImportEvidence,
 	type ImportedSurfaceProvider,
@@ -505,9 +506,13 @@ function appendEvidenceSections(
 	codeH.textContent = 'Imported code';
 	codeSec.appendChild(codeH);
 	if (ev.importedCode) {
+		const chipTitle = importedSurfaceChipTitle(ev.importedCode.note);
+		const chipTitleAttr = chipTitle
+			? ` title="${escapeHtml(chipTitle)}"`
+			: '';
 		appendCodeBlock(
 			codeSec,
-			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(ev.importedCode.note)}</span>`,
+			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__meta-chip"${chipTitleAttr}>${escapeHtml(ev.importedCode.note)}</span>`,
 			ev.importedCode.text,
 			createFormTriEl(ev.import.form, direction),
 		);

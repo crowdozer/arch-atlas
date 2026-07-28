@@ -18,6 +18,7 @@
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
+	IMPORTED_SURFACE_CHIPS,
 	statementSpan,
 	type CallSiteSnippet,
 } from '@core/view/inspect.ts';
@@ -302,8 +303,8 @@ export function createTsProgramProvider(
 
 	function surfaceNote(path: string): string {
 		return astUsed.get(path)
-			? 'Export surface (classic createSourceFile AST — not LSP / not type-check)'
-			: 'Export surface (text fallback — not LSP / not type-check)';
+			? IMPORTED_SURFACE_CHIPS.exactAst
+			: IMPORTED_SURFACE_CHIPS.exactText;
 	}
 
 	return {
