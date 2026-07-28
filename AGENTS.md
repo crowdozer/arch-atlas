@@ -18,7 +18,8 @@ Agents: start here, then load playbooks from the preamble.
 9. **Analysis protocol (canonical multi-host L0–L4):** [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md) — one IR, capability stamps, ship phases; catalog [analysis-protocol-multi-host](.grok/catalog/entries/analysis-protocol-multi-host.md)
 10. **Analysis honesty (Estimate / Exact / VS Code today):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
 11. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
-12. **Color / Carbon tokens:** [.grok/reference/carbon-tokens.md](.grok/reference/carbon-tokens.md) — zinc+teal brand (not emerald), purple selection, status CDS presets, g100 → bridge → `--atlas-*` → `chartPalette`
+12. **Cycle scan (circular imports):** [.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md) — `digest` `catalog.cycles` enumerates SCCs; `mermaid` is structure + honesty comments (not full audit)
+13. **Color / Carbon tokens:** [.grok/reference/carbon-tokens.md](.grok/reference/carbon-tokens.md) — zinc+teal brand (not emerald), purple selection, status CDS presets, g100 → bridge → `--atlas-*` → `chartPalette`
 
 ## Role skills
 
@@ -53,18 +54,19 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
 | `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (topFolder rollup + file SCC `%%` honesty). |
-| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph (`flowchart LR`); cycle honesty in comments; `--limit` caps prefix nodes |
+| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph (`flowchart LR`); cycle honesty in comments; `--limit` caps prefix nodes. **Not** the primary cycle enumerator — see cycles cheatsheet |
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
 ### Impact / atlas workflow (architecture-affecting ships)
 
 Global role pack wires arch-atlas (soft-fail if missing): see
-`~/git-personal/dotfiles/grok/skills/_shared/arch-atlas.md` and
-[.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md).
+`~/git-personal/dotfiles/grok/skills/_shared/arch-atlas.md`,
+[.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md), and
+[.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md).
 
-- **Research:** architecture-heavy → `digest` and/or `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`); **5–10 lines** via cheatsheet **read order** — never paste full JSON.
-- **Czar:** after `git diff` stats, `impact` as **supplemental** topology signal (flow clobber / blast movers); not a merge gate alone; still run tests.
+- **Research:** architecture-heavy → `digest` and/or `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`); **5–10 lines** via cheatsheet **read order** — never paste full JSON. **Circular imports?** → `digest` `catalog.cycles` (+ optional `mermaid` sketch); do not treat mermaid diagram alone as the full SCC list.
+- **Czar:** after `git diff` stats, `impact` as **supplemental** topology signal (flow clobber / blast movers); not a merge gate alone; still run tests. Cycle-focused review: digest cycles on head if needed.
 - **Engineer:** awareness only — not primary toolkit.
 - **Confirmable CLI bugs:** `/catalog` in this repo (investigation + repro).
 

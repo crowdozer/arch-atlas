@@ -89,6 +89,11 @@ npm run atlas -- tree . --tree-full --out /tmp/tree-full.json
 npm run atlas -- mermaid fixtures/agent-artillery-shaped --limit 40
 npm run atlas -- mermaid . --omit fixtures --out /tmp/structure.mmd
 
+# cycle scan: enumerate SCCs via digest (prefer --estimate); sketch via mermaid
+# → full recipe: .grok/reference/cycles-cheatsheet.md
+npm run atlas -- digest . --omit fixtures --estimate --out /tmp/digest.json
+# jq '.catalog.cycles.runtime[] | {size, edgeCount, samplePaths}' /tmp/digest.json
+
 # import-topology impact of a commit / branch (git archive both sides; no dirty tree)
 npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
 npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/impact.json
@@ -145,6 +150,23 @@ when they collapse to one node); multi-prefix SCCs wrap nodes in subgraphs
 mass, no Program, not a domain map. Paste into markdown/LLM UIs; optional
 `--out` for a `.mmd` file. Catalog: [mermaid-structure-graph](.grok/catalog/entries/mermaid-structure-graph.md).
 
+### Cycle scan (circular import chains)
+
+Mermaid **surfaces** cycles; it is not the full audit lens.
+
+| Goal | Command | Where |
+| ---- | ------- | ----- |
+| Enumerate SCCs | `digest` (often `--estimate`) | `catalog.cycles.runtime` / `.type` — `size`, `edgeCount`, `samplePaths` (≤8) |
+| Structure sketch + honesty | `mermaid` | Header `%% cycles.runtime (file SCC)` + multi-prefix subgraphs / `<-->` |
+| One path in a knot | `file --file <rel>` | Neighbors around a sample path |
+
+Same Tarjan SCC core (`src/core/catalog/cycles.ts`). Prefer **digest** when the
+question is “list circular chains”; prefer **mermaid** when you need a
+pasteable folder coupling sketch. Within-folder file cycles **collapse** under
+one topFolder node in the diagram — comments still list them. Recipes, caps,
+and read order:
+[.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md).
+
 ### Agent digest fields (high level)
 
 Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
@@ -160,7 +182,7 @@ Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
 | `analysis.capabilities` / `capabilityDetail` / `completeness` | Protocol envelope: L0–L2 stamps (never L3 without Program). |
 | `exportDeclarationLoc` | Alias of Exact `surfaceLoc` (export-declaration span). Prefer this name in agents. Mass rows may stamp `surfaceSupport: 'supported'`. |
 | `downwindReach` / `reverseReach` | Agent aliases of `complex` / `blastRadius` (same arrays). |
-| `catalog.cycles` | `{ runtime, type }` SCC summaries (size ≥ 2). |
+| `catalog.cycles` | `{ runtime, type }` SCC summaries (size ≥ 2). **Primary machine lens for circular import chains** — see [cycles-cheatsheet](.grok/reference/cycles-cheatsheet.md). |
 | `catalog.boundaryCrossings` | Inferred deep imports past barrel/façade folders. |
 | Edge `unresolvedReason` | `alias` \| `missing` \| `external` when `toKind: unresolved`. |
 | File `importsShown` / `importersShown` | Cap window length with totals + `truncated`. File `analysis.fileLens` stamps mass=false (topology-only). |

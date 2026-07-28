@@ -96,6 +96,7 @@ soft-fail forever in the calling project.
 
 - Global agent contract: `~/git-personal/dotfiles/grok/skills/_shared/arch-atlas.md`
 - [analysis-honesty.md](analysis-honesty.md) — Estimate / Exact / VS Code ladder
+- [cycles-cheatsheet.md](cycles-cheatsheet.md) — circular import SCCs (`digest` / `mermaid`); no dedicated SCC-delta in impact MVP
 - Catalog: `git-architectural-time-machine` — Evolution vision; this CLI is a thin
   two-ref topology slice, not full time-machine
 - CLI implementation: `src/cli/main.ts` (`impact`), pure core: `src/core/export/agentImpact.ts`

@@ -94,7 +94,7 @@ re-deriving meaning from bare counts:
 | **`surfaceLoc` / `exportDeclarationLoc` / `surfaceMetricNote`** | Export-declaration **span coverage**, not public-API surface area. Wire keeps `surfaceLoc`; dual-publish `exportDeclarationLoc`. Mass rows may include `surfaceSupport`. |
 | **`downwindReach` / `reverseReach`** | Agent aliases of catalog `complex` / `blastRadius`. |
 | **File `analysis.fileLens`** | Capability matrix: mass false on file command; neighbors + catalogHits topology-only. |
-| **`unresolvedReason` / cycles / boundary** | Taxonomy + SCC + boundary crossings are graph **interpretation** (observed edges; roles/boundary inferred). Not Program L2. |
+| **`unresolvedReason` / cycles / boundary** | Taxonomy + SCC + boundary crossings are graph **interpretation** (observed edges; roles/boundary inferred). Not Program L2. **Cycle scan recipe:** [cycles-cheatsheet.md](./cycles-cheatsheet.md) — prefer `catalog.cycles` for enumeration; mermaid for structure + `%%` honesty (within-prefix SCCs collapse in the diagram). |
 | **`toKind: 'omitted'`** | Target missing because feed `--omit`, **not** true unresolved. Ends ranking should not treat omitted as architecture ends the same as unresolved. |
 | **`typeOnly` edges** | From `import type` / `export type … from`. Ranking (hotspots / complex / blast degrees) prefers **runtime** edges when the flag is present. Best-effort: `import { type X }` may still be classified as value form. Full graph retains both. |
 | **`rankScore` (hotspots)** | Sort key after role adjustments (e.g. barrel demotion). Dual-publish edge-record degrees + unique neighbor degrees; agents should order by `rankScore`, not raw `edgeCount`. |

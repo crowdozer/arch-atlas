@@ -53,6 +53,7 @@ related:
   - analysis-capability-honesty
   - analysis-protocol-multi-host
   - geometric-vs-knot-architecture
+  - "ops: .grok/reference/cycles-cheatsheet.md — circular import scan (digest SCCs vs mermaid honesty)"
 realized_by:
   - src/core/export/agentMermaid.ts
   - src/core/export/agentMermaid.test.ts

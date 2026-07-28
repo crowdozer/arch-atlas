@@ -95,6 +95,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [analysis-protocol.md](../../reference/analysis-protocol.md) | **Canonical** multi-host L0–L4 analyzer direction + ship phases |
 | [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code **today** — do not claim LSP/tree-shake |
 | [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) | Two-ref import-topology impact CLI; large-JSON read order; research/czar recipes |
+| [cycles-cheatsheet.md](../../reference/cycles-cheatsheet.md) | Circular import chains: `digest` SCCs vs `mermaid` honesty; caps + read order |
 | [git-commits.md](../git-commits.md) | Before any commit |
 | `~/git-personal/dotfiles/grok/skills/_shared/personality.md` | Global agent personality |
 
@@ -123,7 +124,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
 | `npm run atlas -- digest\|tree\|file\|mermaid\|impact …` | Agent CLI lens (dir/ZIP or two git refs → agent JSON; mermaid → plain flowchart text; digest Exact-default; see README) |
-| `npm run atlas -- mermaid <dir\|zip> …` | Structure graph export (topFolder rollup + file SCC `%%` comments) |
+| `npm run atlas -- mermaid <dir\|zip> …` | Structure graph export (topFolder rollup + file SCC `%%` comments); cycle **honesty**, not full audit — [cycles-cheatsheet.md](../../reference/cycles-cheatsheet.md) |
 | `npm run atlas -- impact . --base <ref> --head <ref>` | Import-topology impact; cheatsheet [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 
