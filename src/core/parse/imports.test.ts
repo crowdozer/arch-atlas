@@ -341,6 +341,26 @@ import { real } from './real';
 		expect(specs).toEqual(['./real']);
 		expect(specs).not.toContain('./fake');
 	});
+
+	it('does not harvest require / dynamic import / export-from inside string literals', () => {
+		// Regex passes must be string-aware (same class as static import keyword)
+		const src = `
+const a = "require('./cjs')";
+const b = "import('./dyn')";
+const c = "export { x } from './exp'";
+const d = \`require('./tmpl')\`;
+const real = require('./real-req');
+const dyn = import('./real-dyn');
+export { y } from './real-exp';
+`;
+		const imps = extractImports(src);
+		const specs = imps.map((i) => i.specifier).sort();
+		expect(specs).toEqual(['./real-dyn', './real-exp', './real-req'].sort());
+		expect(specs).not.toContain('./cjs');
+		expect(specs).not.toContain('./dyn');
+		expect(specs).not.toContain('./exp');
+		expect(specs).not.toContain('./tmpl');
+	});
 });
 
 describe('parseImportClause', () => {
