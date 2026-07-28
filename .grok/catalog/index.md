@@ -1,6 +1,6 @@
 # Catalog index (generated)
 
-_Generated 2026-07-28T20:47:14Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-28T20:58:05Z — do not hand-edit; run `catalog-index`._
 
 **16** records.
 

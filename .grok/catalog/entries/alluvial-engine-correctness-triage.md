@@ -81,6 +81,10 @@ realized_by:
     note: Phase 0 shared payload integrity oracle (test-owned)
   - path: src/core/view/alluvialPayloadIntegrity.test.ts
     note: Phase 0 deliberate-malform + healthy hub checks
+  - path: src/core/catalog/deepest.ts
+    note: Phase 1A fileLongestDistances simple-path fix + maxDepth bound
+  - path: src/core/view/hubImportRings.ts
+    note: Phase 1A pass hubRadius as maxDepth for forward longest path
 superseded_by: null
 rationale_quality: full
 ---
@@ -220,7 +224,7 @@ the preceding gate is green.
 
 ### Phase 1 — Topology correctness
 
-#### Packet 1A — Cyclic and convergent depth
+#### Packet 1A — Cyclic and convergent depth ✅ landed
 
 **Ship prompt**
 
@@ -228,14 +232,18 @@ the preceding gate is green.
 > convergent import graphs; add a small exact oracle without introducing an
 > unbounded longest-path search.
 
-**Engineer acceptance**
+**Landed**
 
-- Add the cyclic diamond counterexample and adjacency/input permutation cases.
-- Compare small generated graphs against a brute-force bounded simple-path
-  oracle.
-- Separate bounded view expansion from catalog-wide depth semantics if one
-  function cannot honestly own both.
-- Prove termination on SCCs and preserve seed-clamp/multi-instance law.
+- `fileLongestDistances` explores every simple path (update on longer arrival;
+  always DFS under stack). Fixes diamond+cycle under-report (c at 3 via
+  root→b→a→c).
+- Optional `{ maxDepth }` — hub forward rings pass `hubRadius` so search stays
+  radius-bounded.
+- Catalog tree-depth stays BFS via `fileDistances` / `importDepthStats` (not
+  silently relabeled as longest simple path).
+- Tests: cyclic diamond scene, adj permutation stability, brute-force oracle on
+  small graphs, maxDepth bound, SCC termination, hub Import hop 3 multi-instances.
+- **Not 1A:** unit-mass sibling fan-out still drops `c` ribbons (Phase 1B).
 
 **Czar gate**
 

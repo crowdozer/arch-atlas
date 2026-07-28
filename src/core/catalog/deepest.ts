@@ -71,37 +71,67 @@ export function fileDistances(
 	return { dist, maxHops };
 }
 
+export type FileLongestDistancesOpts = {
+	/**
+	 * Cap simple-path length from start (inclusive of the last hop).
+	 * Hub forward rings pass the viz radius so search stays O(radius) deep.
+	 * Default: no hop cap (still terminates: simple paths cannot revisit nodes).
+	 */
+	maxDepth?: number;
+};
+
 /**
- * Longest simple-path distances from start along file imports (start = 0).
- * Cycle-safe (skips back-edges on the active stack). Used for **export** hub
- * columns so chains like focus→format→types stay expanded even when types is
- * also a direct dependency of focus (shortest-path would collapse types to 1).
+ * Longest **simple-path** distances from start along file imports (start = 0).
+ *
+ * Cycle-safe via the active DFS stack (no node twice on one path). Unlike a
+ * naive global memo that prunes when a node was already reached “as deep,” this
+ * explores every simple path so convergent diamonds under cycles report the
+ * true longest depth (e.g. root→b→a→c at 3, not only root→a→c at 2).
+ *
+ * **View expansion (hub Imports\*):** prefer `{ maxDepth: hubRadius }` so radius
+ * membership is correct without unbounded search on huge graphs.
+ *
+ * **Catalog tree-depth** deliberately uses {@link fileDistances} (BFS / shortest
+ * max hop), not this function — do not silently relabel BFS as longest path.
+ *
+ * Used for hub forward columns so chains like focus→format→types stay expanded
+ * even when types is also a direct dependency of focus.
  */
 export function fileLongestDistances(
 	graph: CodeGraph,
 	startId: string,
 	adj?: Map<string, string[]>,
+	opts?: FileLongestDistancesOpts,
 ): { dist: Map<string, number>; maxHops: number } {
 	const a = adj ?? fileImportAdj(graph);
+	const maxDepth =
+		opts?.maxDepth !== undefined
+			? Math.max(0, Math.floor(opts.maxDepth))
+			: Number.POSITIVE_INFINITY;
+
 	const dist = new Map<string, number>();
 	dist.set(startId, 0);
 
-	const dfs = (cur: string, stack: Set<string>) => {
-		const d = dist.get(cur) ?? 0;
+	/**
+	 * Walk every simple path from start. Update dist when a longer path reaches
+	 * a node; always continue DFS under the active stack so a shallower arrival
+	 * can unlock longer descendants that a deeper, stack-blocked arrival missed.
+	 */
+	const dfs = (cur: string, depth: number, stack: Set<string>) => {
+		if (depth >= maxDepth) return;
 		for (const n of a.get(cur) ?? []) {
-			if (stack.has(n)) continue; // cycle
-			const nd = d + 1;
+			if (stack.has(n)) continue; // cycle on this simple path
+			const nd = depth + 1;
 			const prev = dist.get(n);
-			if (prev !== undefined && nd <= prev) continue;
-			dist.set(n, nd);
+			if (prev === undefined || nd > prev) dist.set(n, nd);
 			stack.add(n);
-			dfs(n, stack);
+			dfs(n, nd, stack);
 			stack.delete(n);
 		}
 	};
 
 	const stack = new Set<string>([startId]);
-	dfs(startId, stack);
+	dfs(startId, 0, stack);
 
 	let maxHops = 0;
 	for (const d of dist.values()) {

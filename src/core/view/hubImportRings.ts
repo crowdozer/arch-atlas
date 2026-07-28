@@ -83,8 +83,11 @@ export function addExportRings(
 	} = args;
 
 	const fwdAdj = fileImportAdj(graph);
-	// Longest path: format→types stays at hop 2 when types is also a direct dep
-	const { dist, maxHops } = fileLongestDistances(graph, fileId, fwdAdj);
+	// Longest simple path within hub radius (format→types at hop 2 when also seed).
+	// Bound search to hubRadius so radiusR is correct without full-graph explosion.
+	const { dist, maxHops } = fileLongestDistances(graph, fileId, fwdAdj, {
+		maxDepth: hubRadius,
+	});
 	const radiusR = Math.min(hubRadius, Math.max(maxHops, 1));
 
 	/** Focus-incident file deps (seed mass), keyed by path. */

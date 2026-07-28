@@ -87,12 +87,13 @@ describe('insight scene characterizations (known broken today)', () => {
 		expect(hop2Children.length).toBe(1);
 	});
 
-	it('cyclic-depth: fileLongestDistances under-reports c vs long simple path', () => {
+	it('cyclic-depth: longest simple path places c at depth 3 (Phase 1A fixed)', () => {
 		const files = loadSceneFiles('cyclic-depth');
 		const { graph } = indexFiles(files);
-		const { dist } = fileLongestDistances(graph, 'src/root.ts');
-		// Correct simple path root→b→a→c has length 3; memoized DFS reports 2
-		expect(dist.get('src/c.ts')).toBe(2);
+		const { dist, maxHops } = fileLongestDistances(graph, 'src/root.ts');
+		// root→b→a→c
+		expect(dist.get('src/c.ts')).toBe(3);
+		expect(maxHops).toBe(3);
 	});
 
 	it('label-collision: module react + package react collapses display identity', () => {

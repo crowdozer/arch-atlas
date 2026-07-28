@@ -88,9 +88,9 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Diamond + cycle under-reports longest simple path; hop for c collapses.',
 		triagePacket: '1A',
 		lookFor:
-			'Broken: root hub — c lands at import hop 2 (via a) instead of hop 3 via root→b→a→c.',
+			'Fixed (1A): longest path to c is 3; hub shows Import hop 3 multi-instances. c itself may still vanish under scarce fan-out (1B).',
 		expectAfterFix:
-			'c reachable as a depth-3 instance (or honest multi-instance) on the long simple path.',
+			'c reachable as a depth-3 instance with positive ribbon (needs 1B if unit-mass sibling fan-out).',
 		open: {
 			kind: 'file-hub',
 			fileId: 'src/root.ts',
