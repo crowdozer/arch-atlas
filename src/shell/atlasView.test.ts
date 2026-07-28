@@ -27,10 +27,21 @@ describe('sameView', () => {
 		expect(sameView(a, c)).toBe(false);
 	});
 
+	it('compares package-hub by packageId', () => {
+		const a: AtlasView = { type: 'package-hub', packageId: 'nodemailer' };
+		const b: AtlasView = { type: 'package-hub', packageId: 'nodemailer' };
+		const c: AtlasView = { type: 'package-hub', packageId: 'ioredis' };
+		expect(sameView(a, b)).toBe(true);
+		expect(sameView(a, c)).toBe(false);
+	});
+
 	it('rejects different types', () => {
 		const file: AtlasView = { type: 'file-hub', fileId: 'x' };
 		const mod: AtlasView = { type: 'module', moduleId: 'x' };
+		const pkg: AtlasView = { type: 'package-hub', packageId: 'x' };
 		expect(sameView(file, mod)).toBe(false);
+		expect(sameView(file, pkg)).toBe(false);
+		expect(sameView(mod, pkg)).toBe(false);
 	});
 });
 
@@ -52,6 +63,21 @@ describe('nearestFileFocus', () => {
 		expect(nearestFileFocus(stack)).toBe('src/a.ts');
 	});
 
+	it('walks under package-hub to nearest file-hub', () => {
+		const stack: AtlasView[] = [
+			{ type: 'file-hub', fileId: 'src/a.ts' },
+			{ type: 'package-hub', packageId: 'nodemailer' },
+		];
+		expect(nearestFileFocus(stack)).toBe('src/a.ts');
+	});
+
+	it('returns null when only package-hub frames', () => {
+		const stack: AtlasView[] = [
+			{ type: 'package-hub', packageId: 'nodemailer' },
+		];
+		expect(nearestFileFocus(stack)).toBeNull();
+	});
+
 	it('prefers the nearest file-hub under the top', () => {
 		const stack: AtlasView[] = [
 			{ type: 'file-hub', fileId: 'src/old.ts' },
@@ -70,14 +96,18 @@ describe('viewForFileOpen / depth helpers', () => {
 		});
 	});
 
-	it('viewUsesDepth only for file-hub', () => {
+	it('viewUsesDepth for file-hub and package-hub', () => {
 		expect(viewUsesDepth({ type: 'file-hub', fileId: 'a' })).toBe(true);
+		expect(viewUsesDepth({ type: 'package-hub', packageId: 'p' })).toBe(true);
 		expect(viewUsesDepth({ type: 'module', moduleId: 'm' })).toBe(false);
 		expect(viewUsesDepth(null)).toBe(false);
 	});
 
 	it('defaultDepthForView is hub default', () => {
 		expect(defaultDepthForView({ type: 'file-hub', fileId: 'a' })).toBe(
+			HUB_DEFAULT_MAX_DEPTH,
+		);
+		expect(defaultDepthForView({ type: 'package-hub', packageId: 'p' })).toBe(
 			HUB_DEFAULT_MAX_DEPTH,
 		);
 	});

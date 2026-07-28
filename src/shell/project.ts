@@ -4,6 +4,7 @@
 import {
 	projectFileHub,
 	projectModuleFocus,
+	projectPackageHub,
 	type AlluvialPayload,
 	type CodeGraph,
 	type ImportedSurfaceProvider,
@@ -14,7 +15,7 @@ import type { AtlasView } from '@shell/atlasView.ts';
 
 export type PayloadProjectOpts = {
 	weightAxis: WeightAxis;
-	/** Viz-only dual BFS radius for file-hub; ignored by module. */
+	/** Viz-only dual BFS radius for file-hub / reverse radius for package-hub. */
 	maxDepth: number;
 	/** Imported-surface honesty; optional (defaults estimate inside projectors). */
 	precision?: LocPrecision;
@@ -36,6 +37,11 @@ export function payloadForView(
 	switch (view.type) {
 		case 'file-hub':
 			return projectFileHub(graph, view.fileId, {
+				...weightOpts,
+				maxDepth: opts.maxDepth,
+			});
+		case 'package-hub':
+			return projectPackageHub(graph, view.packageId, {
 				...weightOpts,
 				maxDepth: opts.maxDepth,
 			});

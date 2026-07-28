@@ -1,7 +1,9 @@
 /**
- * Package sink helpers: match edges into a package, pick a file-hub open target.
- * Package→importers alluvial was removed — package chips open file-hub on the
- * primary importer instead.
+ * Package sink helpers: match edges into a package, pick a primary importer file.
+ *
+ * Package chips / Export Roots open **package-hub** ({@link projectPackageHub}) —
+ * reverse export chain into the dep — not file-hub on the primary importer.
+ * {@link primaryImporterFile} remains for tests, metrics, and historical call sites.
  */
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
@@ -16,9 +18,9 @@ export function edgeMatchesPackage(e: ImportEdge, packageIdOrLabel: string): boo
 }
 
 /**
- * File to open as file-hub when the user targets a package/unresolved sink.
- * Picks the importer with the most edges into the package; path A–Z on ties.
+ * File with the most edges into the package; path A–Z on ties.
  * Returns null when no observed imports exist (declared-only packages).
+ * Not the package open policy — see {@link projectPackageHub}.
  */
 export function primaryImporterFile(
 	graph: CodeGraph,

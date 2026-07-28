@@ -21,8 +21,7 @@ import { createStatusIndicatorEl } from './statusIndicatorDom.ts';
 export type CatalogRenderDeps = {
 	selectStart: (id: string) => void;
 	/**
-	 * Export Roots: open package sink as file-hub on its primary importer
-	 * (host resolves package → file).
+	 * Export Roots: open package sink as package-hub (Export* → External).
 	 */
 	openPackage: (packageId: string, label: string) => void;
 	/** Current spine formula (for select sync). */
