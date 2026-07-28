@@ -1,0 +1,9 @@
+{
+  "name": "adversarial-alluvial-matrix",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^18.0.0",
+    "lodash": "^4.0.0"
+  }
+}

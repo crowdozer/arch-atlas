@@ -1,0 +1,11 @@
+import './fan/root';
+import './local-react';
+import 'react';
+import 'lodash';
+import './deep/d1';
+import './many/m1';
+import './many/m2';
+import './many/m3';
+import './many/m4';
+import './many/m5';
+export const entry = 1;

@@ -1,7 +1,7 @@
 ---
 id: alluvial-engine-correctness-triage
 kind: plan
-state: partial
+state: implemented
 authority: advisory
 provenance: mixed
 
@@ -101,6 +101,10 @@ realized_by:
     note: Phase 3 CustomEvent adapter unit tests
   - path: src/stage/focus/e2e/
     note: Phase 3 physical pointer E2E + fail-closed build stamp
+  - path: fixtures/adversarial-alluvial-matrix/
+    note: Phase 4 asymmetric corpus
+  - path: src/core/view/adversarialAlluvial.matrix.test.ts
+    note: Phase 4 matrix + focus inventory closure
 superseded_by: null
 rationale_quality: full
 ---
@@ -372,27 +376,22 @@ the preceding gate is green.
 - Do not invent a CI service; propose a CI/default-gate change separately if no
   existing owner exists.
 
-### Phase 4 — Adversarial matrix and closure
+### Phase 4 — Adversarial matrix and closure ✅ landed
 
 **Ship prompt**
 
 > Consolidate the landed alluvial fixes into a small adversarial smoke matrix
 > across projectors, axes, depths, caps, identities, and focus seeds.
 
-**Engineer**
+**Landed**
 
-- Add one intentionally asymmetric corpus with:
-  - duplicate display labels backed by distinct IDs;
-  - unit-mass fan-out;
-  - a convergent cycle;
-  - uneven depth;
-  - package and unresolved collisions;
-  - one capped overflow;
-  - sticky package remount.
-- Normalize and assert node/link tables rather than relying only on snapshots.
-- For every drawn band and supported seed, assert FocusPlan/inventory closure:
-  every band is focus or dim, focused keys exist in the drawn inventory, and
-  rails never focus.
+- Fixture `fixtures/adversarial-alluvial-matrix/` — single asymmetric corpus
+  (fan-out + cycle, deep chain, many deps, module/package react, unresolved,
+  multi-folder importers for sticky claimName).
+- `adversarialAlluvial.matrix.test.ts` — integrity, axis topology stability,
+  overflow under maxDeps=3, edge-order permutation → normalized payload equality,
+  FocusPlan↔inventory closure (file/package/band), module 2A, sticky 2B resolve.
+- Catalog record marked **`implemented`** (all phase gates met).
 
 **Czar gate**
 
@@ -466,16 +465,19 @@ environment.
    law; documentation should change only if a ship surfaces and resolves a real
    product choice.
 
-## Open questions
+## Open questions (explicit residual — not hidden in tests)
 
-- Confirm fractional ribbon support and tooltip/formatting behavior in Carbon
-  before Packet 1B commits to it.
-- Decide whether “deepest” outside the bounded view should mean SCC-condensed
-  depth, bounded simple-path depth, or another honest cycle-aware measure.
-- Decide whether production should reject malformed payloads or whether the
-  invariant oracle remains a test/czar gate.
-- Decide whether `test:e2e:focus` belongs in existing CI after Phase 3; no CI
-  surface should be invented inside the repair packet.
+- **Carbon fractional tooltips:** fractional ribbons shipped (1B); product polish
+  for tooltip/format rounding still optional UX, not a topology gate.
+- **Catalog “deepest” metric:** remains BFS (`fileDistances`); longest simple
+  path is view-expansion only. SCC-condensed catalog depth is a separate product
+  choice if needed later.
+- **Runtime payload fail-closed:** integrity oracle stays **test/czar only**
+  unless a later decision promotes production validation.
+- **CI for `test:e2e:focus`:** still opt-in; promoting to default CI is a
+  separate policy change (no CI surface invented in this triage).
+- **Module-focus band height after package click:** see
+  `module-focus-band-height-after-drill` (minor, non-blocking).
 
 ## Revisit when
 

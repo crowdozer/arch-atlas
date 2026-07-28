@@ -1,12 +1,12 @@
 # Catalog index (generated)
 
-_Generated 2026-07-28T21:33:11Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-28T21:35:57Z — do not hand-edit; run `catalog-index`._
 
 **17** records.
 
 | id | kind | state | authority | consult when |
 | -- | ---- | ----- | --------- | ------------ |
-| `alluvial-engine-correctness-triage` | plan | partial | advisory | Consult when: alluvial branches or hop columns disappear unexpectedly; alluvial topology changes when weight axis changes; unit-mass parent has multiple dependency children; cyclic or diamond import graph reports the wrong longest depth |
+| `alluvial-engine-correctness-triage` | plan | implemented | advisory | Consult when: alluvial branches or hop columns disappear unexpectedly; alluvial topology changes when weight axis changes; unit-mass parent has multiple dependency children; cyclic or diamond import graph reports the wrong longest depth |
 | `alluvial-top-pack-rename-split` | proposal | implemented | advisory | Consult when: refactoring src/client/alluvialPolish; renaming alluvialPolish or polishAlluvialHolder; former alluvialTopPack module or godfile cleanup; extracting stage from client |
 | `analysis-capability-honesty` | decision | active | advisory | Consult when: Exact or Estimate precision UX copy; Imported LOC or Shaken weight labels; claiming LSP or language server in product; tree-shake or imported surface mass claims |
 | `architecture-triage-freeze` | plan | partial | advisory | Consult when: thinning app.ts; moving Exact engines; hub or alluvial cleanup urge; types.ts split urge |
