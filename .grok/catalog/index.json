@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-28T21:14:53Z",
+  "generated_at": "2026-07-28T21:18:24Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 16,
+  "count": 17,
   "entries": [
     {
       "id": "alluvial-engine-correctness-triage",
@@ -705,6 +705,45 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: automated mermaid graph or flowchart export; dependency + folder structure diagram (not domain map); agent lens or ChatGPT-portable architecture sketch; structural overview without inferred features/domains"
+    },
+    {
+      "id": "module-focus-band-height-after-drill",
+      "kind": "investigation",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/module-focus-band-height-after-drill.md",
+      "scope": [
+        "module-focus",
+        "hub-focus",
+        "alluvial-navigation",
+        "band-height",
+        "label-collision",
+        "focus-restore"
+      ],
+      "applies_when": [
+        "module alluvial band height shrinks after drill or click and does not restore",
+        "label-collision scene band goes thin after clicking package end",
+        "clicking back to module focus does not restore full ribbon height",
+        "FocusPlan leave or clear leaves mass geometry wrong",
+        "module remount after package-hub or package seed looks thinner",
+        "full-size module ends band becomes residual-thin after navigation"
+      ],
+      "touches": [
+        "src/core/view/moduleFocus.ts",
+        "src/stage/focus/",
+        "src/client/app.ts",
+        "src/client/insightScenes.ts",
+        "fixtures/scene-label-collision/",
+        ".grok/reference/hub-focus-behavior.md"
+      ],
+      "related": [
+        "alluvial-engine-correctness-triage",
+        "alluvial-nav-order-and-residual-mass",
+        "hub-focus-behavior"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: module alluvial band height shrinks after drill or click and does not restore; label-collision scene band goes thin after clicking package end; clicking back to module focus does not restore full ribbon height; FocusPlan leave or clear leaves mass geometry wrong"
     },
     {
       "id": "segmented-relative-path-labels",
