@@ -1,10 +1,11 @@
 /**
- * Arch Atlas agent CLI — third host over pure core (dir|zip → JSON lens).
+ * Arch Atlas agent CLI — third host over pure core (dir|zip → agent lens).
  *
  * Commands:
  *   digest <path>  — catalog rankings + structural graph projection
  *   tree <path>    — hierarchical file tree with parse flags
  *   file <path> --file <rel> — compact per-file report (no source dump)
+ *   mermaid <path> — pasteable Mermaid structure graph (topFolder rollup)
  *   impact <path> --base <ref> --head <ref> — import-topology delta between refs
  */
 
@@ -15,6 +16,7 @@ import {
 	buildAgentDigest,
 	buildAgentFileReport,
 	buildAgentImpact,
+	buildAgentMermaid,
 	buildAgentTree,
 	buildMapCatalog,
 	filterFilesByTestInclusion,
@@ -41,7 +43,7 @@ import { compileOmitMatcher, parseOmitFlagValues } from './omitGlobs.ts';
 
 const CLI_LIMIT_DEFAULT = 40;
 
-const KNOWN_COMMANDS = new Set(['digest', 'tree', 'file', 'impact']);
+const KNOWN_COMMANDS = new Set(['digest', 'tree', 'file', 'mermaid', 'impact']);
 
 /** Supported CLI scope presets (product omits tests+debug heuristics). */
 const SCOPE_PRESETS = new Set(['full', 'product']);
@@ -95,22 +97,28 @@ function printUsage(stream: NodeJS.WritableStream = process.stderr): void {
 	stream.write(`arch-atlas — local-first architecture lens for agents
 
 Usage:
-  arch-atlas digest <path> [options]
-  arch-atlas tree   <path> [options]
-  arch-atlas file   <path> --file <relative/path> [options]
-  arch-atlas impact <git-repo> --base <ref> --head <ref> [options]
+  arch-atlas digest  <path> [options]
+  arch-atlas tree    <path> [options]
+  arch-atlas file    <path> --file <relative/path> [options]
+  arch-atlas mermaid <path> [options]
+  arch-atlas impact  <git-repo> --base <ref> --head <ref> [options]
 
-<path> is a directory or .zip file (digest/tree/file). For impact, <git-repo>
-is a git work tree root; trees are materialized via git archive (no dirty tree).
-Default digest analysis is Exact export-surface mass when the engine loads
-(Estimate topology always). Not LSP / not tree-shake. No raw source in output.
+<path> is a directory or .zip file (digest/tree/file/mermaid). For impact,
+<git-repo> is a git work tree root; trees are materialized via git archive
+(no dirty tree). Default digest analysis is Exact export-surface mass when the
+engine loads (Estimate topology always). Not LSP / not tree-shake. No raw
+source in output.
+
+Mermaid is plain text (flowchart LR): topFolder path-prefix rollup of runtime
+file→file imports, file SCC cycle honesty in %% comments, multi-prefix SCCs as
+subgraphs. Topology-only L1 Estimate (no Exact mass / no Program).
 
 Impact usage cheatsheet (read order for large JSON):
   .grok/reference/impact-cheatsheet.md
 
 Options:
   --limit N       Top-N for ranking bins (digest/file catalog; impact movers /
-                  edge samples). Default ${CLI_LIMIT_DEFAULT}.
+                  edge samples; mermaid max prefix nodes). Default ${CLI_LIMIT_DEFAULT}.
   --max-depth N   Max path segments from walk root for directory feeds.
                   Default ${DEFAULT_MAX_DEPTH}. 0 or negative = unlimited.
   --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
@@ -140,7 +148,8 @@ Options:
                   typescript only. Incomplete without node_modules; not LSP.
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
   --file <rel>    Relative path inside the project (required for file command).
-  --out <path>    Write JSON to file instead of stdout.
+  --out <path>    Write output to file instead of stdout (JSON for digest/tree/
+                  file/impact; Mermaid text for mermaid).
   --artifact <p>  Digest: also write portable artifact wrapper
                   (schema arch-atlas.artifact.v1, format agent-digest) to path.
                   Bare digest still goes to stdout / --out.
@@ -153,9 +162,11 @@ Examples:
   arch-atlas digest fixtures/sample-ts-project --estimate --artifact /tmp/a.atlas.json
   arch-atlas digest fixtures/agent-artillery-shaped --scope product --alias '@/modules/artillery/*=./*'
   arch-atlas digest fixtures/agent-artillery-shaped --program --estimate
+  arch-atlas mermaid fixtures/agent-artillery-shaped --limit 40
   npm run atlas -- digest . --omit fixtures
   npm run atlas -- digest fixtures/agent-artillery-shaped --program --estimate
   npm run atlas -- tree . --tree-full
+  npm run atlas -- mermaid fixtures/agent-artillery-shaped --limit 40
   npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
 
 Exit codes: 0 success (including empty graph / empty delta with warnings);
@@ -386,6 +397,16 @@ function emitJson(value: unknown, outPath?: string): void {
 		writeFileSync(path.resolve(outPath), text, 'utf8');
 	} else {
 		process.stdout.write(text);
+	}
+}
+
+/** Emit plain text (Mermaid body) to stdout or --out. */
+function emitText(text: string, outPath?: string): void {
+	const body = text.endsWith('\n') ? text : `${text}\n`;
+	if (outPath) {
+		writeFileSync(path.resolve(outPath), body, 'utf8');
+	} else {
+		process.stdout.write(body);
 	}
 }
 
@@ -638,6 +659,27 @@ export async function runCli(argv: string[]): Promise<number> {
 				},
 			});
 			emitJson(tree, opts.out);
+			return 0;
+		}
+
+		if (command === 'mermaid') {
+			const text = buildAgentMermaid({
+				graph,
+				catalog,
+				source,
+				scope: {
+					omit,
+					includeTests: !productScope,
+					presets,
+				},
+				limit: opts.limit,
+			});
+			// Topology-only: warnings (scope/omit notes) stay on stderr if any
+			// were already emitted via feed; optional Exact note already in warnings.
+			for (const w of warnings) {
+				process.stderr.write(`warning: ${w}\n`);
+			}
+			emitText(text, opts.out);
 			return 0;
 		}
 

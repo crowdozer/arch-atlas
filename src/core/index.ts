@@ -288,6 +288,8 @@ export type {
 	AgentImpactSummaryCounts,
 	BuildAgentImpactInput,
 } from '@core/export/agentImpact.ts';
+export { buildAgentMermaid } from '@core/export/agentMermaid.ts';
+export type { BuildAgentMermaidInput } from '@core/export/agentMermaid.ts';
 
 import {
 	indexHostFeed,

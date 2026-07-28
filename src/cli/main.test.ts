@@ -145,6 +145,30 @@ describe('runCli', () => {
 		expect(parsed.mode).toBe('full');
 	});
 
+	it('mermaid emits flowchart with file SCC cycle honesty (artillery)', async () => {
+		capture();
+		const code = await runCli([
+			'mermaid',
+			artilleryFixtureDir,
+			'--limit',
+			'40',
+		]);
+		expect(code).toBe(0);
+		const out = logs.join('');
+		expect(out).toMatch(/flowchart LR/);
+		expect(out).toMatch(/%% cycles\.runtime/);
+		// Within-prefix runtime cycles must appear in comments
+		const hasSimCycle =
+			/physics\.ts/.test(out) && /weapons\.ts/.test(out);
+		const hasConfigCycle =
+			/config\.ts/.test(out) && /settingsStore\.ts/.test(out);
+		expect(hasSimCycle || hasConfigCycle).toBe(true);
+		// No raw source body dump
+		expect(out).not.toMatch(/export function|export const physics/);
+		// Plain text, not JSON envelope
+		expect(() => JSON.parse(out)).toThrow();
+	});
+
 	it('usage error without path exits 1', async () => {
 		capture();
 		const code = await runCli(['digest']);
