@@ -246,6 +246,9 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		});
 		deps.remountCurrentView();
 		deps.setStatus(opts.msg);
+		// Open defers mid-flight persist for desired Exact — fail must still write
+		// Estimate so Remember project is not left with no session blob.
+		deps.persistSessionIfEnabled?.();
 	}
 
 	/**
@@ -575,6 +578,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 					`Program unavailable — ${result.error} · graph left at L1 (not LSP)`,
 				);
 				remountSettled();
+				// Open defers mid-flight persist for desired Program — fail settle still writes
+				deps.persistSessionIfEnabled?.();
 				return;
 			}
 
@@ -623,6 +628,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 				`Program failed soft: ${msg} · graph left at L1 (not LSP)`,
 			);
 			remountSettled();
+			// Same as soft-fail: deferred open persist must land on fail demotion
+			deps.persistSessionIfEnabled?.();
 		} finally {
 			// Safety net if a path returned without remountSettled
 			deps.setExactEnableInFlight(false);
@@ -638,6 +645,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		exactGraphGeneration += 1;
 		deps.setSurfaceProvider(null);
 		deps.setExactEnableInFlight(false);
+		// Symmetric with flight clear — stale rehydrate may skip finally clear
+		clearExactLoading();
 	}
 
 	/** Align Precision / Weight controls with JS state (post-reindex chrome truth). */

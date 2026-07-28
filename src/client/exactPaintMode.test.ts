@@ -106,6 +106,8 @@ function mockPaintDeps(session: Session): {
 		programApplies: number;
 		stageLoading: string[];
 		catalogChrome: number;
+		/** Session write after precision settle (Remember project). */
+		persist: number;
 	};
 } {
 	const state = {
@@ -129,6 +131,7 @@ function mockPaintDeps(session: Session): {
 		programApplies: 0,
 		stageLoading: [] as string[],
 		catalogChrome: 0,
+		persist: 0,
 	};
 
 	const deps: ExactPaintModeDeps = {
@@ -162,6 +165,9 @@ function mockPaintDeps(session: Session): {
 		getProgramExactMass: () => state.programExactMass,
 		setProgramExactMass: (v) => {
 			state.programExactMass = v;
+		},
+		persistSessionIfEnabled: () => {
+			calls.persist += 1;
 		},
 		applyProgramGraph: () => {
 			calls.programApplies += 1;
@@ -393,6 +399,26 @@ describe('exactPaintMode rehydrate honesty', () => {
 		expect(state.exactLoading).toBe(false);
 		expect(calls.exactLoadingAtRemount.every((v) => v === false)).toBe(true);
 		expect(calls.remount).toBeGreaterThanOrEqual(1);
+		// Open defers mid-flight persist for desired Exact — fail still saves Estimate
+		expect(calls.persist).toBe(1);
+	});
+
+	it('Exact enable success persists settled Exact (Remember project)', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+		ensureExactForGraph.mockResolvedValue({
+			ok: true,
+			provider: { targetSurfaceMass: () => 1 },
+			engines: { loadable: ['typescript'], missing: [] },
+			source: 'local',
+		});
+
+		await paint.enableExactSurfaceMode('precision');
+
+		expect(state.locPrecision).toBe('exact');
+		expect(calls.persist).toBe(1);
 	});
 
 	it('resetExactState clears exactLoading', () => {
@@ -405,6 +431,19 @@ describe('exactPaintMode rehydrate honesty', () => {
 
 		expect(state.exactLoading).toBe(false);
 		expect(state.locPrecision).toBe('estimate');
+	});
+
+	it('invalidateExactProvider clears exactLoading with flight', () => {
+		const session = makeSession();
+		const { deps, state } = mockPaintDeps(session);
+		state.exactLoading = true;
+		state.exactEnableInFlight = true;
+		const paint = createExactPaintMode(deps);
+
+		paint.invalidateExactProvider();
+
+		expect(state.exactLoading).toBe(false);
+		expect(state.exactEnableInFlight).toBe(false);
 	});
 });
 
@@ -471,6 +510,24 @@ describe('enableProgramMode orchestration', () => {
 		expect(calls.flightAtRemount.at(-1)).toBe(false);
 		expect(state.engineFailed).toBe(true);
 		expect(ensureExactForGraph).not.toHaveBeenCalled();
+		// Open defers mid-flight persist for desired Program — fail still saves
+		expect(calls.persist).toBe(1);
+	});
+
+	it('Program throw path persists after soft demotion', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		runProgramEnrichment.mockRejectedValue(new Error('worker crashed'));
+
+		await paint.enableProgramMode();
+
+		expect(state.locPrecision).toBe('estimate');
+		expect(state.engineFailed).toBe(true);
+		expect(calls.persist).toBe(1);
+		expect(calls.statuses.at(-1)).toMatch(/Program failed soft/);
 	});
 
 	it('soft-fail from Exact restores exact chrome without apply', async () => {
