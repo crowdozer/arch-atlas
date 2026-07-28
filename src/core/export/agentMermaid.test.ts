@@ -39,8 +39,8 @@ describe('buildAgentMermaid', () => {
 		expect(text).toContain('["lib"]');
 		// Multi-prefix SCC visual
 		expect(text).toMatch(/subgraph scc\d+\["SCC · size 2"\]/);
-		// Bidirectional or both directed
-		expect(text).toMatch(/<-->|"\d+"|/);
+		// Size-2 mutual prefix pair → bidirectional edge with count label
+		expect(text).toMatch(/<-->\|"\d+"\|/);
 		// File SCC comment lists both files
 		expect(text).toMatch(/cycles\.runtime \(file SCC\):/);
 		expect(text).toMatch(/client\/a\.ts/);
