@@ -21,7 +21,6 @@ import {
 	type AlluvialFocusApi,
 	type DrillResolvers,
 } from './focus/bindAlluvialFocus.ts';
-import { scaleAlluvialDisplayMass } from './displayMassScale.ts';
 import { alluvialHeightPx } from './height.ts';
 import { polishAlluvialHolder } from './polish/index.ts';
 
@@ -108,27 +107,19 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 			const heightPx = host.getHeightPx
 				? host.getHeightPx(root)
 				: alluvialHeightPx(root);
-			// Display-only mass compress for Carbon thickness; semantic payload
-			// stays on currentPayload for getPayload / focus / drill.
-			const { layoutPayload, semanticByNodeName } =
-				scaleAlluvialDisplayMass(payload);
-			// Reuse options object (spread only height/animations) so tooltip
-			// customHTML and other functions remain live — do not deep-clone options.
 			const options = {
-				...layoutPayload.options,
+				...payload.options,
 				height: `${heightPx}px`,
 				animations: false,
 			};
 			chart = new AlluvialChart(nextHolder, {
-				data: layoutPayload.data,
+				data: payload.data,
 				options,
 			});
 			const colorScale = payload.options.color.scale;
 			const terminators = payload.meta.terminators;
 			const exportTerminators = payload.meta.exportTerminators;
-			// Layout-scaled pair widths so straighten matches Carbon allocation.
-			const externalStraightPairs =
-				layoutPayload.meta.externalStraightPairs;
+			const externalStraightPairs = payload.meta.externalStraightPairs;
 
 			const drill: DrillResolvers = {
 				drillTargetFromNode: (name) =>
@@ -153,7 +144,6 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 					terminators,
 					exportTerminators,
 					externalStraightPairs,
-					semanticByNodeName,
 				});
 				// Straighten paths are re-injected each polish — rebind hit targets.
 				nextFocus.bindExternal();

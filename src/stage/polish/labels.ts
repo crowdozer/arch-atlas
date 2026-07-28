@@ -99,9 +99,7 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 
 /**
  * Carbon paints `name (value)`. Truncate only the name; keep the mass suffix.
- * When {@link semanticByNodeName} is provided (display-mass scale), rewrite the
- * parenthetical to the **semantic** integer so layout compress does not lie.
- * Full honest string goes on title + aria-label for hover/a11y.
+ * Full original string goes on title + aria-label for hover/a11y.
  *
  * Also undraws rails/pad scaffolds **without** construction pairs (pairs
  * undraw is applied later from the polish facade with meta pairs).
@@ -109,7 +107,6 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 export function rightTruncateAlluvialLabels(
 	holder: HTMLElement,
 	maxChars: number = ALLUVIAL_LABEL_MAX_CHARS,
-	semanticByNodeName?: ReadonlyMap<string, number>,
 ): void {
 	hideAlluvialRails(holder);
 
@@ -119,41 +116,25 @@ export function rightTruncateAlluvialLabels(
 		// Match "label (value)" — value may be "1.2k" etc.
 		const m = full.match(/^(.*) \(([^()]*)\)$/);
 		const name = m ? m[1]! : full;
-		let value = m ? m[2]! : null;
+		const value = m ? m[2]! : null;
 
 		if (isAlluvialRailName(name)) {
 			text.textContent = '';
 			continue;
 		}
 
-		// Restore semantic mass when layout channel scaled Carbon's painted value.
-		let semanticRewrote = false;
-		if (semanticByNodeName && value !== null) {
-			const sem = semanticByNodeName.get(name);
-			if (sem !== undefined) {
-				value = String(Math.round(sem));
-				semanticRewrote = true;
-			}
-		}
-
 		const truncName = rightTruncateLabel(name, maxChars);
-		const next = value !== null ? `${truncName} (${value})` : truncName;
-		const fullHonest = value !== null ? `${name} (${value})` : name;
-
-		if (truncName === name && !semanticRewrote) {
+		if (truncName === name) {
 			// Still expose full name for hover when already short
 			if (!text.getAttribute('title')) text.setAttribute('title', name);
 			continue;
 		}
-
-		if (next !== full || semanticRewrote) {
-			text.textContent = next;
-			text.setAttribute('title', fullHonest);
-			text.setAttribute('aria-label', fullHonest);
-			// Carbon laid out with full string width — re-anchor chip to the bar
-			// with the truncated measure (bg width + title-group transform).
-			// Also re-anchor when value digits change length under semantic restore.
-			repositionAlluvialLabelChip(text);
-		}
+		const next = value !== null ? `${truncName} (${value})` : truncName;
+		text.textContent = next;
+		text.setAttribute('title', name);
+		text.setAttribute('aria-label', full);
+		// Carbon laid out with full string width — re-anchor chip to the bar
+		// with the truncated measure (bg width + title-group transform).
+		repositionAlluvialLabelChip(text);
 	}
 }

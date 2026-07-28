@@ -12,14 +12,6 @@ export {
 export { alluvialHeightPx } from './height.ts';
 
 export {
-	scaleAlluvialDisplayMass,
-	alluvialLinkKey,
-	type DisplayMassScaleOpts,
-	type DisplayMassScaleResult,
-	type DisplayMassScaleMode,
-} from './displayMassScale.ts';
-
-export {
 	datumName,
 	linkEndpointName,
 	bindAlluvialRenderPolish,
