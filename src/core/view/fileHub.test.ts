@@ -1173,6 +1173,82 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 	});
 
 	/**
+	 * Barrel with uneven child LOC: hop routing must proportional-split residual
+	 * by target-loc (not equal 1s). Equal-split made every hop child hairline while
+	 * "+N more" ate mass — dump symptom on loadFeed → core/index.
+	 */
+	it('import hop residual splits proportional to target-loc (not equal)', () => {
+		const heavyBody = `${'export const x = 1;\n'.repeat(80)}`;
+		const midBody = `${'export const m = 1;\n'.repeat(20)}`;
+		const files: VirtualFile[] = [
+			{
+				path: 'focus.ts',
+				content: "import './barrel';\nexport const focus = 1;\n",
+				byteLength: 40,
+			},
+			{
+				path: 'barrel.ts',
+				// plain imports so edges are observed (export* also works, but import is clearer)
+				content:
+					"import './heavy';\nimport './mid';\nimport './light';\nexport const b = 1;\n",
+				byteLength: 90,
+			},
+			{
+				path: 'heavy.ts',
+				content: heavyBody,
+				byteLength: Buffer.byteLength(heavyBody),
+			},
+			{
+				path: 'mid.ts',
+				content: midBody,
+				byteLength: Buffer.byteLength(midBody),
+			},
+			{
+				path: 'light.ts',
+				content: 'export const y = 1;\n',
+				byteLength: 20,
+			},
+		];
+		const { graph } = indexFiles(files);
+		const payload = projectFileHub(graph, 'focus.ts', {
+			maxDepth: 2,
+			maxDeps: 48,
+			maxImporters: 8,
+			weightAxis: 'target-loc',
+		})!;
+		const focus = payload.meta.focus.label;
+		const barrelLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'file' && r.id === 'barrel.ts',
+		)?.[0];
+		const heavyLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'file' && r.id === 'heavy.ts',
+		)?.[0];
+		const midLab = Object.entries(payload.meta.nodeRef).find(
+			([, r]) => r.kind === 'file' && r.id === 'mid.ts',
+		)?.[0];
+		expect(barrelLab).toBeTruthy();
+		expect(heavyLab).toBeTruthy();
+		expect(midLab).toBeTruthy();
+
+		const seedMass = payload.data
+			.filter((l) => l.source === focus && l.target === barrelLab)
+			.reduce((s, l) => s + l.value, 0);
+		expect(seedMass).toBeGreaterThan(0);
+
+		const toHeavy = payload.data
+			.filter((l) => l.source === barrelLab && l.target === heavyLab)
+			.reduce((s, l) => s + l.value, 0);
+		const toMid = payload.data
+			.filter((l) => l.source === barrelLab && l.target === midLab)
+			.reduce((s, l) => s + l.value, 0);
+		// heavy ≫ mid LOC → larger residual share (equal-split would be 1:1 or 2:1 flat)
+		expect(toHeavy).toBeGreaterThan(toMid);
+		expect(toHeavy).toBeGreaterThanOrEqual(2);
+		// Kirchhoff: hop outs sum to seed mass (no package outs on barrel)
+		expect(toHeavy + toMid).toBeLessThanOrEqual(seedMass);
+	});
+
+	/**
 	 * Fan-in > FILE_PROMOTE_THRESHOLD (12): depth=1 collapses to module leaves;
 	 * depth=3 uses file leaves (no folder collapse).
 	 */

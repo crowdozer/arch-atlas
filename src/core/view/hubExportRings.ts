@@ -28,6 +28,7 @@ import {
 	exportRailId,
 } from '@core/view/hubCategories.ts';
 import {
+	allocateProportional,
 	claimName,
 	edgeWeightIntoSet,
 	type LinkBuilder,
@@ -154,7 +155,9 @@ export function addImportRings(
 		addLink(lab, fileLabel, m);
 	}
 
-	// Route mass outward: outer (d+1) → inner (d); include overflow via display.has
+	// Route mass outward: outer (d+1) → inner (d); include overflow via display.has.
+	// Proportional by reverse edge weight into the inner (not equal-split) so
+	// multi-hop export rings match seed ranking under target-loc / exact.
 	for (let d = 1; d < radiusL; d++) {
 		const filesHere = [...(filesAt.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -170,11 +173,22 @@ export function addImportRings(
 			);
 			if (!outer.length) continue;
 
-			const base = Math.floor(m / outer.length);
-			let rem = m - base * outer.length;
+			const shares = allocateProportional(
+				m,
+				outer.map((p) => ({
+					key: p,
+					raw:
+						edgeWeightIntoSet(
+							graph,
+							p,
+							new Set([f]),
+							weightAxis,
+							edgeWeightOpts,
+						) || 1,
+				})),
+			);
 			for (const p of outer) {
-				const share = base + (rem > 0 ? 1 : 0);
-				if (rem > 0) rem -= 1;
+				const share = shares.get(p) ?? 0;
 				if (share <= 0) continue;
 				const outerLab = display.get(p)!;
 				addLink(outerLab, innerLab, share);

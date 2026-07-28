@@ -22,8 +22,10 @@ import {
 	importRailId,
 } from '@core/view/hubCategories.ts';
 import {
+	allocateProportional,
 	claimName,
 	edgeWeightFromSet,
+	edgeWeightIntoSet,
 	type LinkBuilder,
 } from '@core/view/hubLinkUtils.ts';
 import { edgeWeight } from '@core/view/weight.ts';
@@ -301,10 +303,13 @@ export function addExportRings(
 	}
 
 	// --- Route mass parent@d → child@(d+1) when real edge exists ---
-	// Reserve package budget first, then equal-split only the remainder among
-	// file children (Kirchhoff when mass can cover both). Scarce dual-spend:
-	// if reserve would starve all file children, route full m to files AND keep
-	// package residual so unit-weight edges still show External packages.
+	// Reserve package budget first, then **proportional-split** the remainder by
+	// parent→child edge weight (target-loc / exact surface / …). Equal split made
+	// wide barrels (core/index) paint every hop child as 1 while "+N more" ate the
+	// rest — ranking already used edge weight; routing must match. Kirchhoff when
+	// mass can cover packages + files. Scarce dual-spend: if reserve would starve
+	// all file children, route full m to files AND keep package residual so
+	// unit-weight edges still show External packages.
 	for (let d = 1; d < radiusR; d++) {
 		const parents = [...(keptByDist.get(d) ?? [])].sort((a, b) =>
 			a.localeCompare(b),
@@ -340,16 +345,54 @@ export function addExportRings(
 				fileMass = m;
 			}
 
-			const base = Math.floor(fileMass / targets.length);
-			let rem = fileMass - base * targets.length;
-			for (const t of targets) {
-				const share = base + (rem > 0 ? 1 : 0);
-				if (rem > 0) rem -= 1;
-				if (share <= 0) continue;
-				addLink(fromLab, t.lab, share);
-				if (nodeRef[t.lab]?.kind !== 'bucket') {
-					mass.set(t.key, (mass.get(t.key) ?? 0) + share);
-					noteArrived(t.path, share);
+			// raw = real edge weight parent→child (not equal 1). Overflow members
+			// that share a "+N more" lab still get separate keys so remainder
+			// lands on the bucket in proportion to each collapsed edge.
+			//
+			// When all raws are equal (import-edges, same-LOC siblings), fall back
+			// to package-first equal-split so scarce remainder prefers package-
+			// bearing children (redis→ioredis dual-spend). allocateProportional
+			// alone would hand the unit to the alphabetically first path.
+			const weighted = targets.map((t) => ({
+				t,
+				raw:
+					edgeWeightIntoSet(
+						graph,
+						f,
+						new Set([t.path]),
+						weightAxis,
+						edgeWeightOpts,
+					) || 1,
+			}));
+			const firstRaw = weighted[0]!.raw;
+			const allEqual = weighted.every((w) => w.raw === firstRaw);
+			if (allEqual) {
+				const base = Math.floor(fileMass / targets.length);
+				let rem = fileMass - base * targets.length;
+				// targets already sorted package-bearing first
+				for (const { t } of weighted) {
+					const share = base + (rem > 0 ? 1 : 0);
+					if (rem > 0) rem -= 1;
+					if (share <= 0) continue;
+					addLink(fromLab, t.lab, share);
+					if (nodeRef[t.lab]?.kind !== 'bucket') {
+						mass.set(t.key, (mass.get(t.key) ?? 0) + share);
+						noteArrived(t.path, share);
+					}
+				}
+			} else {
+				const shares = allocateProportional(
+					fileMass,
+					weighted.map(({ t, raw }) => ({ key: t.key, raw })),
+				);
+				for (const { t } of weighted) {
+					const share = shares.get(t.key) ?? 0;
+					if (share <= 0) continue;
+					addLink(fromLab, t.lab, share);
+					if (nodeRef[t.lab]?.kind !== 'bucket') {
+						mass.set(t.key, (mass.get(t.key) ?? 0) + share);
+						noteArrived(t.path, share);
+					}
 				}
 			}
 			mass.set(fromKey, 0);
