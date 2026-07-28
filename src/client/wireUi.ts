@@ -19,6 +19,8 @@ import {
 import { $, setStatus } from './dom.ts';
 import type { DemoId } from './demoFixtures.ts';
 import {
+	applyCheckboxPreference,
+	checkboxChangedOn,
 	readPrefsEnabled,
 	writePrefsEnabled,
 } from './prefsStore.ts';
@@ -91,46 +93,67 @@ export type WireUiDeps = {
 	dumpAlluvialDebug?: () => void | Promise<void>;
 };
 
+/**
+ * Apply stored on/off to a cds-checkbox after the CE upgrades.
+ * Layout registers Carbon after page scripts; without whenDefined the host may
+ * still be an unknown element and the static HTML `checked` attribute wins.
+ */
+function syncCheckboxWhenDefined(
+	tag: string,
+	box: HTMLElement & { checked?: boolean },
+	on: boolean,
+): void {
+	const apply = () => applyCheckboxPreference(box, on);
+	apply();
+	if (typeof customElements !== 'undefined' && !customElements.get(tag)) {
+		void customElements.whenDefined(tag).then(apply);
+	}
+}
+
 function wirePersistCheckbox(deps: WireUiDeps): void {
 	const box = deps.persistCheckbox();
 	if (!box) return;
-	box.checked = readPersistPreference();
+	syncCheckboxWhenDefined('cds-checkbox', box, readPersistPreference());
 	// Carbon checkbox fires cds-checkbox-changed (not native change alone)
-	box.addEventListener('cds-checkbox-changed', () => {
-		const on = Boolean(box.checked);
+	box.addEventListener('cds-checkbox-changed', ((e: Event) => {
+		const on = checkboxChangedOn(e, box);
+		applyCheckboxPreference(box, on);
 		writePersistPreference(on);
 		if (on) {
 			if (deps.getSession()) deps.persistSessionIfEnabled();
 		} else {
 			clearPersistedSession();
 		}
-	});
+	}) as EventListener);
 }
 
 function wirePrefsCheckbox(deps: WireUiDeps): void {
 	const box = deps.enginePrefCheckbox();
 	if (!box) return;
-	box.checked = readPrefsEnabled();
-	box.addEventListener('cds-checkbox-changed', () => {
-		const on = Boolean(box.checked);
+	// Gate for control + engine prefs. Must match LS after CE upgrade.
+	syncCheckboxWhenDefined('cds-checkbox', box, readPrefsEnabled());
+	box.addEventListener('cds-checkbox-changed', ((e: Event) => {
+		const on = checkboxChangedOn(e, box);
+		applyCheckboxPreference(box, on);
 		writePrefsEnabled(on);
 		// Turning on: snapshot current chrome so reopen matches this session
 		if (on) deps.persistProjectionPrefs();
-	});
+	}) as EventListener);
 }
 
 function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 	const box = deps.includeTestsCheckbox();
 	if (!box) return;
 	// Reflect module state (web default: tests off)
-	box.checked = deps.getIncludeTests();
-	box.addEventListener('cds-checkbox-changed', () => {
-		const on = Boolean(box.checked);
+	syncCheckboxWhenDefined('cds-checkbox', box, deps.getIncludeTests());
+	box.addEventListener('cds-checkbox-changed', ((e: Event) => {
+		const on = checkboxChangedOn(e, box);
+		applyCheckboxPreference(box, on);
 		deps.setIncludeTests(on);
 		if (deps.getSession()) {
 			deps.reindexWithTestInclusion();
 		}
-	});
+	}) as EventListener);
 }
 
 /** Bind all workspace chrome controls; call once at bootstrap. */

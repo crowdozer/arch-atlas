@@ -72,6 +72,7 @@ import {
 	readEnginePrefEnabled,
 	readEnginePrefs,
 	stickyOpenAction,
+	writeEnginePrefEnabled,
 } from './enginePrefs.ts';
 import type { InsightScene } from './insightScenes.ts';
 import {
@@ -949,8 +950,24 @@ wireUi({
 	setDepthUserSet: (v) => {
 		depthUserSet = v;
 	},
-	/** Persist Depth / Weight / Band order (and future slots) under Remember preferences. */
+	/**
+	 * Persist Depth / Weight / Band order under Remember preferences.
+	 * Reconcile the gate with the splash checkbox when Carbon has upgraded —
+	 * static HTML `checked` can disagree with LS before whenDefined sync.
+	 */
 	persistProjectionPrefs: () => {
+		const box = enginePrefCheckbox();
+		if (
+			box &&
+			typeof customElements !== 'undefined' &&
+			customElements.get('cds-checkbox') &&
+			typeof box.checked === 'boolean'
+		) {
+			const on = Boolean(box.checked);
+			// Keep LS aligned with what the user sees
+			writeEnginePrefEnabled(on);
+			if (!on) return;
+		}
 		writeProjectionPrefs({
 			weightAxis,
 			bandSort,
@@ -980,7 +997,23 @@ wireUi({
 	disableExactPaintMode: () => exact.disableExactPaintMode(),
 	remountCurrentView,
 	navigatePop: () => navigatePop(),
-	resetSession: () => lifecycle.resetSession(),
+	resetSession: () => {
+		lifecycle.resetSession();
+		// Restore sticky projection chrome (reset clears in-memory depth)
+		hydrateProjectionPrefs();
+		syncDepthDropdown();
+		const weightEl = $('atlas-weight-axis') as
+			| (HTMLElement & { value?: string })
+			| null;
+		if (weightEl) syncWeightDropdown(weightEl, weightAxis);
+		const bandEl = $('atlas-band-sort') as
+			| (HTMLElement & { value?: string })
+			| null;
+		if (bandEl) {
+			bandEl.value = bandSort;
+			bandEl.setAttribute('value', bandSort);
+		}
+	},
 	handleZip: (f) => lifecycle.handleZip(f),
 	handleDemo: (id) => lifecycle.handleDemo(id),
 	handleInsightScene: (id) => lifecycle.handleInsightScene(id),

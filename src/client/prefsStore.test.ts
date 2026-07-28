@@ -116,18 +116,56 @@ describe('prefsStore', () => {
 		expect(p.read()).toBe('target-loc');
 	});
 
-	it('duplicate id throws', () => {
+	it('re-register same id is allowed (HMR-safe)', () => {
 		defineControlPref({
 			id: 'test-dup',
 			parse: () => undefined,
 			default: 0,
 		});
-		expect(() =>
-			defineControlPref({
-				id: 'test-dup',
-				parse: () => undefined,
-				default: 1,
-			}),
-		).toThrow(/duplicate/);
+		const again = defineControlPref({
+			id: 'test-dup',
+			parse: (r) => (typeof r === 'number' ? r : undefined),
+			default: 1,
+		});
+		expect(again.default).toBe(1);
+		expect(listRegisteredControlPrefIds()).toEqual(['test-dup']);
+	});
+
+	it('writeControlPrefsPatch is atomic and gated', async () => {
+		const { writeControlPrefsPatch } = await import('./prefsStore.ts');
+		writeControlPrefsPatch({ a: 1, b: 2 });
+		expect(JSON.parse(localStorage.getItem(CONTROL_PREFS_KEY) ?? '{}')).toEqual({
+			a: 1,
+			b: 2,
+		});
+		writePrefsEnabled(false);
+		writeControlPrefsPatch({ a: 9 });
+		expect(JSON.parse(localStorage.getItem(CONTROL_PREFS_KEY) ?? '{}')).toEqual({
+			a: 1,
+			b: 2,
+		});
+	});
+
+	it('applyCheckboxPreference sets property and attribute', async () => {
+		const { applyCheckboxPreference } = await import('./prefsStore.ts');
+		const attrs = new Map<string, string>();
+		const el = {
+			checked: false as boolean | undefined,
+			setAttribute(name: string, value: string) {
+				attrs.set(name, value);
+			},
+			removeAttribute(name: string) {
+				attrs.delete(name);
+			},
+			hasAttribute(name: string) {
+				return attrs.has(name);
+			},
+		};
+		applyCheckboxPreference(el as HTMLElement & { checked?: boolean }, true);
+		expect(el.checked).toBe(true);
+		expect(el.hasAttribute('checked')).toBe(true);
+		applyCheckboxPreference(el as HTMLElement & { checked?: boolean }, false);
+		expect(el.checked).toBe(false);
+		expect(el.hasAttribute('checked')).toBe(false);
 	});
 });

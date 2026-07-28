@@ -5,7 +5,7 @@
  * storage map + the splash **Remember preferences** gate.
  */
 import { HUB_DEFAULT_MAX_DEPTH, type BandSortMode, type WeightAxis } from '@core/index.ts';
-import { defineControlPref } from './prefsStore.ts';
+import { defineControlPref, writeControlPrefsPatch } from './prefsStore.ts';
 
 const WEIGHT_AXES: readonly WeightAxis[] = [
 	'import-edges',
@@ -64,15 +64,18 @@ export const maxDepthPref = defineControlPref<number>({
 /**
  * Snapshot current projection chrome into storage (when prefs enabled).
  * Call after user toggles Remember preferences on, or after user edits.
+ * Single atomic write so partial maps cannot race.
  */
 export function writeProjectionPrefs(opts: {
 	weightAxis: WeightAxis;
 	bandSort: BandSortMode;
 	maxDepth: number;
 }): void {
-	weightAxisPref.write(opts.weightAxis);
-	bandSortPref.write(opts.bandSort);
-	maxDepthPref.write(opts.maxDepth);
+	writeControlPrefsPatch({
+		[weightAxisPref.id]: opts.weightAxis,
+		[bandSortPref.id]: opts.bandSort,
+		[maxDepthPref.id]: opts.maxDepth,
+	});
 }
 
 /**

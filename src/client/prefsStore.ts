@@ -90,12 +90,11 @@ function writeControlMap(map: Record<string, unknown>): void {
  * Register a sticky control slot. Future projection-bar (or other) controls
  * call this once and use the returned handle for read/write.
  *
- * Ids must be unique across the app; duplicate registration throws.
+ * Ids must be unique at runtime. Re-registration is allowed under Vite HMR so
+ * the module can reload without throwing; production double-register still
+ * overwrites the def (last writer wins).
  */
 export function defineControlPref<T>(def: ControlPrefDef<T>): ControlPrefHandle<T> {
-	if (registry.has(def.id)) {
-		throw new Error(`defineControlPref: duplicate id "${def.id}"`);
-	}
 	registry.set(def.id, def as AnyDef);
 
 	return {
@@ -115,6 +114,42 @@ export function defineControlPref<T>(def: ControlPrefDef<T>): ControlPrefHandle<
 			writeControlMap(map);
 		},
 	};
+}
+
+/**
+ * Atomic multi-slot write (one localStorage setItem). No-op when Remember
+ * preferences is off.
+ */
+export function writeControlPrefsPatch(patch: Record<string, unknown>): void {
+	if (!readPrefsEnabled()) return;
+	if (!patch || typeof patch !== 'object') return;
+	writeControlMap({ ...readControlMap(), ...patch });
+}
+
+/**
+ * Sync a Carbon `cds-checkbox` to a boolean preference.
+ * Sets property **and** attribute so pre-upgrade HTML `checked` does not
+ * resurrect after the custom element upgrades (common silent desync).
+ */
+export function applyCheckboxPreference(
+	el: HTMLElement & { checked?: boolean },
+	on: boolean,
+): void {
+	el.checked = on;
+	if (on) el.setAttribute('checked', '');
+	else el.removeAttribute('checked');
+}
+
+/**
+ * Read on/off from a `cds-checkbox-changed` event (detail preferred).
+ */
+export function checkboxChangedOn(
+	e: Event,
+	box: HTMLElement & { checked?: boolean },
+): boolean {
+	const detail = (e as CustomEvent).detail as { checked?: boolean } | null;
+	if (detail && typeof detail.checked === 'boolean') return detail.checked;
+	return Boolean(box.checked);
 }
 
 /** Test / reset helper: drop all registered slots (does not clear storage). */
