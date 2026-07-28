@@ -1,18 +1,68 @@
 /**
  * Inspect surface-claim precision: Program + rehydrated Exact mass uses exact
  * evidence path and callsite copy (not estimate wording).
+ * Accordion title + fullscreen sessionStorage prefs are pure helpers.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	evidenceForEdges,
 	indexFiles,
+	type ImportEvidence,
 	type LocPrecision,
 } from '@core/index.ts';
 import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
 	callsitesTitle,
 	emptyCallsitesNote,
+	importSiteAccordionTitle,
+	INSPECT_MODAL_FULLSCREEN_KEY,
+	readInspectModalFullscreen,
+	writeInspectModalFullscreen,
 } from './inspectModal.ts';
+
+function memStorage(): Storage {
+	const map = new Map<string, string>();
+	return {
+		get length() {
+			return map.size;
+		},
+		clear() {
+			map.clear();
+		},
+		getItem(k: string) {
+			return map.has(k) ? map.get(k)! : null;
+		},
+		setItem(k: string, v: string) {
+			map.set(k, String(v));
+		},
+		removeItem(k: string) {
+			map.delete(k);
+		},
+		key(i: number) {
+			return [...map.keys()][i] ?? null;
+		},
+	};
+}
+
+function sampleEvidence(
+	overrides: Partial<ImportEvidence['import']> = {},
+): ImportEvidence {
+	return {
+		precision: 'estimate',
+		edgeId: 'e1',
+		import: {
+			path: 'src/client/app.ts',
+			line: 42,
+			text: "import { x } from './x';",
+			form: 'import',
+			specifier: './x',
+			toLabel: 'x',
+			...overrides,
+		},
+		callsites: [],
+		blockers: [],
+	};
+}
 
 describe('inspect surface-claim precision (Program + mass)', () => {
 	it('remaps program+mass to exact for evidenceForEdges surface branch', () => {
@@ -105,5 +155,89 @@ describe('inspect surface-claim precision (Program + mass)', () => {
 		expect(emptyCallsitesNote('exact', true, 'blocker wins')).toBe(
 			'blocker wins',
 		);
+	});
+});
+
+describe('importSiteAccordionTitle', () => {
+	it('uses full path · Lline · form when short enough', () => {
+		expect(importSiteAccordionTitle(sampleEvidence())).toBe(
+			'src/client/app.ts · L42 · import',
+		);
+	});
+
+	it('falls back to basename when full path is long', () => {
+		const longPath =
+			'src/very/deeply/nested/path/that/makes/the/full/title/too/long/for/the/cap/module.ts';
+		const title = importSiteAccordionTitle(
+			sampleEvidence({ path: longPath, line: 7, form: 'require' }),
+		);
+		expect(title.startsWith('module.ts · L7 · require')).toBe(true);
+		expect(title.length).toBeLessThanOrEqual(80);
+		expect(title).not.toContain('very/deeply');
+	});
+
+	it('keeps full path without specifier when path · Lline · form fits under the cap', () => {
+		const title = importSiteAccordionTitle(
+			sampleEvidence({
+				path: 'src/deep/nested/importer.ts',
+				line: 3,
+				form: 'import',
+				specifier: './helpers',
+			}),
+		);
+		expect(title).toBe('src/deep/nested/importer.ts · L3 · import');
+	});
+
+	it('includes specifier on basename fallback when it fits', () => {
+		const longPath =
+			'packages/workspace/packages/client/src/features/inspect/deep/nested/importer.ts';
+		const title = importSiteAccordionTitle(
+			sampleEvidence({
+				path: longPath,
+				line: 9,
+				form: 'import',
+				specifier: './util',
+				toLabel: 'util',
+			}),
+		);
+		expect(title).toBe('importer.ts · L9 · import · ./util');
+		expect(title.length).toBeLessThanOrEqual(80);
+	});
+
+	it('hard-truncates with ellipsis when still over max', () => {
+		const title = importSiteAccordionTitle(
+			sampleEvidence({
+				path: 'x'.repeat(100) + '.ts',
+				line: 1,
+				form: 'import',
+				specifier: 'y'.repeat(50),
+				toLabel: '',
+			}),
+		);
+		expect(title.length).toBe(80);
+		expect(title.endsWith('…')).toBe(true);
+	});
+});
+
+describe('inspect modal fullscreen pref (sessionStorage)', () => {
+	beforeEach(() => {
+		vi.stubGlobal('sessionStorage', memStorage());
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('defaults off when unset', () => {
+		expect(readInspectModalFullscreen()).toBe(false);
+		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
+	});
+
+	it('writes 1 and reads true; remove clears', () => {
+		writeInspectModalFullscreen(true);
+		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBe('1');
+		expect(readInspectModalFullscreen()).toBe(true);
+		writeInspectModalFullscreen(false);
+		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
+		expect(readInspectModalFullscreen()).toBe(false);
 	});
 });
