@@ -1648,13 +1648,15 @@ cds-file-uploader-drop-container.atlas-file-drop::part(label) {
   line-height: 1.4;
 }
 
-/* Stage bar: include-tests checkbox (Carbon) */
-.atlas-stage__control-group--tests {
+/* Stage bar: include-tests / clamp-band-scale checkboxes (Carbon) */
+.atlas-stage__control-group--tests,
+.atlas-stage__control-group--clamp {
   height: auto;
   min-height: 2rem;
 }
 
-cds-checkbox.atlas-include-tests {
+cds-checkbox.atlas-include-tests,
+cds-checkbox.atlas-clamp-band-scale {
   --cds-text-primary: #e4e4e7;
   --cds-text-secondary: #a1a1aa;
   --cds-icon-primary: #2dd4bf;

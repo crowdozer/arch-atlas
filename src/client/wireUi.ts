@@ -46,6 +46,10 @@ export type WireUiDeps = {
 	setIncludeTests: (on: boolean) => void;
 	/** Re-index session feed under current include-tests preference. */
 	reindexWithTestInclusion: () => void;
+	/** Stage: √ display-mass scale for band thickness (default on). */
+	clampBandScaleCheckbox: () => (HTMLElement & { checked?: boolean }) | null;
+	getClampBandScale: () => boolean;
+	setClampBandScale: (on: boolean) => void;
 	persistSessionIfEnabled: () => void;
 	syncWeightDropdown: (
 		el: HTMLElement & { value?: string },
@@ -112,11 +116,25 @@ function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 	});
 }
 
+function wireClampBandScaleCheckbox(deps: WireUiDeps): void {
+	const box = deps.clampBandScaleCheckbox();
+	if (!box) return;
+	// Web default: on (matches stage host default / shipped √ readability scale)
+	box.checked = deps.getClampBandScale();
+	box.addEventListener('cds-checkbox-changed', () => {
+		deps.setClampBandScale(Boolean(box.checked));
+		if (deps.getSession()) {
+			deps.remountCurrentView();
+		}
+	});
+}
+
 /** Bind all workspace chrome controls; call once at bootstrap. */
 export function wireUi(deps: WireUiDeps): void {
 	wirePersistCheckbox(deps);
 	wireEnginePrefCheckbox(deps);
 	wireIncludeTestsCheckbox(deps);
+	wireClampBandScaleCheckbox(deps);
 
 	const drop = $('atlas-drop');
 	// Carbon file-uploader drop container: click + drag both emit this event

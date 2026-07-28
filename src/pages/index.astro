@@ -412,6 +412,15 @@ import Tag from '../components/ui/Tag.astro';
 								title="When off, drop *.test/spec, __tests__, __mocks__ from the index. Does not change CLI defaults."
 							/>
 						</div>
+						<div class="atlas-stage__control-group atlas-stage__control-group--clamp">
+							<Checkbox
+								id="atlas-clamp-band-scale"
+								class="atlas-clamp-band-scale"
+								checked={true}
+								labelText="Clamp band scale"
+								title="When on, band thickness uses a √ readability scale so extreme LOC ratios stay visible. Numbers on labels stay true mass. Off = linear thickness."
+							/>
+						</div>
 						<div
 							id="atlas-interaction-mode"
 							class="atlas-stage__mode"
