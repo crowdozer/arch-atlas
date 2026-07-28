@@ -20,12 +20,14 @@ describe('control parsers', () => {
 		expect(parseWeightAxis('nope')).toBe('target-loc');
 	});
 
-	it('parseBandSortMode accepts known modes and defaults to mass', () => {
+	it('parseBandSortMode accepts known modes; mass→flow; default flow', () => {
 		expect(parseBandSortMode('name')).toBe('name');
-		expect(parseBandSortMode('mass')).toBe('mass');
-		expect(parseBandSortMode('dir-walk')).toBe('mass');
-		expect(parseBandSortMode('')).toBe('mass');
-		expect(parseBandSortMode('nope')).toBe('mass');
+		expect(parseBandSortMode('flow')).toBe('flow');
+		expect(parseBandSortMode('node')).toBe('node');
+		expect(parseBandSortMode('mass')).toBe('flow');
+		expect(parseBandSortMode('dir-walk')).toBe('flow');
+		expect(parseBandSortMode('')).toBe('flow');
+		expect(parseBandSortMode('nope')).toBe('flow');
 	});
 
 	it('parseLocPrecision defaults to estimate', () => {

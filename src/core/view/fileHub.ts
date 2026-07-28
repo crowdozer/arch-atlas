@@ -393,6 +393,7 @@ export function projectFileHub(
 		units,
 		ariaLabel: `Hub imports and exports for ${fileId} (viz depth ${hubRadius})`,
 		bandSort: opts?.bandSort,
+		graph,
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: exportTerminators.length
 			? exportTerminators

@@ -307,6 +307,7 @@ function projectImportsColumn(args: {
 		units,
 		ariaLabel: `Imports of ${fileId}`,
 		bandSort,
+		graph,
 	});
 }
 

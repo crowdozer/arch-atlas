@@ -508,6 +508,7 @@ export function projectMultiHopAlluvial(
 		units,
 		ariaLabel: `Import tree for ${startId} (viz depth ${maxDepth})`,
 		bandSort,
+		graph,
 	});
 }
 
@@ -609,5 +610,6 @@ function projectDirectImportsOnly(
 		units: opts.units,
 		ariaLabel: `Direct imports for ${startId}`,
 		bandSort: opts.bandSort,
+		graph,
 	});
 }

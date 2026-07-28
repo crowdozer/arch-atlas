@@ -284,6 +284,7 @@ export function projectPackageHub(
 		units,
 		ariaLabel: `Package hub for ${pkgLabel} (viz depth ${hubRadius})`,
 		bandSort: opts?.bandSort,
+		graph,
 		terminators: terminators.length ? terminators : undefined,
 		exportTerminators: forwardTerminators,
 		externalStraightPairs: externalStraightPairs.length

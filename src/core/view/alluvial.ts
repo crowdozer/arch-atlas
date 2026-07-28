@@ -18,6 +18,7 @@ import type {
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
 import {
 	edgeWeight,
+	fileLineCount,
 	pickEdgeWeightOpts,
 	resolveWeightAxis,
 	unitsForAxis,
@@ -85,13 +86,49 @@ export function isOverflowNodeName(name: string): boolean {
 
 /**
  * In-column band stack order (global mode for all columns).
- * Default `mass` ranks by incident link value (fat bands first).
+ *
+ * - `flow` — ribbon / leaving mass (hub L→R): outbound link sum; sinks use inbound
+ * - `node` — intrinsic file size (whole-file LOC from graph); packages/buckets 0
+ * - `name` — alpha
+ *
+ * Default `flow` (matches ribbon fatness). These are **not** the same graph shape:
+ * a small file with a fat import edge ranks high under flow, low under node.
  */
-export type BandSortMode = 'name' | 'mass';
+export type BandSortMode = 'name' | 'flow' | 'node';
 
 /**
- * Sum incident link values per display name (payload-local mass for sort).
- * Skips pure rail↔rail links when both ends are pad rails.
+ * Flow mass for sort: mass **leaving** the node in hub L→R (sum of outbound
+ * link values). True sinks (External packages, leaves with no out) use **inbound**
+ * so their ribbon into the node still ranks. Skips pure rail↔rail links.
+ *
+ * Does **not** sum in+out (that double-counted intermediates vs leaves).
+ */
+export function flowBandMass(
+	links: readonly { source: string; target: string; value: number }[],
+): Map<string, number> {
+	const inn = new Map<string, number>();
+	const out = new Map<string, number>();
+	for (const l of links) {
+		if (isAlluvialRailName(l.source) && isAlluvialRailName(l.target)) continue;
+		const v = l.value;
+		if (!(v > 0)) continue;
+		out.set(l.source, (out.get(l.source) ?? 0) + v);
+		inn.set(l.target, (inn.get(l.target) ?? 0) + v);
+	}
+	const mass = new Map<string, number>();
+	for (const n of new Set([...out.keys(), ...inn.keys()])) {
+		if (isAlluvialRailName(n)) continue;
+		const o = out.get(n) ?? 0;
+		const i = inn.get(n) ?? 0;
+		// Prefer leaving (export consumers, import intermediates). Sinks: arriving.
+		mass.set(n, o > 0 ? o : i);
+	}
+	return mass;
+}
+
+/**
+ * @deprecated Use {@link flowBandMass}. Kept name for any external greps; sums
+ * in+out (double-counts). Prefer flowBandMass.
  */
 export function incidentBandMass(
 	links: readonly { source: string; target: string; value: number }[],
@@ -108,11 +145,35 @@ export function incidentBandMass(
 }
 
 /**
+ * Node self-mass: whole-file LOC for file refs (`graph.contents`).
+ * Packages / modules / buckets → 0 (no file body). Estimate LOC only — not Exact
+ * export-surface (that would need a surface provider; honesty stays with Weight).
+ */
+export function nodeBandMass(
+	names: Iterable<string>,
+	nodeRef: Record<string, AlluvialNodeRef>,
+	graph: CodeGraph | null | undefined,
+): Map<string, number> {
+	const mass = new Map<string, number>();
+	if (!graph) return mass;
+	for (const name of names) {
+		if (isOverflowNodeName(name) || isAlluvialRailName(name)) continue;
+		const ref = nodeRef[name];
+		if (ref?.kind === 'file' && ref.id) {
+			mass.set(name, fileLineCount(graph, ref.id));
+		} else {
+			mass.set(name, 0);
+		}
+	}
+	return mass;
+}
+
+/**
  * Mode-aware in-column compare. Tiers (all modes):
  * 1. Overflow last
  * 2. Pad rails after real (non-overflow) nodes
- * 3. Mode key (name alpha / mass desc)
- * 4. Stable name; mass keys multi-instance on nodeRef.id then label
+ * 3. Mode key (name alpha / flow desc / node LOC desc)
+ * 4. Stable name; flow/node key multi-instance on nodeRef.id then label
  */
 export function compareAlluvialBands(
 	a: string,
@@ -136,7 +197,7 @@ export function compareAlluvialBands(
 	// Both rails: pin by name (do not apply user mass to ZWSP rails)
 	if (ar === 1) return a.localeCompare(b);
 
-	if (ctx.mode === 'mass') {
+	if (ctx.mode === 'flow' || ctx.mode === 'node') {
 		const ma = ctx.mass.get(a) ?? 0;
 		const mb = ctx.mass.get(b) ?? 0;
 		if (ma !== mb) return mb - ma;
@@ -165,8 +226,13 @@ export function buildAlluvialPayload(args: {
 	startId?: string;
 	units?: string;
 	ariaLabel?: string;
-	/** In-column band order; default mass (overflow last, rails after real). */
+	/** In-column band order; default flow (overflow last, rails after real). */
 	bandSort?: BandSortMode;
+	/**
+	 * Needed for `bandSort: 'node'` (file LOC). Optional — without it node mode
+	 * ranks files as 0 (name tie-break only).
+	 */
+	graph?: CodeGraph | null;
 	/** Reverse free-source pad targets (meta.terminators). */
 	terminators?: string[];
 	/** Forward true leaves on Imports / External (meta.exportTerminators). */
@@ -191,7 +257,8 @@ export function buildAlluvialPayload(args: {
 		startId,
 		units = 'package imports',
 		ariaLabel,
-		bandSort = 'mass',
+		bandSort = 'flow',
+		graph = null,
 		terminators,
 		exportTerminators,
 		externalStraightPairs,
@@ -201,7 +268,11 @@ export function buildAlluvialPayload(args: {
 	const nodes: AlluvialPayload['options']['alluvial']['nodes'] = [];
 	const nodeRank: Record<string, number> = {};
 	const mass =
-		bandSort === 'mass' ? incidentBandMass(links) : new Map<string, number>();
+		bandSort === 'flow'
+			? flowBandMass(links)
+			: bandSort === 'node'
+				? nodeBandMass(nodeMeta.keys(), nodeRef, graph)
+				: new Map<string, number>();
 	const sortCtx = {
 		mode: bandSort,
 		mass,
@@ -558,6 +629,7 @@ export function projectAlluvial(
 			units,
 			ariaLabel: `Imports for ${startLabel}`,
 			bandSort: opts?.bandSort,
+			graph,
 		});
 	}
 
@@ -710,5 +782,6 @@ export function projectAlluvial(
 		units,
 		ariaLabel: `Imports for ${startLabel}`,
 		bandSort: opts?.bandSort,
+		graph,
 	});
 }

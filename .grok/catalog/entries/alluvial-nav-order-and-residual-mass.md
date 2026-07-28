@@ -96,49 +96,47 @@ shipped.
 
 2. **Stable, controllable band order:** Offer a **dropdown** to choose how bands
    within columns are ordered:
-   - sort by **LOC / mass** (default)
+   - sort by **flow mass** (default) — ribbon / mass leaving the node
+   - sort by **node size** — whole-file LOC of the band’s file
    - sort by **name**
 
    Goal: stabilize output in an intuitive way so band traverse is learnable.
    **Landed** — payload SoR + polish Y-lock + session control (see Realization).
-   Path/dir-walk mode was cut after field use (user preference for mass).
+   Flow vs node are distinct graph shapes (not one “mass” umbrella).
+   Path/dir-walk mode was cut after field use.
 
 3. **Control surface:**
-   - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`: Mass / Name)
+   - Sort modes → **dropdown toggle** — **landed** (`atlas-band-sort`: Flow mass /
+     Node size / Name)
    - Residual not-exported / not-imported bands → **checkbox** (off by default;
      experimental) — **not landed**
 
 ## Realization (problem #2 — band sort)
 
 Ship `ship/f8f093b4-alluvial-band-sort` / commits `7825f9a` (feat) + `7849d73`
-(merge on main). Follow-up on main: drop dir-walk, default mass, polish
-`stackBandsByNodeRank` so Carbon crossing reduction no longer defeats the
-dropdown.
+(merge on main). Follow-ups: drop dir-walk; polish Y-lock; split mass into
+**flow** vs **node**.
 
 | Surface | What landed |
 | ------- | ----------- |
-| Core | `BandSortMode = 'name' \| 'mass'`; `compareAlluvialBands`, `incidentBandMass`; `buildAlluvialPayload({ bandSort })` sorts **per category** and writes `rank` + `meta.nodeRank` (default **`mass`**) |
-| Shell | `parseBandSortMode` / `BAND_SORT_MODES`; `PayloadProjectOpts.bandSort` threaded through project → view builders |
-| Web UI | Stage control **Band order** — dropdown id `atlas-band-sort` (Mass / Name); session-only state in `app.ts` + `wireUi` remount |
-| Stage polish | `stackBandsByNodeRank` / `stackBandsByNodeRankInHolder` — restack peers by `meta.nodeRank` **before** File spine center |
-| Views threaded | `fileHub`, `packageHub`, `moduleFocus`, `multiHop`, `fileImporters` |
+| Core | `BandSortMode = 'name' \| 'flow' \| 'node'`; `flowBandMass`, `nodeBandMass`, `compareAlluvialBands`; `buildAlluvialPayload({ bandSort, graph })` sorts per category + `meta.nodeRank` (default **`flow`**) |
+| Shell | `parseBandSortMode` (legacy `mass` → `flow`); `PayloadProjectOpts.bandSort` |
+| Web UI | **Band order** `atlas-band-sort`: Flow mass / Node size / Name |
+| Stage polish | `stackBandsByNodeRank` before File spine center |
+| Views threaded | `fileHub`, `packageHub`, `moduleFocus`, `multiHop`, `fileImporters` (+ `graph` for node LOC) |
 
 **Honesty / limits (do not overclaim):**
 
-- **Payload + `meta.nodeRank` are the source of record** for intended in-column
-  order (unit-tested). Membership / hub column matrix is unchanged.
-- **Polish restacks** column peers to match `nodeRank` after Carbon layout so
-  visual stack tracks Mass/Name. File spine center and External straighten still
-  run afterward and may move specific bands for geometry.
-- **Mass key** is **total incident link value** on the display name in the
-  payload (not a single edge width alone). A fatter single ribbon can still sit
-  below a peer with higher total incident mass.
-- **Session-only** preference (not `PersistedSessionV1` / localStorage; no CLI
-  flag).
-- Default when unset / unknown parse: **`mass`**.
-- Sort tiers (all modes): overflow last → pad rails after real nodes → mode key
-  → stable name.
-- **Dir-walk / path-toward-focus mode removed** (user cut).
+- **Payload + `meta.nodeRank`** are the order SoR; polish restacks Y to match.
+- **`flow`**: mass **leaving** hub L→R (outbound link sum). True sinks (no out)
+  use **inbound** so External / leaves still rank by ribbon into them. Does **not**
+  sum in+out (that double-counted intermediates).
+- **`node`**: whole-file LOC from `graph.contents` for file refs only; packages /
+  buckets 0. **Estimate** file size — not Exact export-surface (Weight/Precision
+  own that honesty).
+- Membership / hub column matrix unchanged.
+- Session-only preference; default **`flow`**.
+- Dir-walk removed (user cut).
 
 ## Reasoning
 

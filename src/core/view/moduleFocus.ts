@@ -130,5 +130,6 @@ export function projectModuleFocus(
 		units,
 		ariaLabel: `Package ends for module ${moduleFolder}`,
 		bandSort: opts?.bandSort,
+		graph,
 	});
 }

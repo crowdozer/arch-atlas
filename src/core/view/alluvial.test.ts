@@ -8,7 +8,8 @@ import {
 	alluvialTooltipCustomHTML,
 	buildAlluvialPayload,
 	compareAlluvialBands,
-	incidentBandMass,
+	flowBandMass,
+	nodeBandMass,
 	isAlluvialRailName,
 	isImportPadScaffoldLink,
 	isInRailName,
@@ -481,21 +482,45 @@ describe('alluvial pad-rail tooltip hygiene', () => {
 	});
 });
 
-describe('band sort (name / mass)', () => {
+describe('band sort (name / flow / node)', () => {
 	const rail = '\u200b·in-rail·h2';
 	const overflow = '+ 3 more';
 	const other = '(other ends)';
 
-	it('incidentBandMass sums endpoints and skips pure rail↔rail', () => {
-		const mass = incidentBandMass([
-			{ source: 'a', target: 'b', value: 5 },
-			{ source: 'a', target: 'c', value: 2 },
+	it('flowBandMass prefers leaving; sinks use inbound; skips rail↔rail', () => {
+		// a → mid → b  (mid intermediate) + sink leaf
+		const mass = flowBandMass([
+			{ source: 'a', target: 'mid', value: 10 },
+			{ source: 'mid', target: 'b', value: 10 },
+			{ source: 'a', target: 'leaf', value: 3 },
 			{ source: rail, target: '\u200b·out-rail·h1', value: 99 },
 		]);
-		expect(mass.get('a')).toBe(7);
-		expect(mass.get('b')).toBe(5);
-		expect(mass.get('c')).toBe(2);
+		// a leaves 13; mid leaves 10 (not 20 in+out); leaf sink arrives 3
+		expect(mass.get('a')).toBe(13);
+		expect(mass.get('mid')).toBe(10);
+		expect(mass.get('b')).toBe(10); // sink: inbound
+		expect(mass.get('leaf')).toBe(3);
 		expect(mass.has(rail)).toBe(false);
+	});
+
+	it('nodeBandMass uses file LOC; packages 0', () => {
+		const graph = {
+			contents: new Map([
+				['big.ts', 'a\nb\nc\nd\ne\n'], // 5 lines
+				['small.ts', 'x\n'], // 1 line
+			]),
+		} as unknown as import('@core/graph/types.ts').CodeGraph;
+		const names = ['big.ts', 'small.ts', 'lodash', overflow];
+		const nodeRef = {
+			'big.ts': { kind: 'file' as const, id: 'big.ts' },
+			'small.ts': { kind: 'file' as const, id: 'small.ts' },
+			lodash: { kind: 'package' as const, id: 'lodash' },
+		};
+		const mass = nodeBandMass(names, nodeRef, graph);
+		expect(mass.get('big.ts')).toBe(5);
+		expect(mass.get('small.ts')).toBe(1);
+		expect(mass.get('lodash')).toBe(0);
+		expect(mass.has(overflow)).toBe(false);
 	});
 
 	it('overflow last and rails after real nodes under every mode', () => {
@@ -508,7 +533,7 @@ describe('band sort (name / mass)', () => {
 			['z-file', 1],
 			['a-file', 10],
 		]);
-		for (const mode of ['name', 'mass'] as const) {
+		for (const mode of ['name', 'flow', 'node'] as const) {
 			const sorted = [...names].sort((a, b) =>
 				compareAlluvialBands(a, b, {
 					mode,
@@ -539,7 +564,7 @@ describe('band sort (name / mass)', () => {
 		expect(sorted).toEqual(['alpha.ts', 'mid.ts', 'zebra.ts']);
 	});
 
-	it('mass mode orders higher incident mass first', () => {
+	it('flow mode orders higher flow mass first', () => {
 		const names = ['light', 'heavy', 'mid'];
 		const mass = new Map([
 			['light', 1],
@@ -548,7 +573,7 @@ describe('band sort (name / mass)', () => {
 		]);
 		const sorted = [...names].sort((a, b) =>
 			compareAlluvialBands(a, b, {
-				mode: 'mass',
+				mode: 'flow',
 				mass,
 				nodeRef: {},
 			}),
@@ -556,7 +581,29 @@ describe('band sort (name / mass)', () => {
 		expect(sorted).toEqual(['heavy', 'mid', 'light']);
 	});
 
-	it('buildAlluvialPayload writes rank + nodeRank under mass mode', () => {
+	it('flow vs node produce different ranks for fat-edge small file', () => {
+		// small file with fat leaving edge ranks high on flow, low on node
+		const names = ['tiny-fat', 'huge-thin'];
+		const flow = new Map([
+			['tiny-fat', 100],
+			['huge-thin', 2],
+		]);
+		const node = new Map([
+			['tiny-fat', 5],
+			['huge-thin', 500],
+		]);
+		const byFlow = [...names].sort((a, b) =>
+			compareAlluvialBands(a, b, { mode: 'flow', mass: flow, nodeRef: {} }),
+		);
+		const byNode = [...names].sort((a, b) =>
+			compareAlluvialBands(a, b, { mode: 'node', mass: node, nodeRef: {} }),
+		);
+		expect(byFlow).toEqual(['tiny-fat', 'huge-thin']);
+		expect(byNode).toEqual(['huge-thin', 'tiny-fat']);
+	});
+
+	it('buildAlluvialPayload writes rank + nodeRank under flow mode', () => {
+		// free sources on left: heavy/light leave into focus (export-style)
 		const links = [
 			{ source: 'heavy', target: 'focus', value: 10 },
 			{ source: 'light', target: 'focus', value: 1 },
@@ -564,9 +611,9 @@ describe('band sort (name / mass)', () => {
 		];
 		const nodeMeta = new Map([
 			['focus', { category: 'File', color: '#0' }],
-			['heavy', { category: 'Imports', color: '#1' }],
-			['light', { category: 'Imports', color: '#2' }],
-			[overflow, { category: 'Imports', color: '#3' }],
+			['heavy', { category: 'Exports', color: '#1' }],
+			['light', { category: 'Exports', color: '#2' }],
+			[overflow, { category: 'Exports', color: '#3' }],
 		]);
 		const nodeRef = {
 			focus: { kind: 'file' as const, id: 'focus' },
@@ -577,29 +624,27 @@ describe('band sort (name / mass)', () => {
 			heightPx: 200,
 			links,
 			nodeMeta,
-			categoryOrder: ['Imports', 'File'],
+			categoryOrder: ['Exports', 'File'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
 			nodeRef,
 			startId: 'focus',
-			bandSort: 'mass',
+			bandSort: 'flow',
 		});
 		expect(payload).not.toBeNull();
-		const imports = payload!.options.alluvial.nodes
-			.filter((n) => n.category === 'Imports')
+		const exports = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Exports')
 			.map((n) => n.name);
-		expect(imports).toEqual(['heavy', 'light', overflow]);
+		expect(exports).toEqual(['heavy', 'light', overflow]);
 		expect(payload!.meta.nodeRank!['heavy']).toBe(0);
 		expect(payload!.meta.nodeRank!['light']).toBe(1);
 		expect(payload!.meta.nodeRank![overflow]).toBe(2);
-		expect(
-			payload!.options.alluvial.nodes.find((n) => n.name === 'heavy')?.rank,
-		).toBe(0);
 	});
 
-	it('buildAlluvialPayload default bandSort is mass (fat first)', () => {
+	it('buildAlluvialPayload default bandSort is flow (fat first)', () => {
+		// import-side leaves: focus → peer (sinks use inbound)
 		const links = [
-			{ source: 'zebra', target: 'focus', value: 1 },
-			{ source: 'alpha', target: 'focus', value: 99 },
+			{ source: 'focus', target: 'zebra', value: 1 },
+			{ source: 'focus', target: 'alpha', value: 99 },
 		];
 		const nodeMeta = new Map([
 			['focus', { category: 'File', color: '#0' }],
@@ -610,7 +655,7 @@ describe('band sort (name / mass)', () => {
 			heightPx: 200,
 			links,
 			nodeMeta,
-			categoryOrder: ['Imports', 'File'],
+			categoryOrder: ['File', 'Imports'],
 			focus: { kind: 'file', id: 'focus', label: 'focus' },
 			nodeRef: {
 				focus: { kind: 'file', id: 'focus' },
@@ -622,7 +667,58 @@ describe('band sort (name / mass)', () => {
 		const imports = payload!.options.alluvial.nodes
 			.filter((n) => n.category === 'Imports')
 			.map((n) => n.name);
-		// alpha has value 99 → mass rank 0; zebra value 1 → rank 1
 		expect(imports).toEqual(['alpha', 'zebra']);
+	});
+
+	it('buildAlluvialPayload node mode ranks by file LOC not link fatness', () => {
+		const graph = {
+			contents: new Map([
+				['focus', 'f\n'],
+				['small-fat', 'a\n'], // 1 LOC
+				['big-thin', '1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n'], // 10 LOC
+			]),
+		} as unknown as import('@core/graph/types.ts').CodeGraph;
+		const links = [
+			{ source: 'focus', target: 'small-fat', value: 99 },
+			{ source: 'focus', target: 'big-thin', value: 1 },
+		];
+		const nodeMeta = new Map([
+			['focus', { category: 'File', color: '#0' }],
+			['small-fat', { category: 'Imports', color: '#1' }],
+			['big-thin', { category: 'Imports', color: '#2' }],
+		]);
+		const nodeRef = {
+			focus: { kind: 'file' as const, id: 'focus' },
+			'small-fat': { kind: 'file' as const, id: 'small-fat' },
+			'big-thin': { kind: 'file' as const, id: 'big-thin' },
+		};
+		const flowPayload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['File', 'Imports'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef,
+			bandSort: 'flow',
+			graph,
+		})!;
+		const nodePayload = buildAlluvialPayload({
+			heightPx: 200,
+			links,
+			nodeMeta,
+			categoryOrder: ['File', 'Imports'],
+			focus: { kind: 'file', id: 'focus', label: 'focus' },
+			nodeRef,
+			bandSort: 'node',
+			graph,
+		})!;
+		const flowOrder = flowPayload.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		const nodeOrder = nodePayload.options.alluvial.nodes
+			.filter((n) => n.category === 'Imports')
+			.map((n) => n.name);
+		expect(flowOrder).toEqual(['small-fat', 'big-thin']);
+		expect(nodeOrder).toEqual(['big-thin', 'small-fat']);
 	});
 });
