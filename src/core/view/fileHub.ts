@@ -39,7 +39,7 @@
  * - Out of File: focus → file deps + focus package/unresolved
  *
  * **Hop labels:** plain path basenames (hop is column category only). Multi-instance
- * dual-path extras still get `path · hN` for second+ instances of the same path.
+ * dual-path extras still get `path#N` for second+ instances of the same path.
  *
  * Integer multi-parent split conserves File incident mass (accepted default).
  *

@@ -563,7 +563,7 @@ export type AlluvialPayload = {
 		bandSort?: 'name' | 'flow' | 'flow-target' | 'node';
 		/**
 		 * Whole-file LOC per display name (files only; non-files omitted or 0).
-		 * Stage rewrites Carbon `(value)` → `(↑|↓flow, nLOC)`. Estimate LOC —
+		 * Stage rewrites Carbon `(value)` → `(↑|↓flow, n)`. Estimate LOC —
 		 * not Exact export-surface.
 		 */
 		labelLoc?: Record<string, number>;

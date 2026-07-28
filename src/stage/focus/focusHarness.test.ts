@@ -100,7 +100,7 @@ describe('focus harness (drawn-band observability)', () => {
 		const obs = observeHubFocus(payload, { kind: 'file', name: BUFFER });
 		assertCompleteClassification(obs);
 
-		// Buffer → multi-instance hook (· hN)
+		// Buffer → multi-instance hook (#N)
 		expect(
 			hasFocusedDrawnEdge(obs, BUFFER, HOOK),
 			'FOCUS Buffer→useCodebreaker*',
@@ -124,9 +124,9 @@ describe('focus harness (drawn-band observability)', () => {
 		}
 
 		// hop instance label on, not primary
-		expect(obs.activeLabels.some((n) => n.startsWith(HOOK) && n.includes('·'))).toBe(
-			true,
-		);
+		expect(
+			obs.activeLabels.some((n) => n.startsWith(HOOK) && /#\d+$/u.test(n)),
+		).toBe(true);
 		expect(obs.activeLabels.includes(BUFFER)).toBe(true);
 		expect(obs.activeLabels.includes(INDEX)).toBe(true);
 		for (const sib of SIBLINGS) {
@@ -134,14 +134,16 @@ describe('focus harness (drawn-band observability)', () => {
 		}
 	});
 
-	it('DETECT: id-alias across ·hN would light primary (bug class characterization)', () => {
+	it('DETECT: id-alias across #N would light primary (bug class characterization)', () => {
 		/**
-		 * Pre-interim failure: expandFileAliases by nodeRef.id made Buffer→·hN
+		 * Pre-interim failure: expandFileAliases by nodeRef.id made Buffer→#N
 		 * activate primary useCodebreaker (same id), lighting index→primary.
 		 * With L-instance-local, primary label stays off on Buffer hover.
 		 */
 		const obs = observeHubFocus(payload, { kind: 'file', name: BUFFER });
-		const hopLit = obs.activeLabels.some((n) => n.startsWith(HOOK) && n.includes('·'));
+		const hopLit = obs.activeLabels.some(
+			(n) => n.startsWith(HOOK) && /#\d+$/u.test(n),
+		);
 		expect(hopLit).toBe(true);
 		expect(obs.activeLabels.includes(HOOK)).toBe(false);
 		expect(hasFocusedDrawnEdge(obs, INDEX, HOOK)).toBe(false);
@@ -183,7 +185,10 @@ describe('focus harness (drawn-band observability)', () => {
 
 		// Buffer→hop instance focus
 		const bufHook = applied.bands.find(
-			(b) => b.source === BUFFER && b.target.startsWith(HOOK) && b.target.includes('·'),
+			(b) =>
+				b.source === BUFFER &&
+				b.target.startsWith(HOOK) &&
+				/#\d+$/u.test(b.target),
 		);
 		expect(bufHook).toBeTruthy();
 		expect(bufHook!.focus).toBe(true);

@@ -82,11 +82,11 @@ export function parseExternalBandKey(
 // —— aliases / membership ————————————————————————————————————————————————
 
 /**
- * Multi-hop instance labels from fileHub (`path · hN`, middle-dot separator).
+ * Multi-hop instance labels from fileHub (`path#N` hop suffix).
  * Until per-instance fingerprinting, these must not share focus identity with
  * other painted instances of the same path (see L-instance-local).
  */
-export const MULTI_INSTANCE_LABEL_RE = /\s·\sh\d+$/u;
+export const MULTI_INSTANCE_LABEL_RE = /#\d+$/u;
 
 export function isMultiInstanceLabel(name: string): boolean {
 	return MULTI_INSTANCE_LABEL_RE.test(name);
@@ -95,9 +95,9 @@ export function isMultiInstanceLabel(name: string): boolean {
 /**
  * Expand file display names that share a nodeRef file id.
  *
- * **Interim (L-instance-local):** multi-instance labels (`… · hN`) do **not**
+ * **Interim (L-instance-local):** multi-instance labels (`…#N`) do **not**
  * expand to/from other instances of the same path. That stops hop-2
- * `useCodebreaker · hN` from lighting the Imports-column primary instance
+ * `useCodebreaker#N` from lighting the Imports-column primary instance
  * (and vice versa). Proper fingerprinting should replace this.
  */
 export function expandFileAliases(
@@ -305,7 +305,7 @@ function bfs(adj: Map<string, string[]>, start: string): Set<string> {
 
 /**
  * Reverse closure from a display name, expanding non-multi-instance file
- * aliases as alternate walk entry points (L-instance-local: ·hN stays local).
+ * aliases as alternate walk entry points (L-instance-local: #N stays local).
  */
 function reverseClosure(
 	graph: LogicalFocusGraph,

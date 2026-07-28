@@ -45,7 +45,7 @@ export function polishAlluvialHolder(
 		 * crossing reduction so Band order (name/mass) matches the chart.
 		 */
 		nodeRank?: Record<string, number>;
-		/** Rewrite Carbon `(value)` → `(↑|↓flow, locLOC)`. */
+		/** Rewrite Carbon `(value)` → `(↑|↓flow, loc)`. */
 		labelRewrite?: LabelRewriteOpts;
 		/**
 		 * Reverse free-source pad targets (Exports* left) → cyan wrap.

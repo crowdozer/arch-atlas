@@ -31,6 +31,7 @@ export {
 	buildAlluvialLabelStats,
 	carbonAlluvialLabelTitleOffset,
 	formatAlluvialLabelSuffix,
+	formatAlluvialLocNumber,
 	formatAlluvialMassNumber,
 	rightTruncateAlluvialLabels,
 	rightTruncateLabel,

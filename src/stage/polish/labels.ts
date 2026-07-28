@@ -1,6 +1,6 @@
 /**
  * Right-truncate node labels and re-anchor Carbon title chips.
- * Rewrites Carbon's `name (value)` suffix to `(↑|↓flow, locLOC)`.
+ * Rewrites Carbon's `name (value)` suffix to `(↑|↓flow, loc)`.
  */
 
 import {
@@ -33,7 +33,7 @@ export type LabelRewriteOpts = {
 	stats?: ReadonlyMap<string, AlluvialLabelStats> | Record<string, AlluvialLabelStats>;
 };
 
-/** Compact mass for chip (matches Carbon-ish k suffix). */
+/** Compact mass for flow chip (matches Carbon-ish k suffix). */
 export function formatAlluvialMassNumber(n: number): string {
 	const v = Math.max(0, Math.round(n));
 	if (v >= 10_000) return `${Math.round(v / 1000)}k`;
@@ -46,7 +46,16 @@ export function formatAlluvialMassNumber(n: number): string {
 }
 
 /**
- * Suffix after the path: `(↓50, 120LOC)` or `(↑99, 45LOC)`.
+ * LOC for chip: exact below 1000; ≥1000 rounds to integer k (`1k`, `12k`).
+ */
+export function formatAlluvialLocNumber(n: number): string {
+	const v = Math.max(0, Math.floor(n));
+	if (v >= 1000) return `${Math.round(v / 1000)}k`;
+	return String(v);
+}
+
+/**
+ * Suffix after the path: `(↓50, 120)` or `(↑99, 1k)`.
  * - flow: ↓ maxOut (leaving)
  * - flow-target: ↑ maxIn (arriving)
  * - node / name: arrow of the larger of in/out (tie → leave ↓)
@@ -78,8 +87,7 @@ export function formatAlluvialLabelSuffix(
 		}
 	}
 
-	const locPart = `${formatAlluvialMassNumber(loc)}LOC`;
-	return `(${arrow}${formatAlluvialMassNumber(flow)}, ${locPart})`;
+	return `(${arrow}${formatAlluvialMassNumber(flow)}, ${formatAlluvialLocNumber(loc)})`;
 }
 
 function statsForName(
@@ -213,7 +221,7 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 
 /**
  * Carbon paints `name (value)`. Truncate only the name; rewrite the value suffix
- * to `(↑|↓flow, locLOC)` when stats are provided. Full original on title/aria.
+ * to `(↑|↓flow, loc)` when stats are provided. Full original on title/aria.
  *
  * Also undraws rails/pad scaffolds **without** construction pairs (pairs
  * undraw is applied later from the polish facade with meta pairs).

@@ -93,7 +93,7 @@ export function layerForDist(dist: number, maxFileDist: number): number {
 }
 
 function hopNodeLabel(folderOrFile: string, stage: number): string {
-	return `${folderOrFile} · h${stage}`;
+	return `${folderOrFile}#${stage}`;
 }
 
 /** Shared rail id for package-path padding at hop stage s. */

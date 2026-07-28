@@ -70,12 +70,12 @@ describe('codebreaker hub focus (integration)', () => {
 		expect(g.fileNodes.has(HOOK) || [...g.fileNodes].some((n) => n.startsWith(HOOK))).toBe(
 			true,
 		);
-		// co-importers reach hook (possibly · hN)
+		// co-importers reach hook (possibly #N)
 		const hookish = [...g.fileNodes].filter((n) => n.startsWith(HOOK));
 		expect(hookish.length).toBeGreaterThanOrEqual(1);
 	});
 
-	it('L-instance-local: Buffer→·hN on; primary Imports hook off', () => {
+	it('L-instance-local: Buffer→#N on; primary Imports hook off', () => {
 		const plan = planFocus(g, { kind: 'file', name: BUFFER });
 
 		expect(plan.activeLabels.has(PAGE)).toBe(true);
@@ -84,10 +84,12 @@ describe('codebreaker hub focus (integration)', () => {
 
 		// hop instance of hook, not primary
 		expect(
-			[...plan.activeLabels].some((n) => n.startsWith(HOOK) && n.includes('·')),
+			[...plan.activeLabels].some(
+				(n) => n.startsWith(HOOK) && /#\d+$/u.test(n),
+			),
 		).toBe(true);
 		expect(plan.activeLabels.has(HOOK)).toBe(false);
-		// deps hang off primary instance — not activated via ·hN id alias
+		// deps hang off primary instance — not activated via #N id alias
 		expect(plan.activeLabels.has(REDUCER)).toBe(false);
 
 		for (const sib of [TIMER, FAQ, GAME, SEQ, STATUS]) {
@@ -98,9 +100,9 @@ describe('codebreaker hub focus (integration)', () => {
 		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, BUFFER))).toBe(true);
 		const bufferToHop = [...plan.focusedBandKeys].some((k) => {
 			const [s, t] = k.split('\0');
-			return s === BUFFER && t.startsWith(HOOK) && t.includes('·');
+			return s === BUFFER && !!t && t.startsWith(HOOK) && /#\d+$/u.test(t);
 		});
-		expect(bufferToHop, 'Buffer→useCodebreaker · hN focused').toBe(true);
+		expect(bufferToHop, 'Buffer→useCodebreaker #N focused').toBe(true);
 
 		// primary Imports track off
 		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(false);
@@ -110,12 +112,14 @@ describe('codebreaker hub focus (integration)', () => {
 		const plan = planFocus(g, { kind: 'file', name: HOOK });
 		expect(plan.activeLabels.has(HOOK)).toBe(true);
 		expect(plan.activeLabels.has(INDEX)).toBe(true);
-		// hop consumers import ·hN, not primary — stay dim under instance-local
+		// hop consumers import #N, not primary — stay dim under instance-local
 		for (const sib of [BUFFER, TIMER, FAQ, GAME, SEQ, STATUS]) {
 			expect(plan.activeLabels.has(sib), `hop consumer ${sib}`).toBe(false);
 		}
 		expect(
-			[...plan.activeLabels].some((n) => n.startsWith(HOOK) && n.includes('·')),
+			[...plan.activeLabels].some(
+				(n) => n.startsWith(HOOK) && /#\d+$/u.test(n),
+			),
 		).toBe(false);
 		expect(plan.focusedBandKeys.has(fileBandKey(INDEX, HOOK))).toBe(true);
 		// forward deps of primary

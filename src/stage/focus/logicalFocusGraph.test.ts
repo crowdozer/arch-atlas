@@ -90,8 +90,8 @@ function assertLabelHoverCompleteness(
 			(a) =>
 				a === name ||
 				// L-instance-local: multi-instance labels never id-alias
-				(!name.includes(' · h') &&
-					!a.includes(' · h') &&
+				(!/#\d+$/u.test(name) &&
+					!/#\d+$/u.test(a) &&
 					graph.nodeRef[a]?.kind === 'file' &&
 					graph.nodeRef[name]?.kind === 'file' &&
 					graph.nodeRef[a]?.id === graph.nodeRef[name]?.id),
@@ -355,13 +355,13 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		).toBe(true);
 	});
 
-	it('L-instance-local: multi-instance types · hN does not light base types label', () => {
+	it('L-instance-local: multi-instance types#N does not light base types label', () => {
 		// Interim until fingerprinting: hop instances are focus-local.
 		const aliasName = Object.keys(appPayload.meta.nodeRef).find(
 			(k) =>
 				appPayload.meta.nodeRef[k]?.kind === 'file' &&
 				appPayload.meta.nodeRef[k]?.id === 'src/types.ts' &&
-				k.includes('·'),
+				/#\d+$/u.test(k),
 		);
 		expect(aliasName, 'expected multi-instance types label').toBeTruthy();
 
@@ -449,13 +449,13 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 
 /**
  * Multi-instance isolation (interim until fingerprinting).
- * Primary useCodebreaker at Imports vs · hN at hop 2+ must not share focus.
+ * Primary useCodebreaker at Imports vs #N at hop 2+ must not share focus.
  */
 describe('LogicalFocusGraph L-instance-local (multi-hop instances)', () => {
 	const PAGE = 'app/page.tsx';
 	const INDEX = 'app/components/codebreaker/index.tsx';
 	const HOOK = 'app/components/codebreaker/useCodebreaker.ts';
-	const HOOK_H2 = 'app/components/codebreaker/useCodebreaker.ts · h2';
+	const HOOK_H2 = 'app/components/codebreaker/useCodebreaker.ts#2';
 	const BUFFER = 'app/components/codebreaker/components/Buffer.tsx';
 	const TIMER = 'app/components/codebreaker/components/Timer.tsx';
 	const REDUCER = 'app/components/codebreaker/reducer.ts';

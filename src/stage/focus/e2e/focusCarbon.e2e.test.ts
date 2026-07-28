@@ -94,7 +94,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 				(b) =>
 					!b.straight &&
 					b.source === CODEBREAKER_HOOK &&
-					!b.source.includes('·') &&
+					!/#\d+$/u.test(b.source) &&
 					(b.target.includes('reducer') ||
 						b.target.includes('types') ||
 						b.target.includes('utils')) &&
@@ -106,7 +106,9 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 			expect(focusedLabels.some((n) => n.includes('Buffer'))).toBe(true);
 			// hop instance yes; exact primary label no
 			expect(
-				focusedLabels.some((n) => n.startsWith(CODEBREAKER_HOOK) && n.includes('·')),
+				focusedLabels.some(
+					(n) => n.startsWith(CODEBREAKER_HOOK) && /#\d+$/u.test(n),
+				),
 			).toBe(true);
 			expect(focusedLabels.includes(CODEBREAKER_HOOK)).toBe(false);
 			expect(focusedLabels.some((n) => n.includes('FAQ'))).toBe(false);

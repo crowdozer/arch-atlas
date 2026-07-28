@@ -130,24 +130,24 @@ describe('carbonAlluvialLabelTitleOffset', () => {
 });
 
 describe('formatAlluvialLabelSuffix', () => {
-	it('formats flow as leave ↓ and flow-target as arrive ↑', () => {
+	it('formats flow as leave ↓ and flow-target as arrive ↑ (no LOC text)', () => {
 		const stats = { maxOut: 50, maxIn: 99, loc: 120 };
-		expect(formatAlluvialLabelSuffix(stats, 'flow')).toBe('(↓50, 120LOC)');
+		expect(formatAlluvialLabelSuffix(stats, 'flow')).toBe('(↓50, 120)');
 		expect(formatAlluvialLabelSuffix(stats, 'flow-target')).toBe(
-			'(↑99, 120LOC)',
+			'(↑99, 120)',
 		);
 	});
 
 	it('node/name pick dominant ribbon (tie → leave ↓)', () => {
 		expect(
 			formatAlluvialLabelSuffix({ maxOut: 10, maxIn: 20, loc: 0 }, 'node'),
-		).toBe('(↑20, 0LOC)');
+		).toBe('(↑20, 0)');
 		expect(
 			formatAlluvialLabelSuffix({ maxOut: 10, maxIn: 10, loc: 5 }, 'name'),
-		).toBe('(↓10, 5LOC)');
+		).toBe('(↓10, 5)');
 	});
 
-	it('compacts large mass like Carbon-ish k', () => {
+	it('flow uses Carbon-ish k; loc ≥1000 rounds to integer k', () => {
 		expect(formatAlluvialMassNumber(1_200)).toBe('1.2k');
 		expect(formatAlluvialMassNumber(12_000)).toBe('12k');
 		expect(
@@ -155,7 +155,19 @@ describe('formatAlluvialLabelSuffix', () => {
 				{ maxOut: 1200, maxIn: 0, loc: 15_000 },
 				'flow',
 			),
-		).toBe('(↓1.2k, 15kLOC)');
+		).toBe('(↓1.2k, 15k)');
+		expect(
+			formatAlluvialLabelSuffix(
+				{ maxOut: 50, maxIn: 0, loc: 1_499 },
+				'flow',
+			),
+		).toBe('(↓50, 1k)');
+		expect(
+			formatAlluvialLabelSuffix(
+				{ maxOut: 50, maxIn: 0, loc: 1_500 },
+				'flow',
+			),
+		).toBe('(↓50, 2k)');
 	});
 });
 
@@ -279,8 +291,8 @@ describe('rightTruncateAlluvialLabels re-anchors Carbon title chips', () => {
 			stats,
 		});
 
-		expect(text.textContent).toBe('src/app.ts (↓50, 120LOC)');
-		expect(text.getAttribute('title')).toBe('src/app.ts (↓50, 120LOC)');
+		expect(text.textContent).toBe('src/app.ts (↓50, 120)');
+		expect(text.getAttribute('title')).toBe('src/app.ts (↓50, 120)');
 	});
 });
 

@@ -272,7 +272,8 @@ export function addExportRings(
 				(sd) => sd >= 1 && display.has(ik(f, sd)),
 			);
 			const isExtraInstance = d > 1 && (fileSeed.has(f) || hasShallower);
-			const preferred = isExtraInstance ? `${base} · h${d}` : base;
+			// Extra instances: append #hop to the path (e.g. logger.ts#3)
+			const preferred = isExtraInstance ? `${base}#${d}` : base;
 			const name = claimName(
 				usedNames,
 				preferred,

@@ -140,7 +140,7 @@ export function findDrawnFileBands(
 
 /**
  * True if any drawn carbon band source→target* is focused where target
- * starts with `targetPrefix` (multi-instance · hN).
+ * starts with `targetPrefix` (multi-instance #N).
  */
 export function hasFocusedDrawnEdge(
 	obs: FocusObservation,

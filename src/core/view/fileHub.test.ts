@@ -742,7 +742,7 @@ describe('projectFileHub export longest-path (demo-react-simple)', () => {
 			),
 		).toBe(true);
 
-		// types → zod External (may pad; multi-instance types · h2)
+		// types → zod External (may pad; multi-instance types#2)
 		const treeZod = packageNodesOnCategory(payload, 'zod', 'External');
 		expect(treeZod).toHaveLength(1);
 		const typesLabs = payload.options.alluvial.nodes
@@ -989,7 +989,7 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 
 		// Reserve-then-route: file out + pad out ≤ arrived (Kirchhoff at redis)
 		expect(flowOut, 'redis total out').toBe(flowIn);
-		// Visible file band to logger · h3; hidden pad to ioredis (width 1 under target-loc)
+		// Visible file band to logger#3; hidden pad to ioredis (width 1 under target-loc)
 		expect(visOut).toBe(flowIn - hidOut);
 		expect(hidOut).toBeGreaterThanOrEqual(1);
 
