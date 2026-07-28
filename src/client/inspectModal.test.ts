@@ -1,9 +1,9 @@
 /**
  * Inspect surface-claim precision: Program + rehydrated Exact mass uses exact
  * evidence path and callsite copy (not estimate wording).
- * Accordion title + fullscreen sessionStorage prefs are pure helpers.
+ * Accordion title + form direction markers are pure helpers.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	evidenceForEdges,
 	indexFiles,
@@ -12,38 +12,11 @@ import {
 } from '@core/index.ts';
 import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
-	applyInspectDialogFullscreenGeometry,
 	callsitesTitle,
 	emptyCallsitesNote,
+	formDirectionMarker,
 	importSiteAccordionTitle,
-	INSPECT_MODAL_FULLSCREEN_KEY,
-	readInspectModalFullscreen,
-	writeInspectModalFullscreen,
 } from './inspectModal.ts';
-
-function memStorage(): Storage {
-	const map = new Map<string, string>();
-	return {
-		get length() {
-			return map.size;
-		},
-		clear() {
-			map.clear();
-		},
-		getItem(k: string) {
-			return map.has(k) ? map.get(k)! : null;
-		},
-		setItem(k: string, v: string) {
-			map.set(k, String(v));
-		},
-		removeItem(k: string) {
-			map.delete(k);
-		},
-		key(i: number) {
-			return [...map.keys()][i] ?? null;
-		},
-	};
-}
 
 function sampleEvidence(
 	overrides: Partial<ImportEvidence['import']> = {},
@@ -220,77 +193,25 @@ describe('importSiteAccordionTitle', () => {
 	});
 });
 
-describe('inspect modal fullscreen pref (sessionStorage)', () => {
-	beforeEach(() => {
-		vi.stubGlobal('sessionStorage', memStorage());
-	});
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	it('defaults off when unset', () => {
-		expect(readInspectModalFullscreen()).toBe(false);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
-	});
-
-	it('writes 1 and reads true; remove clears', () => {
-		writeInspectModalFullscreen(true);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBe('1');
-		expect(readInspectModalFullscreen()).toBe(true);
-		writeInspectModalFullscreen(false);
-		expect(sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY)).toBeNull();
-		expect(readInspectModalFullscreen()).toBe(false);
-	});
-});
-
-describe('applyInspectDialogFullscreenGeometry', () => {
-	/** Minimal shadow host — no jsdom required. */
-	function mockModalWithDialogPart(): {
-		host: HTMLElement;
-		props: Map<string, string>;
-	} {
-		const props = new Map<string, string>();
-		const dialog = {
-			style: {
-				setProperty(k: string, v: string) {
-					props.set(k, v);
-				},
-				removeProperty(k: string) {
-					props.delete(k);
-				},
-			},
-		};
-		const host = {
-			shadowRoot: {
-				querySelector(sel: string) {
-					if (sel.includes('dialog') || sel.includes('modal-container')) {
-						return dialog;
-					}
-					return null;
-				},
-			},
-		} as unknown as HTMLElement;
-		return { host, props };
-	}
-
-	it('sets block-size on Carbon shadow part=dialog (not just max)', () => {
-		const { host, props } = mockModalWithDialogPart();
-
-		applyInspectDialogFullscreenGeometry(host, true);
-		expect(props.get('block-size')).toBe('92vh');
-		expect(props.get('max-block-size')).toBe('92vh');
-		expect(props.get('inline-size')).toBe('min(96vw, 100%)');
-		expect(props.get('max-inline-size')).toBe('96vw');
-		expect(props.get('min-block-size')).toBe('min(92vh, 100%)');
-
-		applyInspectDialogFullscreenGeometry(host, false);
-		expect(props.size).toBe(0);
+describe('formDirectionMarker', () => {
+	it('maps import/require/dynamic to inbound (right) blue class', () => {
+		for (const form of ['import', 'require', 'dynamic'] as const) {
+			const m = formDirectionMarker(form);
+			expect(m.direction).toBe('import');
+			expect(m.className).toContain('atlas-inspect__form-tri--import');
+			expect(m.className).not.toContain('--export');
+		}
+		expect(formDirectionMarker('import').label).toBe('import');
+		expect(formDirectionMarker('require').label).toBe('require');
+		expect(formDirectionMarker('dynamic').label).toBe('dynamic');
 	});
 
-	it('no-ops when shadowRoot is missing', () => {
-		const host = { shadowRoot: null } as unknown as HTMLElement;
-		expect(() =>
-			applyInspectDialogFullscreenGeometry(host, true),
-		).not.toThrow();
+	it('maps export to outbound (left) cyan class', () => {
+		const m = formDirectionMarker('export');
+		expect(m.direction).toBe('export');
+		expect(m.label).toBe('export');
+		expect(m.title).toBe('Export');
+		expect(m.className).toContain('atlas-inspect__form-tri--export');
+		expect(m.className).not.toContain('--import');
 	});
 });

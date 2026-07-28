@@ -12,12 +12,10 @@ import {
 	type ImportedSurfaceProvider,
 	type LocPrecision,
 } from '@core/index.ts';
+import type { StatusPresentation } from '@shell/statusIndicator.ts';
 import type { Session } from '@shell/types.ts';
 import { $, escapeHtml } from './dom.ts';
-
-/** sessionStorage key: inspect modal fullscreen chrome (`'1'` / absent). */
-export const INSPECT_MODAL_FULLSCREEN_KEY =
-	'arch-atlas:inspect-modal-fullscreen';
+import { createStatusIndicatorEl } from './statusIndicatorDom.ts';
 
 const ACCORDION_TITLE_MAX = 80;
 
@@ -40,14 +38,92 @@ export type InspectModalDeps = {
 	refForName: (name: string) => AlluvialNodeRef | null;
 };
 
+export type ImportForm = ImportEvidence['import']['form'];
+
+/**
+ * Direction marker for an observed edge form.
+ * - import / require / dynamic → right-facing blue triangle (inbound)
+ * - export → left-facing cyan triangle (outbound)
+ * Carbon triangle glyphs point up; rotation is applied via CSS class.
+ */
+export type FormDirectionMarker = {
+	direction: 'import' | 'export';
+	label: string;
+	title: string;
+	/** Host class: rotate + color (blue import / cyan export). */
+	className: string;
+};
+
+/** Pure map: edge form → direction marker chrome. */
+export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
+	if (form === 'export') {
+		return {
+			direction: 'export',
+			label: 'export',
+			title: 'Export',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--export',
+		};
+	}
+	if (form === 'require') {
+		return {
+			direction: 'import',
+			label: 'require',
+			title: 'require()',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
+		};
+	}
+	if (form === 'dynamic') {
+		return {
+			direction: 'import',
+			label: 'dynamic',
+			title: 'Dynamic import',
+			className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
+		};
+	}
+	return {
+		direction: 'import',
+		label: 'import',
+		title: 'Import',
+		className: 'atlas-inspect__form-tri atlas-inspect__form-tri--import',
+	};
+}
+
+/** Carbon solid blue triangle presentation (color/rotate overridden by form class). */
+function formTriStatus(marker: FormDirectionMarker): StatusPresentation {
+	return {
+		kind: 'informative',
+		axis: 'indication',
+		shape: 'triangle',
+		variant: 'solid',
+		color: 'blue',
+		label: marker.label,
+		title: marker.title,
+	};
+}
+
+function createFormTriEl(form: ImportForm): HTMLElement {
+	const marker = formDirectionMarker(form);
+	return createStatusIndicatorEl(formTriStatus(marker), {
+		size: 'xs',
+		showLabel: true,
+		className: marker.className,
+	});
+}
+
 function appendCodeBlock(
 	parent: HTMLElement,
 	pathHtml: string,
 	text: string,
+	/** Optional leading chrome in the path row (e.g. form direction triangle). */
+	pathLead?: HTMLElement,
 ): void {
 	const path = document.createElement('div');
 	path.className = 'atlas-inspect__path';
-	path.innerHTML = pathHtml;
+	if (pathLead) path.appendChild(pathLead);
+	const rest = document.createElement('span');
+	rest.className = 'atlas-inspect__path-text';
+	rest.innerHTML = pathHtml;
+	path.appendChild(rest);
 	const code = document.createElement('pre');
 	code.className = 'atlas-inspect__code';
 	code.textContent = text;
@@ -129,25 +205,6 @@ export function importSiteAccordionTitle(ev: ImportEvidence): string {
 	return title;
 }
 
-/** Read inspect-modal fullscreen preference (tab sessionStorage). */
-export function readInspectModalFullscreen(): boolean {
-	try {
-		return sessionStorage.getItem(INSPECT_MODAL_FULLSCREEN_KEY) === '1';
-	} catch {
-		return false;
-	}
-}
-
-/** Persist inspect-modal fullscreen preference (`'1'` / remove). */
-export function writeInspectModalFullscreen(on: boolean): void {
-	try {
-		if (on) sessionStorage.setItem(INSPECT_MODAL_FULLSCREEN_KEY, '1');
-		else sessionStorage.removeItem(INSPECT_MODAL_FULLSCREEN_KEY);
-	} catch {
-		/* private mode / blocked storage — chrome still works in-memory via class */
-	}
-}
-
 /** Import → Imported code → Callsites sections for one evidence row. */
 function appendEvidenceSections(
 	parent: HTMLElement,
@@ -155,17 +212,18 @@ function appendEvidenceSections(
 	claimPrecision: LocPrecision,
 	surfaceLive: boolean,
 ): void {
-	// Import statement (always observed when present)
+	// Statement (observed import / export / require / dynamic)
 	const impSec = document.createElement('div');
 	impSec.className = 'atlas-inspect__section';
 	const impH = document.createElement('div');
 	impH.className = 'atlas-inspect__section-title';
-	impH.textContent = 'Import';
+	impH.textContent = 'Statement';
 	impSec.appendChild(impH);
 	appendCodeBlock(
 		impSec,
-		`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">L${ev.import.line}</span> <span class="atlas-inspect__form">${escapeHtml(ev.import.form)}</span>`,
+		`${escapeHtml(ev.import.path)} <span class="atlas-inspect__line-num">L${ev.import.line}</span>`,
 		ev.import.text,
+		createFormTriEl(ev.import.form),
 	);
 	parent.appendChild(impSec);
 
@@ -179,7 +237,7 @@ function appendEvidenceSections(
 	if (ev.importedCode) {
 		appendCodeBlock(
 			codeSec,
-			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__form">${escapeHtml(ev.importedCode.note)}</span>`,
+			`${escapeHtml(ev.importedCode.path)} <span class="atlas-inspect__line-num">L${ev.importedCode.startLine}–${ev.importedCode.endLine}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(ev.importedCode.note)}</span>`,
 			ev.importedCode.text,
 		);
 	} else {
@@ -208,7 +266,7 @@ function appendEvidenceSections(
 		for (const cs of ev.callsites) {
 			appendCodeBlock(
 				callSec,
-				`${escapeHtml(cs.path)} <span class="atlas-inspect__line-num">L${cs.line}</span> <span class="atlas-inspect__form">${escapeHtml(cs.symbol)}</span>`,
+				`${escapeHtml(cs.path)} <span class="atlas-inspect__line-num">L${cs.line}</span> <span class="atlas-inspect__meta-chip">${escapeHtml(cs.symbol)}</span>`,
 				cs.text,
 			);
 		}
@@ -231,60 +289,6 @@ function appendEvidenceSections(
 	parent.appendChild(callSec);
 }
 
-/**
- * Carbon mounts the dialog panel as shadow DOM `[part=dialog]`
- * (`.cds--modal-container`). Host-class `::part(dialog)` rules are fragile
- * against size media queries; set geometry on the part node so fullscreen
- * actually fills the viewport (grid is `auto 1fr auto` — needs block-size).
- */
-function dialogPartEl(modal: HTMLElement): HTMLElement | null {
-	const root = modal.shadowRoot;
-	if (!root) return null;
-	return (
-		(root.querySelector('[part~="dialog"]') as HTMLElement | null) ??
-		(root.querySelector('.cds--modal-container') as HTMLElement | null)
-	);
-}
-
-/** Apply / clear near-viewport size on Carbon's shadow dialog part. */
-export function applyInspectDialogFullscreenGeometry(
-	modal: HTMLElement,
-	on: boolean,
-): void {
-	const dialog = dialogPartEl(modal);
-	if (!dialog) return;
-	if (on) {
-		// Explicit block-size: content-height alone never fills the overlay.
-		dialog.style.setProperty('inline-size', 'min(96vw, 100%)');
-		dialog.style.setProperty('max-inline-size', '96vw');
-		dialog.style.setProperty('block-size', '92vh');
-		dialog.style.setProperty('max-block-size', '92vh');
-		dialog.style.setProperty('min-block-size', 'min(92vh, 100%)');
-	} else {
-		for (const prop of [
-			'inline-size',
-			'max-inline-size',
-			'block-size',
-			'max-block-size',
-			'min-block-size',
-		] as const) {
-			dialog.style.removeProperty(prop);
-		}
-	}
-}
-
-function syncFullscreenChrome(
-	modal: HTMLElement,
-	btn: HTMLElement | null,
-	on: boolean,
-): void {
-	modal.classList.toggle('atlas-inspect-modal--fullscreen', on);
-	applyInspectDialogFullscreenGeometry(modal, on);
-	if (!btn) return;
-	btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-	btn.textContent = on ? 'Exit fullscreen' : 'Fullscreen';
-}
-
 export function createInspectModals(deps: InspectModalDeps): {
 	closeInspectModal: () => void;
 	openInspectModal: (
@@ -304,41 +308,6 @@ export function createInspectModals(deps: InspectModalDeps): {
 		targetName: string | null,
 	) => void;
 } {
-	function applyFullscreenFromPref(): void {
-		const modal = $('atlas-inspect-modal');
-		if (!modal) return;
-		const btn = $('atlas-inspect-fullscreen');
-		const on = readInspectModalFullscreen();
-		syncFullscreenChrome(modal, btn, on);
-		// Shadow dialog part may not exist until the WC upgrades / opens
-		if (on && !dialogPartEl(modal)) {
-			requestAnimationFrame(() => {
-				applyInspectDialogFullscreenGeometry(modal, true);
-			});
-		}
-	}
-
-	function toggleFullscreen(): void {
-		const modal = $('atlas-inspect-modal');
-		if (!modal) return;
-		const btn = $('atlas-inspect-fullscreen');
-		// Derive from live chrome so blocked sessionStorage can still exit
-		const next = !modal.classList.contains('atlas-inspect-modal--fullscreen');
-		writeInspectModalFullscreen(next); // best-effort sticky
-		syncFullscreenChrome(modal, btn, next);
-	}
-
-	// Wire fullscreen control once (owns inspect chrome; footer close stays in wireUi)
-	const fullscreenBtn = $('atlas-inspect-fullscreen');
-	if (fullscreenBtn) {
-		fullscreenBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			toggleFullscreen();
-		});
-	}
-	applyFullscreenFromPref();
-
 	function closeInspectModal(): void {
 		const modal = $('atlas-inspect-modal') as
 			| (HTMLElement & { open?: boolean })
@@ -398,8 +367,6 @@ export function createInspectModals(deps: InspectModalDeps): {
 				programApplied,
 			);
 		}
-		// Re-apply sticky fullscreen class (survives close; not body rebuild)
-		applyFullscreenFromPref();
 		body.replaceChildren();
 
 		if (!evidence.length) {
@@ -408,8 +375,6 @@ export function createInspectModals(deps: InspectModalDeps): {
 			p.textContent = emptyHint;
 			body.appendChild(p);
 			modal.open = true;
-			// Re-apply after open so shadow part is present
-			applyFullscreenFromPref();
 			return;
 		}
 
@@ -459,8 +424,6 @@ export function createInspectModals(deps: InspectModalDeps): {
 
 		body.appendChild(accordion);
 		modal.open = true;
-		// Re-apply after open so shadow part is present
-		applyFullscreenFromPref();
 	}
 
 	function claimPrecision(): LocPrecision {
