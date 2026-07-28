@@ -67,6 +67,8 @@ type GlobalOpts = {
 	estimate: boolean;
 	/** Tree: emit full leaves (`--tree-full`); default summary. */
 	treeFull: boolean;
+	/** Mermaid: render indexed folder/file containment instead of dependencies. */
+	containment: boolean;
 	file?: string;
 	/** Git ref for impact --base (required for impact). */
 	base?: string;
@@ -112,13 +114,16 @@ source in output.
 Mermaid is plain text (flowchart LR): topFolder path-prefix rollup of runtime
 file→file imports, file SCC cycle honesty in %% comments, multi-prefix SCCs as
 subgraphs. Topology-only L1 Estimate (no Exact mass / no Program).
+With --containment, Mermaid emits flowchart TB folder/file containment from
+indexed paths only, with no dependency edges or cycle analysis.
 
 Impact usage cheatsheet (read order for large JSON):
   .grok/reference/impact-cheatsheet.md
 
 Options:
   --limit N       Top-N for ranking bins (digest/file catalog; impact movers /
-                  edge samples; mermaid max prefix nodes). Default ${CLI_LIMIT_DEFAULT}.
+                  edge samples; mermaid max prefix nodes, or max file leaves
+                  with --containment). Default ${CLI_LIMIT_DEFAULT}.
   --max-depth N   Max path segments from walk root for directory feeds.
                   Default ${DEFAULT_MAX_DEPTH}. 0 or negative = unlimited.
   --omit GLOB     Drop relative paths matching a picomatch glob (repeatable).
@@ -147,6 +152,7 @@ Options:
                   alias edges re-resolved. Soft-fail on error. Local classic
                   typescript only. Incomplete without node_modules; not LSP.
   --tree-full     Tree: full verbose leaves (default is summary directory rolls).
+  --containment   Mermaid: indexed folder/file hierarchy only (no import edges).
   --file <rel>    Relative path inside the project (required for file command).
   --out <path>    Write output to file instead of stdout (JSON for digest/tree/
                   file/impact; Mermaid text for mermaid).
@@ -163,6 +169,7 @@ Examples:
   arch-atlas digest fixtures/agent-artillery-shaped --scope product --alias '@/modules/artillery/*=./*'
   arch-atlas digest fixtures/agent-artillery-shaped --program --estimate
   arch-atlas mermaid fixtures/agent-artillery-shaped --limit 40
+  arch-atlas mermaid . --containment --limit 40
   npm run atlas -- digest . --omit fixtures
   npm run atlas -- digest fixtures/agent-artillery-shaped --program --estimate
   npm run atlas -- tree . --tree-full
@@ -191,6 +198,7 @@ function parseArgs(argv: string[]): {
 		exactLocalOnly: false,
 		estimate: false,
 		treeFull: false,
+		containment: false,
 		scope: 'full',
 		aliasRaw: [],
 		program: false,
@@ -225,6 +233,10 @@ function parseArgs(argv: string[]): {
 		}
 		if (a === '--tree-full') {
 			opts.treeFull = true;
+			continue;
+		}
+		if (a === '--containment') {
+			opts.containment = true;
 			continue;
 		}
 		if (a === '--program') {
@@ -667,6 +679,7 @@ export async function runCli(argv: string[]): Promise<number> {
 				graph,
 				catalog,
 				source,
+				mode: opts.containment ? 'containment' : 'dependencies',
 				scope: {
 					omit,
 					includeTests: !productScope,

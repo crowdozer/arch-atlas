@@ -12,6 +12,10 @@ import {
 	stronglyConnectedComponents,
 } from '@core/catalog/cycles.ts';
 import type { CodeGraph, MapCatalog } from '@core/graph/types.ts';
+import {
+	buildFileTree,
+	type FileTreeNode,
+} from '@core/tree/fileTree.ts';
 import { topFolder } from '@core/view/alluvial.ts';
 import type { AgentDigestSource } from '@core/export/agentDigest.ts';
 
@@ -19,6 +23,8 @@ const DEFAULT_LIMIT = 40;
 
 export type BuildAgentMermaidInput = {
 	graph: CodeGraph;
+	/** Projection mode. Default preserves the dependency rollup. */
+	mode?: 'dependencies' | 'containment';
 	/** Prefer catalog.cycles.runtime when present; else catalogCycles(graph, limit). */
 	catalog?: MapCatalog;
 	source: AgentDigestSource;
@@ -46,11 +52,69 @@ function edgeKey(a: string, b: string): string {
 	return `${a}\0${b}`;
 }
 
+function collectFilePaths(node: FileTreeNode, paths: string[]): void {
+	if (node.kind === 'file') {
+		paths.push(node.path);
+		return;
+	}
+	for (const child of node.children) collectFilePaths(child, paths);
+}
+
+function buildContainmentMermaid(
+	input: BuildAgentMermaidInput,
+	limit: number,
+): string {
+	const fullTree = buildFileTree([...input.graph.files.keys()]);
+	const filePaths: string[] = [];
+	collectFilePaths(fullTree, filePaths);
+	filePaths.sort((a, b) => a.localeCompare(b));
+
+	const keptPaths = filePaths.slice(0, limit);
+	const tree = buildFileTree(keptPaths);
+	let dirIndex = 0;
+	let fileIndex = 0;
+	const lines = [
+		'flowchart TB',
+		'%% arch-atlas structure · mode=containment · indexed paths only',
+		'%% analysis: observed file containment · no dependency edges · not a domain map',
+		`%% source: ${input.source.kind} ${input.source.path}`,
+	];
+	if (input.scope?.omit?.length) {
+		lines.push(`%% scope.omit: ${input.scope.omit.join(', ')}`);
+	}
+	if (input.scope?.presets?.length) {
+		lines.push(`%% scope.presets: ${input.scope.presets.join(', ')}`);
+	}
+	if (keptPaths.length < filePaths.length) {
+		lines.push(
+			`%% truncated: showing ${keptPaths.length} of ${filePaths.length} files (limit=${limit})`,
+		);
+	}
+
+	const renderNode = (node: FileTreeNode, depth: number): void => {
+		const indent = '  '.repeat(depth);
+		if (node.kind === 'file') {
+			lines.push(`${indent}n${fileIndex++}["${escapeLabel(node.name)}"]`);
+			return;
+		}
+		const id = `d${dirIndex++}`;
+		lines.push(`${indent}subgraph ${id}["${escapeLabel(node.name)}"]`);
+		for (const child of node.children) renderNode(child, depth + 1);
+		lines.push(`${indent}end`);
+	};
+
+	for (const child of tree.children) renderNode(child, 1);
+	return lines.join('\n') + '\n';
+}
+
 /**
  * Build pasteable Mermaid flowchart text (no JSON wrapper, no markdown fence).
  */
 export function buildAgentMermaid(input: BuildAgentMermaidInput): string {
 	const limit = Math.max(0, input.limit ?? DEFAULT_LIMIT);
+	if (input.mode === 'containment') {
+		return buildContainmentMermaid(input, limit);
+	}
 	const graph = input.graph;
 
 	// 1–3. Runtime file→file edges → prefix pairs (omit same-prefix self-loops)
