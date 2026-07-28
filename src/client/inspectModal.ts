@@ -93,17 +93,32 @@ export function formDirectionMarker(form: ImportForm): FormDirectionMarker {
 }
 
 /**
- * Accordion title direction for one evidence row.
- * Facets: statement form + export facet when imported-code present + import
- * facet when callsites present. Both directions → purple mixed/indeterminate.
+ * Accordion title direction for one evidence row = the edge's observed form.
+ *
+ * Do **not** treat `importedCode` / `callsites` as opposite-direction facets:
+ * those sections are hierarchy under the same form. A normal `import` edge with
+ * a target excerpt was incorrectly painted purple mixed.
+ *
+ * `mixed` is reserved for an explicit multi-form collapse (see
+ * {@link accordionDirectionFromForms}) — not for section presence.
  */
 export function accordionDirectionKind(ev: ImportEvidence): DirectionKind {
-	const facets = new Set<DirectionKind>();
-	facets.add(formDirectionMarker(ev.import.form).direction);
-	if (ev.importedCode) facets.add('export');
-	if (ev.callsites.length > 0) facets.add('import');
-	if (facets.has('import') && facets.has('export')) return 'mixed';
-	if (facets.has('export')) return 'export';
+	return formDirectionMarker(ev.import.form).direction;
+}
+
+/**
+ * Collapse multiple edge forms (e.g. if one accordion row ever represents
+ * several statements). Only then use purple indeterminate.
+ */
+export function accordionDirectionFromForms(
+	forms: readonly ImportForm[],
+): DirectionKind {
+	if (!forms.length) return 'import';
+	const dirs = new Set(
+		forms.map((f) => formDirectionMarker(f).direction),
+	);
+	if (dirs.has('import') && dirs.has('export')) return 'mixed';
+	if (dirs.has('export') && !dirs.has('import')) return 'export';
 	return 'import';
 }
 

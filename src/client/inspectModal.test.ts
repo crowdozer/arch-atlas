@@ -12,6 +12,7 @@ import {
 } from '@core/index.ts';
 import { precisionForSurfaceClaims } from '@shell/index.ts';
 import {
+	accordionDirectionFromForms,
 	accordionDirectionKind,
 	callsitesTitle,
 	directionMarker,
@@ -220,17 +221,17 @@ describe('formDirectionMarker', () => {
 });
 
 describe('accordionDirectionKind / directionMarker', () => {
-	it('statement-only import edge → import', () => {
+	it('follows edge form only — not section presence', () => {
 		expect(accordionDirectionKind(sampleEvidence())).toBe('import');
-	});
-
-	it('statement-only export edge → export', () => {
 		expect(
 			accordionDirectionKind(sampleEvidence({ form: 'export' })),
 		).toBe('export');
+		expect(
+			accordionDirectionKind(sampleEvidence({ form: 'require' })),
+		).toBe('import');
 	});
 
-	it('import form + imported code + callsites → mixed (both facets)', () => {
+	it('import form stays import even with importedCode + callsites', () => {
 		const ev: ImportEvidence = {
 			...sampleEvidence(),
 			importedCode: {
@@ -251,27 +252,21 @@ describe('accordionDirectionKind / directionMarker', () => {
 				},
 			],
 		};
-		expect(accordionDirectionKind(ev)).toBe('mixed');
+		// Regression: must not paint purple mixed for a pure import edge
+		expect(accordionDirectionKind(ev)).toBe('import');
 	});
 
-	it('import form + imported code only → mixed (import form + export facet)', () => {
+	it('export form stays export even with callsites / importedCode', () => {
 		const ev: ImportEvidence = {
-			...sampleEvidence(),
+			...sampleEvidence({ form: 'export' }),
 			importedCode: {
 				epistemic: 'observed',
-				path: 'src/hooks/useUser.ts',
+				path: 'src/a.ts',
 				startLine: 1,
-				endLine: 4,
+				endLine: 2,
 				text: 'export const x = 1;',
 				note: 'export surface',
 			},
-		};
-		expect(accordionDirectionKind(ev)).toBe('mixed');
-	});
-
-	it('export form + callsites → mixed', () => {
-		const ev: ImportEvidence = {
-			...sampleEvidence({ form: 'export' }),
 			callsites: [
 				{
 					epistemic: 'inferred',
@@ -282,7 +277,21 @@ describe('accordionDirectionKind / directionMarker', () => {
 				},
 			],
 		};
-		expect(accordionDirectionKind(ev)).toBe('mixed');
+		expect(accordionDirectionKind(ev)).toBe('export');
+	});
+
+	it('accordionDirectionFromForms is mixed only when both forms present', () => {
+		expect(accordionDirectionFromForms(['import'])).toBe('import');
+		expect(accordionDirectionFromForms(['export'])).toBe('export');
+		expect(accordionDirectionFromForms(['import', 'require'])).toBe(
+			'import',
+		);
+		expect(accordionDirectionFromForms(['import', 'export'])).toBe(
+			'mixed',
+		);
+		expect(accordionDirectionFromForms(['export', 'dynamic'])).toBe(
+			'mixed',
+		);
 	});
 
 	it('directionMarker mixed uses purple indeterminate class', () => {
