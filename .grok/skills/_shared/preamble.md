@@ -103,12 +103,12 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | Area | Path / focus |
 | ---- | ------------ |
 | Astro app shell | `src/pages/`, `src/layouts/` |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent builders in `export/agentDigest.ts`, `export/agentImpact.ts` |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest); agent builders in `export/agentDigest.ts`, `export/agentImpact.ts`, `export/agentMermaid.ts` |
 | Host-shared Exact | `src/exact/` (`@exact`) — export-surface load/provider; CDN fetch OK here, not in pure core |
 | Pure shell | `src/shell/` (`@shell`) — session/nav predicates, captions, payload project, control parsers; no document/Carbon/chart |
 | Alluvial stage | `src/stage/` (`@stage`) — `createAlluvialStage`, `polish/`, `focus/`, drill/carbonEvents/height; owns `@carbon/charts` |
 | Web client workspace | `src/client/` — `app.ts` composition root (host injectors, nav commit, `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts` — no Carbon/chart |
-| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `loadGitRef` (git archive), `digest` / `tree` / `file` / `impact` → JSON schemas `arch-atlas.agent-*.v1`; Exact via `@exact` |
+| Agent CLI host | `src/cli/` — `loadFeed` (dir/ZIP), `loadGitRef` (git archive), `digest` / `tree` / `file` / `mermaid` / `impact` → agent JSON or Mermaid text; Exact via `@exact` |
 | VS Code host (target) | `extension/` — **not landed** |
 | Framework adapters | _(TBD — L1 uses start/end heuristics only)_ |
 | UI / Carbon wrappers | `src/components/ui/`, `src/styles/` |
@@ -122,7 +122,8 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- digest\|tree\|file\|impact …` | Agent CLI lens (dir/ZIP or two git refs → agent JSON; digest Exact-default; see README) |
+| `npm run atlas -- digest\|tree\|file\|mermaid\|impact …` | Agent CLI lens (dir/ZIP or two git refs → agent JSON; mermaid → plain flowchart text; digest Exact-default; see README) |
+| `npm run atlas -- mermaid <dir\|zip> …` | Structure graph export (topFolder rollup + file SCC `%%` comments) |
 | `npm run atlas -- impact . --base <ref> --head <ref>` | Import-topology impact; cheatsheet [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 

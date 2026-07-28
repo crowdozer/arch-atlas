@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T00:07:17Z",
+  "generated_at": "2026-07-28T02:38:16Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 15,
   "entries": [
@@ -588,7 +588,7 @@
     {
       "id": "mermaid-structure-graph",
       "kind": "idea",
-      "state": "active",
+      "state": "implemented",
       "authority": "exploratory",
       "provenance": "user",
       "path": ".grok/catalog/entries/mermaid-structure-graph.md",
@@ -614,10 +614,12 @@
         "avoiding force-directed hairball for agent handoff"
       ],
       "touches": [
-        "src/core/export agent digest / tree / future mermaid builder",
-        "src/core graph edges + packages",
-        "path-prefix package rollup (existing Level-1)",
-        "optional web stage or shell panel that embeds mermaid",
+        "src/core/export/agentMermaid.ts",
+        "src/core/export/agentMermaid.test.ts",
+        "src/cli/main.ts (mermaid command)",
+        "src/cli/main.test.ts",
+        "src/core/index.ts (buildAgentMermaid export)",
+        "README.md / AGENTS.md agent CLI docs",
         "interchangeable-atlas-lenses",
         "dependency-structure-matrix",
         "hierarchical-heatmap-lens",

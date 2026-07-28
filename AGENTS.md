@@ -52,7 +52,8 @@ Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 | `npm run preview` | Preview production build |
 | `npm test` | Vitest core unit tests |
 | `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). |
+| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (topFolder rollup + file SCC `%%` honesty). |
+| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph (`flowchart LR`); cycle honesty in comments; `--limit` caps prefix nodes |
 | `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
 
@@ -71,9 +72,9 @@ Global role pack wires arch-atlas (soft-fail if missing): see
 
 | Area | Path / focus |
 | ---- | ------------ |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent JSON builders in `export/agentDigest.ts`, `export/agentImpact.ts` |
+| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent builders in `export/agentDigest.ts`, `export/agentImpact.ts`, `export/agentMermaid.ts` |
 | Host-shared Exact | `src/exact/` via `@exact` — export-surface engine load + provider (CDN/local OK); **not** pure core; CLI + web share this |
-| Agent CLI host | `src/cli/` — dir/ZIP feed + git-ref archive (`impact`) + `digest`/`tree`/`file`/`impact` JSON lens; Exact via `@exact` (no `src/client/` imports) |
+| Agent CLI host | `src/cli/` — dir/ZIP feed + git-ref archive (`impact`) + `digest`/`tree`/`file`/`mermaid`/`impact` lens; Exact via `@exact` (no `src/client/` imports) |
 | Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
 | Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
 | Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `sessionLifecycle.ts`, `wireUi.ts` — no `@carbon/charts` |

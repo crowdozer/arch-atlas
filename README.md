@@ -48,23 +48,25 @@ npm run build
 
 ## Agent CLI (local lens)
 
-Third host over pure core: directory or ZIP → JSON (no raw source). Level-1
+Third host over pure core: directory or ZIP → agent lens (no raw source). Level-1
 static import graph (JS/TS + Python + Astro script islands); not LSP / not
 tree-shake. **`digest` defaults Exact (export-surface mass)** when the engine
-loads; topology bins stay Estimate either way. Schemas:
+loads; topology bins stay Estimate either way. JSON schemas:
 `arch-atlas.agent-digest.v1`, `arch-atlas.agent-tree.v1`,
 `arch-atlas.agent-file.v1`, `arch-atlas.agent-impact.v1` (two git refs →
-topology delta). Full honesty (current tiers):
+topology delta). **`mermaid`** emits plain Mermaid flowchart text (not JSON).
+Full honesty (current tiers):
 [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md).
 **Multi-host capability direction (L0–L4, Program phases):**
 [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md).
 
 ```bash
 # via npm script (recommended in-repo)
-npm run atlas -- digest <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--estimate|--exact|--exact-local] [--out file.json]
-npm run atlas -- tree   <dir|zip> [--max-depth N] [--omit GLOB]… [--tree-full] [--out file.json]
-npm run atlas -- file   <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
-npm run atlas -- impact <git-repo> --base <ref> --head <ref> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- digest  <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--estimate|--exact|--exact-local] [--out file.json]
+npm run atlas -- tree    <dir|zip> [--max-depth N] [--omit GLOB]… [--tree-full] [--out file.json]
+npm run atlas -- file    <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
+npm run atlas -- mermaid <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.mmd]
+npm run atlas -- impact  <git-repo> --base <ref> --head <ref> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
 # after npm install: package bin (src/cli/bin.mjs → tsx main.ts)
 npx arch-atlas digest .
@@ -83,6 +85,10 @@ npm run atlas -- digest . --omit fixtures --estimate --out runtime.json
 npm run atlas -- tree . --out /tmp/tree-summary.json
 npm run atlas -- tree . --tree-full --out /tmp/tree-full.json
 
+# mermaid: pasteable structure graph (topFolder rollup; cycle honesty in %% comments)
+npm run atlas -- mermaid fixtures/agent-artillery-shaped --limit 40
+npm run atlas -- mermaid . --omit fixtures --out /tmp/structure.mmd
+
 # import-topology impact of a commit / branch (git archive both sides; no dirty tree)
 npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/impact.json
 npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/impact.json
@@ -90,18 +96,18 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 
 | Flag | Meaning |
 | ---- | ------- |
-| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples. Default **40**. |
+| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples; **mermaid max prefix nodes**. Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
 | `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. Omitted targets that other files still import stamp `toKind: 'omitted'` (not `unresolved`). |
-| `--alias P=T` | **Digest/tree/file/impact feed:** merge path alias rewrite (repeatable). Example: `@/modules/artillery/*=./*`. Stamped on `scope.aliasRewrites`. |
+| `--alias P=T` | **Digest/tree/file/mermaid/impact feed:** merge path alias rewrite (repeatable). Example: `@/modules/artillery/*=./*`. Stamped on `scope.aliasRewrites` (JSON lenses) / header comments (mermaid). |
 | `--scope full\|product` | Feed preset (default **full**). `product` drops tests + debug/scripts heuristics; stamps `scope.presets`. |
 | `--base <ref>` / `--head <ref>` | **Required** for `impact`: git refs to compare (materialized via `git archive`). |
 | `--estimate` | **Digest only:** skip Exact mass (estimate-only `fileLoc` / empty publicMass & icebergs). |
-| `--exact` | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/impact: no mass overlay (warn if passed). |
+| `--exact` | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/mermaid/impact: no mass overlay (warn if passed). |
 | `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only); also fail-closed. |
 | `--tree-full` | **Tree only:** full verbose file leaves. Default tree mode is **summary** (directory rolls with `fileCount` / `sourceCount`; leaves only for small folders or deep paths). |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
-| `--out <path>` | Write JSON to file instead of stdout. |
+| `--out <path>` | Write output to file instead of stdout (JSON for digest/tree/file/impact; **Mermaid text** for mermaid). |
 | `--program` | **Digest:** TypeScript `createProgram` over the feed VFS (opt-in). Soft-fail to L1 graph. L2/L3 capability stamps only with evidence. Not LSP. |
 | `--artifact <path>` | **Digest:** write portable `arch-atlas.artifact.v1` wrapper (payload = digest). Stdout/`--out` stay bare agent-digest. |
 | `-h`, `--help` | Usage. |
@@ -112,8 +118,8 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
   engine cannot load → warning + estimate digest (exit **0**).
 - **`--estimate`**: opt out (estimate-only mass).
 - **`--exact` / `--exact-local`**: fail-closed (exit **1** on engine failure).
-- **tree / file / impact**: topology-only (Exact mass never applied). Passing
-  `--exact` only warns that Exact is digest mass.
+- **tree / file / mermaid / impact**: topology-only (Exact mass never applied).
+  Passing `--exact` only warns that Exact is digest mass.
 
 Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
 **`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile`
@@ -128,6 +134,16 @@ Exact remains estimate-first / opt-in (CLI default does not flip web).
 delta, files/packages added/removed, edges added/removed, degree/blast movers).
 No raw source; no dual digests. Large output → read order and recipes in
 [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md).
+
+**Mermaid** (plain text, not JSON): `flowchart LR` structure sketch from the
+same Level-1 graph. Grain is **`topFolder` path-prefix** (not external npm
+packages). Runtime file→file imports roll up to cross-prefix edges (counts as
+edge labels). **Cycle honesty:** file-level runtime SCCs always appear in
+`%% cycles.runtime (file SCC)` comments (within-prefix knots stay visible even
+when they collapse to one node); multi-prefix SCCs wrap nodes in subgraphs
+(size-2 mutual pairs may use `<-->`). Topology-only L1 Estimate — no Exact
+mass, no Program, not a domain map. Paste into markdown/LLM UIs; optional
+`--out` for a `.mmd` file. Catalog: [mermaid-structure-graph](.grok/catalog/entries/mermaid-structure-graph.md).
 
 ### Agent digest fields (high level)
 
@@ -177,8 +193,9 @@ File LOC). When Exact is on, analysis may include `surfaceMetricNote`
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
 Path alone without a subcommand defaults to `digest`. Implementation: `src/cli/`
-+ pure builders in `src/core/export/agentDigest.ts` and
-`src/core/export/agentImpact.ts` (impact uses `src/cli/loadGitRef.ts`).
++ pure builders in `src/core/export/agentDigest.ts`,
+`src/core/export/agentImpact.ts`, and `src/core/export/agentMermaid.ts`
+(impact uses `src/cli/loadGitRef.ts`).
 
 ## Product sketch
 

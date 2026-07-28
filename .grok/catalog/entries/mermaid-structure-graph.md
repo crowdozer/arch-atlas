@@ -1,7 +1,7 @@
 ---
 id: mermaid-structure-graph
 kind: idea
-state: active
+state: implemented
 authority: exploratory
 provenance: user
 
@@ -25,10 +25,12 @@ applies_when:
   - CLI digest/tree companion that renders as mermaid
   - avoiding force-directed hairball for agent handoff
 touches:
-  - src/core/export agent digest / tree / future mermaid builder
-  - src/core graph edges + packages
-  - path-prefix package rollup (existing Level-1)
-  - optional web stage or shell panel that embeds mermaid
+  - src/core/export/agentMermaid.ts
+  - src/core/export/agentMermaid.test.ts
+  - src/cli/main.ts (mermaid command)
+  - src/cli/main.test.ts
+  - src/core/index.ts (buildAgentMermaid export)
+  - README.md / AGENTS.md agent CLI docs
   - interchangeable-atlas-lenses
   - dependency-structure-matrix
   - hierarchical-heatmap-lens
@@ -38,13 +40,12 @@ invariants:
   - Do not invent domain/feature labels; folder prefixes and observed imports only
   - Unresolved / external ends stay labeled honestly (Estimate/Exact honesty ladder)
   - Mermaid is a portable projection, not a second source of record
+  - File-level runtime SCCs always listed in %% comments (within-prefix honesty)
+  - Grain is topFolder path-prefix (not external npm package names)
 open_questions:
-  - Grain default: packages/path-prefixes vs top-N files vs hybrid
-  - Host: CLI text artifact only vs in-app mermaid render vs both
-  - Edge aggregation: package→package counts vs sampled file edges
-  - Size budgets for LLM paste vs file attach (collapse depth, max nodes)
-  - Cycle / multi-edge rendering in mermaid without becoming unreadable
-  - Whether tree (containment) and dependency (imports) are one diagram or two modes
+  - Hybrid expand (folder subgraphs + file leaves) deferred beyond v1 topFolder rollup
+  - In-app / web mermaid render vs CLI text-only (v1 is CLI text export)
+  - Whether a pure containment (tree) mermaid mode is worth a second command
 related:
   - interchangeable-atlas-lenses
   - dependency-structure-matrix
@@ -52,17 +53,26 @@ related:
   - analysis-capability-honesty
   - analysis-protocol-multi-host
   - geometric-vs-knot-architecture
-realized_by: []
+realized_by:
+  - src/core/export/agentMermaid.ts
+  - src/core/export/agentMermaid.test.ts
+  - src/cli/main.ts
+  - src/cli/main.test.ts
+  - src/core/index.ts
+  - README.md
+  - AGENTS.md
+  - .grok/skills/_shared/preamble.md
+  - "ship: 014be6a feat(cli): add mermaid structure graph export"
+  - "ship: b7ef96e test(cli): fix vacuous mermaid bidirectional edge assertion"
 superseded_by: null
 rationale_quality: full
 ---
 
 # Automated Mermaid structure graph (dependency + folder)
 
-Portable structure sketches sit under the multi-host **analysis protocol**
-([analysis-protocol.md](../../reference/analysis-protocol.md)) as a projection —
-not a second analyzer. Prefer L1+ graph interpretation (roles, SCC) before
-pretty diagrams.
+**Status:** implemented (v1 CLI). Command `arch-atlas mermaid <path>` emits
+pasteable Mermaid **text** (no JSON wrapper, no markdown fence). Projection of
+CodeGraph only; not a second analyzer.
 
 ## Problem
 
@@ -84,21 +94,30 @@ Not inferred domains, not feature classifiers, not “this looks like a hexagona
 core.” Output should be pasteable into ChatGPT/docs and regenerable from the
 same CodeGraph as other lenses.
 
-Sketch (illustrative, not a schema):
+## v1 decisions (landed)
+
+| Question | Decision |
+| -------- | -------- |
+| Command name | `mermaid` (alongside digest/tree/file/impact) |
+| Host / format | **CLI text export only** — plain `flowchart LR` to stdout / `--out` |
+| Grain | **`topFolder` path-prefix** rollup of runtime file→file imports (same-prefix self-loops omitted) |
+| Edge labels | Cross-prefix import **counts** |
+| Cycles | File SCCs always in `%% cycles.runtime (file SCC)` comments; multi-prefix SCCs as subgraphs; size-2 mutual pairs may use `<-->` |
+| Cap | `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible |
+| Analysis tier | L1 Estimate topology only — not Exact mass, not Program, not domain map |
+| Hybrid expand | **Deferred** (folder subgraphs + file leaves not in v1) |
+
+Header comments stamp source, scope omit/presets, truncation, and cycle honesty
+so within-prefix knots (e.g. physics↔weapons under `client/sim`) stay visible
+when they collapse to one topFolder node.
+
+Sketch (illustrative shape, not a schema):
 
 ```mermaid
-flowchart TB
-  subgraph client
-    sim
-    game
-    render
-  end
-  subgraph server
-    routes
-  end
-  game --> sim
-  game --> render
-  routes --> savegame
+flowchart LR
+  n0["client"]
+  n1["client/sim"]
+  n0 -->|"2"| n1
 ```
 
 ## Reasoning
@@ -113,8 +132,6 @@ flowchart TB
   directed coupling sketch** for small-medium grain.
 - **User constraint explicit:** “not inferred domain” — keep labeling path-true
   (`client/sim`, not “Gameplay Domain”).
-- Low implementation surface if first ship is **CLI export** from existing
-  package/edge rollups; UI embed can wait.
 
 ## Rejected alternatives + why
 
@@ -125,27 +142,24 @@ flowchart TB
 | Mermaid as only architecture lens | Loses mass/flow/heat; keep multi-lens atlas |
 | Hand-authored architecture diagrams as product SoR | Drift; must regenerate from graph |
 | Force-directed SVG instead of mermaid for agents | Less portable in chat; mermaid is the agent-facing shape |
+| External npm package names as grain | v1 is path-prefix structure of the repo, not package ecosystem map |
 
-## Open questions
+## Open questions (remaining)
 
-See frontmatter. Practical first cut candidates:
+See frontmatter. Practical follow-ons:
 
-1. **Package/prefix graph** — nodes = Level-1 packages; edge label = import count.  
-2. **Folder tree mode** — mermaid mindmap or nested subgraphs from tree lens only.  
-3. **Hybrid** — subgraphs = folders; edges = package-level imports (cap N nodes).
-
-Honesty: mark `unresolved:*` and externals; stamp Estimate vs Exact on the
-export header (topology edges unchanged by Exact mass overlay).
+1. **Hybrid expand** — subgraphs = folders; optional file leaves under a prefix.  
+2. **In-app mermaid** — embed render in web host vs keep CLI-only.  
+3. **Tree-only mode** — pure containment mindmap without import edges.
 
 ## Revisit when
 
-- Adding any non-alluvial structural export for agents or docs.
-- Designing a second lens after alluvial (compare vs heatmap/DSM priority).
-- ChatGPT / agent handoff packs need a diagram channel beyond JSON ranks.
+- Hybrid expand or web embed is prioritized.
 - Package rollup or omit-glob semantics change (affects default grain).
+- ChatGPT / agent handoff packs need a second diagram mode (containment-only).
 
 ## Provenance
 
 User idea after artillery ZIP agent-lens pack: automated mermaid based on
-dependency / folder structure, explicitly **not** inferred domain. Exploratory —
-no host or grain decided.
+dependency / folder structure, explicitly **not** inferred domain. v1 shipped as
+CLI text export with topFolder grain + file SCC comment honesty.
