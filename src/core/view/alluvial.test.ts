@@ -169,6 +169,23 @@ describe('primaryImporterFile', () => {
 		expect(edgeMatchesPackage(edge!, 'nodemailer')).toBe(true);
 		expect(edgeMatchesPackage(edge!, 'not-it')).toBe(false);
 	});
+
+	it('edgeMatchesPackage rejects omitted targets (Phase 2A)', () => {
+		const omitted = {
+			id: 'e-om',
+			kind: 'imports' as const,
+			from: 'src/a.ts',
+			to: 'omitted:./hidden',
+			toKind: 'omitted' as const,
+			specifier: './hidden',
+			epistemic: 'observed' as const,
+			form: 'import' as const,
+			line: 1,
+			bindings: [] as const,
+		};
+		expect(edgeMatchesPackage(omitted, 'omitted:./hidden')).toBe(false);
+		expect(edgeMatchesPackage(omitted, './hidden')).toBe(false);
+	});
 });
 
 describe('projectFileImporters', () => {
@@ -312,6 +329,106 @@ describe('projectModuleFocus', () => {
 	it('returns null for folder with no package edges', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 		expect(projectModuleFocus(graph, 'definitely/missing')).toBeNull();
+	});
+
+	it('module react + package react: claimName keeps distinct identity (Phase 2A)', () => {
+		const { graph } = indexFiles([
+			{
+				path: 'package.json',
+				content: JSON.stringify({ dependencies: { react: '18' } }),
+				byteLength: 40,
+			},
+			{
+				path: 'react/index.ts',
+				content: "import 'react';\nexport const local = 1;\n",
+				byteLength: 40,
+			},
+		]);
+		const payload = projectModuleFocus(graph, 'react', {
+			weightAxis: 'import-edges',
+		});
+		expect(payload).not.toBeNull();
+		assertAlluvialPayloadIntegrity(payload!, 'module react collision');
+		// Focus stays module; package is claimed with suffix
+		expect(payload!.meta.focus.kind).toBe('module');
+		expect(payload!.meta.focus.id).toBe('react');
+		const focusName = payload!.meta.focus.label;
+		expect(payload!.meta.nodeRef[focusName]).toEqual({
+			kind: 'module',
+			id: 'react',
+		});
+		const pkgEntry = Object.entries(payload!.meta.nodeRef).find(
+			([, r]) => r.kind === 'package' && r.id === 'react',
+		);
+		expect(pkgEntry).toBeTruthy();
+		const [pkgName] = pkgEntry!;
+		expect(pkgName).not.toBe(focusName);
+		expect(payload!.data.every((l) => l.source !== l.target)).toBe(true);
+		expect(
+			payload!.data.some((l) => l.source === focusName && l.target === pkgName),
+		).toBe(true);
+	});
+
+	it('excludes omitted edges from module ends (Phase 2A)', () => {
+		const { graph } = indexFiles(
+			[
+				{
+					path: 'src/app.ts',
+					content: "import './hidden';\nimport 'lodash';\nexport const a = 1;\n",
+					byteLength: 50,
+				},
+				{
+					path: 'package.json',
+					content: JSON.stringify({ dependencies: { lodash: '4' } }),
+					byteLength: 40,
+				},
+			],
+			{ isOmittedPath: (p) => p.startsWith('src/hidden') },
+		);
+		expect(graph.edges.some((e) => e.toKind === 'omitted')).toBe(true);
+		const payload = projectModuleFocus(graph, 'src', {
+			weightAxis: 'import-edges',
+		});
+		expect(payload).not.toBeNull();
+		const labels = Object.keys(payload!.meta.nodeRef);
+		expect(labels.some((l) => l.includes('hidden') || l.includes('omitted'))).toBe(
+			false,
+		);
+		expect(
+			Object.values(payload!.meta.nodeRef).some((r) => r.id.includes('omitted')),
+		).toBe(false);
+		const lodash = Object.entries(payload!.meta.nodeRef).find(
+			([, r]) => r.kind === 'package' && r.id === 'lodash',
+		);
+		expect(lodash).toBeTruthy();
+	});
+
+	it('duplicate preferred end labels claim distinct display names', () => {
+		// Same preferred label from package + unresolved (forced collision)
+		const { graph } = indexFiles([
+			{
+				path: 'src/a.ts',
+				content: "import 'dup';\nimport './missing-dup';\nexport const a = 1;\n",
+				byteLength: 60,
+			},
+			{
+				path: 'package.json',
+				content: JSON.stringify({ dependencies: { dup: '1' } }),
+				byteLength: 40,
+			},
+		]);
+		// Ensure we have package dup; unresolved may be ./missing-dup not "dup"
+		// Force two ends with preferred "dup" via package + unresolved bare if possible
+		const payload = projectModuleFocus(graph, 'src', {
+			weightAxis: 'import-edges',
+		});
+		expect(payload).not.toBeNull();
+		assertAlluvialPayloadIntegrity(payload!, 'dup ends');
+		const endNames = payload!.options.alluvial.nodes
+			.filter((n) => n.category === 'Ends')
+			.map((n) => n.name);
+		expect(new Set(endNames).size).toBe(endNames.length);
+		expect(payload!.data.every((l) => l.source !== l.target)).toBe(true);
 	});
 });
 

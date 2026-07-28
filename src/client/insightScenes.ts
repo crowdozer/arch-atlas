@@ -105,7 +105,7 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Module folder `react` imports package `react` — display name overwrites identity.',
 		triagePacket: '2A',
 		lookFor:
-			'Broken: module view may self-link react→react or overwrite the module node kind.',
+			'Fixed (2A): module and package react keep distinct claimed labels; no self-link.',
 		expectAfterFix:
 			'Module and package keep distinct claimed labels; nodeRef ids stay stable.',
 		open: {
@@ -139,7 +139,7 @@ export const INSIGHT_SCENES: readonly InsightScene[] = [
 			'Feed-omitted relative import leaks into module package ends.',
 		triagePacket: '2A',
 		lookFor:
-			'Broken: module `src` ends include the omitted `./hidden` target as an architecture end.',
+			'Fixed (2A): module `src` ends exclude omitted `./hidden`; lodash remains.',
 		expectAfterFix:
 			'Omitted edges never appear as module/package architecture ends (catalog already excludes them).',
 		open: {

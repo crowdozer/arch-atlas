@@ -33,7 +33,7 @@ const scenes = [
 		description:
 			'Module folder `react` imports package `react` — display name overwrites identity.',
 		lookFor:
-			'Broken: module view may self-link react→react or overwrite the module node kind.',
+			'Fixed (2A): module and package react keep distinct claimed labels; no self-link.',
 	},
 	{
 		id: 'sticky-package',
@@ -51,7 +51,7 @@ const scenes = [
 		description:
 			'Feed-omitted relative import leaks into module package ends.',
 		lookFor:
-			'Broken: module `src` ends include the omitted `./hidden` target as an architecture end.',
+			'Fixed (2A): module ends exclude omitted; lodash remains.',
 	},
 ] as const;
 ---

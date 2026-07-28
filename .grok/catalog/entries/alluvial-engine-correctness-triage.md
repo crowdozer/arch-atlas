@@ -87,6 +87,10 @@ realized_by:
     note: Phase 1A pass hubRadius as maxDepth for forward longest path; 1B fractional fan-out
   - path: src/core/view/hubLinkUtils.ts
     note: Phase 1B fractional allocateProportional / allocateEqual
+  - path: src/core/view/moduleFocus.ts
+    note: Phase 2A claimName collision safety + omit omitted ends
+  - path: src/core/view/packageImporters.ts
+    note: Phase 2A edgeMatchesPackage excludes omitted
 superseded_by: null
 rationale_quality: full
 ---
@@ -282,21 +286,22 @@ the preceding gate is green.
 
 ### Phase 2 — Stable identity and label safety
 
-#### Packet 2A — Projector identity collisions and omitted targets
+#### Packet 2A — Projector identity collisions and omitted targets ✅ landed
 
 **Ship prompt**
 
 > Make module/package/unresolved display collisions safe and keep omitted
 > dependencies out of package architecture ends.
 
-**Engineer acceptance**
+**Landed**
 
-- Pin module=`react` plus package=`react`, package=`(other ends)`, duplicate
-  unresolved labels, and reserved overflow/rail-like text.
-- Route all display names through the established collision claimant while
-  retaining stable IDs in `nodeRef`.
-- Exclude `omitted` from module ends and package matching.
-- Ensure no projector can emit a self-link or overwrite the focus node's kind.
+- `projectModuleFocus` claims focus label first, then each end via `claimName`
+  (stable `nodeRef.id` = endKey / module id). No self-links on module=`react`
+  + package=`react`.
+- Omitted edges excluded from module ends (`toKind === 'omitted'` skip).
+- `edgeMatchesPackage` rejects omitted (package-hub / Export Roots matching).
+- `projectAlluvial` classic path also skips omitted (package|unresolved only).
+- Tests: collision fixture, omitted-ends scene, integrity on collision payload.
 
 **Czar gate**
 

@@ -4,6 +4,10 @@
  *
  * Unit = one package/unresolved edge from a file in that folder.
  * Focus subject on the left (same convention as package drill-down).
+ *
+ * Display labels go through {@link claimName} so module folder vs package /
+ * unresolved collisions never overwrite nodeRef or emit self-links.
+ * Feed-omitted targets are excluded (catalog ends parity).
  */
 
 import type {
@@ -20,6 +24,7 @@ import {
 	type WeightAxis,
 } from '@core/view/alluvial.ts';
 import type { ImportedSurfaceProvider } from '@core/view/importedSurface.ts';
+import { claimName } from '@core/view/hubLinkUtils.ts';
 import {
 	edgeWeight,
 	pickEdgeWeightOpts,
@@ -51,11 +56,16 @@ export function projectModuleFocus(
 	const edgeWeightOpts = pickEdgeWeightOpts(opts);
 	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
 
-	// endKey → { label, kind, mass }
-	const endCounts = new Map<string, { label: string; kind: string; n: number }>();
+	// endKey → { preferredLabel, kind, mass } — kind is package | unresolved only
+	const endCounts = new Map<
+		string,
+		{ label: string; kind: 'package' | 'unresolved'; n: number }
+	>();
 
 	for (const e of graph.edges) {
-		if (e.toKind === 'file') continue;
+		// Architecture ends only — not file targets, not feed-omitted
+		if (e.toKind === 'file' || e.toKind === 'omitted') continue;
+		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
 		if (topFolder(e.from) !== moduleFolder) continue;
 
 		const label =
@@ -68,10 +78,13 @@ export function projectModuleFocus(
 
 	if (!endCounts.size) return null;
 
+	// Focus claims its preferred name first so package ends cannot overwrite it
+	const usedNames = new Set<string>();
+	const focusLabel = claimName(usedNames, moduleFolder, 'module');
 	const focus: AlluvialFocus = {
 		kind: 'module',
 		id: moduleFolder,
-		label: moduleFolder,
+		label: focusLabel,
 	};
 
 	const ranked = [...endCounts.entries()].sort(
@@ -83,35 +96,47 @@ export function projectModuleFocus(
 
 	const linkMap = new Map<string, number>();
 	const nodeRef: Record<string, AlluvialNodeRef> = {
-		[moduleFolder]: { kind: 'module', id: moduleFolder },
+		[focusLabel]: { kind: 'module', id: moduleFolder },
 	};
 	const nodeMeta = new Map<string, { category: string; color: string }>();
-	nodeMeta.set(moduleFolder, { category: 'Module', color: TEAL.module });
+	nodeMeta.set(focusLabel, { category: 'Module', color: TEAL.module });
 
-	const otherLabel = '(other ends)';
+	// endKey → claimed display name (stable id remains endKey in nodeRef)
+	const displayForEnd = new Map<string, string>();
+	const otherLabel = hasOther
+		? claimName(usedNames, '(other ends)', 'bucket')
+		: '';
+
 	for (const [endKey, info] of endCounts) {
-		const target = topKeys.has(endKey) ? info.label : otherLabel;
-		// Module (left) → Package end (right)
-		const k = `${moduleFolder}\0${target}`;
-		linkMap.set(k, (linkMap.get(k) ?? 0) + info.n);
-
-		if (target === otherLabel) continue;
-		nodeRef[target] = {
-			kind: info.kind === 'unresolved' ? 'unresolved' : 'package',
+		if (!topKeys.has(endKey)) continue;
+		const suffix = info.kind === 'unresolved' ? 'unresolved' : 'package';
+		const display = claimName(usedNames, info.label, suffix);
+		displayForEnd.set(endKey, display);
+		nodeRef[display] = {
+			kind: info.kind,
 			id: endKey,
 		};
 		const color =
 			info.kind === 'unresolved'
 				? TEAL.unresolved
-				: info.kind === 'package' &&
-					  graph.packages.get(endKey)?.source === 'builtin'
+				: graph.packages.get(endKey)?.source === 'builtin'
 					? TEAL.builtin
 					: TEAL.package;
-		nodeMeta.set(target, { category: 'Ends', color });
+		nodeMeta.set(display, { category: 'Ends', color });
 	}
-	if (hasOther) {
-		nodeRef[otherLabel] = { kind: 'bucket', id: otherLabel };
+	if (hasOther && otherLabel) {
+		nodeRef[otherLabel] = { kind: 'bucket', id: '(other ends)' };
 		nodeMeta.set(otherLabel, { category: 'Ends', color: TEAL.other });
+	}
+
+	for (const [endKey, info] of endCounts) {
+		const target = topKeys.has(endKey)
+			? (displayForEnd.get(endKey) ?? info.label)
+			: otherLabel;
+		if (!target) continue;
+		// Module (left) → Package end (right) — always distinct endpoints
+		const k = `${focusLabel}\0${target}`;
+		linkMap.set(k, (linkMap.get(k) ?? 0) + info.n);
 	}
 
 	const links = [...linkMap.entries()].map(([k, value]) => {

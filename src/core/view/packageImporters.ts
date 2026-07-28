@@ -10,7 +10,9 @@ import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';
 
 /** True when edge targets the given package id or display label. */
 export function edgeMatchesPackage(e: ImportEdge, packageIdOrLabel: string): boolean {
-	if (e.toKind === 'file') return false;
+	// Not architecture package ends: files and feed-omitted targets
+	if (e.toKind === 'file' || e.toKind === 'omitted') return false;
+	if (e.toKind !== 'package' && e.toKind !== 'unresolved') return false;
 	if (e.to === packageIdOrLabel) return true;
 	const label =
 		e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');

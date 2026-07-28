@@ -621,7 +621,8 @@ export function projectAlluvial(
 
 	for (const e of graph.edges) {
 		if (!reachable.has(e.from)) continue;
-		if (e.toKind === 'file') continue;
+		// Architecture ends only — not files, not feed-omitted
+		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
 
 		const label =
 			e.toKind === 'unresolved' ? e.specifier : e.to.replace(/^unresolved:/, '');

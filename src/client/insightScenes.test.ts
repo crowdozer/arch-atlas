@@ -139,17 +139,20 @@ describe('insight scene characterizations (known broken today)', () => {
 		expect(cNodes.length).toBeGreaterThan(0);
 	});
 
-	it('label-collision: module react + package react collapses display identity', () => {
+	it('label-collision: module react + package react stay distinct (Phase 2A)', () => {
 		const files = loadSceneFiles('label-collision');
 		const { graph } = indexFiles(files);
 		const payload = projectModuleFocus(graph, 'react');
 		expect(payload).not.toBeNull();
-		const selfLinks = payload!.data.filter((l) => l.source === l.target);
-		const focusRef = payload!.meta.nodeRef['react'];
-		const hasSelf = selfLinks.length > 0;
-		const focusOverwritten =
-			focusRef != null && focusRef.kind !== 'module';
-		expect(hasSelf || focusOverwritten).toBe(true);
+		expect(payload!.data.every((l) => l.source !== l.target)).toBe(true);
+		const focusName = payload!.meta.focus.label;
+		expect(payload!.meta.nodeRef[focusName]?.kind).toBe('module');
+		expect(payload!.meta.nodeRef[focusName]?.id).toBe('react');
+		const pkg = Object.entries(payload!.meta.nodeRef).find(
+			([, r]) => r.kind === 'package' && r.id === 'react',
+		);
+		expect(pkg).toBeTruthy();
+		expect(pkg![0]).not.toBe(focusName);
 	});
 
 	it('sticky-package: file hub paints claimName suffix for package react', () => {
@@ -169,7 +172,7 @@ describe('insight scene characterizations (known broken today)', () => {
 		expect(painted).toBe('react · package');
 	});
 
-	it('omitted-ends: module focus includes omitted target (catalog ends do not)', () => {
+	it('omitted-ends: module focus excludes omitted target (Phase 2A)', () => {
 		const files = loadSceneFiles('omitted-ends');
 		const omit = sceneOmitMatcher(
 			getInsightScene('omitted-ends').omitPathPrefixes,
@@ -181,10 +184,20 @@ describe('insight scene characterizations (known broken today)', () => {
 		const payload = projectModuleFocus(graph, 'src');
 		expect(payload).not.toBeNull();
 		const labels = Object.keys(payload!.meta.nodeRef);
-		const leaked = labels.some(
-			(l) => l.includes('hidden') || l.includes('omitted'),
-		);
-		expect(leaked).toBe(true);
+		expect(
+			labels.some((l) => l.includes('hidden') || l.includes('omitted')),
+		).toBe(false);
+		expect(
+			Object.values(payload!.meta.nodeRef).some((r) =>
+				r.id.includes('omitted'),
+			),
+		).toBe(false);
+		// lodash package end still present
+		expect(
+			Object.values(payload!.meta.nodeRef).some(
+				(r) => r.kind === 'package' && r.id === 'lodash',
+			),
+		).toBe(true);
 	});
 });
 
