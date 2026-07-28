@@ -124,7 +124,7 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | `npm test` | Vitest (core unit tests) |
 | `npm run astro` | Astro CLI passthrough |
 | `npm run atlas -- digest\|tree\|file\|mermaid\|impact …` | Agent CLI lens (dir/ZIP or two git refs → agent JSON; mermaid → plain flowchart text; digest Exact-default; see README) |
-| `npm run atlas -- mermaid <dir\|zip> …` | Structure graph export: default topFolder dependency rollup + file SCC `%%` comments; `--containment` emits indexed folder/file hierarchy without edges/SCCs. Dependency mode is cycle **honesty**, not full audit — [cycles-cheatsheet.md](../../reference/cycles-cheatsheet.md) |
+| `npm run atlas -- mermaid <dir\|zip> …` | Structure graph export: default topFolder dependency rollup + file SCC `%%` comments; `--containment` emits indexed folder/file hierarchy without edges/SCCs (default presentation=summary; `--tree-full` for full leaves). Dependency mode is cycle **honesty**, not full audit — [cycles-cheatsheet.md](../../reference/cycles-cheatsheet.md) |
 | `npm run atlas -- impact . --base <ref> --head <ref>` | Import-topology impact; cheatsheet [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) |
 | `arch-atlas` (bin) | Same as `npm run atlas` via `src/cli/bin.mjs` |
 

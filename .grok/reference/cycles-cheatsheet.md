@@ -15,13 +15,16 @@ file→file edges. Lenses differ in **shape** and **caps**, not in algorithm.
 | Goal | Prefer | Why |
 | ---- | ------ | --- |
 | **Enumerate** circular chains (machine-readable) | `digest` → `catalog.cycles` | Structured `{ runtime, type }` SCC rows: `size`, `edgeCount`, `samplePaths` |
-| **Glance** structure + cycle honesty for chat/docs | `mermaid` | `flowchart LR` + `%% cycles.runtime (file SCC)` comments + multi-prefix SCC subgraphs |
+| **Glance** structure + cycle honesty for chat/docs | `mermaid` (dependency mode, default) | `flowchart LR` + `%% cycles.runtime (file SCC)` comments + multi-prefix SCC subgraphs |
+| Folder/file containment sketch only | `mermaid --containment` | `flowchart TB` indexed hierarchy; **no** import edges or SCC comments (default **summary** presentation; not a cycle glance) |
 | Neighborhood of one path in a knot | `file --file <rel>` | Imports / importers around a sample path |
 | Cycle **change** between two refs | `impact` | Topology delta only — **no** dedicated SCC-delta field today; infer from edge movers / degree |
 
 **Anti-pattern:** “Run mermaid only and treat the diagram as the full cycle
-audit.” Mermaid grain is **topFolder** rollup; within-folder file cycles
-**collapse to one node** and live only in header comments (sample paths).
+audit.” Dependency mermaid grain is **topFolder** rollup; within-folder file
+cycles **collapse to one node** and live only in header comments (sample paths).
+**`--containment` is not cycle honesty** — summary or full folder tree only;
+use default dependency mermaid (or `digest` SCCs) for cycles.
 
 ## Recipes
 
@@ -110,10 +113,11 @@ type-only). Cite sample paths; do not dump the array.
 | Runtime vs type | Runtime: `!typeOnly`. Type: `typeOnly` only. Ranking elsewhere also prefers runtime |
 | `samplePaths` | Max **8** paths per SCC row — large components are sampled, not fully listed |
 | Digest `--limit` | Caps how many SCCs appear per partition (default **40**), ranked by size then edgeCount |
-| Mermaid `--limit` | Caps **prefix nodes** in the flowchart (default **40**); SCC-related prefixes force-include when possible |
-| Mermaid file SCC list | From catalog when present; else `catalogCycles(graph, max(limit, 15))` |
-| Mermaid grain | **topFolder** path-prefix; same-prefix self-loops omitted from edges |
-| Within-prefix cycles | Visible in **comments** only, not as multi-node diagram SCCs |
+| Mermaid `--limit` | Dependency: caps **prefix nodes** (default **40**); SCC-related prefixes force-include when possible. Containment: max expanded leaves (summary) or balanced max file leaves (full) — no SCC effect |
+| Mermaid file SCC list | Dependency mode only: from catalog when present; else `catalogCycles(graph, max(limit, 15))` |
+| Mermaid grain | Dependency: **topFolder** path-prefix; same-prefix self-loops omitted from edges. Containment: indexed paths only (`presentation=summary\|full`) |
+| Within-prefix cycles | Dependency: visible in **comments** only, not as multi-node diagram SCCs. Containment: not reported |
+| `mermaid --containment` | Hierarchy only; default summary (tree-like); **not** a substitute for cycle honesty or `digest` SCCs |
 | `typeOnly` classification | Best-effort (`import { type X }` may still look like value form) |
 | Exact / Program | **Irrelevant** to cycle topology; mermaid is always L1 Estimate topology |
 

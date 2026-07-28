@@ -67,15 +67,18 @@ realized_by:
   - "ship: 014be6a feat(cli): add mermaid structure graph export"
   - "ship: b7ef96e test(cli): fix vacuous mermaid bidirectional edge assertion"
   - "ship: e238d49 feat(core): add Mermaid containment projection"
+  - "ship: 2fea53e feat(core): summary-default mermaid containment + balanced full leaves"
+  - "ship: 0ba060f chore(arch-atlas): merge mermaid agent-default containment"
 superseded_by: null
 rationale_quality: full
 ---
 
 # Automated Mermaid structure graph (dependency + folder)
 
-**Status:** implemented (CLI dependency + containment modes). Command
-`arch-atlas mermaid <path>` emits pasteable Mermaid **text** (no JSON wrapper,
-no markdown fence). Projection of CodeGraph only; not a second analyzer.
+**Status:** implemented (CLI dependency + containment modes; containment default
+presentation=summary). Command `arch-atlas mermaid <path>` emits pasteable
+Mermaid **text** (no JSON wrapper, no markdown fence). Projection of CodeGraph
+only; not a second analyzer.
 
 ## Problem
 
@@ -106,15 +109,18 @@ same CodeGraph as other lenses.
 | Grain | **`topFolder` path-prefix** rollup of runtime file→file imports (same-prefix self-loops omitted) |
 | Edge labels | Cross-prefix import **counts** |
 | Cycles | File SCCs always in `%% cycles.runtime (file SCC)` comments; multi-prefix SCCs as subgraphs; size-2 mutual pairs may use `<-->` |
-| Cap | `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible |
+| Cap | Dependency: `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible |
 | Analysis tier | L1 Estimate topology only — not Exact mass, not Program, not domain map |
 | Hybrid expand | **Deferred** in dependency mode |
 | Containment | Opt-in `--containment`: `flowchart TB`, indexed folder/file paths only, no edges or SCCs |
-| Containment cap | `--limit N` alphabetically ordered file leaves; ancestors retained |
+| Containment presentation | Default **`summary`** (mirrors tree summary): keep all directory nodes; expand file leaves only when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may include `(N files)`. Full leaves: `--tree-full` → `presentation=full` |
+| Containment cap | Summary: `--limit` max expanded leaves (dir skeleton always complete). Full: `--limit` max file leaves via **balanced** round-robin by top-level folder (not alphabetic global head). Headers stamp `presentation=summary\|full` |
+| `--tree-full` | Tree verbose leaves **and** mermaid containment full leaves (CLI reuses the same flag) |
 
-Header comments stamp source, scope omit/presets, truncation, and cycle honesty
-so within-prefix knots (e.g. physics↔weapons under `client/sim`) stay visible
-when they collapse to one topFolder node.
+Header comments stamp source, scope omit/presets, truncation, presentation
+(containment), and cycle honesty (dependency only) so within-prefix knots
+(e.g. physics↔weapons under `client/sim`) stay visible when they collapse to one
+topFolder node.
 
 Sketch (illustrative shape, not a schema):
 
@@ -153,14 +159,16 @@ flowchart LR
 
 See frontmatter. Practical follow-ons:
 
-1. **Hybrid expand** — subgraphs = folders; optional file leaves under a prefix.  
+1. **Hybrid expand** — subgraphs = folders; optional file leaves under a prefix
+   (dependency mode; containment summary already expands selectively).  
 2. **In-app mermaid** — embed render in web host vs keep CLI-only.  
 
 ## Revisit when
 
 - Hybrid expand or web embed is prioritized.
 - Package rollup or omit-glob semantics change (affects default grain).
-- Containment output needs optional directory-chain compaction or another path presentation policy.
+- Containment summary thresholds (`SUMMARY_MAX_LEAF_DEPTH` / `SUMMARY_SMALL_FOLDER_MAX`
+  in `agentMermaid.ts`, kept in sync with tree `summarizeTree`) need retuning.
 
 ## Provenance
 
@@ -168,4 +176,5 @@ User idea after artillery ZIP agent-lens pack: automated mermaid based on
 dependency / folder structure, explicitly **not** inferred domain. v1 shipped as
 CLI text export with topFolder grain + file SCC comment honesty. A later ship
 added opt-in containment from indexed paths while leaving dependency output
-unchanged.
+unchanged. Agent-default ship made containment **summary** by default (tree-like
+dir skeleton + selective leaves) with balanced full-leaf cap under `--tree-full`.

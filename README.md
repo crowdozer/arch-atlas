@@ -65,7 +65,7 @@ Full honesty (current tiers):
 npm run atlas -- digest  <dir|zip> [--limit N] [--max-depth N] [--omit GLOB]… [--estimate|--exact|--exact-local] [--out file.json]
 npm run atlas -- tree    <dir|zip> [--max-depth N] [--omit GLOB]… [--tree-full] [--out file.json]
 npm run atlas -- file    <dir|zip> --file <relpath> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
-npm run atlas -- mermaid <dir|zip> [--containment] [--limit N] [--max-depth N] [--omit GLOB]… [--out file.mmd]
+npm run atlas -- mermaid <dir|zip> [--containment] [--tree-full] [--limit N] [--max-depth N] [--omit GLOB]… [--out file.mmd]
 npm run atlas -- impact  <git-repo> --base <ref> --head <ref> [--limit N] [--max-depth N] [--omit GLOB]… [--out file.json]
 
 # after npm install: package bin (src/cli/bin.mjs → tsx main.ts)
@@ -89,7 +89,9 @@ npm run atlas -- tree . --tree-full --out /tmp/tree-full.json
 npm run atlas -- mermaid fixtures/agent-artillery-shaped --limit 40
 npm run atlas -- mermaid . --omit fixtures --out /tmp/structure.mmd
 # containment: indexed folder/file hierarchy only (no import edges or SCCs)
+# default presentation=summary (all dirs; selective leaves); --tree-full for full leaves
 npm run atlas -- mermaid . --containment --limit 40
+npm run atlas -- mermaid . --containment --tree-full --limit 80
 
 # cycle scan: enumerate SCCs via digest (prefer --estimate); sketch via mermaid
 # → full recipe: .grok/reference/cycles-cheatsheet.md
@@ -103,7 +105,7 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 
 | Flag | Meaning |
 | ---- | ------- |
-| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples; Mermaid max prefix nodes, or alphabetically ordered file leaves with `--containment` (ancestors retained). Default **40**. |
+| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples; Mermaid dependency max prefix nodes; containment **summary** = max expanded file leaves (full dir skeleton always); containment **full** (`--tree-full`) = balanced max file leaves (round-robin by top-level folder, not alphabetic global head). Default **40**. |
 | `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
 | `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. Omitted targets that other files still import stamp `toKind: 'omitted'` (not `unresolved`). |
 | `--alias P=T` | **Digest/tree/file/mermaid/impact feed:** merge path alias rewrite (repeatable). Example: `@/modules/artillery/*=./*`. Stamped on `scope.aliasRewrites` (JSON lenses) / header comments (mermaid). |
@@ -112,8 +114,8 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 | `--estimate` | **Digest only:** skip Exact mass (estimate-only `fileLoc` / empty publicMass & icebergs). |
 | `--exact` | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/mermaid/impact: no mass overlay (warn if passed). |
 | `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only); also fail-closed. |
-| `--tree-full` | **Tree only:** full verbose file leaves. Default tree mode is **summary** (directory rolls with `fileCount` / `sourceCount`; leaves only for small folders or deep paths). |
-| `--containment` | **Mermaid only:** emit a `flowchart TB` hierarchy of indexed folders/files. No import edges or SCC analysis; default Mermaid dependency mode is unchanged. |
+| `--tree-full` | **Tree:** full verbose file leaves (default tree is **summary** directory rolls). **Also Mermaid `--containment`:** full leaves under balanced `--limit` (default containment is **summary** hierarchy). |
+| `--containment` | **Mermaid only:** emit a `flowchart TB` hierarchy of indexed folders/files. No import edges or SCC analysis. Default **presentation=summary** (all dirs; expand leaves when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may show `(N files)`). Add `--tree-full` for full leaves. Dependency mode is unchanged. |
 | `--file <rel>` | Relative path inside the project (**required** for `file`). |
 | `--out <path>` | Write output to file instead of stdout (JSON for digest/tree/file/impact; **Mermaid text** for mermaid). |
 | `--program` | **Digest:** TypeScript `createProgram` over the feed VFS (opt-in). Soft-fail to L1 graph. L2/L3 capability stamps only with evidence. Not LSP. |
@@ -153,10 +155,16 @@ nodes in subgraphs (size-2 mutual pairs may use `<-->`).
 
 Opt-in **`--containment`** emits a `flowchart TB` hierarchy from indexed file
 paths only. Directories are nested subgraphs, files are leaves, and there are no
-import edges or SCC comments. `--limit` caps file leaves in relative-path
-alphabetical order while retaining their ancestors; `--max-depth` still limits
-the feed walk, not rendered nesting. Default dependency output is unchanged.
-Both modes are local, not domain maps, and support `--out` for a `.mmd` file.
+import edges or SCC comments (not a cycle glance — use default dependency mermaid
+for that). Default **presentation=summary** mirrors tree summary: keep every
+directory; expand file leaves only when the folder is small (`fileCount ≤ 8`) or
+depth ≥ 3; rolled dirs may label `(N files)`. Headers stamp
+`presentation=summary|full`. **`--tree-full`** with `--containment` expands full
+leaves; `--limit` then caps leaves with **balanced** selection (round-robin across
+top-level folders). In summary mode `--limit` caps expanded leaves while the dir
+skeleton stays complete. `--max-depth` still limits the feed walk, not rendered
+nesting. Default dependency output is unchanged. Both modes are local, not domain
+maps, and support `--out` for a `.mmd` file.
 Catalog: [mermaid-structure-graph](.grok/catalog/entries/mermaid-structure-graph.md).
 
 ### Cycle scan (circular import chains)
