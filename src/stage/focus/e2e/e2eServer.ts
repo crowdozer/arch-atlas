@@ -4,9 +4,19 @@
  * Does **not** use or stop a human `astro dev` on :4321 — that may be a clean
  * main checkout without /focus-e2e or without the focus fix. E2E always builds
  * this worktree’s dist/ when needed and previews in isolation.
+ *
+ * Phase 3: build is **fail-closed on freshness** (content hash of focus/stage
+ * sources) — stale dist cannot green a broken binding.
  */
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+	existsSync,
+	readFileSync,
+	readdirSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +25,24 @@ export type AstroDevServer = {
 	baseUrl: string;
 	stop(): Promise<void>;
 };
+
+const STAMP_NAME = '.focus-e2e-build-stamp';
+
+/** Minimum Node from package.json engines (fail closed in e2e). */
+export function assertNodeEngines(min = '22.12.0'): void {
+	const [maj, minN, pat] = min.split('.').map((x) => Number(x));
+	const cur = process.versions.node.split('.').map((x) => Number(x));
+	const ok =
+		cur[0]! > maj! ||
+		(cur[0] === maj && cur[1]! > minN!) ||
+		(cur[0] === maj && cur[1] === minN && cur[2]! >= (pat ?? 0));
+	if (!ok) {
+		throw new Error(
+			`test:e2e:focus requires Node >=${min} (got ${process.versions.node}). ` +
+				`See package.json engines.`,
+		);
+	}
+}
 
 function resolveRepoRoot(): string {
 	const cwd = process.cwd();
@@ -29,6 +57,90 @@ function resolveRepoRoot(): string {
 	throw new Error(
 		`Cannot find focus-e2e.astro from cwd=${cwd} or ${fromUrl}`,
 	);
+}
+
+function walkFiles(dir: string, out: string[] = []): string[] {
+	if (!existsSync(dir)) return out;
+	for (const name of readdirSync(dir)) {
+		const full = path.join(dir, name);
+		const st = statSync(full);
+		if (st.isDirectory()) walkFiles(full, out);
+		else out.push(full);
+	}
+	return out;
+}
+
+/**
+ * Hash sources that affect focus-e2e paint/binding. Any change forces rebuild.
+ */
+export function focusE2ESourceHash(repoRoot: string): string {
+	const roots = [
+		path.join(repoRoot, 'src/stage/focus'),
+		path.join(repoRoot, 'src/stage/polish'),
+		path.join(repoRoot, 'src/stage/mount.ts'),
+		path.join(repoRoot, 'src/stage/carbonEvents.ts'),
+		path.join(repoRoot, 'src/pages/focus-e2e.astro'),
+		path.join(repoRoot, 'package.json'),
+		path.join(repoRoot, 'astro.config.mjs'),
+	];
+	const h = createHash('sha256');
+	const files: string[] = [];
+	for (const r of roots) {
+		if (!existsSync(r)) continue;
+		const st = statSync(r);
+		if (st.isDirectory()) walkFiles(r, files);
+		else files.push(r);
+	}
+	files.sort();
+	for (const f of files) {
+		const rel = path.relative(repoRoot, f);
+		h.update(rel);
+		h.update('\0');
+		h.update(readFileSync(f));
+		h.update('\0');
+	}
+	return h.digest('hex');
+}
+
+/**
+ * Fail-closed build: rebuild when dist missing, stamp missing, or hash mismatch.
+ * Set ATLAS_E2E_SKIP_BUILD=1 only for local emergency (not CI).
+ */
+export function ensureFocusE2EBuild(repoRoot: string): void {
+	if (process.env.ATLAS_E2E_SKIP_BUILD === '1') {
+		const page = path.join(repoRoot, 'dist/focus-e2e/index.html');
+		if (!existsSync(page)) {
+			throw new Error(
+				'ATLAS_E2E_SKIP_BUILD=1 but dist/focus-e2e missing — cannot skip',
+			);
+		}
+		return;
+	}
+
+	const page = path.join(repoRoot, 'dist/focus-e2e/index.html');
+	const stampPath = path.join(repoRoot, 'dist', STAMP_NAME);
+	const hash = focusE2ESourceHash(repoRoot);
+	const stampOk =
+		existsSync(page) &&
+		existsSync(stampPath) &&
+		readFileSync(stampPath, 'utf8').trim() === hash;
+
+	if (stampOk && process.env.ATLAS_E2E_FORCE_BUILD !== '1') {
+		return;
+	}
+
+	const r = spawnSync('npm', ['run', 'build'], {
+		cwd: repoRoot,
+		stdio: 'inherit',
+		env: { ...process.env, NO_COLOR: '1' },
+	});
+	if (r.status !== 0) {
+		throw new Error(`npm run build failed (status ${r.status})`);
+	}
+	if (!existsSync(page)) {
+		throw new Error(`build completed but missing ${page}`);
+	}
+	writeFileSync(stampPath, `${hash}\n`, 'utf8');
 }
 
 async function findFreePort(): Promise<number> {
@@ -51,22 +163,6 @@ async function findFreePort(): Promise<number> {
 	});
 }
 
-export function ensureFocusE2EBuild(repoRoot: string): void {
-	const page = path.join(repoRoot, 'dist/focus-e2e/index.html');
-	if (existsSync(page)) return;
-	const r = spawnSync('npm', ['run', 'build'], {
-		cwd: repoRoot,
-		stdio: 'inherit',
-		env: { ...process.env, NO_COLOR: '1' },
-	});
-	if (r.status !== 0) {
-		throw new Error(`npm run build failed (status ${r.status})`);
-	}
-	if (!existsSync(page)) {
-		throw new Error(`build completed but missing ${page}`);
-	}
-}
-
 function waitForPreviewReady(
 	proc: ChildProcess,
 	port: number,
@@ -81,7 +177,7 @@ function waitForPreviewReady(
 			if (
 				output.includes(`localhost:${port}`) ||
 				output.includes(`127.0.0.1:${port}`) ||
-				output.includes(`Local`) && output.includes(String(port))
+				(output.includes(`Local`) && output.includes(String(port)))
 			) {
 				cleanup();
 				resolve();
@@ -138,11 +234,12 @@ async function waitForOk(url: string, timeoutMs: number): Promise<void> {
 }
 
 /**
- * Build (if needed) + `astro preview` on ephemeral port.
+ * Build (fail-closed freshness) + `astro preview` on ephemeral port.
  */
 export async function startAstroDevServer(
 	timeoutMs = 120_000,
 ): Promise<AstroDevServer> {
+	assertNodeEngines('22.12.0');
 	const repoRoot = resolveRepoRoot();
 	ensureFocusE2EBuild(repoRoot);
 

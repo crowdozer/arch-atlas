@@ -95,6 +95,12 @@ realized_by:
     note: Phase 2B resolve mounted package label from stable id
   - path: src/client/app.ts
     note: Phase 2B pendingPackageFocus by packageId + resolve on apply
+  - path: src/stage/focus/bindAlluvialFocus.ts
+    note: Phase 3 native DOM hover all nodes/links + Carbon event bus
+  - path: src/stage/focus/bindAlluvialFocusEvents.test.ts
+    note: Phase 3 CustomEvent adapter unit tests
+  - path: src/stage/focus/e2e/
+    note: Phase 3 physical pointer E2E + fail-closed build stamp
 superseded_by: null
 rationale_quality: full
 ---
@@ -338,23 +344,25 @@ the preceding gate is green.
 - No second focus state owner is introduced beside the stage API and host open
   intent.
 
-### Phase 3 — Real event and browser smoke
+### Phase 3 — Real event and browser smoke ✅ landed
 
 **Ship prompt**
 
 > Exercise the actual Carbon event adapter and physical SVG hover path, and make
 > the focus E2E build freshness fail closed.
 
-**Engineer**
+**Landed**
 
-- Unit-dispatch exact node/line mouseover and mouseout `CustomEvent` detail
-  shapes through `bindHubAlluvialFocusEvents`.
-- Assert node, band, package, rail exclusion, clear, and sticky restore plans.
-- In Playwright, use physical pointer hover/mouseleave on rendered node and band
-  elements; direct `applySeed` may remain a lower-level helper but cannot be the
-  sole E2E stimulus.
-- Always build fresh, or validate a source/content hash before reusing `dist`.
-- Run under the repository's declared Node `>=22.12.0`.
+- `bindAlluvialFocusEvents.test.ts` — CustomEvent dispatch for node/line
+  mouseover/out, package, rail exclusion, sticky restore, wrong event name /
+  malformed datum fail-closed.
+- Native DOM hover on all `g.node-group` + non-pad `path.link` (complements
+  Carbon service bus; physical Playwright path).
+- E2E physical pointer hover (not sole `applySeed`); applySeed remains
+  diagnostic when physical binding fails.
+- `ensureFocusE2EBuild` content-hash stamp (`.focus-e2e-build-stamp`); rebuild
+  on mismatch; `assertNodeEngines('22.12.0')`.
+- No CI service invented; `npm run test:e2e:focus` stays opt-in.
 
 **Czar gate**
 

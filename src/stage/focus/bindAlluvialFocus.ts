@@ -104,6 +104,11 @@ export function createHubAlluvialFocus(
 		paint(lastPlan, lastDrill);
 	};
 
+	/**
+	 * Native DOM hover for straighten paths + **all** node-groups + carbon links.
+	 * Complements Carbon service events (flaky under Playwright / some themes).
+	 * Phase 3: physical pointer must exercise this path, not only applySeed.
+	 */
 	const bindExternal = () => {
 		for (const path of holder.querySelectorAll<SVGPathElement>(
 			'path.atlas-alluvial-external-straight',
@@ -128,17 +133,34 @@ export function createHubAlluvialFocus(
 			});
 		}
 
-		// External package chips: native hover when Carbon events are flaky
+		// Carbon path.link (non-pad): native band hover for physical pointer e2e
+		for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
+			if (path.classList.contains('atlas-alluvial-pad-band')) continue;
+			if (path.classList.contains('atlas-alluvial-external-straight')) continue;
+			if (path.dataset.atlasLinkBound === '1') continue;
+			path.dataset.atlasLinkBound = '1';
+			path.addEventListener('mouseenter', () => {
+				const d = (path as unknown as { __data__?: unknown }).__data__;
+				const seed = seedFromCarbonLine(d);
+				if (!seed) return;
+				applySeed(seed, drill.drillTargetFromLine(seed.source, seed.target));
+			});
+			path.addEventListener('mouseleave', () => {
+				clearFocus();
+			});
+		}
+
+		// All node chips (files, packages, modules) — not External-only
 		for (const g of holder.querySelectorAll<SVGGElement>('g.node-group')) {
-			const d = (
-				g as unknown as {
-					__data__?: { name?: string; category?: string };
-				}
-			).__data__;
-			if (!d?.name || d.category !== 'External') continue;
-			if (g.dataset.atlasExtBound === '1') continue;
-			g.dataset.atlasExtBound = '1';
+			if (g.dataset.atlasNodeBound === '1') continue;
+			g.dataset.atlasNodeBound = '1';
 			g.addEventListener('mouseenter', () => {
+				const d = (
+					g as unknown as {
+						__data__?: { name?: string; category?: string };
+					}
+				).__data__;
+				if (!d?.name) return;
 				const seed = seedFromCarbonNode(graph, d);
 				if (!seed) return;
 				const name = datumNodeName(d);
