@@ -1,12 +1,13 @@
 # Hub alluvial + Carbon — field notes (try / fail log)
 
 **Status:** living engineering journal (not product law)  
-**Companion contract:** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md) — **obey the matrix**; this file explains **why** the matrix looks the way it does and what we already burned ourselves on.  
+**Companion contract (file-hub):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md) — **obey the matrix**; this file explains **why** the matrix looks the way it does and what we already burned ourselves on.  
+**Package-hub geometry:** [hub-package-hub-behavior.md](./hub-package-hub-behavior.md) — separate projector (Export\* → External); not a retcon of the file-hub matrix.  
 **Audience:** agents and humans about to touch file-hub, pads, External polish, or Carbon charts.
 
 How to use:
 
-1. Read the **matrix** for current invariants.
+1. Read the **matrix** for current invariants (file-hub vs package-hub as needed).
 2. Skim the **quick diagnosis table** when a screenshot “looks wrong.”
 3. Read the **episode log** only for the subsystem you are changing.
 4. Prefer surgical fixes. Do **not** retcon the matrix to match cascade drift.

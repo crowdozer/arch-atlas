@@ -1,19 +1,20 @@
 # Hub alluvial focus — behavioral matrix
 
-**Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`; sticky package open)  
+**Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`; sticky package open; package-hub mount)  
 **Code SoR:** `src/stage/focus/logicalFocusGraph.ts` (plan),  
 `src/stage/focus/displayInventory.ts` + `focusApply.ts` (drawn bands),  
 `src/stage/focus/bindAlluvialFocus.ts` (hover wire + sticky `defaultSeed`),  
 `src/stage/focus/focusHarness.ts` (test observation: plan + inventory classify + MiniEl apply),  
-host wire in `src/client/app.ts` (`pendingPackageFocusLabel` / package open)  
-**Geometry matrix (orthogonal):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)  
+host wire in `src/client/app.ts` (`pendingPackageFocusLabel` / `openPackageAsHub`)  
+**Geometry matrix (file-hub, orthogonal):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)  
+**Geometry matrix (package-hub, orthogonal):** [hub-package-hub-behavior.md](./hub-package-hub-behavior.md)  
 **Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
 
 This document is the **working contract for hub focus/highlight** (hover seeds
 plus open-time sticky package seed). Geometry membership (columns, pads, rails,
 straighten) is **not** owned here — focus **consumes** payload +
 `meta.externalStraightPairs` and reconciles onto **drawn** bands after polish.
-Do not rewrite `fileHub` pads to make hover easy.
+Do not rewrite `fileHub` / `packageHub` pads to make hover easy.
 
 ---
 
@@ -40,26 +41,34 @@ connectivity for External is **`externalStraightPairs` only**.
 | **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ non-multi-instance aliases) |
 | **file** | Hover a file label | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
 | **package** | Hover External package / unresolved chip **or** sticky open-time seed (§2a) | Reverse-path **union** from all pair parents of that package (§3c) |
-| **file-spine** | Hover the hub File column spine | Same as **file** for `meta.startId` / File focus label |
+| **file-spine** | Hover the hub File column spine (**file-hub only**) | Same as **file** for `meta.startId` / File focus label |
 
 Band hover does **not** expand the tree of either endpoint.
 
 ### 2a. Open-time sticky package seed (not hover-only)
 
 Package focus is **not** hover-only. When the host opens a package as hub
-(catalog **Export Roots** or alluvial package/unresolved drill), after the
-file-hub mount it applies a **sticky default** package seed:
+(catalog **Export Roots** or alluvial package/unresolved drill), it mounts
+**package-hub** — `AtlasView` `{ type: 'package-hub', packageId }` →
+`projectPackageHub` — **not** file-hub on the primary importer. After that
+mount it applies a **sticky default** package FocusSeed:
 
 1. Host stores painted External label in `pendingPackageFocusLabel` (not on
    `AtlasView`; not persisted).
 2. Stage `setDefaultSeed({ kind: 'package', name: label })` then `applySeed`
    (same reverse-path FocusPlan as §3c).
-3. Hub file is still the **primary importer** (`startId` / File spine / tree
-   selection). **Selection chrome ≠ FocusPlan seed.**
+3. **Geometry** already includes all kept importers as pair parents
+   (Export hop\* → Exports → External). See
+   [hub-package-hub-behavior.md](./hub-package-hub-behavior.md).
+4. **Selection chrome ≠ FocusPlan seed.** Tree/catalog file selection remains
+   `nearestFileFocus` (underlying file-hub when present on the stack; may be
+   `null` on a pure package-hub stack). Export Roots catalog chrome uses
+   `selectedPackage: pendingPackageFocusLabel`. Sticky package seed is
+   hover-restore / open-time highlight only — not “which file is selected.”
 
 | Interaction | Behavior |
 | ----------- | -------- |
-| **Hover** (band / file / other package / spine) | Temporary override via `applySeed` |
+| **Hover** (band / file / other package / spine when present) | Temporary override via `applySeed` |
 | **mouseleave → `clearFocus`** | Restores sticky package default (not neutral, not last hover) |
 | **Ordinary file/module nav, pop, session clear** | Host clears pending label + `setDefaultSeed(null)` → neutral clear |
 | **Remount while pending** | New focus API starts `defaultSeed=null`; host re-applies sticky seed |
@@ -68,8 +77,10 @@ Stage: `setDefaultSeed` / `clearFocus` restore path in
 `src/stage/focus/bindAlluvialFocus.ts`. Host: `openPackageAsHub` +
 `applyPendingPackageFocus` / `clearPackageFocusIntent` in `src/client/app.ts`.
 
-**Unchanged:** package membership law (§3c), geometry matrix, file-spine seed
-still = hub file neighborhood when hovered.
+**Unchanged:** package membership law (§3c); **file-hub** column matrix
+([hub-alluvial-behavior.md](./hub-alluvial-behavior.md)); file-spine seed still
+= hub file neighborhood when a File spine is drawn (file-hub only — package-hub
+has no File spine).
 
 ---
 

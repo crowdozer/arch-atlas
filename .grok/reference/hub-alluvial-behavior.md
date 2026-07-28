@@ -9,7 +9,10 @@ pad/paint helpers in `src/core/view/alluvial.ts`, polish in
 parts of `fileHub.test.ts` / `alluvial.test.ts` / `alluvialPolish/alluvialPolish.test.ts`  
 **Try/fail journal (not law):** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)  
 **Hover focus / highlight (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) —
-LogicalFocusGraph FocusPlan; do **not** retcon this geometry matrix to fix hover.
+LogicalFocusGraph FocusPlan; do **not** retcon this geometry matrix to fix hover.  
+**Package-hub geometry (sibling, not this matrix):** [hub-package-hub-behavior.md](./hub-package-hub-behavior.md)
+— Export hop\* → Exports → External only; do **not** fold dep-hub columns into
+this file-hub matrix.
 
 This document is the **working behavioral contract** for dual-side file hub
 layout and mass pull-in. It is not a redesign brief. Update it only when product

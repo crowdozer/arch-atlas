@@ -23,9 +23,10 @@ stay pure; ship only stitches them.
 - Agent hub: [AGENTS.md](../../../AGENTS.md)
 - Scope: [reference/scope.md](../../reference/scope.md)
 - Vision notes: [reference/conversation.md](../../reference/conversation.md)
-- Hub alluvial matrix: [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
+- Hub alluvial matrix (file-hub): [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
+- Package-hub geometry: [reference/hub-package-hub-behavior.md](../../reference/hub-package-hub-behavior.md) — Export hop\* → Exports → External; package open mounts package-hub (not file-hub on primary importer)
 - Hub alluvial field notes: [reference/hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) — try/fail journal (Carbon free-source, residual, straighten cross-product, terminators); not product law
-- Hub focus matrix: [reference/hub-focus-behavior.md](../../reference/hub-focus-behavior.md) — hover FocusPlan (logical graph ≠ Carbon sourceLinks); do not rewrite pads for focus
+- Hub focus matrix: [reference/hub-focus-behavior.md](../../reference/hub-focus-behavior.md) — hover + sticky package FocusPlan (logical graph ≠ Carbon sourceLinks); selection chrome ≠ FocusPlan; do not rewrite pads for focus
 - **Analysis protocol (canonical):** [reference/analysis-protocol.md](../../reference/analysis-protocol.md) — L0–L4 multi-host direction; phases P0–P6
 - Analysis honesty (current Exact): [reference/analysis-honesty.md](../../reference/analysis-honesty.md)
 
@@ -88,8 +89,9 @@ Prefer a flatter, smaller generic surface when behavior is genuinely shared.
 | [scope.md](../../reference/scope.md) | Product intent, draft contracts, views ladder |
 | [conversation.md](../../reference/conversation.md) | Full design conversation notes |
 | [hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) | File-hub columns, mass, pads; **before any alluvial/hub change** |
+| [hub-package-hub-behavior.md](../../reference/hub-package-hub-behavior.md) | Package-hub columns (Export\* → External); package open policy vs sticky FocusSeed |
 | [hub-alluvial-field-notes.md](../../reference/hub-alluvial-field-notes.md) | Scar tissue: diagnosis table + episode log for alluvial/Carbon mishaps |
-| [hub-focus-behavior.md](../../reference/hub-focus-behavior.md) | Hub hover focus/highlight (LogicalFocusGraph); orthogonal to column matrix |
+| [hub-focus-behavior.md](../../reference/hub-focus-behavior.md) | Hub hover + sticky package FocusPlan (LogicalFocusGraph); orthogonal to column matrices |
 | [analysis-protocol.md](../../reference/analysis-protocol.md) | **Canonical** multi-host L0–L4 analyzer direction + ship phases |
 | [analysis-honesty.md](../../reference/analysis-honesty.md) | Estimate vs Exact export surface vs VS Code **today** — do not claim LSP/tree-shake |
 | [impact-cheatsheet.md](../../reference/impact-cheatsheet.md) | Two-ref import-topology impact CLI; large-JSON read order; research/czar recipes |
