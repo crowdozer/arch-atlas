@@ -77,7 +77,9 @@ import {
 import type { InsightScene } from './insightScenes.ts';
 import {
 	readProjectionPrefs,
+	weightAxisFromUi,
 	writeProjectionPrefs,
+	type WeightUiValue,
 } from './projectionPrefs.ts';
 import {
 	readPersistPreference,
@@ -107,6 +109,11 @@ let viewStack: AtlasView[] = [];
  * Sticky via {@link writeProjectionPrefs} when Remember preferences is on.
  */
 let weightAxis: WeightAxis = 'target-loc';
+/**
+ * Weight dropdown shows Export surface (Exact) UI value (`imported-loc`)
+ * while axis stays target-loc. Sticky with projection prefs.
+ */
+let weightExportSurfaceUi = false;
 /**
  * In-column band stack order.
  * Sticky via {@link writeProjectionPrefs} when Remember preferences is on.
@@ -155,25 +162,37 @@ let vizMaxDepth = HUB_DEFAULT_MAX_DEPTH;
  */
 let depthUserSet = false;
 
-/** Apply sticky projection chrome from localStorage (before control wiring). */
-function hydrateProjectionPrefs(): void {
-	const prefs = readProjectionPrefs();
-	if (prefs.weightAxis !== undefined) weightAxis = prefs.weightAxis;
-	if (prefs.bandSort !== undefined) bandSort = prefs.bandSort;
-	if (prefs.maxDepth !== undefined) {
-		vizMaxDepth = prefs.maxDepth;
-		depthUserSet = true;
-	}
-}
-
-hydrateProjectionPrefs();
 /** Click behavior: drill navigates; inspect opens import evidence. */
 let interactionMode: InteractionMode = 'drill';
 /**
  * When false, drop test-like paths from the index (`isTestPath`).
  * Default false (web only) — CLI still includes tests unless --omit.
+ * Sticky via projection prefs when Remember preferences is on.
  */
 let includeTests = false;
+
+/** Product weight dropdown value for sticky write (includes imported-loc). */
+function currentWeightUi(): WeightUiValue {
+	return weightExportSurfaceUi ? 'imported-loc' : weightAxis;
+}
+
+/** Apply sticky projection chrome from localStorage (before control wiring). */
+function hydrateProjectionPrefs(): void {
+	const prefs = readProjectionPrefs();
+	const ui = prefs.weightUi ?? prefs.weightAxis;
+	if (ui !== undefined) {
+		weightAxis = weightAxisFromUi(ui);
+		weightExportSurfaceUi = ui === 'imported-loc';
+	}
+	if (prefs.bandSort !== undefined) bandSort = prefs.bandSort;
+	if (prefs.maxDepth !== undefined) {
+		vizMaxDepth = prefs.maxDepth;
+		depthUserSet = true;
+	}
+	if (prefs.includeTests !== undefined) includeTests = prefs.includeTests;
+}
+
+hydrateProjectionPrefs();
 /** Spine ranking formula (session-local; not persisted). */
 let spineFormula: SpineFormula = DEFAULT_SPINE_FORMULA;
 /**
@@ -233,9 +252,12 @@ const inspect = createInspectModals({
 function syncWeightDropdown(
 	el: HTMLElement & { value?: string },
 	axis: WeightAxis,
+	opts?: { exportSurfaceUi?: boolean },
 ): void {
-	el.value = axis;
-	el.setAttribute('value', axis);
+	const exportUi = opts?.exportSurfaceUi ?? weightExportSurfaceUi;
+	const ui = exportUi && axis === 'target-loc' ? 'imported-loc' : axis;
+	el.value = ui;
+	el.setAttribute('value', ui);
 }
 
 function syncPrecisionDropdown(
@@ -392,6 +414,10 @@ const exact = createExactPaintMode({
 	getWeightAxis: () => weightAxis,
 	setWeightAxis: (a) => {
 		weightAxis = a;
+	},
+	getWeightExportSurfaceUi: () => weightExportSurfaceUi,
+	setWeightExportSurfaceUi: (v) => {
+		weightExportSurfaceUi = v;
 	},
 	getExactEnableInFlight: () => exactEnableInFlight,
 	setExactEnableInFlight: (v) => {
@@ -938,6 +964,10 @@ wireUi({
 	setWeightAxis: (a) => {
 		weightAxis = a;
 	},
+	getWeightExportSurfaceUi: () => weightExportSurfaceUi,
+	setWeightExportSurfaceUi: (v) => {
+		weightExportSurfaceUi = v;
+	},
 	getBandSort: () => bandSort,
 	setBandSort: (m) => {
 		bandSort = m;
@@ -951,7 +981,7 @@ wireUi({
 		depthUserSet = v;
 	},
 	/**
-	 * Persist Depth / Weight / Band order under Remember preferences.
+	 * Persist Depth / Weight / Band order / Include tests under Remember preferences.
 	 * Reconcile the gate with the splash checkbox when Carbon has upgraded —
 	 * static HTML `checked` can disagree with LS before whenDefined sync.
 	 */
@@ -969,9 +999,10 @@ wireUi({
 			if (!on) return;
 		}
 		writeProjectionPrefs({
-			weightAxis,
+			weightUi: currentWeightUi(),
 			bandSort,
 			maxDepth: vizMaxDepth,
+			includeTests,
 		});
 	},
 	getInteractionMode: () => interactionMode,
@@ -1012,6 +1043,12 @@ wireUi({
 		if (bandEl) {
 			bandEl.value = bandSort;
 			bandEl.setAttribute('value', bandSort);
+		}
+		const testsEl = includeTestsCheckbox();
+		if (testsEl) {
+			testsEl.checked = includeTests;
+			if (includeTests) testsEl.setAttribute('checked', '');
+			else testsEl.removeAttribute('checked');
 		}
 	},
 	handleZip: (f) => lifecycle.handleZip(f),

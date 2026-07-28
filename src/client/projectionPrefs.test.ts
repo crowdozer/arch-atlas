@@ -3,9 +3,12 @@ import { HUB_DEFAULT_MAX_DEPTH } from '@core/index.ts';
 import { CONTROL_PREFS_KEY, writePrefsEnabled } from './prefsStore.ts';
 import {
 	bandSortPref,
+	includeTestsPref,
 	maxDepthPref,
 	readProjectionPrefs,
+	weightAxisFromUi,
 	weightAxisPref,
+	weightUiPref,
 	writeProjectionPrefs,
 } from './projectionPrefs.ts';
 
@@ -42,52 +45,92 @@ describe('projectionPrefs', () => {
 	});
 
 	it('defaults when empty', () => {
+		expect(weightUiPref.read()).toBe('target-loc');
 		expect(weightAxisPref.read()).toBe('target-loc');
 		expect(bandSortPref.read()).toBe('name');
 		expect(maxDepthPref.read()).toBe(HUB_DEFAULT_MAX_DEPTH);
+		expect(includeTestsPref.read()).toBe(false);
 		expect(readProjectionPrefs()).toEqual({});
 	});
 
 	it('writeProjectionPrefs / readProjectionPrefs round-trip', () => {
 		writeProjectionPrefs({
-			weightAxis: 'import-edges',
+			weightUi: 'import-edges',
 			bandSort: 'node',
 			maxDepth: 10,
+			includeTests: true,
 		});
 		expect(readProjectionPrefs()).toEqual({
-			weightAxis: 'import-edges',
+			weightUi: 'import-edges',
 			bandSort: 'node',
 			maxDepth: 10,
+			includeTests: true,
 		});
 		const raw = JSON.parse(localStorage.getItem(CONTROL_PREFS_KEY) ?? '{}') as Record<
 			string,
 			unknown
 		>;
+		expect(raw.weightUi).toBe('import-edges');
 		expect(raw.weightAxis).toBe('import-edges');
 		expect(raw.bandSort).toBe('node');
 		expect(raw.maxDepth).toBe(10);
+		expect(raw.includeTests).toBe(true);
 	});
 
-	it('rejects shaken / unknown weight and clamps depth', () => {
+	it('stores Export surface Exact weight UI as imported-loc; axis target-loc', () => {
+		writeProjectionPrefs({
+			weightUi: 'imported-loc',
+			bandSort: 'name',
+			maxDepth: 3,
+			includeTests: false,
+		});
+		expect(readProjectionPrefs()).toEqual({
+			weightUi: 'imported-loc',
+			bandSort: 'name',
+			maxDepth: 3,
+			includeTests: false,
+		});
+		const raw = JSON.parse(localStorage.getItem(CONTROL_PREFS_KEY) ?? '{}') as Record<
+			string,
+			unknown
+		>;
+		expect(raw.weightUi).toBe('imported-loc');
+		expect(raw.weightAxis).toBe('target-loc');
+		expect(weightAxisFromUi('imported-loc')).toBe('target-loc');
+	});
+
+	it('migrates legacy weightAxis-only blobs', () => {
+		localStorage.setItem(
+			CONTROL_PREFS_KEY,
+			JSON.stringify({ weightAxis: 'importer-loc' }),
+		);
+		expect(readProjectionPrefs()).toEqual({
+			weightUi: 'importer-loc',
+			weightAxis: 'importer-loc',
+		});
+	});
+
+	it('rejects unknown weightUi / band and clamps depth', () => {
 		localStorage.setItem(
 			CONTROL_PREFS_KEY,
 			JSON.stringify({
-				weightAxis: 'imported-loc',
+				weightUi: 'nope',
 				bandSort: 'flow',
 				maxDepth: 99,
 			}),
 		);
 		expect(readProjectionPrefs()).toEqual({ maxDepth: 32 });
-		expect(weightAxisPref.peek()).toBeUndefined();
+		expect(weightUiPref.peek()).toBeUndefined();
 		expect(bandSortPref.peek()).toBeUndefined();
 	});
 
 	it('no write when prefs disabled', () => {
 		writePrefsEnabled(false);
 		writeProjectionPrefs({
-			weightAxis: 'importer-loc',
+			weightUi: 'importer-loc',
 			bandSort: 'node',
 			maxDepth: 5,
+			includeTests: true,
 		});
 		expect(readProjectionPrefs()).toEqual({});
 	});

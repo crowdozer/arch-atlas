@@ -41,6 +41,12 @@ export type ExactPaintModeDeps = {
 	setLocPrecision: (p: LocPrecision) => void;
 	getWeightAxis: () => WeightAxis;
 	setWeightAxis: (a: WeightAxis) => void;
+	/**
+	 * Sticky Export surface (Exact) weight dropdown UI (`imported-loc`).
+	 * Axis remains target-loc; host owns the chrome flag.
+	 */
+	getWeightExportSurfaceUi?: () => boolean;
+	setWeightExportSurfaceUi?: (v: boolean) => void;
 	getExactEnableInFlight: () => boolean;
 	setExactEnableInFlight: (v: boolean) => void;
 	/**
@@ -94,6 +100,7 @@ export type ExactPaintModeDeps = {
 	syncWeightDropdown: (
 		el: HTMLElement & { value?: string },
 		axis: WeightAxis,
+		opts?: { exportSurfaceUi?: boolean },
 	) => void;
 	currentView: () => AtlasView | null;
 };
@@ -299,16 +306,14 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 		if (opts.weight === 'force-target-loc') {
 			deps.setWeightAxis('target-loc');
+			const ui = opts.weightUi ?? 'target-loc';
+			const exportUi = ui === 'imported-loc';
+			deps.setWeightExportSurfaceUi?.(exportUi);
 			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
 			if (weightEl) {
-				const ui = opts.weightUi ?? 'target-loc';
-				if (ui === 'imported-loc') {
-					// Shaken entry: control shows export-surface UI value; axis is target-loc
-					weightEl.value = 'imported-loc';
-					weightEl.setAttribute('value', 'imported-loc');
-				} else {
-					deps.syncWeightDropdown(weightEl, 'target-loc');
-				}
+				deps.syncWeightDropdown(weightEl, 'target-loc', {
+					exportSurfaceUi: exportUi,
+				});
 			}
 		} else {
 			// preserve weightAxis (reindex chrome)
@@ -406,11 +411,18 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			return;
 		}
 
+		// Shaken weight entry always wants export-surface UI; Precision Exact
+		// keeps sticky Export surface (Exact) weight when host flag is set.
+		if (trigger === 'shaken') {
+			deps.setWeightExportSurfaceUi?.(true);
+		}
+		const exportUi =
+			trigger === 'shaken' || Boolean(deps.getWeightExportSurfaceUi?.());
 		const outcome = await installExactFromEnsure({
 			modalLabel: trigger === 'shaken' ? 'Weight' : 'Precision',
 			loadingStatus: 'Loading JS/TS export-surface engine…',
 			weight: 'force-target-loc',
-			weightUi: trigger === 'shaken' ? 'imported-loc' : 'target-loc',
+			weightUi: exportUi ? 'imported-loc' : 'target-loc',
 		});
 		if (outcome === 'nosession') {
 			deps.setStatus('Open a project before enabling Exact mode');

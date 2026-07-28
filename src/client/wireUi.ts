@@ -39,6 +39,9 @@ export type WireUiDeps = {
 	getSession: () => Session | null;
 	getWeightAxis: () => WeightAxis;
 	setWeightAxis: (a: WeightAxis) => void;
+	/** Export surface (Exact) weight dropdown UI (`imported-loc`). */
+	getWeightExportSurfaceUi: () => boolean;
+	setWeightExportSurfaceUi: (v: boolean) => void;
 	getBandSort: () => BandSortMode;
 	setBandSort: (m: BandSortMode) => void;
 	getLocPrecision: () => LocPrecision;
@@ -65,6 +68,7 @@ export type WireUiDeps = {
 	syncWeightDropdown: (
 		el: HTMLElement & { value?: string },
 		axis: WeightAxis,
+		opts?: { exportSurfaceUi?: boolean },
 	) => void;
 	syncPrecisionDropdown: (
 		el: HTMLElement & { value?: string },
@@ -150,6 +154,7 @@ function wireIncludeTestsCheckbox(deps: WireUiDeps): void {
 		const on = checkboxChangedOn(e, box);
 		applyCheckboxPreference(box, on);
 		deps.setIncludeTests(on);
+		deps.persistProjectionPrefs();
 		if (deps.getSession()) {
 			deps.reindexWithTestInclusion();
 		}
@@ -194,14 +199,20 @@ export function wireUi(deps: WireUiDeps): void {
 				(typeof weightDropdown.value === 'string' ? weightDropdown.value : '');
 			// Shaken → Exact surface mode entry (same engine path as Precision Exact)
 			if (isShakenWeightUi(next)) {
-				void deps.enableExactSurfaceMode('shaken');
+				deps.setWeightExportSurfaceUi(true);
+				void deps.enableExactSurfaceMode('shaken').then(() => {
+					deps.persistProjectionPrefs();
+				});
 				return;
 			}
+			deps.setWeightExportSurfaceUi(false);
 			deps.setWeightAxis(parseWeightAxis(next));
 			// Leaving surface claim while exact: if axis no longer needs surface, keep precision
 			// but remount; user can still inspect under exact. If they pick non-target while exact,
 			// keep provider cached; paint uses axis estimate path for non-target axes.
-			deps.syncWeightDropdown(weightDropdown, deps.getWeightAxis());
+			deps.syncWeightDropdown(weightDropdown, deps.getWeightAxis(), {
+				exportSurfaceUi: false,
+			});
 			deps.persistProjectionPrefs();
 			deps.remountCurrentView();
 		}) as EventListener);
