@@ -88,6 +88,7 @@ function mockPaintDeps(session: Session): {
 		weightAxis: WeightAxis;
 		surfaceProvider: ImportedSurfaceProvider | null;
 		exactEnableInFlight: boolean;
+		exactLoading: boolean;
 		exactMixedWarningShown: boolean;
 		programExactMass: boolean;
 		programMetaCleared: number;
@@ -97,6 +98,8 @@ function mockPaintDeps(session: Session): {
 		remount: number;
 		/** Flight flag sampled at each remount (settled paint must be false). */
 		flightAtRemount: boolean[];
+		/** exactLoading sampled at each remount (must be false on settle). */
+		exactLoadingAtRemount: boolean[];
 		modals: { label: string; heading: string; body: string }[];
 		statuses: string[];
 		precisionSyncs: LocPrecision[];
@@ -110,6 +113,7 @@ function mockPaintDeps(session: Session): {
 		weightAxis: 'target-loc' as WeightAxis,
 		surfaceProvider: null as ImportedSurfaceProvider | null,
 		exactEnableInFlight: false,
+		exactLoading: false,
 		exactMixedWarningShown: false,
 		programExactMass: false,
 		programMetaCleared: 0,
@@ -118,6 +122,7 @@ function mockPaintDeps(session: Session): {
 	const calls = {
 		remount: 0,
 		flightAtRemount: [] as boolean[],
+		exactLoadingAtRemount: [] as boolean[],
 		modals: [] as { label: string; heading: string; body: string }[],
 		statuses: [] as string[],
 		precisionSyncs: [] as LocPrecision[],
@@ -144,6 +149,9 @@ function mockPaintDeps(session: Session): {
 		setExactEnableInFlight: (v) => {
 			state.exactEnableInFlight = v;
 		},
+		setExactLoading: (v) => {
+			state.exactLoading = v;
+		},
 		setEngineFailed: (v) => {
 			state.engineFailed = v;
 		},
@@ -164,6 +172,7 @@ function mockPaintDeps(session: Session): {
 		remountCurrentView: () => {
 			calls.remount += 1;
 			calls.flightAtRemount.push(state.exactEnableInFlight);
+			calls.exactLoadingAtRemount.push(state.exactLoading);
 		},
 		refreshCatalogChrome: () => {
 			calls.catalogChrome += 1;
@@ -328,9 +337,44 @@ describe('exactPaintMode rehydrate honesty', () => {
 		expect(calls.remount).toBe(1);
 		expect(calls.statuses.at(-1)).toMatch(/Export-surface Exact on/);
 		expect(state.engineFailed).toBe(false);
+		// Pending Exact cleared before settled remount
+		expect(state.exactLoading).toBe(false);
+		expect(calls.exactLoadingAtRemount).toEqual([false]);
 	});
 
-	it('Exact enable failure sets engineFailed for chip fail indication', async () => {
+	it('Exact enable sets exactLoading + catalog chrome before ensure settles', async () => {
+		const session = makeSession();
+		const { deps, state, calls } = mockPaintDeps(session);
+		state.locPrecision = 'estimate';
+		const paint = createExactPaintMode(deps);
+
+		let resolveEnsure!: (v: unknown) => void;
+		ensureExactForGraph.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveEnsure = resolve;
+				}),
+		);
+
+		const pending = paint.enableExactSurfaceMode('precision');
+
+		expect(state.exactLoading).toBe(true);
+		expect(calls.catalogChrome).toBeGreaterThanOrEqual(1);
+		expect(state.locPrecision).toBe('estimate'); // no optimistic Exact dropdown
+
+		resolveEnsure!({
+			ok: true,
+			provider: { targetSurfaceMass: () => 1 },
+			engines: { loadable: ['typescript'], missing: [] },
+			source: 'local',
+		});
+		await pending;
+
+		expect(state.exactLoading).toBe(false);
+		expect(state.locPrecision).toBe('exact');
+	});
+
+	it('Exact enable failure sets engineFailed and clears exactLoading', async () => {
 		const session = makeSession();
 		const { deps, state, calls } = mockPaintDeps(session);
 		state.locPrecision = 'estimate';
@@ -346,7 +390,21 @@ describe('exactPaintMode rehydrate honesty', () => {
 
 		expect(state.locPrecision).toBe('estimate');
 		expect(state.engineFailed).toBe(true);
+		expect(state.exactLoading).toBe(false);
+		expect(calls.exactLoadingAtRemount.every((v) => v === false)).toBe(true);
 		expect(calls.remount).toBeGreaterThanOrEqual(1);
+	});
+
+	it('resetExactState clears exactLoading', () => {
+		const session = makeSession();
+		const { deps, state } = mockPaintDeps(session);
+		state.exactLoading = true;
+		const paint = createExactPaintMode(deps);
+
+		paint.resetExactState();
+
+		expect(state.exactLoading).toBe(false);
+		expect(state.locPrecision).toBe('estimate');
 	});
 });
 

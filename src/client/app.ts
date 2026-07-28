@@ -126,6 +126,12 @@ let surfaceProvider: ImportedSurfaceProvider | null = null;
 /** True while ensureExact is in flight (ignore re-entrant control events). */
 let exactEnableInFlight = false;
 /**
+ * Exact ensure pending while chrome has not yet settled to Exact (or failed).
+ * Language chips: lifecycle incomplete — no Exact mass claim without provider.
+ * Cleared on settle / fail / full Exact reset.
+ */
+let exactLoading = false;
+/**
  * Last Exact/Program enable failed/demoted — language chip fail indication.
  * Cleared on success, user Estimate, or full Exact reset.
  */
@@ -311,6 +317,7 @@ function paintCatalog(selectedStart?: string | null): void {
 		selectedPackage: pendingPackageFocus?.packageId ?? null,
 		locPrecision,
 		programLoading: exactEnableInFlight && locPrecision === 'program',
+		exactLoading,
 		engineFailed,
 	});
 }
@@ -389,6 +396,9 @@ const exact = createExactPaintMode({
 	getExactEnableInFlight: () => exactEnableInFlight,
 	setExactEnableInFlight: (v) => {
 		exactEnableInFlight = v;
+	},
+	setExactLoading: (v) => {
+		exactLoading = v;
 	},
 	setEngineFailed: (v) => {
 		engineFailed = v;
@@ -851,11 +861,12 @@ lifecycle = createSessionLifecycle({
 	cancelProgramEnrichment: () => cancelProgramEnrichment(),
 	getProgramExactMass: () => programExactMass,
 	enableProgramMode: (opts) => exact.enableProgramMode(opts),
+	enableExactSurfaceMode: (t) => exact.enableExactSurfaceMode(t),
 	resetExactState: () => {
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
 		programExactMass = false;
-		// engineFailed cleared inside exact.resetExactState via setEngineFailed
+		// exactLoading / engineFailed cleared inside exact.resetExactState
 		// New open/reset: spine formula is session chrome for a fresh project
 		spineFormula = DEFAULT_SPINE_FORMULA;
 	},
@@ -868,25 +879,14 @@ lifecycle = createSessionLifecycle({
 	rehydrateExactForGraph: () => exact.rehydrateExactForGraph(),
 	syncExactChrome: () => exact.syncExactChrome(),
 	tryAutoExactWhenLocalAvailable: () => exact.tryAutoExactWhenLocalAvailable(),
-	applyStickyEnginePref: async () => {
+	getStickyOpenAction: () => {
 		const s = session;
-		if (!s) return 'none';
-		const action = stickyOpenAction(
+		if (!s) return 'auto-local';
+		return stickyOpenAction(
 			s.graph,
 			readEnginePrefs(),
 			readEnginePrefEnabled(),
 		);
-		if (action === 'program') {
-			await exact.enableProgramMode();
-			// Soft-fail demotes chrome — don't claim applied / block auto-local
-			return locPrecision === 'program' ? 'applied' : 'none';
-		}
-		if (action === 'exact') {
-			await exact.enableExactSurfaceMode('precision');
-			return locPrecision === 'exact' ? 'applied' : 'none';
-		}
-		if (action === 'stay-estimate') return 'stay-estimate';
-		return 'none';
 	},
 	clearStage: () => {
 		clearPackageFocusIntent();

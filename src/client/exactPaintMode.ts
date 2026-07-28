@@ -44,6 +44,12 @@ export type ExactPaintModeDeps = {
 	getExactEnableInFlight: () => boolean;
 	setExactEnableInFlight: (v: boolean) => void;
 	/**
+	 * Exact ensure in flight while chrome is still Estimate (or rehydrate).
+	 * Language chips show lifecycle incomplete — not Exact mass claim.
+	 * Cleared on settle / fail / full reset.
+	 */
+	setExactLoading?: (v: boolean) => void;
+	/**
 	 * Language-chip fail indication (Exact/Program enable demotion).
 	 * Cleared on success / full reset / user Estimate.
 	 */
@@ -211,6 +217,11 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		return '';
 	}
 
+	/** Clear Exact-loading chip intent before settled paint. */
+	function clearExactLoading(): void {
+		deps.setExactLoading?.(false);
+	}
+
 	/** Fall back to Estimate chrome + remount (honesty after ensure failure). */
 	function fallBackEstimate(opts: {
 		msg: string;
@@ -220,6 +231,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 	}): void {
 		const precEl = precisionDropdown();
 		const weightEl = weightDropdown();
+		// Clear pending before remount so chips are not stuck on Loading
+		clearExactLoading();
 		deps.setLocPrecision('estimate');
 		deps.setEngineFailed(true);
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
@@ -240,6 +253,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 	 * do not stick on Program "Loading…" (programLoading uses flight flag).
 	 */
 	function remountSettled(): void {
+		clearExactLoading();
 		deps.setExactEnableInFlight(false);
 		deps.remountCurrentView();
 	}
@@ -274,6 +288,8 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setSurfaceProvider(result.provider);
 		deps.setLocPrecision('exact');
 		deps.setEngineFailed(false);
+		// Drop Loading chip before remount so paint shows Exact (not stuck pending)
+		clearExactLoading();
 
 		const precEl = precisionDropdown();
 		const weightEl = weightDropdown();
@@ -341,6 +357,9 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		}
 
 		deps.setExactEnableInFlight(true);
+		// Pending Exact chrome: incomplete chip while ensure runs (no Exact mass claim)
+		deps.setExactLoading?.(true);
+		deps.refreshCatalogChrome?.();
 		const myGen = opts.generation;
 
 		try {
@@ -370,6 +389,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			// Only clear flight if we still own this generation (or no gen = enable)
 			if (myGen === undefined || myGen === exactGraphGeneration) {
 				deps.setExactEnableInFlight(false);
+				clearExactLoading();
 			}
 		}
 	}
@@ -475,6 +495,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setEngineFailed(false);
 		deps.setExactMixedWarningShown(false);
 		deps.setExactEnableInFlight(false);
+		clearExactLoading();
 		const precEl = precisionDropdown();
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'estimate');
 	}

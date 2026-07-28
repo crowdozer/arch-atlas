@@ -5,8 +5,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LocPrecision, VirtualFile } from '@core/index.ts';
 import type { Session } from '@shell/index.ts';
+import type { StickyOpenAction } from './enginePrefs.ts';
 import {
 	createSessionLifecycle,
+	resolveDesiredOpenTier,
 	type SessionLifecycleDeps,
 } from './sessionLifecycle.ts';
 
@@ -46,19 +48,21 @@ type CallLog = {
 	rehydrateExactForGraph: number;
 	enableProgramMode: number;
 	enableProgramModePreferExact: boolean[];
+	enableExactSurfaceMode: number;
 	tryAutoExactWhenLocalAvailable: number;
 	syncExactChrome: number;
 	clearStage: number;
 	/** App-layer spine wipe rides only on full resetExactState. */
 	spineWiped: number;
-	applyStickyEnginePref: number;
+	getStickyOpenAction: number;
+	persistSessionIfEnabled: number;
 };
 
 function mockDeps(opts: {
 	locPrecision?: LocPrecision;
 	includeTests?: boolean;
-	/** Sticky open result; default `none` (auto-local path). */
-	stickyResult?: 'applied' | 'stay-estimate' | 'none';
+	/** Sticky open action; default `auto-local`. */
+	stickyAction?: StickyOpenAction;
 }): {
 	deps: SessionLifecycleDeps;
 	log: CallLog;
@@ -75,18 +79,20 @@ function mockDeps(opts: {
 		rehydrateExactForGraph: 0,
 		enableProgramMode: 0,
 		enableProgramModePreferExact: [],
+		enableExactSurfaceMode: 0,
 		tryAutoExactWhenLocalAvailable: 0,
 		syncExactChrome: 0,
 		clearStage: 0,
 		spineWiped: 0,
-		applyStickyEnginePref: 0,
+		getStickyOpenAction: 0,
+		persistSessionIfEnabled: 0,
 	};
 	let session: Session | null = null;
 	let locPrecision: LocPrecision = opts.locPrecision ?? 'estimate';
 	let includeTests = opts.includeTests ?? true;
 	let rehydrateFails = false;
 	let programExactMass = false;
-	const stickyResult = opts.stickyResult ?? 'none';
+	const stickyAction: StickyOpenAction = opts.stickyAction ?? 'auto-local';
 
 	const deps: SessionLifecycleDeps = {
 		getSession: () => session,
@@ -125,13 +131,13 @@ function mockDeps(opts: {
 			);
 			locPrecision = 'program';
 		},
-		applyStickyEnginePref: async () => {
-			log.applyStickyEnginePref += 1;
-			if (stickyResult === 'applied') {
-				// Simulate sticky Exact re-apply
-				locPrecision = 'exact';
-			}
-			return stickyResult;
+		enableExactSurfaceMode: async () => {
+			log.enableExactSurfaceMode += 1;
+			locPrecision = 'exact';
+		},
+		getStickyOpenAction: () => {
+			log.getStickyOpenAction += 1;
+			return stickyAction;
 		},
 		syncExactChrome: () => {
 			log.syncExactChrome += 1;
@@ -145,7 +151,9 @@ function mockDeps(opts: {
 		renderCatalog: vi.fn(),
 		renderTree: vi.fn(),
 		navigateReplace: () => true,
-		persistSessionIfEnabled: vi.fn(),
+		persistSessionIfEnabled: () => {
+			log.persistSessionIfEnabled += 1;
+		},
 		isPersistEnabled: () => false,
 		getIncludeTests: () => includeTests,
 		setStatus: vi.fn(),
@@ -207,7 +215,6 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		const life = createSessionLifecycle(deps);
 
 		life.handleDemo('react-simple');
-		// Sticky + auto-local path is async
 		await vi.waitFor(() => {
 			expect(log.tryAutoExactWhenLocalAvailable).toBe(1);
 		});
@@ -216,25 +223,27 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(log.spineWiped).toBe(1);
 		expect(log.invalidateExactProvider).toBe(0);
 		expect(log.rehydrateExactForGraph).toBe(0);
-		expect(log.applyStickyEnginePref).toBe(1);
+		expect(log.getStickyOpenAction).toBe(1);
+		expect(log.enableExactSurfaceMode).toBe(0);
 		expect(log.syncExactChrome).toBe(0);
-		// reset forces estimate; sticky was none so auto-local only
+		// reset forces estimate; sticky was auto-local so auto-local only
 		expect(deps.getLocPrecision()).toBe('estimate');
 	});
 
-	it('open with sticky Exact applies sticky and skips auto-local', async () => {
+	it('open with sticky Exact applies enableExact (not rehydrate) and skips auto-local', async () => {
 		const { deps, log } = mockDeps({
 			locPrecision: 'estimate',
-			stickyResult: 'applied',
+			stickyAction: 'exact',
 		});
 		const life = createSessionLifecycle(deps);
 
 		life.handleDemo('react-simple');
-		await vi.waitFor(() => {
-			expect(log.applyStickyEnginePref).toBe(1);
-		});
+		await Promise.resolve();
 
 		expect(log.resetExactState).toBe(1);
+		expect(log.getStickyOpenAction).toBe(1);
+		expect(log.enableExactSurfaceMode).toBe(1);
+		expect(log.rehydrateExactForGraph).toBe(0);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(deps.getLocPrecision()).toBe('exact');
 	});
@@ -242,18 +251,34 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 	it('open with sticky demotion (stay-estimate) skips auto-local', async () => {
 		const { deps, log } = mockDeps({
 			locPrecision: 'exact',
-			stickyResult: 'stay-estimate',
+			stickyAction: 'stay-estimate',
 		});
 		const life = createSessionLifecycle(deps);
 
 		life.handleDemo('react-simple');
-		await vi.waitFor(() => {
-			expect(log.applyStickyEnginePref).toBe(1);
-		});
+		await Promise.resolve();
 
 		expect(log.resetExactState).toBe(1);
+		expect(log.getStickyOpenAction).toBe(1);
+		expect(log.enableExactSurfaceMode).toBe(0);
 		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(deps.getLocPrecision()).toBe('estimate');
+	});
+
+	it('open with sticky Program enables Program and skips auto-local', async () => {
+		const { deps, log } = mockDeps({
+			locPrecision: 'estimate',
+			stickyAction: 'program',
+		});
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+		await Promise.resolve();
+
+		expect(log.enableProgramMode).toBe(1);
+		expect(log.enableExactSurfaceMode).toBe(0);
+		expect(log.tryAutoExactWhenLocalAvailable).toBe(0);
+		expect(deps.getLocPrecision()).toBe('program');
 	});
 
 	it('reindex with Exact preserves chrome: invalidate + clearStage + rehydrate, no full reset', async () => {
@@ -414,6 +439,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		ctx.log.enableProgramMode = 0;
 		ctx.log.tryAutoExactWhenLocalAvailable = 0;
 		ctx.log.rehydrateExactForGraph = 0;
+		ctx.log.enableExactSurfaceMode = 0;
 
 		const ok = life.tryRestoreSession();
 		await Promise.resolve();
@@ -422,8 +448,149 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 		expect(ctx.log.enableProgramMode).toBe(1);
 		expect(ctx.log.tryAutoExactWhenLocalAvailable).toBe(0);
 		expect(ctx.log.rehydrateExactForGraph).toBe(0);
+		expect(ctx.log.enableExactSurfaceMode).toBe(0);
+		// Session program wins over sticky auto-local
+		expect(ctx.log.getStickyOpenAction).toBe(1);
 		vi.unstubAllGlobals();
 		installDomStub();
+	});
+
+	it('restore with stored exact precision uses enableExactSurfaceMode (not rehydrate)', async () => {
+		const ctx = mockDeps({
+			locPrecision: 'estimate',
+			// Sticky would also say exact — restore still uses enable path
+			stickyAction: 'exact',
+		});
+		const life = createSessionLifecycle(ctx.deps);
+		const { SESSION_KEY } = await import('./sessionStore.ts');
+		const files = [
+			{
+				path: 'src/a.ts',
+				content: 'export const a = 1\n',
+				byteLength: 19,
+			},
+		];
+		const store = new Map<string, string>();
+		store.set(
+			SESSION_KEY,
+			JSON.stringify({
+				v: 1,
+				files,
+				startId: 'src/a.ts',
+				expanded: ['src'],
+				warnings: [],
+				savedAt: Date.now(),
+				locPrecision: 'exact',
+			}),
+		);
+		vi.stubGlobal('localStorage', {
+			getItem: (k: string) => store.get(k) ?? null,
+			setItem: (k: string, v: string) => {
+				store.set(k, v);
+			},
+			removeItem: (k: string) => {
+				store.delete(k);
+			},
+		});
+		ctx.deps.isPersistEnabled = () => true;
+		ctx.log.enableExactSurfaceMode = 0;
+		ctx.log.rehydrateExactForGraph = 0;
+		ctx.log.tryAutoExactWhenLocalAvailable = 0;
+
+		const ok = life.tryRestoreSession();
+		await Promise.resolve();
+
+		expect(ok).toBe(true);
+		expect(ctx.log.enableExactSurfaceMode).toBe(1);
+		expect(ctx.log.rehydrateExactForGraph).toBe(0);
+		expect(ctx.log.tryAutoExactWhenLocalAvailable).toBe(0);
+		expect(ctx.getLocPrecision()).toBe('exact');
+		vi.unstubAllGlobals();
+		installDomStub();
+	});
+
+	it('restore estimate falls through to sticky Exact (enable, not rehydrate)', async () => {
+		const ctx = mockDeps({
+			locPrecision: 'estimate',
+			stickyAction: 'exact',
+		});
+		const life = createSessionLifecycle(ctx.deps);
+		const { SESSION_KEY } = await import('./sessionStore.ts');
+		const files = [
+			{
+				path: 'src/a.ts',
+				content: 'export const a = 1\n',
+				byteLength: 19,
+			},
+		];
+		const store = new Map<string, string>();
+		store.set(
+			SESSION_KEY,
+			JSON.stringify({
+				v: 1,
+				files,
+				startId: 'src/a.ts',
+				expanded: ['src'],
+				warnings: [],
+				savedAt: Date.now(),
+				locPrecision: 'estimate',
+			}),
+		);
+		vi.stubGlobal('localStorage', {
+			getItem: (k: string) => store.get(k) ?? null,
+			setItem: (k: string, v: string) => {
+				store.set(k, v);
+			},
+			removeItem: (k: string) => {
+				store.delete(k);
+			},
+		});
+		ctx.deps.isPersistEnabled = () => true;
+
+		const ok = life.tryRestoreSession();
+		await Promise.resolve();
+
+		expect(ok).toBe(true);
+		expect(ctx.log.enableExactSurfaceMode).toBe(1);
+		expect(ctx.log.rehydrateExactForGraph).toBe(0);
+		expect(ctx.log.tryAutoExactWhenLocalAvailable).toBe(0);
+		vi.unstubAllGlobals();
+		installDomStub();
+	});
+
+	it('open with desired Exact defers mid-flight session persist', async () => {
+		const { deps, log } = mockDeps({
+			locPrecision: 'estimate',
+			stickyAction: 'exact',
+		});
+		// Persist checkbox on so activate would write if not deferred
+		deps.isPersistEnabled = () => true;
+		const life = createSessionLifecycle(deps);
+
+		life.handleDemo('react-simple');
+		await Promise.resolve();
+
+		// Desired exact → skip immediate persist (settle path owns write)
+		expect(log.persistSessionIfEnabled).toBe(0);
+		expect(log.enableExactSurfaceMode).toBe(1);
+	});
+});
+
+describe('resolveDesiredOpenTier', () => {
+	it('session exact|program wins over sticky', () => {
+		expect(resolveDesiredOpenTier('exact', 'program')).toBe('exact');
+		expect(resolveDesiredOpenTier('program', 'exact')).toBe('program');
+	});
+
+	it('maps sticky when restore is estimate or missing', () => {
+		expect(resolveDesiredOpenTier('estimate', 'exact')).toBe('exact');
+		expect(resolveDesiredOpenTier(undefined, 'program')).toBe('program');
+		expect(resolveDesiredOpenTier(undefined, 'stay-estimate')).toBe(
+			'estimate',
+		);
+		expect(resolveDesiredOpenTier(undefined, 'auto-local')).toBe(
+			'auto-local',
+		);
 	});
 });
 

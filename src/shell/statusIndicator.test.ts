@@ -151,6 +151,28 @@ describe('languageChipStatus mapping', () => {
 		expect(s.shape).toBe('circle-half');
 	});
 
+	it('Exact loading → lifecycle incomplete (no Exact mass claim)', () => {
+		const s = languageChipStatus('TypeScript', {
+			locPrecision: 'estimate',
+			exactLoading: true,
+		});
+		expect(s.axis).toBe('lifecycle');
+		expect(s.kind).toBe('incomplete');
+		expect(s.shape).toBe('circle-half');
+		expect(s.title).toMatch(/export-surface/i);
+		expect(s.title).not.toMatch(/\bLSP\b|tree-shake/i);
+	});
+
+	it('Exact loading takes precedence over settled Exact chrome', () => {
+		// Rehydrate mid-flight may still show locPrecision exact briefly
+		const s = languageChipStatus('JavaScript', {
+			locPrecision: 'exact',
+			exactLoading: true,
+		});
+		expect(s.kind).toBe('incomplete');
+		expect(s.label).toBe('Loading');
+	});
+
 	it('engineFailed → indication failed square', () => {
 		const s = languageChipStatus('TypeScript', {
 			locPrecision: 'estimate',

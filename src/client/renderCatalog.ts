@@ -48,6 +48,8 @@ export type CatalogPaintOpts = {
 	locPrecision?: LocPrecision;
 	/** Program worker in flight (lifecycle incomplete on JS/TS chips). */
 	programLoading?: boolean;
+	/** Exact ensure in flight (lifecycle incomplete — no Exact mass claim yet). */
+	exactLoading?: boolean;
 	/** Exact/Program enable failed → indication failed on loadable languages. */
 	engineFailed?: boolean;
 };
@@ -227,6 +229,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			tags.replaceChildren();
 			const precision = opts?.locPrecision ?? 'estimate';
 			const programLoading = Boolean(opts?.programLoading);
+			const exactLoading = Boolean(opts?.exactLoading);
 			const engineFailed = Boolean(opts?.engineFailed);
 			for (const lang of catalog.summary.languages) {
 				const wrap = document.createElement('span');
@@ -234,6 +237,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 				const status = languageChipStatus(lang, {
 					locPrecision: precision,
 					programLoading,
+					exactLoading,
 					engineFailed,
 				});
 				wrap.appendChild(

@@ -173,13 +173,19 @@ export type LanguageChipStatusOpts = {
 	locPrecision: LocPrecision;
 	/** Program worker in flight (lifecycle incomplete). */
 	programLoading?: boolean;
+	/**
+	 * Exact ensure in flight (restore/sticky/user enable). Lifecycle incomplete —
+	 * no Exact mass claim until provider settles.
+	 */
+	exactLoading?: boolean;
 	/** Last Exact/Program attempt failed and chrome fell back to Estimate. */
 	engineFailed?: boolean;
 };
 
 /**
  * Map catalog language chip + session precision → status presentation.
- * Indication for capability/quality; lifecycle for in-flight Program load / done Program.
+ * Indication for capability/quality; lifecycle for in-flight Program/Exact load
+ * and settled Program.
  */
 export function languageChipStatus(
 	displayLang: string,
@@ -202,6 +208,13 @@ export function languageChipStatus(
 				'incomplete',
 				'Loading',
 				'Loading Program… (createProgram, not LSP)',
+			);
+		}
+		if (opts.exactLoading) {
+			return lifecycle(
+				'incomplete',
+				'Loading',
+				'Loading Exact… (export-surface mass — not a language server)',
 			);
 		}
 		if (precision === 'program') {

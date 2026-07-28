@@ -35,9 +35,39 @@ import {
 	clearPersistedSession,
 	loadPersistedSession,
 } from './sessionStore.ts';
+import type { StickyOpenAction } from './enginePrefs.ts';
 
 /** How the session is being activated — open resets Exact; reindex preserves chrome. */
 export type ActivateSessionKind = 'open' | 'reindex';
+
+/**
+ * Desired engine tier on cold open (after resetExactState).
+ * Session restorePrecision (exact|program) wins; else sticky map; else auto-local.
+ */
+export type DesiredOpenTier = 'program' | 'exact' | 'estimate' | 'auto-local';
+
+/**
+ * Resolve open-path engine intent from session restore + sticky action.
+ * Pure — does not load engines. Reindex path does not use this helper.
+ */
+export function resolveDesiredOpenTier(
+	restorePrecision: LocPrecision | undefined,
+	stickyAction: StickyOpenAction = 'auto-local',
+): DesiredOpenTier {
+	if (restorePrecision === 'program' || restorePrecision === 'exact') {
+		return restorePrecision;
+	}
+	switch (stickyAction) {
+		case 'program':
+			return 'program';
+		case 'exact':
+			return 'exact';
+		case 'stay-estimate':
+			return 'estimate';
+		default:
+			return 'auto-local';
+	}
+}
 
 export type SessionLifecycleDeps = {
 	getSession: () => Session | null;
@@ -67,18 +97,23 @@ export type SessionLifecycleDeps = {
 	 * reindex (Exact parity). Optional preferExactMass when prior programExactMass.
 	 */
 	enableProgramMode?: (opts?: { preferExactMass?: boolean }) => Promise<void>;
+	/**
+	 * Cold open Exact (session restore or sticky): CDN-capable enable path
+	 * (force target-loc + sticky writeback). Not reindex rehydrate.
+	 */
+	enableExactSurfaceMode?: (
+		trigger: 'precision' | 'shaken',
+	) => Promise<void>;
 	/** Prior Program had Exact mass rehydrated (snapshot before invalidate). */
 	getProgramExactMass?: () => boolean;
 	/** Align Precision / Weight dropdowns to current module state. */
 	syncExactChrome: () => void;
 	tryAutoExactWhenLocalAvailable: () => Promise<void>;
 	/**
-	 * Sticky engine prefs on open: Exact/Program re-apply (may CDN) or stay
-	 * Estimate when demoted. When absent, open falls through to auto-local only.
+	 * Sticky open action for current session graph (sync pure resolve).
+	 * When absent, open treats sticky as auto-local.
 	 */
-	applyStickyEnginePref?: () => Promise<
-		'applied' | 'stay-estimate' | 'none'
-	>;
+	getStickyOpenAction?: () => StickyOpenAction;
 	clearStage: () => void;
 	renderCatalog: (catalog: MapCatalog, startId: string | null) => void;
 	renderTree: () => void;
@@ -239,17 +274,33 @@ export function createSessionLifecycle(
 		}
 		// Reassert status after navigate (gate may have written a fail-closed line)
 		const restorePrecision = opts?.restorePrecision;
+		// Open path: one desired tier (session exact|program → sticky → auto-local)
+		const stickyAction =
+			kind === 'open'
+				? (deps.getStickyOpenAction?.() ?? 'auto-local')
+				: 'auto-local';
+		const desiredOpen =
+			kind === 'open'
+				? resolveDesiredOpenTier(restorePrecision, stickyAction)
+				: null;
 		const rebuildNote = wasProgram
 			? ' · rebuilding Program…'
 			: wasExact
 				? ' · rebuilding Exact…'
-				: restorePrecision === 'program'
+				: desiredOpen === 'program'
 					? ' · restoring Program…'
-					: restorePrecision === 'exact'
+					: desiredOpen === 'exact'
 						? ' · restoring Exact…'
 						: '';
 		deps.setStatus(`${statusLine}${rebuildNote}`);
-		if (!opts?.skipPersist) deps.persistSessionIfEnabled();
+		// Defer session write when Exact/Program will settle (avoid estimate poison)
+		if (
+			!opts?.skipPersist &&
+			desiredOpen !== 'exact' &&
+			desiredOpen !== 'program'
+		) {
+			deps.persistSessionIfEnabled();
+		}
 
 		if (kind === 'reindex') {
 			// Carbon dropdowns must match preserved JS state (not forced Estimate)
@@ -266,25 +317,21 @@ export function createSessionLifecycle(
 			return;
 		}
 
-		// Boot restore: re-apply remembered Precision (Program includes Exact mass)
-		if (restorePrecision === 'program' && deps.enableProgramMode) {
+		// Cold open: apply desired tier (restore/sticky Exact uses enable, not rehydrate)
+		if (desiredOpen === 'program' && deps.enableProgramMode) {
 			void deps.enableProgramMode();
 			return;
 		}
-		if (restorePrecision === 'exact') {
-			void deps.rehydrateExactForGraph();
+		if (desiredOpen === 'exact' && deps.enableExactSurfaceMode) {
+			void deps.enableExactSurfaceMode('precision');
 			return;
 		}
-
-		// Sticky higher-fidelity engine prefs (Exact/Program), else auto-local Exact
-		void (async () => {
-			const sticky = deps.applyStickyEnginePref
-				? await deps.applyStickyEnginePref()
-				: 'none';
-			if (sticky === 'applied' || sticky === 'stay-estimate') return;
-			// Prefer Exact when local classic TS / host inject is already available (no CDN)
-			await deps.tryAutoExactWhenLocalAvailable();
-		})();
+		if (desiredOpen === 'estimate') {
+			// Sticky demotion — stay Estimate; skip auto-local
+			return;
+		}
+		// auto-local: Prefer Exact when local classic TS / host inject exists (no CDN)
+		void deps.tryAutoExactWhenLocalAvailable();
 	}
 
 	function openFromFiles(
