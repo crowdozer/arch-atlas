@@ -610,7 +610,19 @@ cds-tag.ui-tag--yellow {
   --cds-layer: transparent;
   --cds-layer-01: transparent;
   --cds-background: transparent;
-  --cds-layer-01-absolute: #f4f4f4;
+  /*
+   * Carbon chart-holder[data-carbon-theme=g100] redefines absolute layers
+   * (inverse → white). Label chips pin zinc via rgb() below; these tokens
+   * remain for any non-overridden chart chrome.
+   */
+  --cds-layer-01-absolute: #e4e4e7;
+  --cds-layer-inverse-absolute: #18181b;
+}
+
+/* Beat Carbon theme absolute-layer flip on the chart holder itself. */
+.ui-carbon-chart .cds--chart-holder,
+.ui-carbon-chart [class*='chart-holder'] {
+  --cds-layer-01-absolute: #e4e4e7;
   --cds-layer-inverse-absolute: #18181b;
 }
 
@@ -642,12 +654,13 @@ cds-tag.ui-tag--yellow {
 }
 
 .ui-carbon-chart .cds--cc--alluvial rect.node-text-bg {
-  /* Chart forces --cds-layer-01 transparent; use inverse-absolute zinc-900 */
-  fill: color-mix(
-    in srgb,
-    var(--cds-layer-inverse-absolute, #18181b) 92%,
-    transparent
-  ) !important;
+  /*
+   * Zinc-900 chip under light labels. Do NOT use --cds-layer-inverse-absolute:
+   * Carbon g100 sets that to #ffffff on .cds--chart-holder[data-carbon-theme=g100]
+   * (white chip + black text). Chart also forces --cds-layer-01 transparent, so
+   * shell layer tokens are unusable here — pin zinc-900 explicitly.
+   */
+  fill: rgb(24 24 27 / 0.92) !important;
   stroke: none;
 }
 
