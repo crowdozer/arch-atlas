@@ -20,6 +20,7 @@ import {
 	TEAL,
 	uniqueFileLabels,
 } from '@core/view/alluvial.ts';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { importerGroupKey } from '@core/view/fileImporters.ts';
 import {
 	exportHopCategory,
@@ -315,13 +316,19 @@ export function addImportModules(
 			const source = claimName(usedNames, mod, 'module');
 			addLink(source, fileLabel, n);
 			nodeRef[source] = { kind: 'module', id: mod };
-			nodeMeta.set(source, { category: 'Exports', color: '#06b6d4' });
+			nodeMeta.set(source, {
+				category: 'Exports',
+				color: CHART_PALETTE.exportFree,
+			});
 		} else if (otherLabel) {
 			addLink(otherLabel, fileLabel, n);
 		}
 	}
 	if (otherLabel) {
 		nodeRef[otherLabel] = { kind: 'bucket', id: 'other-import-modules' };
-		nodeMeta.set(otherLabel, { category: 'Exports', color: '#0e7490' });
+		nodeMeta.set(otherLabel, {
+			category: 'Exports',
+			color: CHART_PALETTE.exportFreeOther,
+		});
 	}
 }

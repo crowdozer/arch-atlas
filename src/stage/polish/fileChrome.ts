@@ -4,13 +4,11 @@
 
 import { toString } from '@carbon/icon-helpers';
 import Document16 from '@carbon/icons/es/document/16.js';
+import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { readData, type SankeyNode } from './sankeyDom.ts';
 
-/**
- * Purple selection accent for File spine (active focus).
- * Keep in sync with --atlas-select-strong in carbon-theme.css.
- */
-const FILE_SPINE_SELECT = '#a78bfa';
+/** Purple selection accent for File spine — matches --atlas-select-strong. */
+const FILE_SPINE_SELECT = CHART_PALETTE.selectStrong;
 
 type IconDescriptor = {
 	elem?: string;
