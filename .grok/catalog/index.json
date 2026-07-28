@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T02:38:16Z",
+  "generated_at": "2026-07-28T02:46:31Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
   "count": 15,
   "entries": [
@@ -354,7 +354,7 @@
     {
       "id": "alluvial-nav-order-and-residual-mass",
       "kind": "idea",
-      "state": "active",
+      "state": "partial",
       "authority": "exploratory",
       "provenance": "user",
       "path": ".grok/catalog/entries/alluvial-nav-order-and-residual-mass.md",
@@ -385,8 +385,11 @@
         "src/core/view/fileHub.ts",
         "src/core/view/alluvial.ts",
         "src/stage/polish/",
-        "src/shell/ (controls / view options if landed)",
-        "src/client/ (UI chrome for sort dropdown + residual checkbox)",
+        "src/shell/controls.ts",
+        "src/shell/project.ts",
+        "src/client/app.ts",
+        "src/client/wireUi.ts",
+        "src/pages/index.astro",
         ".grok/reference/hub-alluvial-behavior.md",
         ".grok/reference/hub-alluvial-field-notes.md",
         ".grok/reference/analysis-honesty.md"

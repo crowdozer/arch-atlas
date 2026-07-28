@@ -1,6 +1,6 @@
 # Catalog index (generated)
 
-_Generated 2026-07-28T02:38:16Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-28T02:46:31Z — do not hand-edit; run `catalog-index`._
 
 **15** records.
 
@@ -13,7 +13,7 @@ _Generated 2026-07-28T02:38:16Z — do not hand-edit; run `catalog-index`._
 | `dual-host-shell-stage` | plan | partial | advisory | Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz |
 | `exact-surface-mode-futures` | idea | active | advisory | Consult when: Exact or Imported LOC (Shaken) precision work; mixed estimate/exact band UI; pinning TypeScript engine version; multi-language engines (pyright, gopls) |
 | `interchangeable-atlas-lenses` | proposal | active | advisory | Consult when: adding a second visualization beyond alluvial; treemap heatmap matrix or multi-lens workspace; interchangeable architectural lenses; cross-view selection continuity |
-| `alluvial-nav-order-and-residual-mass` | idea | active | exploratory | Consult when: hub alluvial bar heights do not sum to file total LOC; residual private body not imported or not exported; not-exported or not-imported band experiment; stabilizing band order across clicks or re-renders |
+| `alluvial-nav-order-and-residual-mass` | idea | partial | exploratory | Consult when: hub alluvial bar heights do not sum to file total LOC; residual private body not imported or not exported; not-exported or not-imported band experiment; stabilizing band order across clicks or re-renders |
 | `dependency-structure-matrix` | idea | active | exploratory | Consult when: dependency structure matrix or adjacency matrix view; DSM layering cycles bidirectional coupling; package-by-package coupling grid; layer violation matrix or intended architecture ordering |
 | `geometric-vs-knot-architecture` | idea | partial | exploratory | Consult when: agent writes or refactors code and risks low-energy completion; evaluating whether a change improved architecture vs only behavior; designing agent personality / architectural review prompts; alluvial import graph as architectural insight not just explorer |
 | `git-architectural-time-machine` | idea | active | exploratory | Consult when: git history age churn co-change overlays; architectural time machine or evolution lens; line-age heatmap or fossil map; co-change edges vs import edges |
