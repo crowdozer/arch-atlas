@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-27T22:37:56Z",
+  "generated_at": "2026-07-28T00:07:17Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 14,
+  "count": 15,
   "entries": [
     {
       "id": "alluvial-top-pack-rename-split",
@@ -143,6 +143,59 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: thinning app.ts; moving Exact engines; hub or alluvial cleanup urge; types.ts split urge"
+    },
+    {
+      "id": "carbon-alluvial-scale-and-pan",
+      "kind": "investigation",
+      "state": "active",
+      "authority": "advisory",
+      "provenance": "mixed",
+      "path": ".grok/catalog/entries/carbon-alluvial-scale-and-pan.md",
+      "scope": [
+        "alluvial-viz",
+        "carbon-charts",
+        "stage",
+        "chart-scale",
+        "viewport-pan",
+        "projection-bounds",
+        "custom-renderer"
+      ],
+      "applies_when": [
+        "scroll wheel pan or drag to pan alluvial",
+        "bigger or unbounded charts",
+        "tall dense multi-hop hub",
+        "carbon alluvial height or width",
+        "overflow scroll stage chart",
+        "replace carbon charts alluvial",
+        "custom sankey or alluvial engine",
+        "chart performance with many nodes",
+        "options.height content-driven",
+        "when to leave carbon for viz",
+        "zoom bar canvas zoom alluvial",
+        "virtualize alluvial svg"
+      ],
+      "touches": [
+        "src/stage/mount.ts",
+        "src/stage/height.ts",
+        "src/stage/carbonEvents.ts",
+        "src/stage/polish/*",
+        "src/stage/focus/*",
+        "src/core/view/alluvial.ts",
+        "src/core/view/alluvialCarbonLayout.ts",
+        "src/core/view/fileHub.ts",
+        "src/client/wireUi.ts",
+        "src/styles/carbon-theme.css",
+        ".atlas-stage overflow",
+        "AlluvialChart @carbon/charts",
+        "d3-sankey extent"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "interchangeable-atlas-lenses",
+        "alluvial-nav-order-and-residual-mass"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: scroll wheel pan or drag to pan alluvial; bigger or unbounded charts; tall dense multi-hop hub; carbon alluvial height or width"
     },
     {
       "id": "dual-host-shell-stage",

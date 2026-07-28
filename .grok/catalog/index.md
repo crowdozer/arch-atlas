@@ -1,14 +1,15 @@
 # Catalog index (generated)
 
-_Generated 2026-07-27T22:37:56Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-28T00:07:17Z — do not hand-edit; run `catalog-index`._
 
-**14** records.
+**15** records.
 
 | id | kind | state | authority | consult when |
 | -- | ---- | ----- | --------- | ------------ |
 | `alluvial-top-pack-rename-split` | proposal | implemented | advisory | Consult when: refactoring src/client/alluvialPolish; renaming alluvialPolish or polishAlluvialHolder; former alluvialTopPack module or godfile cleanup; extracting stage from client |
 | `analysis-capability-honesty` | decision | active | advisory | Consult when: Exact or Estimate precision UX copy; Imported LOC or Shaken weight labels; claiming LSP or language server in product; tree-shake or imported surface mass claims |
 | `architecture-triage-freeze` | plan | partial | advisory | Consult when: thinning app.ts; moving Exact engines; hub or alluvial cleanup urge; types.ts split urge |
+| `carbon-alluvial-scale-and-pan` | investigation | active | advisory | Consult when: scroll wheel pan or drag to pan alluvial; bigger or unbounded charts; tall dense multi-hop hub; carbon alluvial height or width |
 | `dual-host-shell-stage` | plan | partial | advisory | Consult when: dual-host architecture; VS Code extension adapter; extract shell or stage from app.ts; shared engine and graph viz |
 | `exact-surface-mode-futures` | idea | active | advisory | Consult when: Exact or Imported LOC (Shaken) precision work; mixed estimate/exact band UI; pinning TypeScript engine version; multi-language engines (pyright, gopls) |
 | `interchangeable-atlas-lenses` | proposal | active | advisory | Consult when: adding a second visualization beyond alluvial; treemap heatmap matrix or multi-lens workspace; interchangeable architectural lenses; cross-view selection continuity |
