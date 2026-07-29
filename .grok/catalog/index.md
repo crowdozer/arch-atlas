@@ -1,8 +1,8 @@
 # Catalog index (generated)
 
-_Generated 2026-07-28T21:35:57Z — do not hand-edit; run `catalog-index`._
+_Generated 2026-07-29T00:43:25Z — do not hand-edit; run `catalog-index`._
 
-**17** records.
+**18** records.
 
 | id | kind | state | authority | consult when |
 | -- | ---- | ----- | --------- | ------------ |
@@ -23,4 +23,5 @@ _Generated 2026-07-28T21:35:57Z — do not hand-edit; run `catalog-index`._
 | `module-focus-band-height-after-drill` | investigation | active | exploratory | Consult when: module alluvial band height shrinks after drill or click and does not restore; label-collision scene band goes thin after clicking package end; clicking back to module focus does not restore full ribbon height; FocusPlan leave or clear leaves mass geometry wrong |
 | `segmented-relative-path-labels` | idea | active | exploratory | Consult when: intelligent path resolution without LSP; displaying file paths in tree catalog or alluvial; relative path labels from current focus node; path segment walk or breadcrumb-style labels |
 | `analysis-protocol-multi-host` | decision | partial  # P0–P2 landed; P3+ open | normative | Consult when: analysis protocol or capability ladder L0 L1 L2 L3 L4; multi-host analyzer design browser CLI VS Code; Exact vs Program vs Estimate naming; agent pack honesty schema envelope |
+| `browser-folder-ingest` | decision | active | normative | Consult when: opening a repository folder in the web app; replacing or supplementing ZIP upload; browser directory picker or webkitdirectory; adding a local Astro or Vite filesystem endpoint |
 

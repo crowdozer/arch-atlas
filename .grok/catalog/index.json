@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-28T21:35:57Z",
+  "generated_at": "2026-07-29T00:43:25Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 17,
+  "count": 18,
   "entries": [
     {
       "id": "alluvial-engine-correctness-triage",
@@ -845,6 +845,45 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: analysis protocol or capability ladder L0 L1 L2 L3 L4; multi-host analyzer design browser CLI VS Code; Exact vs Program vs Estimate naming; agent pack honesty schema envelope"
+    },
+    {
+      "id": "browser-folder-ingest",
+      "kind": "decision",
+      "state": "active",
+      "authority": "normative",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/browser-folder-ingest.md",
+      "scope": [
+        "browser-folder-ingest",
+        "web-host",
+        "source-port",
+        "virtual-files",
+        "local-first",
+        "zip-ingest",
+        "directory-selection"
+      ],
+      "applies_when": [
+        "opening a repository folder in the web app",
+        "replacing or supplementing ZIP upload",
+        "browser directory picker or webkitdirectory",
+        "adding a local Astro or Vite filesystem endpoint",
+        "changing web-host ingestion or session open lifecycle",
+        "sharing directory filters between browser ZIP and CLI"
+      ],
+      "touches": [
+        "src/core/ingest/",
+        "src/client/sessionLifecycle.ts",
+        "src/client/wireUi.ts",
+        "src/pages/index.astro",
+        "src/cli/loadFeed.ts",
+        "VirtualFile[]"
+      ],
+      "related": [
+        "dual-host-shell-stage",
+        "analysis-protocol-multi-host"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: opening a repository folder in the web app; replacing or supplementing ZIP upload; browser directory picker or webkitdirectory; adding a local Astro or Vite filesystem endpoint"
     }
   ]
 }
