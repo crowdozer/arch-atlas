@@ -21,6 +21,27 @@ stay pure; ship only stitches them.
 - Design language: track **Sentinel** (Carbon UI wrappers, zinc/**teal** brand shell, alluvial as signature chart) — visual/UX grammar only; do not import Sentinel domain
 - Mode: local `npm run dev` (Astro static + client index); no remote source upload
 - Agent hub: [AGENTS.md](../../../AGENTS.md)
+
+### Shell cwd trap (verify before git / npm / catalog)
+
+Shell sessions may open in a **sibling or unrelated repo** (often
+`~/git-personal/dotfiles` or another checkout under the same parent) even when
+the session workspace is **arch-atlas**. File tools that take absolute or
+workspace paths can still hit the right tree while `pwd` is wrong — so relative
+`git`, `npm`, and `catalog-index` will mutate the wrong repo.
+
+Before any repo-scoped shell work:
+
+1. `pwd` and `git rev-parse --show-toplevel`
+2. Confirm the toplevel is **this** repo (name/path ends with `arch-atlas`, or
+   matches Workspace Path from session `user_info`)
+3. If wrong: look under the **parent directory** of the mistaken cwd (e.g.
+   `../arch-atlas` from `~/git-personal/<other>`), or use the absolute workspace
+   path; then `cd` there (or pass absolute paths / `git -C <arch-atlas-root>`)
+4. Do not commit, regenerate indexes, or run product scripts until cwd is correct
+
+This is **not** the same as a `/ship` worktree/branch mismatch — that is still
+“stop and report.” Wrong-sibling-repo cwd: **relocate**, then continue.
 - Scope: [reference/scope.md](../../reference/scope.md)
 - Vision notes: [reference/conversation.md](../../reference/conversation.md)
 - Hub alluvial matrix (file-hub): [reference/hub-alluvial-behavior.md](../../reference/hub-alluvial-behavior.md) — **respect when changing alluvial**; surgical column/link fixes only; do not retcon the matrix to cascade side effects
