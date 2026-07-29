@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-29T00:43:25Z",
+  "generated_at": "2026-07-29T02:07:50Z",
   "root": "/home/crwdzr/git-personal/arch-atlas",
-  "count": 18,
+  "count": 19,
   "entries": [
     {
       "id": "alluvial-engine-correctness-triage",
@@ -469,6 +469,57 @@
       ],
       "rationale_quality": "full",
       "consult": "Consult when: hub alluvial bar heights do not sum to file total LOC; residual private body not imported or not exported; not-exported or not-imported band experiment; stabilizing band order across clicks or re-renders"
+    },
+    {
+      "id": "alluvial-nav-path-highlight",
+      "kind": "idea",
+      "state": "active",
+      "authority": "exploratory",
+      "provenance": "user",
+      "path": ".grok/catalog/entries/alluvial-nav-path-highlight.md",
+      "scope": [
+        "hub-alluvial",
+        "alluvial-navigation",
+        "path-trail",
+        "focus-highlight",
+        "spatial-memory",
+        "drill-stack",
+        "stage-focus",
+        "file-hub",
+        "package-hub"
+      ],
+      "applies_when": [
+        "navigating alluvial bands feels disorienting",
+        "user loses track of where they came from after drill or band click",
+        "breadcrumb or trail for alluvial navigation",
+        "highlight the path taken through hub columns",
+        "navigation history vs hover FocusPlan",
+        "trail overlay after open package as hub or file drill",
+        "back-stack or provenance ribbon through imports exports external",
+        "disorientation during band traverse not fixed by sort order alone",
+        "path highlight chrome orthogonal to sticky package seed",
+        "visual memory of prior hub when remounting views"
+      ],
+      "touches": [
+        "src/stage/focus/",
+        "src/stage/focus/logicalFocusGraph.ts",
+        "src/stage/focus/bindAlluvialFocus.ts",
+        "src/client/app.ts",
+        "src/shell/project.ts",
+        "atlas-alluvial-drill-target",
+        ".grok/reference/hub-focus-behavior.md",
+        ".grok/reference/hub-alluvial-behavior.md",
+        ".grok/reference/hub-package-hub-behavior.md"
+      ],
+      "related": [
+        "alluvial-nav-order-and-residual-mass",
+        "module-focus-band-height-after-drill",
+        "segmented-relative-path-labels",
+        "carbon-alluvial-scale-and-pan",
+        "interchangeable-atlas-lenses"
+      ],
+      "rationale_quality": "full",
+      "consult": "Consult when: navigating alluvial bands feels disorienting; user loses track of where they came from after drill or band click; breadcrumb or trail for alluvial navigation; highlight the path taken through hub columns"
     },
     {
       "id": "dependency-structure-matrix",
