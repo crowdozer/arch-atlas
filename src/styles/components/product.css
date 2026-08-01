@@ -540,6 +540,19 @@ cds-tag.ui-tag--yellow {
   flex-shrink: 0;
 }
 
+/* Map catalog: full-width Agent Pack download (CLI digest parity) */
+.atlas-drawer__panel--catalog .atlas-drawer__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+cds-button.atlas-agent-pack-btn {
+  width: 100%;
+  max-inline-size: 100%;
+  justify-content: flex-start;
+}
+
 .atlas-drawer__scroll {
   flex: 1;
   min-height: 0;

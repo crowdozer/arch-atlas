@@ -86,11 +86,22 @@ import {
 	savePersistedSession,
 } from './sessionStore.ts';
 import { cancelProgramEnrichment } from './programWorkerClient.ts';
+import {
+	buildAgentPackDigest,
+	DEFAULT_AGENT_PACK_SOURCE,
+	downloadAgentPackDigest,
+	type AgentPackSourceLabel,
+} from './agentPackDownload.ts';
 import { wireUi } from './wireUi.ts';
 
 // ── Module state (web host bag) ──────────────────────────────────────────────
 
 let session: Session | null = null;
+/**
+ * Best-effort feed identity for Agent Pack digest `source` (zip basename /
+ * demo id / scene id). Host-only; not persisted on Session.
+ */
+let agentPackSource: AgentPackSourceLabel = { ...DEFAULT_AGENT_PACK_SOURCE };
 /**
  * Nested alluvial focus (top of stack = current view).
  * File opens are always file-hub traversal; module is drill-only.
@@ -888,6 +899,9 @@ lifecycle = createSessionLifecycle({
 	getProgramExactMass: () => programExactMass,
 	enableProgramMode: (opts) => exact.enableProgramMode(opts),
 	enableExactSurfaceMode: (t) => exact.enableExactSurfaceMode(t),
+	setSourceLabel: (label) => {
+		agentPackSource = label;
+	},
 	resetExactState: () => {
 		exact.resetExactState();
 		exportSurfaceLocCache = null;
@@ -1077,4 +1091,56 @@ wireUi({
 				engineFailed,
 			},
 		}),
+	downloadAgentPack: () => {
+		if (!session) {
+			setStatus('Load a project to download an Agent Pack.');
+			return;
+		}
+		try {
+			// Exact mass only when live chrome has surface ready (catalog paint parity)
+			const exactReady = Boolean(surfaceLiveForMass());
+			let exact:
+				| {
+						engineSource: 'inject' | 'local' | 'jsdelivr' | 'unpkg';
+						classicAst?: boolean;
+						exportSurfaceLoc: Map<string, number>;
+				  }
+				| undefined;
+			if (exactReady) {
+				if (!exportSurfaceLocCache) {
+					exportSurfaceLocCache = exportSurfaceLocMapFromGraph(session.graph);
+				}
+				exact = {
+					// Web mass map is text-span export coverage (same as catalog Exact paint)
+					engineSource: 'local',
+					classicAst: false,
+					exportSurfaceLoc: exportSurfaceLocCache,
+				};
+			}
+			const digest = buildAgentPackDigest({
+				graph: session.graph,
+				catalog: session.catalog,
+				source: agentPackSource,
+				warnings: session.warnings,
+				includeTests,
+				exact,
+				programMeta: session.programMeta,
+				// Chrome selected Exact/Program even if mass not applied yet
+				exactRequested:
+					locPrecision === 'exact' || locPrecision === 'program',
+			});
+			downloadAgentPackDigest(digest);
+			const tier = digest.analysis.tier;
+			setStatus(
+				`Downloaded Agent Pack (${digest.schema} · ${tier})`,
+			);
+		} catch (err) {
+			console.error('[atlas] agent pack download failed', err);
+			setStatus(
+				err instanceof Error
+					? `Agent Pack failed: ${err.message}`
+					: 'Agent Pack download failed',
+			);
+		}
+	},
 });

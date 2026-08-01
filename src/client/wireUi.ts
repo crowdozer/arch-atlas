@@ -95,6 +95,11 @@ export type WireUiDeps = {
 	 * Dev-only alluvial dump (payload + Carbon). No-op if button absent (prod).
 	 */
 	dumpAlluvialDebug?: () => void | Promise<void>;
+	/**
+	 * Map catalog Agent Pack: bare agent-digest.v1 download (CLI digest parity).
+	 * No-op / status when no session.
+	 */
+	downloadAgentPack: () => void;
 };
 
 /**
@@ -325,6 +330,11 @@ export function wireUi(deps: WireUiDeps): void {
 	// Dev-only Dump chart → .atlas-debug/ (button only rendered when import.meta.env.DEV)
 	$('atlas-debug-dump')?.addEventListener('click', () => {
 		void deps.dumpAlluvialDebug?.();
+	});
+
+	// Map catalog → Agent Pack (bare arch-atlas.agent-digest.v1)
+	$('atlas-agent-pack-download')?.addEventListener('click', () => {
+		deps.downloadAgentPack();
 	});
 
 	$('atlas-demo-react-simple')?.addEventListener('click', () => {

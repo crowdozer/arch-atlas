@@ -1,4 +1,6 @@
 ---
+import { toString } from "@carbon/icon-helpers";
+import DocumentDownload16 from "@carbon/icons/es/document--download/16.js";
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/ui/Button.astro";
 import Checkbox from "../components/ui/Checkbox.astro";
@@ -18,6 +20,11 @@ import ModalFooterButton from "../components/ui/ModalFooterButton.astro";
 import FileUploader from "../components/ui/FileUploader.astro";
 import FileUploaderDropContainer from "../components/ui/FileUploaderDropContainer.astro";
 import Tag from "../components/ui/Tag.astro";
+
+/** Carbon document--download/16 with icon slot for cds-button. */
+const agentPackIconSvg = toString(
+  DocumentDownload16 as Parameters<typeof toString>[0],
+).replace("<svg", '<svg slot="icon" aria-hidden="true"');
 ---
 
 <Layout title="Arch Atlas">
@@ -203,6 +210,20 @@ import Tag from "../components/ui/Tag.astro";
               class="mt-1 text-[0.7rem] leading-snug text-zinc-500"
             >
             </p>
+          </div>
+          <div class="atlas-drawer__tools">
+            <Button
+              type="button"
+              id="atlas-agent-pack-download"
+              class="atlas-agent-pack-btn"
+              variant="secondary"
+              size="sm"
+              title="Download agent digest (CLI digest parity; no source text)"
+              aria-label="Download Agent Pack"
+            >
+              <Fragment set:html={agentPackIconSvg} />
+              Agent Pack
+            </Button>
           </div>
           <div class="atlas-drawer__scroll atlas-catalog">
             <Accordion
