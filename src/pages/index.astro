@@ -1,5 +1,6 @@
 ---
 import { toString } from "@carbon/icon-helpers";
+import ChevronDown16 from "@carbon/icons/es/chevron--down/16.js";
 import DocumentDownload16 from "@carbon/icons/es/document--download/16.js";
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/ui/Button.astro";
@@ -25,6 +26,11 @@ import Tag from "../components/ui/Tag.astro";
 const agentPackIconSvg = toString(
   DocumentDownload16 as Parameters<typeof toString>[0],
 ).replace("<svg", '<svg slot="icon" aria-hidden="true"');
+
+/** Chevron for Map catalog panel disclosure (default open). */
+const catalogChevronSvg = toString(
+  ChevronDown16 as Parameters<typeof toString>[0],
+).replace("<svg", '<svg aria-hidden="true" focusable="false"');
 ---
 
 <Layout title="Arch Atlas">
@@ -201,17 +207,41 @@ const agentPackIconSvg = toString(
           </div>
         </div>
 
-        <!-- Catalog panel (Carbon accordion sections) -->
-        <div class="atlas-drawer__panel atlas-drawer__panel--catalog">
+        <!-- Catalog panel (collapsible body; default open; bins keep same indent) -->
+        <div
+          class="atlas-drawer__panel atlas-drawer__panel--catalog"
+          id="atlas-catalog-panel"
+          data-catalog-open="true"
+        >
           <div class="atlas-drawer__head">
-            <div class="ui-tile__label mb-0">Map catalog</div>
+            <button
+              type="button"
+              id="atlas-catalog-toggle"
+              class="atlas-catalog-toggle"
+              aria-expanded="true"
+              aria-controls="atlas-catalog-body"
+            >
+              <span class="ui-tile__label mb-0 atlas-catalog-toggle__label"
+                >Map catalog</span
+              >
+              <span
+                class="atlas-catalog-toggle__chevron"
+                aria-hidden="true"
+                set:html={catalogChevronSvg}
+              />
+            </button>
             <p
               id="atlas-catalog-summary"
               class="mt-1 text-[0.7rem] leading-snug text-zinc-500"
             >
             </p>
           </div>
-          <div class="atlas-drawer__scroll atlas-catalog">
+          <div
+            id="atlas-catalog-body"
+            class="atlas-drawer__scroll atlas-catalog"
+            role="region"
+            aria-label="Map catalog rankings"
+          >
             <Accordion
               id="atlas-catalog-accordion"
               class="atlas-catalog-accordion"

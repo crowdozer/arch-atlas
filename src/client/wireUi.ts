@@ -332,6 +332,18 @@ export function wireUi(deps: WireUiDeps): void {
 		void deps.dumpAlluvialDebug?.();
 	});
 
+	// Map catalog panel disclosure (default open; body indent unchanged)
+	const catalogPanel = $('atlas-catalog-panel');
+	const catalogToggle = $('atlas-catalog-toggle');
+	if (catalogPanel && catalogToggle) {
+		catalogToggle.addEventListener('click', () => {
+			const open = catalogPanel.getAttribute('data-catalog-open') !== 'false';
+			const next = !open;
+			catalogPanel.setAttribute('data-catalog-open', next ? 'true' : 'false');
+			catalogToggle.setAttribute('aria-expanded', next ? 'true' : 'false');
+		});
+	}
+
 	// Map catalog → Agent Pack (bare arch-atlas.agent-digest.v1)
 	$('atlas-agent-pack-download')?.addEventListener('click', () => {
 		deps.downloadAgentPack();
