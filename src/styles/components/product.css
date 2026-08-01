@@ -681,8 +681,11 @@ cds-search.atlas-tree-search {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  /* Clip both axes so a tall Carbon SVG cannot push past the viewport */
-  overflow: hidden;
+  /*
+   * Chart/holder still clip the SVG. Stage itself stays visible so control-bar
+   * dropdown menus can paint over the chart without sitting under peer fields.
+   */
+  overflow: visible;
   background: var(--cds-background, #09090b);
   /* Stage width drives label collapse (drawer steals viewport width) */
   container-type: inline-size;
@@ -705,6 +708,10 @@ cds-search.atlas-tree-search {
   max-width: 100%;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
+  /* Stack above chart so open Carbon menus paint over the stage */
+  position: relative;
+  z-index: 6;
+  overflow: visible;
 }
 
 .atlas-stage__title-band {
@@ -756,6 +763,10 @@ cds-search.atlas-tree-search {
   min-width: 0;
   width: 100%;
   min-height: 2rem;
+  /* Peer menus must paint outside fixed 2rem field boxes */
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
 .atlas-stage__control-group {
@@ -767,6 +778,17 @@ cds-search.atlas-tree-search {
   flex: 0 0 auto;
   height: 2rem;
   min-width: 0;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+/*
+ * Carbon menus are abs-positioned under the field. Without a boost, later
+ * control groups (same z-index, later paint order) cover the open list.
+ */
+.atlas-stage__control-group:has(cds-dropdown[open]) {
+  z-index: 20;
 }
 
 /* Depth leaves layout when disabled (package/module views free space) */
@@ -910,11 +932,17 @@ button.atlas-stage__mode-btn.is-active:hover {
   color: var(--atlas-select-strong, #a78bfa);
 }
 
+/* Base above mode segment; open group (:has) lifts above peer fields */
 cds-dropdown.atlas-stage__weight,
 cds-dropdown.atlas-stage__depth,
-cds-dropdown.atlas-stage__precision {
+cds-dropdown.atlas-stage__precision,
+cds-dropdown.atlas-stage__band-sort {
   position: relative;
-  z-index: 2; /* open list above mode segment */
+  z-index: 2;
+}
+
+.atlas-stage__controls cds-dropdown[open] {
+  z-index: 20;
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
