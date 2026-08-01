@@ -139,6 +139,11 @@ unpkg) unless `--exact-local`.
 export-declaration **span** coverage, not public-API member surface. Web UI
 Exact remains estimate-first / opt-in (CLI default does not flip web).
 
+**Browser Agent Pack:** With a project open, Map catalog → **Agent Pack**
+downloads the same bare `arch-atlas.agent-digest.v1` as CLI `digest` (shared
+`buildAgentDigest`; no source text / no portable wrapper). Estimate vs Exact
+mass and Program stamps follow **live session chrome**, not CLI Exact-default.
+
 **Impact** (`arch-atlas.agent-impact.v1`): delta-first topology report (summary
 delta, files/packages added/removed, edges added/removed, degree/blast movers).
 No raw source; no dual digests. Large output → read order and recipes in
