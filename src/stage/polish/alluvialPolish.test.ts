@@ -484,7 +484,7 @@ describe('isFileCategory / isImportRailLabel', () => {
 });
 
 /**
- * Minimal DOM tree for polish unit tests — **no Carbon mount**, no jsdom.
+ * Minimal DOM tree for polish unit tests - **no Carbon mount**, no jsdom.
  * Implements the subset of Element APIs used by hide/mark/polish.
  */
 class MiniClassList {
@@ -596,7 +596,7 @@ class MiniEl {
 }
 
 /**
- * DOM fixture for pad-rail / terminator polish — **no Carbon mount**.
+ * DOM fixture for pad-rail / terminator polish - **no Carbon mount**.
  * Gates class contract: rail hide, in-rail pad-band, out-rail paint, terminator wrap.
  */
 describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () => {
@@ -1257,13 +1257,13 @@ describe('alluvial pad-rail / terminator polish (DOM fixture, no Carbon)', () =>
 		expect(planParents.has(main)).toBe(true);
 		expect(planParents.has(layout)).toBe(true);
 		expect(planParents.has(home)).toBe(true);
-		// Unique parents only — undrawn direct + straighten = 4, not 5 visual sources
+		// Unique parents only - undrawn direct + straighten = 4, not 5 visual sources
 		expect(planParents.size).toBe(4);
 	});
 
 	it('types.ts→zod: pairs-only direct File→pkg still straightens (no rail gate)', () => {
 		// After pair undraw, packages with only direct attaches must still get
-		// a straighten plan — otherwise External vanishes (types.ts hub).
+		// a straighten plan - otherwise External vanishes (types.ts hub).
 		const { graph } = indexFiles(
 			walkFixtures(path.join(fixturesRoot, 'demo-react-simple')),
 		);
@@ -1392,7 +1392,7 @@ describe('stackBandsByNodeRank', () => {
 		const a = node('heavy', 100, 80, 20, 'Imports');
 		const b = node('light', 100, 20, 15, 'Imports');
 		const c = node('mid', 100, 50, 18, 'Imports');
-		// Carbon left them y-sorted light, mid, heavy — ranks want heavy, mid, light
+		// Carbon left them y-sorted light, mid, heavy - ranks want heavy, mid, light
 		const rank = { heavy: 0, mid: 1, light: 2 };
 		const moved = stackBandsByNodeRank([a, b, c], rank);
 		expect(moved).toBe(true);

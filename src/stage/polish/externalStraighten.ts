@@ -152,7 +152,7 @@ export function planExternalStraightBands(
 				} else if (!isAlluvialRailName(edge.source)) {
 					// Only straighten when package was pad-routed (path touched a rail)
 					if (cur.name === pkg && !isInRailName(cur.name)) {
-						// direct parent→package (no pad) — skip straighten
+						// direct parent→package (no pad) - skip straighten
 						continue;
 					}
 					out.push({
@@ -296,7 +296,7 @@ export function straightenExternalPackageBands(
 				: typeof d.value === 'number'
 					? d.value
 					: 1;
-		// After rewriteLinkRibbons, mass is fill (stroke none) — prefer fill color
+		// After rewriteLinkRibbons, mass is fill (stroke none) - prefer fill color
 		let stroke = el.style?.stroke || el.getAttribute?.('stroke') || '';
 		if (!stroke || stroke === 'none') {
 			stroke = el.style?.fill || el.getAttribute?.('fill') || '';
@@ -358,7 +358,7 @@ export function straightenExternalPackageBands(
 				plan.width,
 			),
 		);
-		// Filled ribbon (mass in geometry) — same model as rewriteLinkRibbons
+		// Filled ribbon (mass in geometry) - same model as rewriteLinkRibbons
 		path.setAttribute('fill', plan.stroke);
 		path.setAttribute('stroke', 'none');
 		path.setAttribute('stroke-width', '0');

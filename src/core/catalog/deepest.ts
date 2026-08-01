@@ -45,7 +45,7 @@ export function fileImportedByAdj(
 
 /**
  * Shortest-path BFS distances from start along file imports (start = 0).
- * First visit wins — good for reverse “who imports me” radius.
+ * First visit wins - good for reverse “who imports me” radius.
  */
 export function fileDistances(
 	graph: CodeGraph,
@@ -92,7 +92,7 @@ export type FileLongestDistancesOpts = {
  * membership is correct without unbounded search on huge graphs.
  *
  * **Catalog tree-depth** deliberately uses {@link fileDistances} (BFS / shortest
- * max hop), not this function — do not silently relabel BFS as longest path.
+ * max hop), not this function - do not silently relabel BFS as longest path.
  *
  * Used for hub forward columns so chains like focus→format→types stay expanded
  * even when types is also a direct dependency of focus.

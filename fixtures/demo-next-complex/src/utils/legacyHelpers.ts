@@ -1,5 +1,5 @@
 /**
- * Catch-all helpers imported from too many places — god-module demo.
+ * Catch-all helpers imported from too many places - god-module demo.
  */
 import { logger } from '../lib/logger';
 import { getRedis } from '../lib/redis';
@@ -21,7 +21,7 @@ export async function dumpDebug(userId: string): Promise<Record<string, unknown>
 	return { keys, orderCount: orders[0] };
 }
 
-/** Used by admin feature — mixes email + payments. */
+/** Used by admin feature - mixes email + payments. */
 export async function forceChargeAndNotify(
 	customerId: string,
 	email: string,

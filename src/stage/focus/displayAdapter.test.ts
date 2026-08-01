@@ -1,5 +1,5 @@
 /**
- * Seed mapping S1–S4 — Carbon / straighten datums → FocusSeed.
+ * Seed mapping S1–S4 - Carbon / straighten datums → FocusSeed.
  */
 import { describe, expect, it } from 'vitest';
 import {

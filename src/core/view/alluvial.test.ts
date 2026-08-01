@@ -66,7 +66,7 @@ function flowTotals(data: { source: string; target: string; value: number }[]) {
 }
 
 describe('projectAlluvial conservation', () => {
-	it('uses Imports / Hop 1 / File — never Modules folders', () => {
+	it('uses Imports / Hop 1 / File - never Modules folders', () => {
 		const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 		const payload = projectAlluvial(graph, 'middleware.ts');
 		expect(payload).not.toBeNull();
@@ -279,7 +279,7 @@ describe('projectModuleFocus', () => {
 			),
 		).toBe(true);
 
-		// nodemailer only imported from src/lib — must appear
+		// nodemailer only imported from src/lib - must appear
 		const endNames = payload!.options.alluvial.nodes
 			.filter((n) => n.category === 'Ends')
 			.map((n) => n.name);
@@ -777,7 +777,7 @@ describe('band sort (name / flow / flow-target / node)', () => {
 	});
 
 	it('buildAlluvialPayload flow uses max not sum for multi-edge source', () => {
-		// session has ribbons 50 and 5 — rank by 50; other node single 40
+		// session has ribbons 50 and 5 - rank by 50; other node single 40
 		const links = [
 			{ source: 'session', target: 'redis', value: 50 },
 			{ source: 'session', target: 'types', value: 5 },

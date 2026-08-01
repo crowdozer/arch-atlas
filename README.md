@@ -4,7 +4,7 @@ Local-first architecture compiler: upload a repository (ZIP), receive an
 **explorable architectural atlas**. Alluvial diagrams are the signature visual;
 the durable core is a normalized semantic graph plus suggested views.
 
-Source stays on-device — analysis is browser/local-first for TypeScript and
+Source stays on-device - analysis is browser/local-first for TypeScript and
 JavaScript (Level-1: files, imports, packages).
 
 ## Status
@@ -15,7 +15,7 @@ multi-row progress / Status / Roadmap table here.
 
 Shipped-behavior and how-to stay in this README (Level-1 MVP, CLI, honesty
 ladder). UI design language tracks **Sentinel** grammar (Carbon, zinc shell)
-with **teal** interactive brand — not emerald.
+with **teal** interactive brand - not emerald.
 
 ## Setup
 
@@ -32,12 +32,12 @@ live under `fixtures/demo-react-simple/`, `fixtures/demo-next-complex/`,
 `fixtures/demo-spaghetti-godfile/`, and `fixtures/demo-python-app/` (plus
 `fixtures/sample-ts-project/` and `fixtures/sample-python-project/`). Optional
 localStorage remember keeps the **session** (indexed files) across refresh;
-**Clear session** resets. A separate splash checkbox — **Remember language
-engine preference** — stores only a small **preference map** (Estimate / Exact /
+**Clear session** resets. A separate splash checkbox - **Remember language
+engine preference** - stores only a small **preference map** (Estimate / Exact /
 Program per language family) in localStorage, **not** multi-MB TypeScript engine
 binaries; engines still load local or CDN when higher fidelity is applied.
 Subbar language chips use Sentinel-style **status indicators** for analysis
-fidelity/capability (Estimate / Exact / Program / loading / failed) — indication
+fidelity/capability (Estimate / Exact / Program / loading / failed) - indication
 only, not an LSP claim.
 
 ```bash
@@ -102,24 +102,24 @@ npm run atlas -- impact . --base HEAD^ --head HEAD --omit fixtures --out /tmp/im
 npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/impact.json
 ```
 
-| Flag | Meaning |
-| ---- | ------- |
-| `--limit N` | Top-N catalog ranking bins (digest/file); impact movers + edge samples; Mermaid dependency max prefix nodes; containment **summary** = max expanded file leaves (full dir skeleton always); containment **full** (`--tree-full`) = balanced max file leaves (round-robin by top-level folder, not alphabetic global head). Default **40**. |
-| `--max-depth N` | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited. |
-| `--omit GLOB` | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. Omitted targets that other files still import stamp `toKind: 'omitted'` (not `unresolved`). |
-| `--alias P=T` | **Digest/tree/file/mermaid/impact feed:** merge path alias rewrite (repeatable). Example: `@/modules/artillery/*=./*`. Stamped on `scope.aliasRewrites` (JSON lenses) / header comments (mermaid). |
-| `--scope full\|product` | Feed preset (default **full**). `product` drops tests + debug/scripts heuristics; stamps `scope.presets`. |
-| `--base <ref>` / `--head <ref>` | **Required** for `impact`: git refs to compare (materialized via `git archive`). |
-| `--estimate` | **Digest only:** skip Exact mass (estimate-only `fileLoc` / empty publicMass & icebergs). |
-| `--exact` | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/mermaid/impact: no mass overlay (warn if passed). |
-| `--exact-local` | Like `--exact` but never uses CDN (local classic / inject only); also fail-closed. |
-| `--tree-full` | **Tree:** full verbose file leaves (default tree is **summary** directory rolls). **Also Mermaid `--containment`:** full leaves under balanced `--limit` (default containment is **summary** hierarchy). |
-| `--containment` | **Mermaid only:** emit a `flowchart TB` hierarchy of indexed folders/files. No import edges or SCC analysis. Default **presentation=summary** (all dirs; expand leaves when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may show `(N files)`). Add `--tree-full` for full leaves. Dependency mode is unchanged. |
-| `--file <rel>` | Relative path inside the project (**required** for `file`). |
-| `--out <path>` | Write output to file instead of stdout (JSON for digest/tree/file/impact; **Mermaid text** for mermaid). |
-| `--program` | **Digest:** TypeScript `createProgram` over the feed VFS (opt-in). Soft-fail to L1 graph. L2/L3 capability stamps only with evidence. Not LSP. |
-| `--artifact <path>` | **Digest:** write portable `arch-atlas.artifact.v1` wrapper (payload = digest). Stdout/`--out` stay bare agent-digest. |
-| `-h`, `--help` | Usage. |
+| Flag                            | Meaning                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--limit N`                     | Top-N catalog ranking bins (digest/file); impact movers + edge samples; Mermaid dependency max prefix nodes; containment **summary** = max expanded file leaves (full dir skeleton always); containment **full** (`--tree-full`) = balanced max file leaves (round-robin by top-level folder, not alphabetic global head). Default **40**. |
+| `--max-depth N`                 | Max path segments from walk root (directory feeds). Default **24**; `0` or negative = unlimited.                                                                                                                                                                                                                                           |
+| `--omit GLOB`                   | Drop relative paths matching a **picomatch** glob (repeatable; comma-lists OK). Bare names match that segment anywhere (`fixtures` → whole `fixtures/**` tree). Applies to dir walks, ZIP entries, and git-archive feeds. Omitted targets that other files still import stamp `toKind: 'omitted'` (not `unresolved`).                      |
+| `--alias P=T`                   | **Digest/tree/file/mermaid/impact feed:** merge path alias rewrite (repeatable). Example: `@/modules/artillery/*=./*`. Stamped on `scope.aliasRewrites` (JSON lenses) / header comments (mermaid).                                                                                                                                         |
+| `--scope full\|product`         | Feed preset (default **full**). `product` drops tests + debug/scripts heuristics; stamps `scope.presets`.                                                                                                                                                                                                                                  |
+| `--base <ref>` / `--head <ref>` | **Required** for `impact`: git refs to compare (materialized via `git archive`).                                                                                                                                                                                                                                                           |
+| `--estimate`                    | **Digest only:** skip Exact mass (estimate-only `fileLoc` / empty publicMass & icebergs).                                                                                                                                                                                                                                                  |
+| `--exact`                       | **Digest only:** require Exact export-surface (**fail-closed** on engine error, exit 1). Loads classic TypeScript (`typescript-classic` locally, else jsDelivr, else unpkg). Graph topology bins unchanged. Not LSP / not tree-shake. On tree/file/mermaid/impact: no mass overlay (warn if passed).                                       |
+| `--exact-local`                 | Like `--exact` but never uses CDN (local classic / inject only); also fail-closed.                                                                                                                                                                                                                                                         |
+| `--tree-full`                   | **Tree:** full verbose file leaves (default tree is **summary** directory rolls). **Also Mermaid `--containment`:** full leaves under balanced `--limit` (default containment is **summary** hierarchy).                                                                                                                                   |
+| `--containment`                 | **Mermaid only:** emit a `flowchart TB` hierarchy of indexed folders/files. No import edges or SCC analysis. Default **presentation=summary** (all dirs; expand leaves when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may show `(N files)`). Add `--tree-full` for full leaves. Dependency mode is unchanged.                        |
+| `--file <rel>`                  | Relative path inside the project (**required** for `file`).                                                                                                                                                                                                                                                                                |
+| `--out <path>`                  | Write output to file instead of stdout (JSON for digest/tree/file/impact; **Mermaid text** for mermaid).                                                                                                                                                                                                                                   |
+| `--program`                     | **Digest:** TypeScript `createProgram` over the feed VFS (opt-in). Soft-fail to L1 graph. L2/L3 capability stamps only with evidence. Not LSP.                                                                                                                                                                                             |
+| `--artifact <path>`             | **Digest:** write portable `arch-atlas.artifact.v1` wrapper (payload = digest). Stdout/`--out` stay bare agent-digest.                                                                                                                                                                                                                     |
+| `-h`, `--help`                  | Usage.                                                                                                                                                                                                                                                                                                                                     |
 
 ### Digest Exact default
 
@@ -130,7 +130,7 @@ npm run atlas -- impact . --base main --head HEAD --omit fixtures --out /tmp/imp
 - **tree / file / mermaid / impact**: topology-only (Exact mass never applied).
   Passing `--exact` only warns that Exact is digest mass.
 
-Exact loads from **`@exact`** (`src/exact/`), shared with the web host — local
+Exact loads from **`@exact`** (`src/exact/`), shared with the web host - local
 **`typescript-classic`** npm package first (TypeScript 5.x `createSourceFile`
 under `node_modules/`), not a vendored `typescript.js`; else CDN (jsDelivr /
 unpkg) unless `--exact-local`.
@@ -154,7 +154,7 @@ nodes in subgraphs (size-2 mutual pairs may use `<-->`).
 
 Opt-in **`--containment`** emits a `flowchart TB` hierarchy from indexed file
 paths only. Directories are nested subgraphs, files are leaves, and there are no
-import edges or SCC comments (not a cycle glance — use default dependency mermaid
+import edges or SCC comments (not a cycle glance - use default dependency mermaid
 for that). Default **presentation=summary** mirrors tree summary: keep every
 directory; expand file leaves only when the folder is small (`fileCount ≤ 8`) or
 depth ≥ 3; rolled dirs may label `(N files)`. Headers stamp
@@ -170,16 +170,16 @@ Catalog: [mermaid-structure-graph](.grok/catalog/entries/mermaid-structure-graph
 
 Mermaid **surfaces** cycles; it is not the full audit lens.
 
-| Goal | Command | Where |
-| ---- | ------- | ----- |
-| Enumerate SCCs | `digest` (often `--estimate`) | `catalog.cycles.runtime` / `.type` — `size`, `edgeCount`, `samplePaths` (≤8) |
-| Structure sketch + honesty | `mermaid` | Header `%% cycles.runtime (file SCC)` + multi-prefix subgraphs / `<-->` |
-| One path in a knot | `file --file <rel>` | Neighbors around a sample path |
+| Goal                       | Command                       | Where                                                                        |
+| -------------------------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| Enumerate SCCs             | `digest` (often `--estimate`) | `catalog.cycles.runtime` / `.type` - `size`, `edgeCount`, `samplePaths` (≤8) |
+| Structure sketch + honesty | `mermaid`                     | Header `%% cycles.runtime (file SCC)` + multi-prefix subgraphs / `<-->`      |
+| One path in a knot         | `file --file <rel>`           | Neighbors around a sample path                                               |
 
 Same Tarjan SCC core (`src/core/catalog/cycles.ts`). Prefer **digest** when the
 question is “list circular chains”; prefer **mermaid** when you need a
 pasteable folder coupling sketch. Within-folder file cycles **collapse** under
-one topFolder node in the diagram — comments still list them. Recipes, caps,
+one topFolder node in the diagram - comments still list them. Recipes, caps,
 and read order:
 [.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md).
 
@@ -187,23 +187,23 @@ and read order:
 
 Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
 
-| Field | Meaning |
-| ----- | ------- |
-| `scope` | Stamp: `omit`, `includeTests`, `exactRequested` / `exactApplied`, `feedKind` (`directory` \| `zip`). Also on `file` reports. |
-| `catalog.entrypoints` / `catalog.roots` | Starts split: declared-ish entrypoints vs orphan roots. `catalog.starts` remains the merged list (entrypoints then roots). |
-| `summary.externalPackageCount` | Alias of external `packageCount` (npm/external leaves — not monorepo package tally). |
-| Graph edges `typeOnly` | Present when `import type` / `export type … from` (best-effort; `import { type X }` may still be value form). Ranking prefers runtime edges. |
-| Edge `toKind: 'omitted'` | Target missing because feed `--omit`, not true unresolved. |
-| Hotspot `rankScore` | Sort key after role adjustments (e.g. barrel demotion). Prefer over raw `edgeCount`. Dual degrees: edge-record `inDegree`/`outDegree` + unique `uniqueIn`/`uniqueOut`. |
-| `analysis.capabilities` / `capabilityDetail` / `completeness` | Protocol envelope: L0–L2 stamps (never L3 without Program). |
-| `exportDeclarationLoc` | Alias of Exact `surfaceLoc` (export-declaration span). Prefer this name in agents. Mass rows may stamp `surfaceSupport: 'supported'`. |
-| `downwindReach` / `reverseReach` | Agent aliases of `complex` / `blastRadius` (same arrays). |
-| `catalog.cycles` | `{ runtime, type }` SCC summaries (size ≥ 2). **Primary machine lens for circular import chains** — see [cycles-cheatsheet](.grok/reference/cycles-cheatsheet.md). |
-| `catalog.boundaryCrossings` | Inferred deep imports past barrel/façade folders. |
-| Edge `unresolvedReason` | `alias` \| `missing` \| `external` when `toKind: unresolved`. |
-| File `importsShown` / `importersShown` | Cap window length with totals + `truncated`. File `analysis.fileLens` stamps mass=false (topology-only). |
-| Catalog `roles` | **Inferred** only (`test` / `debug` / `barrel` / `entrypoint` / `module`) — never observed topology. |
-| File report neighbors | Arrays kept + `importsTotal` / `importersTotal` / `truncated` when capped by `--limit`. |
+| Field                                                         | Meaning                                                                                                                                                                |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`                                                       | Stamp: `omit`, `includeTests`, `exactRequested` / `exactApplied`, `feedKind` (`directory` \| `zip`). Also on `file` reports.                                           |
+| `catalog.entrypoints` / `catalog.roots`                       | Starts split: declared-ish entrypoints vs orphan roots. `catalog.starts` remains the merged list (entrypoints then roots).                                             |
+| `summary.externalPackageCount`                                | Alias of external `packageCount` (npm/external leaves - not monorepo package tally).                                                                                   |
+| Graph edges `typeOnly`                                        | Present when `import type` / `export type … from` (best-effort; `import { type X }` may still be value form). Ranking prefers runtime edges.                           |
+| Edge `toKind: 'omitted'`                                      | Target missing because feed `--omit`, not true unresolved.                                                                                                             |
+| Hotspot `rankScore`                                           | Sort key after role adjustments (e.g. barrel demotion). Prefer over raw `edgeCount`. Dual degrees: edge-record `inDegree`/`outDegree` + unique `uniqueIn`/`uniqueOut`. |
+| `analysis.capabilities` / `capabilityDetail` / `completeness` | Protocol envelope: L0–L2 stamps (never L3 without Program).                                                                                                            |
+| `exportDeclarationLoc`                                        | Alias of Exact `surfaceLoc` (export-declaration span). Prefer this name in agents. Mass rows may stamp `surfaceSupport: 'supported'`.                                  |
+| `downwindReach` / `reverseReach`                              | Agent aliases of `complex` / `blastRadius` (same arrays).                                                                                                              |
+| `catalog.cycles`                                              | `{ runtime, type }` SCC summaries (size ≥ 2). **Primary machine lens for circular import chains** - see [cycles-cheatsheet](.grok/reference/cycles-cheatsheet.md).     |
+| `catalog.boundaryCrossings`                                   | Inferred deep imports past barrel/façade folders.                                                                                                                      |
+| Edge `unresolvedReason`                                       | `alias` \| `missing` \| `external` when `toKind: unresolved`.                                                                                                          |
+| File `importsShown` / `importersShown`                        | Cap window length with totals + `truncated`. File `analysis.fileLens` stamps mass=false (topology-only).                                                               |
+| Catalog `roles`                                               | **Inferred** only (`test` / `debug` / `barrel` / `entrypoint` / `module`) - never observed topology.                                                                   |
+| File report neighbors                                         | Arrays kept + `importsTotal` / `importersTotal` / `truncated` when capped by `--limit`.                                                                                |
 
 ### Agent digest catalog bins
 
@@ -211,14 +211,14 @@ Additive `arch-atlas.agent-digest.v1` fields agents should prefer:
 Exact mass when available; `--estimate` keeps estimate mass. Exact is always an
 export-surface **overlay** (not a graph re-index).
 
-| Field | Estimate (`--estimate` or soft-fallback) | Exact applied (default digest) |
-| ----- | ---------------------------------------- | ------------------------------ |
-| `catalog.fileLoc` | Whole-file LOC ranking | Re-ranked by **export-surface** LOC (`analysis.locMetric: export-surface`) |
-| `catalogEstimateFileLoc` | omitted | Whole-file File LOC retained for comparison |
-| `catalog.publicMass` | `[]` | High surface/whole ratio (JS/TS only; zero-surface / debug paths gated) |
-| `catalog.icebergs` | `[]` | Large private body under smaller surface (same gates) |
-| `catalog.spines` | Topology ranking (+ `analysis.spineFormula`) | Same topology (formula stamp unchanged by Exact) |
-| Other bins (starts, hotspots, blast, …) | Estimate graph + ranking honesty | Topology unchanged; ranking uses unique/runtime preference |
+| Field                                   | Estimate (`--estimate` or soft-fallback)     | Exact applied (default digest)                                             |
+| --------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| `catalog.fileLoc`                       | Whole-file LOC ranking                       | Re-ranked by **export-surface** LOC (`analysis.locMetric: export-surface`) |
+| `catalogEstimateFileLoc`                | omitted                                      | Whole-file File LOC retained for comparison                                |
+| `catalog.publicMass`                    | `[]`                                         | High surface/whole ratio (JS/TS only; zero-surface / debug paths gated)    |
+| `catalog.icebergs`                      | `[]`                                         | Large private body under smaller surface (same gates)                      |
+| `catalog.spines`                        | Topology ranking (+ `analysis.spineFormula`) | Same topology (formula stamp unchanged by Exact)                           |
+| Other bins (starts, hotspots, blast, …) | Estimate graph + ranking honesty             | Topology unchanged; ranking uses unique/runtime preference                 |
 
 Spines answer cross-cutting fan-in / module diversity (formula chooser on web;
 default `modules-then-in` in digest). Public mass and icebergs need Exact; File
@@ -231,9 +231,10 @@ File LOC). When Exact is on, analysis may include `surfaceMetricNote`
 Directory walks skip `node_modules`, `.git`, dist, etc. (`shouldIgnorePath`) and
 non-text paths (`isTextPath`); depth overruns and `--omit` hits emit warnings.
 Path alone without a subcommand defaults to `digest`. Implementation: `src/cli/`
-+ pure builders in `src/core/export/agentDigest.ts`,
-`src/core/export/agentImpact.ts`, and `src/core/export/agentMermaid.ts`
-(impact uses `src/cli/loadGitRef.ts`).
+
+- pure builders in `src/core/export/agentDigest.ts`,
+  `src/core/export/agentImpact.ts`, and `src/core/export/agentMermaid.ts`
+  (impact uses `src/cli/loadGitRef.ts`).
 
 ## Product sketch
 
@@ -250,46 +251,46 @@ canvas. See [.grok/reference/scope.md](.grok/reference/scope.md) and
 Full contract: [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md)
 (catalog memory: `analysis-capability-honesty`).
 
-| Tier | What it is | What it is not |
-| ---- | ---------- | -------------- |
-| **Estimate** | Level-1 static **JS/TS** import graph + estimate mass (fuzzy by design) | Type-aware resolve, multi-lang imports, symbols/calls |
+| Tier                       | What it is                                                                                                           | What it is not                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Estimate**               | Level-1 static **JS/TS** import graph + estimate mass (fuzzy by design)                                              | Type-aware resolve, multi-lang imports, symbols/calls                              |
 | **Exact (export surface)** | Match import bindings → **export declarations** via classic TS `createSourceFile` (or text); reweight + inspect only | Language server / LSP protocol, full typecheck, bundler tree-shake, graph re-index |
-| **VS Code host** (future) | Same provider port; workspace + real language features / multi-LSP *possible* | Free “full LSP + tree-shake” without more product work |
+| **VS Code host** (future)  | Same provider port; workspace + real language features / multi-LSP _possible_                                        | Free “full LSP + tree-shake” without more product work                             |
 
 Exact may auto-enable when local classic TS is available; otherwise Precision →
 Exact or Weight → export surface loads the engine (local / CDN `@latest` /
-inject). Sticky engine prefs (splash checkbox) remember the tier choice only —
+inject). Sticky engine prefs (splash checkbox) remember the tier choice only -
 not the compiler payload. Non-JS languages stay estimate-honest; language chips
 surface that with status indicators (caution/draft when Exact is unavailable).
 
 ### What Level-1 does (and does not)
 
-| Does | Does not |
-| ---- | -------- |
-| Unpack ZIP in-browser (`fflate`) | Upload source to a remote analyzer |
-| Static import/require/export edges (JS/TS) | Type-aware resolution / LSP protocol |
-| `tsconfig` `paths` / `baseUrl` (best-effort) | Full monorepo workspace semantics |
-| Inferred entrypoints + package ends | Call graph, symbols, DB entities |
-| Catalog heuristics: reverse blast radius (import consumers) | Full framework adapters / agent loss function / topology-diff / godfile classifier |
-| Weight axes (edges / importer LOC / **estimated** target file LOC; hub reverse uses importer LOC under Imported LOC) | Multi-language Exact engines; Program topology re-index |
-| Optional **Exact export-surface** mass + inspect (named/default export spans; not whole-file under Exact when surface resolves) | Full type-checker / LanguageService / bundler tree-shake |
-| Catalog: **File LOC** whole-file; Exact **public mass** / **icebergs** (surface ratio); **spines** (topology + formula) | Claiming mass bins are LSP/tree-shake; replacing File LOC with surface LOC on the web catalog |
-| Inspect: import line + export-surface excerpt (Exact) or whole-file (estimate) | Type-checked references; multi-language Exact |
-| Carbon alluvial projection | Progressive stage-insert UX (later) |
+| Does                                                                                                                            | Does not                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Unpack ZIP in-browser (`fflate`)                                                                                                | Upload source to a remote analyzer                                                            |
+| Static import/require/export edges (JS/TS)                                                                                      | Type-aware resolution / LSP protocol                                                          |
+| `tsconfig` `paths` / `baseUrl` (best-effort)                                                                                    | Full monorepo workspace semantics                                                             |
+| Inferred entrypoints + package ends                                                                                             | Call graph, symbols, DB entities                                                              |
+| Catalog heuristics: reverse blast radius (import consumers)                                                                     | Full framework adapters / agent loss function / topology-diff / godfile classifier            |
+| Weight axes (edges / importer LOC / **estimated** target file LOC; hub reverse uses importer LOC under Imported LOC)            | Multi-language Exact engines; Program topology re-index                                       |
+| Optional **Exact export-surface** mass + inspect (named/default export spans; not whole-file under Exact when surface resolves) | Full type-checker / LanguageService / bundler tree-shake                                      |
+| Catalog: **File LOC** whole-file; Exact **public mass** / **icebergs** (surface ratio); **spines** (topology + formula)         | Claiming mass bins are LSP/tree-shake; replacing File LOC with surface LOC on the web catalog |
+| Inspect: import line + export-surface excerpt (Exact) or whole-file (estimate)                                                  | Type-checked references; multi-language Exact                                                 |
+| Carbon alluvial projection                                                                                                      | Progressive stage-insert UX (later)                                                           |
 
 ## Layout
 
-| Area | Path |
-| ---- | ---- |
-| Graph / parse / catalog / views | `src/core/` (pure TS; agent JSON in `export/agentDigest.ts`) |
-| Host-shared Exact | `src/exact/` (`@exact`) — export-surface engine (local classic / CDN); web + CLI share this; **not** pure core |
-| Agent CLI host | `src/cli/` (`npm run atlas` / bin `arch-atlas`); Exact via `@exact` (no `src/client/` imports) |
-| Pure shell (nav, captions, project, controls) | `src/shell/` (`@shell`) — no DOM/Carbon/chart |
-| Alluvial stage | `src/stage/` (`@stage`) — Carbon mount, polish, focus, drill |
-| Web client workspace | `src/client/` — thinned composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `wireUi.ts` — no `@carbon/charts` |
-| Astro app shell / theme | `src/pages/`, `src/layouts/`, `src/styles/` (zinc/teal) |
-| Carbon wrappers | `src/components/ui/` |
-| Sample fixtures | `fixtures/demo-*`, `fixtures/sample-ts-project/` |
+| Area                                          | Path                                                                                                                                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Graph / parse / catalog / views               | `src/core/` (pure TS; agent JSON in `export/agentDigest.ts`)                                                                                                                                                         |
+| Host-shared Exact                             | `src/exact/` (`@exact`) - export-surface engine (local classic / CDN); web + CLI share this; **not** pure core                                                                                                       |
+| Agent CLI host                                | `src/cli/` (`npm run atlas` / bin `arch-atlas`); Exact via `@exact` (no `src/client/` imports)                                                                                                                       |
+| Pure shell (nav, captions, project, controls) | `src/shell/` (`@shell`) - no DOM/Carbon/chart                                                                                                                                                                        |
+| Alluvial stage                                | `src/stage/` (`@stage`) - Carbon mount, polish, focus, drill                                                                                                                                                         |
+| Web client workspace                          | `src/client/` - thinned composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `wireUi.ts` - no `@carbon/charts` |
+| Astro app shell / theme                       | `src/pages/`, `src/layouts/`, `src/styles/` (zinc/teal)                                                                                                                                                              |
+| Carbon wrappers                               | `src/components/ui/`                                                                                                                                                                                                 |
+| Sample fixtures                               | `fixtures/demo-*`, `fixtures/sample-ts-project/`                                                                                                                                                                     |
 
 ## Agents
 

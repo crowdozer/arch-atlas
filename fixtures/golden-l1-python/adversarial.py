@@ -1,4 +1,4 @@
-"""L1 adversarial — # / triple-quote lookalikes + real package import."""
+"""L1 adversarial - # / triple-quote lookalikes + real package import."""
 # import commented_out
 # from fake import x
 """

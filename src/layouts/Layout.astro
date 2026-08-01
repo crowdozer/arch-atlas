@@ -1,65 +1,78 @@
 ---
-import Analytics from '@vercel/analytics/astro';
-import '../styles/global.css';
-import GoogleAnalytics from '../components/Analytics.astro';
-import SkipToContent from '../components/ui/SkipToContent.astro';
-import Header from '../components/ui/Header.astro';
-import HeaderName from '../components/ui/HeaderName.astro';
-import Button from '../components/ui/Button.astro';
+import Analytics from "@vercel/analytics/astro";
+import "../styles/global.css";
+import GoogleAnalytics from "../components/Analytics.astro";
+import SkipToContent from "../components/ui/SkipToContent.astro";
+import Header from "../components/ui/Header.astro";
+import HeaderName from "../components/ui/HeaderName.astro";
+import Button from "../components/ui/Button.astro";
 
 type Props = {
-	title?: string;
-	description?: string;
+  title?: string;
+  description?: string;
 };
 
 const {
-	title = 'Arch Atlas',
-	description = 'Local-first architecture compiler — upload a repository, explore an atlas',
+  title = "Arch Atlas",
+  description = "Local-first architecture compiler - upload a repository, explore an atlas",
 } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en" class="cds--g100 h-full atlas-carbon-pending">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<meta name="description" content={description} />
-		<title>{title}</title>
-		<GoogleAnalytics />
-	</head>
-	<body class="cds--g100 flex h-full min-h-screen flex-col bg-zinc-950 text-zinc-50">
-		<SkipToContent href="#main-content">Skip to content</SkipToContent>
-		<Header class="atlas-header">
-			<HeaderName href="/" prefix="Arch" class="ui-header-name">Atlas</HeaderName>
-		</Header>
-		<!-- Workspace sub-bar (filled when a session is active) -->
-		<div
-			id="atlas-subbar"
-			class="hidden shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2"
-		>
-			<p class="atlas-eyebrow m-0">Workspace</p>
-			<div id="atlas-summary-tags" class="flex min-w-0 flex-1 flex-wrap items-center gap-2"></div>
-			<p id="atlas-status" class="hidden max-w-md truncate text-xs text-zinc-500 sm:block" role="status"></p>
-			<Button
-				id="atlas-reset"
-				variant="ghost"
-				size="sm"
-				type="button"
-				class="atlas-reset shrink-0"
-				title="Return to upload — clear workspace session"
-			>
-				Clear session
-			</Button>
-		</div>
-		<main id="main-content" class="flex min-h-0 flex-1 flex-col">
-			<slot />
-		</main>
-		<script>
-			import '../components/ui/register.ts';
-		</script>
-		<Analytics />
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <GoogleAnalytics />
+  </head>
+  <body
+    class="cds--g100 flex h-full min-h-screen flex-col bg-zinc-950 text-zinc-50"
+  >
+    <SkipToContent href="#main-content">Skip to content</SkipToContent>
+    <Header class="atlas-header">
+      <HeaderName href="/" prefix="Arch" class="ui-header-name"
+        >Atlas</HeaderName
+      >
+    </Header>
+    <!-- Workspace sub-bar (filled when a session is active) -->
+    <div
+      id="atlas-subbar"
+      class="hidden shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-2"
+    >
+      <p class="atlas-eyebrow m-0">Workspace</p>
+      <div
+        id="atlas-summary-tags"
+        class="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+      >
+      </div>
+      <p
+        id="atlas-status"
+        class="hidden max-w-md truncate text-xs text-zinc-500 sm:block"
+        role="status"
+      >
+      </p>
+      <Button
+        id="atlas-reset"
+        variant="ghost"
+        size="sm"
+        type="button"
+        class="atlas-reset shrink-0"
+        title="Return to upload - clear workspace session"
+      >
+        Clear session
+      </Button>
+    </div>
+    <main id="main-content" class="flex min-h-0 flex-1 flex-col">
+      <slot />
+    </main>
+    <script>
+      import "../components/ui/register.ts";
+    </script>
+    <Analytics />
+  </body>
 </html>

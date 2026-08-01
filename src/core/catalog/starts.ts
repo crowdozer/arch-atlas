@@ -105,7 +105,7 @@ function packageEntryPaths(graph: CodeGraph): string[] {
 	return out;
 }
 
-/** JS/TS (and common ESM/CJS) source extensions — not Python/other. */
+/** JS/TS (and common ESM/CJS) source extensions - not Python/other. */
 function isJsTsSourcePath(path: string): boolean {
 	return /\.(m?[jt]sx?|cjs|mjs)$/.test(path);
 }
@@ -120,7 +120,7 @@ function isFrameworkish(path: string): boolean {
 	if (/(^|\/)(page|layout|route)\.(t|j)sx?$/.test(path)) return true;
 	// Pages Router / routes dirs: only JS/TS sources (not bare dir membership)
 	if (/(^|\/)(pages|routes)\//.test(path) && isJsTsSourcePath(path)) return true;
-	// Do not treat bare `app/**` as framework — Python packages collide with Next app/
+	// Do not treat bare `app/**` as framework - Python packages collide with Next app/
 	return false;
 }
 

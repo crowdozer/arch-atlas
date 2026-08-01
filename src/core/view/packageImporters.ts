@@ -1,8 +1,8 @@
 /**
  * Package sink helpers: match edges into a package, pick a primary importer file.
  *
- * Package chips / Export Roots open **package-hub** ({@link projectPackageHub}) —
- * reverse export chain into the dep — not file-hub on the primary importer.
+ * Package chips / Export Roots open **package-hub** ({@link projectPackageHub}) -
+ * reverse export chain into the dep - not file-hub on the primary importer.
  * {@link primaryImporterFile} remains for tests, metrics, and historical call sites.
  */
 
@@ -22,7 +22,7 @@ export function edgeMatchesPackage(e: ImportEdge, packageIdOrLabel: string): boo
 /**
  * File with the most edges into the package; path A–Z on ties.
  * Returns null when no observed imports exist (declared-only packages).
- * Not the package open policy — see {@link projectPackageHub}.
+ * Not the package open policy - see {@link projectPackageHub}.
  */
 export function primaryImporterFile(
 	graph: CodeGraph,

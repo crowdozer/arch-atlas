@@ -1,4 +1,4 @@
-"""Billing — external HTTP + local user check."""
+"""Billing - external HTTP + local user check."""
 import requests
 
 from app.lib.logger import info

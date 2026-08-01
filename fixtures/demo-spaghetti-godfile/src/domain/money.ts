@@ -1,4 +1,4 @@
-/** Shared money primitives — high reverse blast (many consumers). */
+/** Shared money primitives - high reverse blast (many consumers). */
 export type Money = { amount: number; currency: string };
 
 export function zero(currency = 'USD'): Money {

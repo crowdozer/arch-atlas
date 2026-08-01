@@ -1,5 +1,5 @@
 /**
- * Product-agnostic L1 disk goldens — extract → resolve → edge laws.
+ * Product-agnostic L1 disk goldens - extract → resolve → edge laws.
  *
  * Source of truth for minimal multi-lang L1 honesty. Not hub/alluvial/demo.
  * See fixtures/golden-l1-* and .grok/reference/language-landing-l1.md.
@@ -72,7 +72,7 @@ describe('golden-l1-js-ts', () => {
 				e.to === 'src/lib/worker-target.ts',
 		);
 		expect(edge?.toKind).toBe('file');
-		// Specifier may retain query in edge record or be cleaned — target path is law
+		// Specifier may retain query in edge record or be cleaned - target path is law
 		const specs = edgeSpecsFrom(graph, 'src/entry.ts');
 		expect(
 			specs.some(

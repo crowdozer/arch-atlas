@@ -1,12 +1,12 @@
 /**
- * Arch Atlas agent CLI — third host over pure core (dir|zip → agent lens).
+ * Arch Atlas agent CLI - third host over pure core (dir|zip → agent lens).
  *
  * Commands:
- *   digest <path>  — catalog rankings + structural graph projection
- *   tree <path>    — hierarchical file tree with parse flags
- *   file <path> --file <rel> — compact per-file report (no source dump)
- *   mermaid <path> — pasteable Mermaid structure graph (topFolder rollup)
- *   impact <path> --base <ref> --head <ref> — import-topology delta between refs
+ *   digest <path>  - catalog rankings + structural graph projection
+ *   tree <path>    - hierarchical file tree with parse flags
+ *   file <path> --file <rel> - compact per-file report (no source dump)
+ *   mermaid <path> - pasteable Mermaid structure graph (topFolder rollup)
+ *   impact <path> --base <ref> --head <ref> - import-topology delta between refs
  */
 
 import { writeFileSync } from 'node:fs';
@@ -96,7 +96,7 @@ type GlobalOpts = {
 };
 
 function printUsage(stream: NodeJS.WritableStream = process.stderr): void {
-	stream.write(`arch-atlas — local-first architecture lens for agents
+	stream.write(`arch-atlas - local-first architecture lens for agents
 
 Usage:
   arch-atlas digest  <path> [options]
@@ -116,7 +116,7 @@ file→file imports, file SCC cycle honesty in %% comments, multi-prefix SCCs as
 subgraphs. Topology-only L1 Estimate (no Exact mass / no Program).
 With --containment, Mermaid emits flowchart TB folder/file containment from
 indexed paths only (no dependency edges or cycle analysis). Default containment
-is summary hierarchy (all dirs; selective leaves — same thresholds as tree).
+is summary hierarchy (all dirs; selective leaves - same thresholds as tree).
 Use --tree-full with --containment for full leaves (balanced --limit cap).
 
 Impact usage cheatsheet (read order for large JSON):

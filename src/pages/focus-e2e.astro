@@ -4,34 +4,36 @@
  * Not linked from product nav. Playwright drives window.__ATLAS_FOCUS_E2E__.
  */
 ---
+
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Arch Atlas — focus e2e</title>
-		<style>
-			html,
-			body {
-				margin: 0;
-				background: #161616;
-				color: #f4f4f4;
-				font-family: system-ui, sans-serif;
-			}
-			#focus-e2e-root {
-				width: 1200px;
-				height: 720px;
-			}
-		</style>
-	</head>
-	<body>
-		<p id="focus-e2e-status">booting…</p>
-		<div id="focus-e2e-root"></div>
-		<script>
-			import '../styles/global.css';
-			import '../stage/focus/e2e/focusE2eBoot.ts';
-			const s = document.getElementById('focus-e2e-status');
-			if (s) s.textContent = window.__ATLAS_FOCUS_E2E__?.ready ? 'ready' : 'failed';
-		</script>
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Arch Atlas - focus e2e</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #161616;
+        color: #f4f4f4;
+        font-family: system-ui, sans-serif;
+      }
+      #focus-e2e-root {
+        width: 1200px;
+        height: 720px;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="focus-e2e-status">booting…</p>
+    <div id="focus-e2e-root"></div>
+    <script>
+      import "../styles/global.css";
+      import "../stage/focus/e2e/focusE2eBoot.ts";
+      const s = document.getElementById("focus-e2e-status");
+      if (s)
+        s.textContent = window.__ATLAS_FOCUS_E2E__?.ready ? "ready" : "failed";
+    </script>
+  </body>
 </html>

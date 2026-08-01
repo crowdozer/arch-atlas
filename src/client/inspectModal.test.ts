@@ -104,21 +104,21 @@ describe('inspect surface-claim precision (Program + mass)', () => {
 
 	it('callsitesTitle uses exact-surface wording when claim precision is exact + live', () => {
 		expect(callsitesTitle('exact', true)).toBe(
-			'Callsites (name scan in importer — not type-checked)',
+			'Callsites (name scan in importer - not type-checked)',
 		);
 		expect(callsitesTitle('exact', false)).toBe(
 			'Callsites (export surface unavailable)',
 		);
-		// Chrome program without remap would look like estimate — remap first
+		// Chrome program without remap would look like estimate - remap first
 		const claim = precisionForSurfaceClaims('program', true);
 		expect(callsitesTitle(claim, true)).toBe(
-			'Callsites (name scan in importer — not type-checked)',
+			'Callsites (name scan in importer - not type-checked)',
 		);
 		expect(callsitesTitle('program', true)).toBe(
-			'Possible callsites (estimate — name scan, not type-checked)',
+			'Possible callsites (estimate - name scan, not type-checked)',
 		);
 		expect(callsitesTitle('estimate', true)).toBe(
-			'Possible callsites (estimate — name scan, not type-checked)',
+			'Possible callsites (estimate - name scan, not type-checked)',
 		);
 	});
 
@@ -231,13 +231,13 @@ describe('directionMarker labels (perspective chrome)', () => {
 		expect(chrome.label).toBe('export');
 		expect(chrome.title).toBe('Export');
 		expect(chrome.className).toContain('--export');
-		// Form-only would still say import — paint must use perspective chrome
+		// Form-only would still say import - paint must use perspective chrome
 		expect(formDirectionMarker('import').label).toBe('import');
 	});
 });
 
 describe('accordionDirectionKind / directionMarker', () => {
-	it('follows edge form only — not section presence', () => {
+	it('follows edge form only - not section presence', () => {
 		expect(accordionDirectionKind(sampleEvidence())).toBe('import');
 		expect(
 			accordionDirectionKind(sampleEvidence({ form: 'export' })),
@@ -338,7 +338,7 @@ describe('perspectiveDirectionKind (focus-relative)', () => {
 				note: 'Estimate · whole file',
 			},
 		};
-		// Form alone would say import — wrong chrome on App's modal
+		// Form alone would say import - wrong chrome on App's modal
 		expect(accordionDirectionKind(ev)).toBe('import');
 		expect(perspectiveDirectionKind('src/App.tsx', ev)).toBe('export');
 		// Same edge while inspecting main stays import

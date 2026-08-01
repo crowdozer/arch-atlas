@@ -1,5 +1,5 @@
 /**
- * Engine insight scenes — Artillery-style shareable presets.
+ * Engine insight scenes - Artillery-style shareable presets.
  *
  * Product catalog is empty (triage packets 1A–2B closed). Underlying support
  * stays: types, `?scene=` parse, gallery bind hooks, open recipes, and
@@ -63,7 +63,7 @@ export type InsightScene = {
  *
  * To re-enable a scene: push an {@link InsightScene} here and register its
  * fixture under {@link SCENE_FIXTURE_GLOBS} (Vite `import.meta.glob` must be
- * static — add a new eager glob entry when adding a fixture dir).
+ * static - add a new eager glob entry when adding a fixture dir).
  */
 export const INSIGHT_SCENES: readonly InsightScene[] = [];
 
@@ -137,13 +137,13 @@ export function loadSceneFiles(id: SceneId): VirtualFile[] {
 	const entry = SCENE_FIXTURE_GLOBS[id];
 	if (!entry) {
 		throw new Error(
-			`Scene "${id}" has no fixture loader — register import.meta.glob in insightScenes.ts`,
+			`Scene "${id}" has no fixture loader - register import.meta.glob in insightScenes.ts`,
 		);
 	}
 	const files = toVirtualFiles(entry.modules, entry.marker);
 	if (!files.length) {
 		throw new Error(
-			`Scene "${id}" produced zero files — check fixture paths / glob.`,
+			`Scene "${id}" produced zero files - check fixture paths / glob.`,
 		);
 	}
 	return files;

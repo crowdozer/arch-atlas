@@ -196,7 +196,7 @@ Run each work packet as its own `/ship` so research, implementation, czar review
 and any fix rounds remain attributable. Do not begin a dependent packet until
 the preceding gate is green.
 
-### Pre-phase 0 — Insight scenes (browser repro)
+### Pre-phase 0 - Insight scenes (browser repro)
 
 **Ship prompt**
 
@@ -205,20 +205,20 @@ the preceding gate is green.
 
 **Landed contract**
 
-| URL | Packet | What to look for |
-| --- | ------ | ---------------- |
-| `/?scene=scarce-fanout` | 1B | root→a unit mass; only one of b/c on hop 2 |
-| `/?scene=cyclic-depth` | 1A | c depth 2 instead of long path depth 3 |
-| `/?scene=label-collision` | 2A | module `react` + package `react` self-link / overwrite |
-| `/?scene=sticky-package` | 2B | painted `react · package` sticky fails package-hub remount |
-| `/?scene=omitted-ends` | 2A | omitted `./hidden` leaks into module ends |
+| URL                       | Packet | What to look for                                           |
+| ------------------------- | ------ | ---------------------------------------------------------- |
+| `/?scene=scarce-fanout`   | 1B     | root→a unit mass; only one of b/c on hop 2                 |
+| `/?scene=cyclic-depth`    | 1A     | c depth 2 instead of long path depth 3                     |
+| `/?scene=label-collision` | 2A     | module `react` + package `react` self-link / overwrite     |
+| `/?scene=sticky-package`  | 2B     | painted `react · package` sticky fails package-hub remount |
+| `/?scene=omitted-ends`    | 2A     | omitted `./hidden` leaks into module ends                  |
 
 - Catalog: `src/client/insightScenes.ts` + gallery on upload step + `/scenes`
 - Characterizations in `insightScenes.test.ts` assert **today's broken** shape
   so repair ships flip those expectations green
 - Does **not** change geometry; only load + open recipes
 
-### Phase 0 — Shared integrity guardrails ✅ landed
+### Phase 0 - Shared integrity guardrails ✅ landed
 
 **Ship prompt**
 
@@ -227,7 +227,7 @@ the preceding gate is green.
 
 **Landed**
 
-- `src/core/view/alluvialPayloadIntegrity.ts` — test-owned collector + assert
+- `src/core/view/alluvialPayloadIntegrity.ts` - test-owned collector + assert
   (structure-hard: unique names, endpoints, no self-links, positive values,
   nodeRef/color/rank/category coverage, focus + pair resolution, rail bucket
   law). Focus-graph rail exclusion via `assertFocusGraphNoRails` (no core→stage
@@ -242,9 +242,9 @@ the preceding gate is green.
 - The helper fails on deliberately malformed synthetic payloads.
 - Targeted projector/focus tests and full `npm test` pass.
 
-### Phase 1 — Topology correctness
+### Phase 1 - Topology correctness
 
-#### Packet 1A — Cyclic and convergent depth ✅ landed
+#### Packet 1A - Cyclic and convergent depth ✅ landed
 
 **Ship prompt**
 
@@ -257,7 +257,7 @@ the preceding gate is green.
 - `fileLongestDistances` explores every simple path (update on longer arrival;
   always DFS under stack). Fixes diamond+cycle under-report (c at 3 via
   root→b→a→c).
-- Optional `{ maxDepth }` — hub forward rings pass `hubRadius` so search stays
+- Optional `{ maxDepth }` - hub forward rings pass `hubRadius` so search stays
   radius-bounded.
 - Catalog tree-depth stays BFS via `fileDistances` / `importDepthStats` (not
   silently relabeled as longest simple path).
@@ -273,7 +273,7 @@ the preceding gate is green.
 - Any catalog metric semantic change is explicit and documented; no silent
   relabeling of a different algorithm as “longest simple path.”
 
-#### Packet 1B — Scarce fan-out ✅ landed
+#### Packet 1B - Scarce fan-out ✅ landed
 
 **Ship prompt**
 
@@ -298,9 +298,9 @@ the preceding gate is green.
   first.
 - Existing External/package reserve and overflow laws remain intact.
 
-### Phase 2 — Stable identity and label safety
+### Phase 2 - Stable identity and label safety
 
-#### Packet 2A — Projector identity collisions and omitted targets ✅ landed
+#### Packet 2A - Projector identity collisions and omitted targets ✅ landed
 
 **Ship prompt**
 
@@ -311,7 +311,7 @@ the preceding gate is green.
 
 - `projectModuleFocus` claims focus label first, then each end via `claimName`
   (stable `nodeRef.id` = endKey / module id). No self-links on module=`react`
-  + package=`react`.
+  - package=`react`.
 - Omitted edges excluded from module ends (`toKind === 'omitted'` skip).
 - `edgeMatchesPackage` rejects omitted (package-hub / Export Roots matching).
 - `projectAlluvial` classic path also skips omitted (package|unresolved only).
@@ -324,7 +324,7 @@ the preceding gate is green.
   remains a separate exploratory concern.
 - Shared integrity checks pass across all projectors.
 
-#### Packet 2B — Cross-view sticky package identity ✅ landed
+#### Packet 2B - Cross-view sticky package identity ✅ landed
 
 **Ship prompt**
 
@@ -348,7 +348,7 @@ the preceding gate is green.
 - No second focus state owner is introduced beside the stage API and host open
   intent.
 
-### Phase 3 — Real event and browser smoke ✅ landed
+### Phase 3 - Real event and browser smoke ✅ landed
 
 **Ship prompt**
 
@@ -357,7 +357,7 @@ the preceding gate is green.
 
 **Landed**
 
-- `bindAlluvialFocusEvents.test.ts` — CustomEvent dispatch for node/line
+- `bindAlluvialFocusEvents.test.ts` - CustomEvent dispatch for node/line
   mouseover/out, package, rail exclusion, sticky restore, wrong event name /
   malformed datum fail-closed.
 - Native DOM hover on all `g.node-group` + non-pad `path.link` (complements
@@ -376,7 +376,7 @@ the preceding gate is green.
 - Do not invent a CI service; propose a CI/default-gate change separately if no
   existing owner exists.
 
-### Phase 4 — Adversarial matrix and closure ✅ landed
+### Phase 4 - Adversarial matrix and closure ✅ landed
 
 **Ship prompt**
 
@@ -385,10 +385,10 @@ the preceding gate is green.
 
 **Landed**
 
-- Fixture `fixtures/adversarial-alluvial-matrix/` — single asymmetric corpus
+- Fixture `fixtures/adversarial-alluvial-matrix/` - single asymmetric corpus
   (fan-out + cycle, deep chain, many deps, module/package react, unresolved,
   multi-folder importers for sticky claimName).
-- `adversarialAlluvial.matrix.test.ts` — integrity, axis topology stability,
+- `adversarialAlluvial.matrix.test.ts` - integrity, axis topology stability,
   overflow under maxDeps=3, edge-order permutation → normalized payload equality,
   FocusPlan↔inventory closure (file/package/band), module 2A, sticky 2B resolve.
 - Catalog record marked **`implemented`** (all phase gates met).
@@ -449,23 +449,23 @@ environment.
 
 ## Rejected alternatives + why
 
-1. **One mega alluvial repair ship** — obscures which semantic change moved
+1. **One mega alluvial repair ship** - obscures which semantic change moved
    geometry and makes czar fix loops too broad.
-2. **Update goldens to match current branch loss** — canonizes an implementation
+2. **Update goldens to match current branch loss** - canonizes an implementation
    bug against the explicit multi-instance edge-expansion law.
-3. **Give every scarce child integer mass 1** — preserves topology by silently
+3. **Give every scarce child integer mass 1** - preserves topology by silently
    inventing mass; unacceptable without an explicit product decision.
-4. **Continue using display names as durable IDs** — collision suffixes are
+4. **Continue using display names as durable IDs** - collision suffixes are
    projector-local presentation and cannot survive remount reliably.
-5. **Trust direct `applySeed` browser tests** — proves paint application but not
+5. **Trust direct `applySeed` browser tests** - proves paint application but not
    Carbon event names, datum adapters, DOM binding, or pointer leave behavior.
-6. **Fold pretty relative paths into this repair** — broader UX work does not
+6. **Fold pretty relative paths into this repair** - broader UX work does not
    solve entity identity and would violate the surgical triage constraint.
-7. **Rewrite the hub matrices after fixes** — these defects violate current
+7. **Rewrite the hub matrices after fixes** - these defects violate current
    law; documentation should change only if a ship surfaces and resolves a real
    product choice.
 
-## Open questions (explicit residual — not hidden in tests)
+## Open questions (explicit residual - not hidden in tests)
 
 - **Carbon fractional tooltips:** fractional ribbons shipped (1B); product polish
   for tooltip/format rounding still optional UX, not a topology gate.

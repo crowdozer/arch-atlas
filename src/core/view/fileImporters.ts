@@ -5,7 +5,7 @@
  *
  * **Folders are not hop depth.** Every reverse edge is already one import hop
  * (A imports logger). Path prefixes (app/, src/services, (root)) are only used
- * as optional *leaf labels* when there are too many call sites to list — never
+ * as optional *leaf labels* when there are too many call sites to list - never
  * as an intermediate depth column.
  *
  * maxDepth (viz-only) scales how many call sites we promote before overflow;
@@ -280,7 +280,7 @@ function projectImportsColumn(args: {
 		if (target === otherLabel) continue;
 		const ref = leafRef.get(key);
 		if (ref) nodeRef[target] = ref;
-		// Folder keys and files both live under Imports — not a depth stage
+		// Folder keys and files both live under Imports - not a depth stage
 		nodeMeta.set(target, {
 			category: 'Imports',
 			color: mode === 'folders' ? TEAL.package : TEAL.module,
@@ -441,7 +441,7 @@ export function fileDegreeMaps(
  * True when reverse importers would be a reasonable fan-in projection:
  * pure sink (out=0, in>0) or inn>out.
  *
- * Client file opens no longer route with this helper — every file uses
+ * Client file opens no longer route with this helper - every file uses
  * projectFileHub (Imports-only when pure sink). Kept for tests / pure API.
  */
 export function preferFileImportersView(graph: CodeGraph, fileId: string): boolean {

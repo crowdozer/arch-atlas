@@ -152,7 +152,7 @@ describe('edgeWeight matrix', () => {
 	});
 
 	it('hubReverseEdgeWeight differentiates reverse edges under target-loc', () => {
-		// Two importers of the same target (focus) — plain edgeWeight shares target LOC
+		// Two importers of the same target (focus) - plain edgeWeight shares target LOC
 		const e1 = edge({
 			from: 'a.ts',
 			to: 'b.ts',

@@ -1,73 +1,73 @@
 ---
 /**
  * Display wrapper: product tone → cds-tag.
- * Tones include teal / yellow product chips (yellow is Arch Atlas extension —
+ * Tones include teal / yellow product chips (yellow is Arch Atlas extension -
  * Carbon has no yellow type).
  */
 export type TagTone =
-	| 'default'
-	| 'success'
-	| 'warning'
-	| 'yellow'
-	| 'danger'
-	| 'info'
-	| 'neutral'
-	| 'accent'
-	| 'highlight'
-	| 'teal'
-	| 'cyan'
-	| 'magenta'
-	| 'purple'
-	| 'blue'
-	| 'green'
-	| 'gray'
-	| 'cool-gray'
-	| 'warm-gray'
-	| 'red';
+  | "default"
+  | "success"
+  | "warning"
+  | "yellow"
+  | "danger"
+  | "info"
+  | "neutral"
+  | "accent"
+  | "highlight"
+  | "teal"
+  | "cyan"
+  | "magenta"
+  | "purple"
+  | "blue"
+  | "green"
+  | "gray"
+  | "cool-gray"
+  | "warm-gray"
+  | "red";
 
 type Props = {
-	tone?: TagTone;
-	size?: 'sm' | 'md' | 'lg';
-	class?: string;
-	title?: string;
+  tone?: TagTone;
+  size?: "sm" | "md" | "lg";
+  class?: string;
+  title?: string;
 };
 
-const { tone = 'default', size = 'sm', class: className, title } = Astro.props;
+const { tone = "default", size = "sm", class: className, title } = Astro.props;
 
 /** Carbon type= attribute (yellow falls back to warm-gray host + ui-tag--yellow paint). */
 const type =
-	tone === 'success' || tone === 'green'
-		? 'green'
-		: tone === 'warning' || tone === 'yellow'
-			? 'warm-gray'
-			: tone === 'danger' || tone === 'red'
-				? 'red'
-				: tone === 'info' || tone === 'highlight' || tone === 'blue'
-					? 'blue'
-					: tone === 'neutral' || tone === 'gray' || tone === 'default'
-						? 'gray'
-						: tone === 'accent' || tone === 'purple'
-							? 'purple'
-							: tone === 'teal'
-								? 'teal'
-								: tone === 'cyan'
-									? 'cyan'
-									: tone === 'magenta'
-										? 'magenta'
-										: tone === 'warm-gray'
-											? 'warm-gray'
-											: tone === 'cool-gray'
-												? 'cool-gray'
-												: 'gray';
+  tone === "success" || tone === "green"
+    ? "green"
+    : tone === "warning" || tone === "yellow"
+      ? "warm-gray"
+      : tone === "danger" || tone === "red"
+        ? "red"
+        : tone === "info" || tone === "highlight" || tone === "blue"
+          ? "blue"
+          : tone === "neutral" || tone === "gray" || tone === "default"
+            ? "gray"
+            : tone === "accent" || tone === "purple"
+              ? "purple"
+              : tone === "teal"
+                ? "teal"
+                : tone === "cyan"
+                  ? "cyan"
+                  : tone === "magenta"
+                    ? "magenta"
+                    : tone === "warm-gray"
+                      ? "warm-gray"
+                      : tone === "cool-gray"
+                        ? "cool-gray"
+                        : "gray";
 
-const yellow = tone === 'yellow' || tone === 'warning';
+const yellow = tone === "yellow" || tone === "warning";
 ---
 
 <cds-tag
-	type={type}
-	size={size}
-	class:list={['ui-tag', yellow ? 'ui-tag--yellow' : null, className]}
-	title={title}
+  type={type}
+  size={size}
+  class:list={["ui-tag", yellow ? "ui-tag--yellow" : null, className]}
+  title={title}
 >
-	<slot />
+  <slot />
 </cds-tag>

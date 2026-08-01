@@ -7,7 +7,7 @@ import Document16 from '@carbon/icons/es/document/16.js';
 import { CHART_PALETTE } from '@core/view/chartPalette.ts';
 import { readData, type SankeyNode } from './sankeyDom.ts';
 
-/** Purple selection accent for File spine — matches --atlas-select-strong. */
+/** Purple selection accent for File spine - matches --atlas-select-strong. */
 const FILE_SPINE_SELECT = CHART_PALETTE.selectStrong;
 
 type IconDescriptor = {
@@ -28,7 +28,7 @@ function fileHeaderIconSvg(): string {
 
 /**
  * Carbon alluvial paints band strokes from the **source** node color.
- * Export side (right, yellow — packages/files the focus imports) should keep
+ * Export side (right, yellow - packages/files the focus imports) should keep
  * yellow bands when painted from File or another export-side source.
  */
 export function isExportSideCategory(category: string): boolean {

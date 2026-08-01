@@ -56,14 +56,14 @@ export function projectModuleFocus(
 	const edgeWeightOpts = pickEdgeWeightOpts(opts);
 	const units = unitsForAxis(weightAxis, 'package-mass', opts?.precision);
 
-	// endKey → { preferredLabel, kind, mass } — kind is package | unresolved only
+	// endKey → { preferredLabel, kind, mass } - kind is package | unresolved only
 	const endCounts = new Map<
 		string,
 		{ label: string; kind: 'package' | 'unresolved'; n: number }
 	>();
 
 	for (const e of graph.edges) {
-		// Architecture ends only — not file targets, not feed-omitted
+		// Architecture ends only - not file targets, not feed-omitted
 		if (e.toKind === 'file' || e.toKind === 'omitted') continue;
 		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
 		if (topFolder(e.from) !== moduleFolder) continue;
@@ -134,7 +134,7 @@ export function projectModuleFocus(
 			? (displayForEnd.get(endKey) ?? info.label)
 			: otherLabel;
 		if (!target) continue;
-		// Module (left) → Package end (right) — always distinct endpoints
+		// Module (left) → Package end (right) - always distinct endpoints
 		const k = `${focusLabel}\0${target}`;
 		linkMap.set(k, (linkMap.get(k) ?? 0) + info.n);
 	}

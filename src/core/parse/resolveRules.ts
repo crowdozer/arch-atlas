@@ -18,7 +18,7 @@ export type LanguageFamilyId = 'js-ts' | 'python';
  * Order in `RULES_BY_FAMILY` documents policy; apply order lives in resolve.ts.
  *
  * `resource-query-strip` is a **js-ts pre-resolve normalize** (Vite/webpack
- * `?worker` / `?raw` / `#hash`). Not universal — candidates must not inherit
+ * `?worker` / `?raw` / `#hash`). Not universal - candidates must not inherit
  * it blindly (see CANDIDATE_LANGUAGE_NOTES blockers).
  */
 export type PathRuleFamily =
@@ -76,7 +76,7 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 		confidence: 'very-high',
 		blockers: [
 			'same gaps as js-ts (bundler configs, package imports)',
-			// document only — already enabled for js-ts family
+			// document only - already enabled for js-ts family
 			'bundler query strip is js-ts pre-resolve normalize, not universal',
 		],
 	},
@@ -118,7 +118,7 @@ export const CANDIDATE_LANGUAGE_NOTES: readonly CandidateLanguageNote[] = [
 			'no site-packages / pyproject path maps',
 			'no importlib / dynamic',
 			'stdlib builtin tagging optional',
-			// resource-query-strip intentionally absent — python early-return in resolve.ts
+			// resource-query-strip intentionally absent - python early-return in resolve.ts
 			'bundler query strip is js-ts pre-resolve normalize, not universal',
 		],
 	},

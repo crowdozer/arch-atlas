@@ -1,5 +1,5 @@
 /**
- * LogicalFocusGraph + FocusPlan — pure SoR for hub alluvial hover.
+ * LogicalFocusGraph + FocusPlan - pure SoR for hub alluvial hover.
  *
  * Geometry (pads/rails/undraw) is orthogonal. Connectivity for External is
  * meta.externalStraightPairs only. Rails never enter the graph.
@@ -59,7 +59,7 @@ export type LogicalFocusGraph = {
 	pairs: readonly ExternalFocusPair[];
 };
 
-// —— keys ————————————————————————————————————————————————————————————————
+// -- keys ----------------------------------------------------------------
 
 export function fileBandKey(source: string, target: string): string {
 	return `${source}\0${target}`;
@@ -79,7 +79,7 @@ export function parseExternalBandKey(
 	return { parent: rest.slice(0, i), packageName: rest.slice(i + 1) };
 }
 
-// —— aliases / membership ————————————————————————————————————————————————
+// -- aliases / membership ------------------------------------------------
 
 /**
  * Multi-hop instance labels from fileHub (`path#N` hop suffix).
@@ -160,7 +160,7 @@ function isPackageKind(
 	return pairs.some((p) => p.packageName === name);
 }
 
-// —— graph build ——————————————————————————————————————————————————————————
+// -- graph build ----------------------------------------------------------
 
 type BuildInput = {
 	data: readonly FocusLink[];
@@ -263,7 +263,7 @@ export function buildLogicalFocusGraph(
 	});
 }
 
-// —— plan ————————————————————————————————————————————————————————————————
+// -- plan ----------------------------------------------------------------
 
 function pushAdj(
 	m: Map<string, string[]>,

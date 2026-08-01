@@ -27,7 +27,7 @@ export type AlluvialLabelStats = {
 };
 
 export type LabelRewriteOpts = {
-	/** Band sort mode — picks which arrow/number is primary. */
+	/** Band sort mode - picks which arrow/number is primary. */
 	bandSort?: BandSortMode;
 	/** name → stats; missing names keep Carbon's original (value). */
 	stats?: ReadonlyMap<string, AlluvialLabelStats> | Record<string, AlluvialLabelStats>;
@@ -133,7 +133,7 @@ export function buildAlluvialLabelStats(
 
 /**
  * Keep the right end of a label (paths show basename side); prefix ellipsis.
- * Pure string helper — used for SVG text polish after Carbon paints full names.
+ * Pure string helper - used for SVG text polish after Carbon paints full names.
  */
 export function rightTruncateLabel(text: string, maxChars: number): string {
 	const max = Math.max(2, Math.floor(maxChars));
@@ -212,7 +212,7 @@ function repositionAlluvialLabelChip(textEl: SVGTextElement): void {
 	}
 
 	// Carbon wraps text+bg in g[alluvial-node-title-*]; fixtures may put text
-	// directly under node-group — only re-transform a distinct title wrapper.
+	// directly under node-group - only re-transform a distinct title wrapper.
 	if (titleG !== nodeG) {
 		const { x, y } = carbonAlluvialLabelTitleOffset(d, textW);
 		titleG.setAttribute('transform', `translate(${x}, ${y})`);
@@ -237,7 +237,7 @@ export function rightTruncateAlluvialLabels(
 	for (const text of holder.querySelectorAll<SVGTextElement>('text.node-text')) {
 		const full = text.textContent ?? '';
 		if (!full) continue;
-		// Match "label (value)" — value may be "1.2k" etc.
+		// Match "label (value)" - value may be "1.2k" etc.
 		const m = full.match(/^(.*) \(([^()]*)\)$/);
 		const name = m ? m[1]! : full;
 		const carbonValue = m ? m[2]! : null;
@@ -266,7 +266,7 @@ export function rightTruncateAlluvialLabels(
 		text.textContent = next;
 		text.setAttribute('title', hover);
 		text.setAttribute('aria-label', stats && suffix ? hover : full);
-		// Carbon laid out with full string width — re-anchor chip to the bar
+		// Carbon laid out with full string width - re-anchor chip to the bar
 		// with the truncated measure (bg width + title-group transform).
 		repositionAlluvialLabelChip(text);
 	}

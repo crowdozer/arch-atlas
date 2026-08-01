@@ -26,7 +26,7 @@ export function atlasDebugDumpPlugin(opts) {
 					return;
 				}
 
-				// Vite configureServer is always dev — still fail closed if miswired
+				// Vite configureServer is always dev - still fail closed if miswired
 				if (process.env.NODE_ENV === 'production') {
 					res.statusCode = 500;
 					res.setHeader('Content-Type', 'application/json');
@@ -116,8 +116,8 @@ export function atlasDebugDumpPlugin(opts) {
 						[
 							'Arch Atlas alluvial debug dumps (gitignored).',
 							'',
-							'alluvial-latest.json  — most recent dump (overwrite each click)',
-							'alluvial-<stamp>.json — timestamped copies',
+							'alluvial-latest.json  - most recent dump (overwrite each click)',
+							'alluvial-<stamp>.json - timestamped copies',
 							'',
 							'Schema: arch-atlas.debug-alluvial.v1',
 							'POST /api/debug/alluvial-dump (astro dev only; 500 outside dev)',

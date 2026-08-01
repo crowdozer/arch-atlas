@@ -148,7 +148,7 @@ export function loadGitRef(
 }
 
 /**
- * Archive ref to an in-memory buffer then write once — used when `-o` path is
+ * Archive ref to an in-memory buffer then write once - used when `-o` path is
  * awkward; kept for potential stream paths. Prefer {@link loadGitRef}.
  */
 export function gitArchiveToZipBuffer(

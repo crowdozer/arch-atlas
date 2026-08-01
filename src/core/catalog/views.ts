@@ -68,7 +68,7 @@ export function buildMapCatalog(graph: CodeGraph, opts?: BuildMapCatalogOpts): M
 	const spines = catalogSpines(graph, rankLimit, spineFormula);
 	const cycles = catalogCycles(graph, rankLimit);
 	const boundaryCrossings = catalogBoundaryCrossings(graph, boundaryLimit);
-	// Exact overlay only — stable empty shape under estimate
+	// Exact overlay only - stable empty shape under estimate
 	const publicMass: MapCatalog['publicMass'] = [];
 	const icebergs: MapCatalog['icebergs'] = [];
 

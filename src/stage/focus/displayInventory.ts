@@ -69,7 +69,7 @@ export function listDrawnBandsFromPayload(
 			sk === 'package' ||
 			sk === 'unresolved'
 		) {
-			// Residual non-pair package hop would be undrawn scaffold or error —
+			// Residual non-pair package hop would be undrawn scaffold or error -
 			// not a drawn focus target.
 			continue;
 		}

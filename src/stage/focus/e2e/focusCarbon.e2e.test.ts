@@ -1,6 +1,6 @@
 /**
  * Browser e2e (Artillery pattern): real Carbon Alluvial + polish + focus apply.
- * Not in default `npm test` — run `npm run test:e2e:focus`.
+ * Not in default `npm test` - run `npm run test:e2e:focus`.
  *
  * Phase 3: **physical pointer** hover (not sole applySeed). Stale dist fails
  * closed via source-hash rebuild. Node engines enforced in e2eServer.
@@ -41,7 +41,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 
 	beforeAll(async () => {
 		assertNodeEngines('22.12.0');
-		// Isolated preview — never attaches to user's :4321 main checkout.
+		// Isolated preview - never attaches to user's :4321 main checkout.
 		server = await startAstroDevServer();
 		baseUrl = server.baseUrl;
 		browser = await chromium.launch();
@@ -91,7 +91,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 			let labels = await dumpLabelsInBrowser(page);
 
 			// If physical Carbon events are flaky on this chart build, fall back
-			// once with applySeed and fail with a clear message if still wrong —
+			// once with applySeed and fail with a clear message if still wrong -
 			// physical path is preferred; soft fallback only for CI environment.
 			if (!bandFocused(bands, CODEBREAKER_BUFFER, CODEBREAKER_HOOK)) {
 				// Retry physical once after settle
@@ -100,7 +100,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 				bands = await dumpBandsInBrowser(page);
 			}
 
-			// Still require focus — if physical path never fires Carbon events,
+			// Still require focus - if physical path never fires Carbon events,
 			// this fails (correct fail-closed for broken DOM binding).
 			// Document: applySeed helper remains for lower-level diagnostics only.
 			const physicalOk = bandFocused(
@@ -158,7 +158,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 			const afterLeave = await dumpBandsInBrowser(page);
 			const stillFocused = afterLeave.some((b) => b.focus);
 			// clear may be sticky-neutral; at least chart should not keep Buffer plan only
-			// When no defaultSeed, clearFocus clears dimming — focus classes should drop
+			// When no defaultSeed, clearFocus clears dimming - focus classes should drop
 			expect(
 				stillFocused,
 				'after mouseleave, no band should remain focused without sticky seed',
@@ -191,7 +191,7 @@ describe('focus Carbon e2e (codebreaker Buffer sibling track)', () => {
 			let bands = await dumpBandsInBrowser(page);
 			let focused = bands.filter((b) => b.focus);
 			// Thin Sankey ribbons can miss the cursor; retry mid-point via applySeed
-			// only as diagnostic — require either physical focus or explicit fail.
+			// only as diagnostic - require either physical focus or explicit fail.
 			if (focused.length === 0) {
 				await hoverBandPhysical(page, candidate!.source, targetPrefix);
 				await page.waitForTimeout(200);

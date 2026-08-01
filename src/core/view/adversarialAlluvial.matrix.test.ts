@@ -1,5 +1,5 @@
 /**
- * Phase 4 — adversarial alluvial matrix (closure of engine correctness triage).
+ * Phase 4 - adversarial alluvial matrix (closure of engine correctness triage).
  *
  * One asymmetric corpus covering:
  * - unit-mass fan-out (1B)

@@ -6,7 +6,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Browser e2e for hub focus (Carbon mount + polish + apply).
- * Not part of `npm test` — run via `npm run test:e2e:focus`.
+ * Not part of `npm test` - run via `npm run test:e2e:focus`.
  * Pattern: mainframe artillery `vitest.e2e.config.ts`.
  */
 export default defineConfig({

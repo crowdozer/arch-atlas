@@ -1,4 +1,4 @@
-"""Orders — uses users + shared format helpers."""
+"""Orders - uses users + shared format helpers."""
 from app.db.session import get_session
 from app.lib.format import money_cents
 from app.lib.logger import warn

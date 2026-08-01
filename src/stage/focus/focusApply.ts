@@ -179,7 +179,7 @@ export function applyFocusPlan(
 export function clearFocusPlan(holder: MiniLike | HTMLElement): void {
 	const h = holder as MiniLike;
 	h.classList.remove(CLASS_DIMMING);
-	// legacy package blanket — never leave behind
+	// legacy package blanket - never leave behind
 	h.classList.remove('ui-alluvial-external-pkg-focus');
 
 	for (const g of h.querySelectorAll('g.node-group') as Iterable<MiniGroup>) {

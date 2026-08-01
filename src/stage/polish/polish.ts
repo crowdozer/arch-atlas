@@ -1,7 +1,7 @@
 /**
  * Ordered post-mount polish facade for Carbon alluvial holders.
  *
- * Pipeline (exact order — do not reorder):
+ * Pipeline (exact order - do not reorder):
  * **band order by nodeRank** → center spine → **link ribbons** → truncate labels
  * → hide rails with pairs → straighten → terminators → File chrome → export
  * recolor → svg overflow
@@ -36,7 +36,7 @@ export function polishAlluvialHolder(
 	holder: HTMLElement,
 	opts?: {
 		colorScale?: Record<string, string>;
-		/** Default true — center File when it has both import and export edges. */
+		/** Default true - center File when it has both import and export edges. */
 		centerHubFile?: boolean;
 		/** Max chars for node name (default {@link ALLUVIAL_LABEL_MAX_CHARS}). */
 		labelMaxChars?: number;
@@ -68,7 +68,7 @@ export function polishAlluvialHolder(
 	// reshuffles for crossing reduction and defeats Band order).
 	stackBandsByNodeRankInHolder(holder, opts?.nodeRank);
 	centerHubFileSpineInHolder(holder, { centerHubFile: opts?.centerHubFile });
-	// Always ribbon-ize Carbon path.link (not only when File moved) — mass in fill
+	// Always ribbon-ize Carbon path.link (not only when File moved) - mass in fill
 	rewriteLinkRibbons(holder);
 	rightTruncateAlluvialLabels(
 		holder,

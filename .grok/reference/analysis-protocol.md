@@ -35,38 +35,38 @@ seam.
 Every result should stamp which levels were **available** for this run (not
 what the product can do in the best case).
 
-| Cap | Meaning | Current Arch Atlas (typical) |
-| --- | ------- | ---------------------------- |
-| **L0** | Files + language tags present | **Landed** |
-| **L1** | Syntax-level import/export/require declarations | **Landed** for JS/TS + Python + Astro script islands |
-| **L2** | Resolved modules (paths, aliases, package exports) | **Partial** — naive resolve + single tsconfig; no Program; optional omit→`omitted` |
-| **L3** | Symbols, types, public members, references | **Not landed** — export-declaration **span** LOC is **not** L3 |
-| **L4** | Build/bundle/runtime integration | **Not landed** |
+| Cap    | Meaning                                            | Current Arch Atlas (typical)                                                       |
+| ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **L0** | Files + language tags present                      | **Landed**                                                                         |
+| **L1** | Syntax-level import/export/require declarations    | **Landed** for JS/TS + Python + Astro script islands                               |
+| **L2** | Resolved modules (paths, aliases, package exports) | **Partial** - naive resolve + single tsconfig; no Program; optional omit→`omitted` |
+| **L3** | Symbols, types, public members, references         | **Not landed** - export-declaration **span** LOC is **not** L3                     |
+| **L4** | Build/bundle/runtime integration                   | **Not landed**                                                                     |
 
 ### Naming discipline
 
-| Term | Use for | Do not use for |
-| ---- | ------- | -------------- |
-| **Estimate** | L1 topology + whole-file mass | “full architecture” |
-| **Exact (export surface)** | Export-declaration **span** mass overlay (classic AST/text) | Graph re-index, LSP, public API members |
-| **Program** (target) | `createProgram` / checker-backed L2–L3 | Current in-tab Exact path |
-| **surfaceLoc** (wire today) | Span coverage of export decls | Public-API surface — prefer future `exportDeclarationLoc` |
+| Term                        | Use for                                                     | Do not use for                                            |
+| --------------------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
+| **Estimate**                | L1 topology + whole-file mass                               | “full architecture”                                       |
+| **Exact (export surface)**  | Export-declaration **span** mass overlay (classic AST/text) | Graph re-index, LSP, public API members                   |
+| **Program** (target)        | `createProgram` / checker-backed L2–L3                      | Current in-tab Exact path                                 |
+| **surfaceLoc** (wire today) | Span coverage of export decls                               | Public-API surface - prefer future `exportDeclarationLoc` |
 
 Export-span mass stamps as **mass capability**, not as L3.
 
 ## Hosts & backend authority
 
-| Host | Role | Semantic authority |
-| ---- | ---- | ------------------ |
-| **Browser** | ZIP/local-first UX; progressive analysis; worker target | L0–L1 always; L2–L3 when worker Program available; fail soft |
-| **CLI** | Agent packs, CI, git impact; **reference** cross-lang + TS Program home | Same IR; native adapters first; portable artifact out |
-| **VS Code** (future) | Thin host: real workspace, deps, navigation, live invalidate, webview | Prefer installed language features / inject; open CLI/core artifact |
+| Host                 | Role                                                                    | Semantic authority                                                  |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Browser**          | ZIP/local-first UX; progressive analysis; worker target                 | L0–L1 always; L2–L3 when worker Program available; fail soft        |
+| **CLI**              | Agent packs, CI, git impact; **reference** cross-lang + TS Program home | Same IR; native adapters first; portable artifact out               |
+| **VS Code** (future) | Thin host: real workspace, deps, navigation, live invalidate, webview   | Prefer installed language features / inject; open CLI/core artifact |
 
 CLI is the **authoritative place to land** compiler-backed JS/TS (Program) and
 native adapters before the browser port. VS Code is a **thin incremental
 interface**, not a third graph builder.
 
-Tree-sitter (WASM or native) is the **syntax-level baseline** for breadth —
+Tree-sitter (WASM or native) is the **syntax-level baseline** for breadth -
 **never** marketed as universal semantic analysis.
 
 LSP is an **enrichment** path (references, hover), not a complete architecture
@@ -113,12 +113,12 @@ presets** (`product` | `test` | `debug` | `runtime-client` | …).
 
 ### LOC terminology (direction)
 
-| Field | Meaning |
-| ----- | ------- |
-| `wholeLoc` | Whole-file lines |
-| `exportDeclarationLoc` / today’s `surfaceLoc` | Lines covered by export **declaration spans** |
-| `surfaceSupport: supported \| unsupported` | Unsupported langs: **null** surface, not zero; exclude from icebergs |
-| `publicMemberLoc` / symbol counts | **Later L3** — not private class bodies |
+| Field                                         | Meaning                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------- |
+| `wholeLoc`                                    | Whole-file lines                                                     |
+| `exportDeclarationLoc` / today’s `surfaceLoc` | Lines covered by export **declaration spans**                        |
+| `surfaceSupport: supported \| unsupported`    | Unsupported langs: **null** surface, not zero; exclude from icebergs |
+| `publicMemberLoc` / symbol counts             | **Later L3** - not private class bodies                              |
 
 ### Truncation
 
@@ -128,12 +128,12 @@ Capped arrays: `shown` / `total` / `truncated` (or equivalent totals + boolean).
 
 Prefer **interpreting** the graph before adding more traffic rankings:
 
-- Runtime vs type (and later re-export-aware) partitions  
-- SCC / cycle summaries (runtime vs type)  
-- Barrel / façade **inferred** roles (never observed topology)  
-- Entrypoints vs orphan roots  
-- Boundary crossings (e.g. public barrel vs deep import)  
-- Alias rewrite for isolated ZIPs  
+- Runtime vs type (and later re-export-aware) partitions
+- SCC / cycle summaries (runtime vs type)
+- Barrel / façade **inferred** roles (never observed topology)
+- Entrypoints vs orphan roots
+- Boundary crossings (e.g. public barrel vs deep import)
+- Alias rewrite for isolated ZIPs
 
 Rankings that say “complex” / “blast” must stay qualified (downwind reach /
 reverse-reach, cycle-sensitive).
@@ -143,52 +143,51 @@ reverse-reach, cycle-sensitive).
 Do **not** reorder to “browser Program first” or “every language Tree-sitter
 first.” Prefer **honest packs + one IR protocol + CLI TS reference**, then port.
 
-| Phase | Theme | Outcome |
-| ----- | ----- | ------- |
-| **P0** | Pack honesty residuals | **Landed (Ship A):** `exportDeclarationLoc` dual-publish; `surfaceSupport` on mass rows; file `*Shown` truncation; fileLens matrix; `downwindReach`/`reverseReach` aliases |
-| **P1** | Graph interpretation | **Landed (Ship B):** `--alias` rewrites; `unresolvedReason`; `catalog.cycles` runtime/type; `boundaryCrossings`; `--scope product`; `facade` role; `fixtures/agent-artillery-shaped` laws |
-| **P2** | Analysis protocol v2 + portable artifact | **Landed (Ship C):** `analysis.capabilities` L0–L2 stamps; `capabilityDetail`/`completeness`; `digest --artifact` → `arch-atlas.artifact.v1` |
-| **P3** | CLI TypeScript Program | **Landed:** CLI `--program` createProgram over feed VFS; L2 re-resolve when it helps; thin L3 `exportSymbolCount`; soft-fail; evidence-gated capability stamps |
-| **P4** | Browser Program worker | **Landed:** Web Worker `program.worker` + Precision **Program**; serialize graph; soft-fail chrome honesty; reindex re-enrich; skipDefaultLib |
-| **P5** | Tree-sitter multi-lang L1 breadth | Syntax baseline; always stamp L1 only |
-| **P6** | VS Code thin host + LSP enrich | Workspace inject; live updates; LSP annotations not full graph replace |
+| Phase  | Theme                                    | Outcome                                                                                                                                                                                   |
+| ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0** | Pack honesty residuals                   | **Landed (Ship A):** `exportDeclarationLoc` dual-publish; `surfaceSupport` on mass rows; file `*Shown` truncation; fileLens matrix; `downwindReach`/`reverseReach` aliases                |
+| **P1** | Graph interpretation                     | **Landed (Ship B):** `--alias` rewrites; `unresolvedReason`; `catalog.cycles` runtime/type; `boundaryCrossings`; `--scope product`; `facade` role; `fixtures/agent-artillery-shaped` laws |
+| **P2** | Analysis protocol v2 + portable artifact | **Landed (Ship C):** `analysis.capabilities` L0–L2 stamps; `capabilityDetail`/`completeness`; `digest --artifact` → `arch-atlas.artifact.v1`                                              |
+| **P3** | CLI TypeScript Program                   | **Landed:** CLI `--program` createProgram over feed VFS; L2 re-resolve when it helps; thin L3 `exportSymbolCount`; soft-fail; evidence-gated capability stamps                            |
+| **P4** | Browser Program worker                   | **Landed:** Web Worker `program.worker` + Precision **Program**; serialize graph; soft-fail chrome honesty; reindex re-enrich; skipDefaultLib                                             |
+| **P5** | Tree-sitter multi-lang L1 breadth        | Syntax baseline; always stamp L1 only                                                                                                                                                     |
+| **P6** | VS Code thin host + LSP enrich           | Workspace inject; live updates; LSP annotations not full graph replace                                                                                                                    |
 
 **Landed through P3:** L0–L1 IR; agent ranking honesty (P0); graph interpretation (P1); capabilities envelope + portable artifact (P2); CLI `--program` createProgram (P3). **Open:** P5 Tree-sitter breadth, P6 VS Code thin host. **P4 browser Program worker landed.**
-
 
 ## Acceptance style (artillery-shaped)
 
 Prefer **laws** over brittle full-rank snapshots. Synthetic
-artillery-shaped fixtures in-repo; optional local real ZIP path — do not
+artillery-shaped fixtures in-repo; optional local real ZIP path - do not
 require multi-MB game submodules in default CI.
 
 Example laws (by phase):
 
-| Law | When |
-| --- | ---- |
-| Type barrel not top hotspot by rankScore | P0–P1 |
-| Façade/`public.ts` not called godfile | P1 |
-| Runtime SCC captures sim / config knots | P1 |
+| Law                                       | When                  |
+| ----------------------------------------- | --------------------- |
+| Type barrel not top hotspot by rankScore  | P0–P1                 |
+| Façade/`public.ts` not called godfile     | P1                    |
+| Runtime SCC captures sim / config knots   | P1                    |
 | `import type` excluded from runtime reach | P0–P1 / P3 hard cases |
-| Alias rewrite resolves `@/modules/…` | P1 |
-| Omitted targets ≠ unresolved | P0 (partially landed) |
-| Astro not zero-surface iceberg | P0 (partially landed) |
-| Capabilities stamp L1 vs L2/L3 honestly | P2–P3 |
+| Alias rewrite resolves `@/modules/…`      | P1                    |
+| Omitted targets ≠ unresolved              | P0 (partially landed) |
+| Astro not zero-surface iceberg            | P0 (partially landed) |
+| Capabilities stamp L1 vs L2/L3 honestly   | P2–P3                 |
 
 ## Invariants
 
-1. **CodeGraph is SoR** — hosts and backends enrich; they do not fork IR.  
-2. **`src/core` pure** — no DOM, vscode, fetch.  
-3. **Capability stamps required** as the protocol lands — never market L1 as L3.  
-4. **Epistemic layers** — roles, scope presets, boundary heuristics stay **inferred** until declared.  
-5. **Local-first** — source stays on-device; agent export is sanitized graph, not raw source by default.  
-6. **Exact export-surface today ≠ Program** — until P3/P4 land.
+1. **CodeGraph is SoR** - hosts and backends enrich; they do not fork IR.
+2. **`src/core` pure** - no DOM, vscode, fetch.
+3. **Capability stamps required** as the protocol lands - never market L1 as L3.
+4. **Epistemic layers** - roles, scope presets, boundary heuristics stay **inferred** until declared.
+5. **Local-first** - source stays on-device; agent export is sanitized graph, not raw source by default.
+6. **Exact export-surface today ≠ Program** - until P3/P4 land.
 
 ## Related
 
-- [analysis-honesty.md](./analysis-honesty.md) — current Estimate / Exact scorecard  
-- [scope.md](./scope.md) — product contracts  
-- [impact-cheatsheet.md](./impact-cheatsheet.md) — agent impact recipes  
+- [analysis-honesty.md](./analysis-honesty.md) - current Estimate / Exact scorecard
+- [scope.md](./scope.md) - product contracts
+- [impact-cheatsheet.md](./impact-cheatsheet.md) - agent impact recipes
 - Catalog: [analysis-capability-honesty](../catalog/entries/analysis-capability-honesty.md),
   [exact-surface-mode-futures](../catalog/entries/exact-surface-mode-futures.md),
   [dual-host-shell-stage](../catalog/entries/dual-host-shell-stage.md),

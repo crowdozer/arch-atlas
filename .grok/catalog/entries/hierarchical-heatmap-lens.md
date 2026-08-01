@@ -71,20 +71,20 @@ Second atlas primitive (after alluvial flow):
 
 Compound reading:
 
-| Mass | Heat | Rough meaning |
-| ---- | ---- | ------------- |
-| Large | Cool | Big and stable (or dormant) |
-| Small | Hot | Small but high risk / activity |
-| Large | Hot | Inspect soon |
+| Mass  | Heat | Rough meaning                  |
+| ----- | ---- | ------------------------------ |
+| Large | Cool | Big and stable (or dormant)    |
+| Small | Hot  | Small but high risk / activity |
+| Large | Hot  | Inspect soon                   |
 
 ## Reasoning
 
 Level-1 static heat candidates (no Git):
 
-1. **Coupling** — inDegree × outDegree or catalog edgeCount  
-2. **Mass** — LOC / target-loc surface (geometry default; also a color option)  
-3. **Blast** — reverse-reach consumer count  
-4. **Complex** — downwind edges / hops from existing catalog complex  
+1. **Coupling** - inDegree × outDegree or catalog edgeCount
+2. **Mass** - LOC / target-loc surface (geometry default; also a color option)
+3. **Blast** - reverse-reach consumer count
+4. **Complex** - downwind edges / hops from existing catalog complex
 
 Weight axes already separate mass encoding for alluvial bands
 (`import-edges` | `importer-loc` | `target-loc`). Heat should follow the same
@@ -96,12 +96,12 @@ repair gravity (see `git-architectural-time-machine`).
 
 ## Rejected alternatives + why
 
-| Alternative | Why not |
-| ----------- | ------- |
-| Heat = only LOC | Collapses geometry and heat; loses compound signal |
-| Fragility formula as first shipped heat | Useful later; must stay Inferred; start with observed degrees |
-| Full CodeCity 3D | Overbuilds; relationships weak; see city metaphor in parent entry |
-| Heat requires runtime or coverage | Violates Level-1-first ladder |
+| Alternative                             | Why not                                                           |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| Heat = only LOC                         | Collapses geometry and heat; loses compound signal                |
+| Fragility formula as first shipped heat | Useful later; must stay Inferred; start with observed degrees     |
+| Full CodeCity 3D                        | Overbuilds; relationships weak; see city metaphor in parent entry |
+| Heat requires runtime or coverage       | Violates Level-1-first ladder                                     |
 
 ## Open questions
 
@@ -117,4 +117,4 @@ geometry when precision is Exact (honesty labels required).
 ## Provenance
 
 Port priority from design chat + research; user preferred heatmaps as near-term
-fit. Exploratory — mechanism not decided.
+fit. Exploratory - mechanism not decided.

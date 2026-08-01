@@ -1,4 +1,4 @@
-"""DB session factory — external sqlalchemy leaf."""
+"""DB session factory - external sqlalchemy leaf."""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

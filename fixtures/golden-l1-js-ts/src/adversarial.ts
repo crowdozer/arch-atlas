@@ -1,5 +1,5 @@
 /**
- * L1 adversarial — string/comment lookalikes must not become edges;
+ * L1 adversarial - string/comment lookalikes must not become edges;
  * real relative import must.
  */
 // Product FP class: form union painted as package '|'

@@ -6,7 +6,7 @@
  * There is no vendored typescript.js in-repo; the local copy is the npm
  * package at node_modules/typescript-classic (devDependency).
  *
- * Exact does **not** re-index the graph — it only improves export-surface
+ * Exact does **not** re-index the graph - it only improves export-surface
  * LOC rankings / honesty (same contract as web Exact).
  */
 
@@ -86,7 +86,7 @@ export function buildExportSurfaceLocMaps(
 }
 
 export type LoadExactSurfaceOpts = {
-	/** Prefer local classic only (no CDN). Default false — allow jsDelivr/unpkg. */
+	/** Prefer local classic only (no CDN). Default false - allow jsDelivr/unpkg. */
 	localOnly?: boolean;
 };
 

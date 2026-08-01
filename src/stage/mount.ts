@@ -87,7 +87,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 		if (!root) return;
 
 		destroy();
-		// Always replace holder DOM — Carbon leaves residual SVG if only innerHTML clear.
+		// Always replace holder DOM - Carbon leaves residual SVG if only innerHTML clear.
 		root.classList.remove('atlas-stage__chart--loading');
 		root.replaceChildren();
 		currentPayload = payload;
@@ -138,7 +138,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 			focusApi = nextFocus;
 
 			// Label stats from projection links + meta.labelLoc (stamped at build
-			// when graph was available). Stage has no CodeGraph — LOC travels on meta.
+			// when graph was available). Stage has no CodeGraph - LOC travels on meta.
 			const labelStats = buildAlluvialLabelStats(
 				payload.data,
 				payload.meta.labelLoc,
@@ -159,7 +159,7 @@ export function createAlluvialStage(host: AlluvialStageHost): AlluvialStage {
 					exportTerminators,
 					externalStraightPairs,
 				});
-				// Straighten paths are re-injected each polish — rebind hit targets.
+				// Straighten paths are re-injected each polish - rebind hit targets.
 				nextFocus.bindExternal();
 				// Re-apply active plan if hover survived polish.
 				nextFocus.reapply();

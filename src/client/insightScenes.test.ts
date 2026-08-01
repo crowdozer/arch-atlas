@@ -1,5 +1,5 @@
 /**
- * Insight scene support — catalog API + helpers stay even when the product
+ * Insight scene support - catalog API + helpers stay even when the product
  * catalog is empty (triage closed). Fixture regressions for the closed packets
  * live in core/stage tests that walk fixtures/scene-*.
  */

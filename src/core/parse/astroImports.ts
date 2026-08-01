@@ -1,6 +1,6 @@
 /**
  * Level-1 import extraction for Astro SFCs.
- * Observed only — frontmatter + <script> islands, not a language server.
+ * Observed only - frontmatter + <script> islands, not a language server.
  * Template HTML / component tags are not a separate graph this ship.
  */
 

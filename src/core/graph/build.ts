@@ -60,7 +60,7 @@ function dirnamePosix(path: string): string {
 
 /**
  * Candidate paths a relative/alias specifier might resolve to (for omit stamping).
- * Best-effort — does not invent membership; only used when isOmittedPath is set.
+ * Best-effort - does not invent membership; only used when isOmittedPath is set.
  */
 function candidateOmitPaths(
 	fromPath: string,
@@ -115,7 +115,7 @@ export function classifyUnresolvedReason(
 ): UnresolvedReason {
 	const aliased = expandAlias(specifier, alias);
 	if (aliased.length > 0) return 'alias';
-	// Path-like `@/` is never a real npm scope — alias-style even without config
+	// Path-like `@/` is never a real npm scope - alias-style even without config
 	if (specifier.startsWith('@/')) return 'alias';
 	if (
 		isRelativeSpecifier(specifier) ||
@@ -215,7 +215,7 @@ export function buildGraph(input: VirtualFile[], opts?: BuildGraphOpts): CodeGra
 					// keep existing
 				}
 			} else {
-				// Unresolved — may be feed-omitted rather than true miss
+				// Unresolved - may be feed-omitted rather than true miss
 				let omitted = false;
 				if (isOmittedPath) {
 					for (const cand of candidateOmitPaths(path, imp.specifier, alias)) {

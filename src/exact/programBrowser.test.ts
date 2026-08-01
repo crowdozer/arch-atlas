@@ -1,6 +1,6 @@
 /**
  * In-process Program enrich with skipDefaultLib (browser worker default).
- * Does not spawn a Worker — validates enrich path used by program.worker.ts.
+ * Does not spawn a Worker - validates enrich path used by program.worker.ts.
  */
 import { describe, expect, it } from 'vitest';
 import { buildGraph } from '@core/graph/build.ts';

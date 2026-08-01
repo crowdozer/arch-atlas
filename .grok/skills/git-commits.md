@@ -1,4 +1,4 @@
-# Git commit contract — Arch Atlas scopes overlay
+# Git commit contract - Arch Atlas scopes overlay
 
 Global format, body template, and bot identities live in
 `~/git-personal/dotfiles/grok/skills/_shared/git-commits.md`.
@@ -28,25 +28,25 @@ Imperative mood, ≤ 72 characters, no trailing period.
 
 ### Scopes
 
-| Scope       | Use for                                              |
-| ----------- | ---------------------------------------------------- |
-| `graph`     | Normalized CodeGraph, nodes/edges, store             |
-| `parse`     | Language parsers, Tree-sitter, ZIP ingest            |
-| `adapter`   | Framework adapters (detect/classify/enrich/views)    |
-| `view`      | Projections, map catalog, alluvial stages/weights    |
-| `ui`        | Pages, components, Carbon shell, design language     |
-| `core`      | Shared pure modules not covered above                |
-| `docs`      | README, AGENTS, `.grok/**` skills and reference      |
-| `ci`        | Test runner config, CI scripts                       |
-| `deps`      | Dependency updates                                   |
-| `arch-atlas`| Cross-cutting changes that span multiple layers      |
+| Scope        | Use for                                           |
+| ------------ | ------------------------------------------------- |
+| `graph`      | Normalized CodeGraph, nodes/edges, store          |
+| `parse`      | Language parsers, Tree-sitter, ZIP ingest         |
+| `adapter`    | Framework adapters (detect/classify/enrich/views) |
+| `view`       | Projections, map catalog, alluvial stages/weights |
+| `ui`         | Pages, components, Carbon shell, design language  |
+| `core`       | Shared pure modules not covered above             |
+| `docs`       | README, AGENTS, `.grok/**` skills and reference   |
+| `ci`         | Test runner config, CI scripts                    |
+| `deps`       | Dependency updates                                |
+| `arch-atlas` | Cross-cutting changes that span multiple layers   |
 
 ## Body (required)
 
 ```
 Intent: <why this change exists>
 
-Design contract preserved: <invariants kept — local-first, epistemic layers,
+Design contract preserved: <invariants kept - local-first, epistemic layers,
 graph-as-SoR, suggested views, etc.>
 
 Tests: <commands run and pass/fail; "none" only for docs-only with justification>

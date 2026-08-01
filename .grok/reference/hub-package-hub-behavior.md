@@ -1,4 +1,4 @@
-# Package-hub alluvial — geometry contract
+# Package-hub alluvial - geometry contract
 
 **Status:** landed (package-hub dep view; ship `5247e3db` / merge on main)  
 **Code SoR:** `src/core/view/packageHub.ts` (`projectPackageHub`)  
@@ -9,11 +9,12 @@
 (`edgeMatchesPackage`; `primaryImporterFile` = metrics/tests only)  
 **Tests:** `src/core/view/packageHub.test.ts`; catalog smoke package-hub cases  
 **Sibling (do not retcon):** [hub-alluvial-behavior.md](./hub-alluvial-behavior.md)
-— **file-hub** column / mass matrix only  
-**Focus (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) §2a
-sticky package seed; §3c reverse-path law  
-**Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
-(mostly file-hub/Carbon; package-hub reuses reverse pads + straighten pairs)
+
+- **file-hub** column / mass matrix only  
+  **Focus (orthogonal):** [hub-focus-behavior.md](./hub-focus-behavior.md) §2a
+  sticky package seed; §3c reverse-path law  
+  **Scar tissue:** [hub-alluvial-field-notes.md](./hub-alluvial-field-notes.md)
+  (mostly file-hub/Carbon; package-hub reuses reverse pads + straighten pairs)
 
 This document is the **geometry contract for package-hub** (dep-rooted reverse
 export chain). It does **not** rewrite file-hub Imports / File / External law.
@@ -23,11 +24,11 @@ Update only when package-hub column membership deliberately changes.
 
 ## 1. Columns (L → R)
 
-| Column category | Membership (hard law) | Distance / notes |
-| --- | --- | --- |
+| Column category                 | Membership (hard law)                                                       | Distance / notes                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Export hop N` … `Export hop 2` | Files on multi-seed reverse BFS rings from **all** direct package importers | Shortest reverse distance from any seed importer (same ring ranking / mass patterns as file-hub reverse) |
-| `Exports` | Direct importers of the opened package (kept / overflow as implemented) | Conceptual dist 1; seeds for reverse rings |
-| **`External`** | Opened package / unresolved **only** — single sink | Never a free source; never multi-package External tree |
+| `Exports`                       | Direct importers of the opened package (kept / overflow as implemented)     | Conceptual dist 1; seeds for reverse rings                                                               |
+| **`External`**                  | Opened package / unresolved **only** - single sink                          | Never a free source; never multi-package External tree                                                   |
 
 `categoryOrder` includes only categories that still have nodes after linking.
 Default viz reverse radius: `HUB_DEFAULT_MAX_DEPTH` (shared depth chrome with
@@ -35,9 +36,9 @@ file-hub; different projector).
 
 **Omitted (hard product law):**
 
-1. **No File spine** — package is the hub sink, not a center file.
-2. **No Imports / Import hop\*** — package-hub is reverse-only into the dep.
-3. **No multi-package External fan** — one opened dep chip as the sole External
+1. **No File spine** - package is the hub sink, not a center file.
+2. **No Imports / Import hop\*** - package-hub is reverse-only into the dep.
+3. **No multi-package External fan** - one opened dep chip as the sole External
    node (plus overflow buckets if any).
 
 ---
@@ -49,7 +50,7 @@ file-hub; different projector).
 3. `meta.externalStraightPairs` lists every kept importer → package edge so
    LogicalFocusGraph package seed lights reverse∪ across **all** pair parents
    (not a single primary importer).
-4. Depth control is reverse radius (`maxDepth` / `vizMaxDepth`) — not a bound
+4. Depth control is reverse radius (`maxDepth` / `vizMaxDepth`) - not a bound
    on graph scan.
 5. `primaryImporterFile` is **not** the open policy; chips / Export Roots open
    package-hub via `projectPackageHub`.
@@ -58,13 +59,13 @@ file-hub; different projector).
 
 ## 3. Navigation vs selection vs focus
 
-| Concern | Owner |
-| ------- | ----- |
-| Stack top | `AtlasView` `{ type: 'package-hub', packageId }` |
-| Payload | `projectPackageHub(graph, packageId, …)` |
-| Tree / catalog **file** selection | `nearestFileFocus` (underlying file-hub if any; may be `null`) |
-| Sticky FocusSeed | `pendingPackageFocusLabel` → package-kind seed ([hub-focus-behavior.md](./hub-focus-behavior.md) §2a) |
-| Export Roots chrome | `selectedPackage` from pending label |
+| Concern                           | Owner                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Stack top                         | `AtlasView` `{ type: 'package-hub', packageId }`                                                      |
+| Payload                           | `projectPackageHub(graph, packageId, …)`                                                              |
+| Tree / catalog **file** selection | `nearestFileFocus` (underlying file-hub if any; may be `null`)                                        |
+| Sticky FocusSeed                  | `pendingPackageFocusLabel` → package-kind seed ([hub-focus-behavior.md](./hub-focus-behavior.md) §2a) |
+| Export Roots chrome               | `selectedPackage` from pending label                                                                  |
 
 **Selection chrome ≠ FocusPlan.** Sticky package seed is hover-restore /
 open-time highlight; it does not force tree selection onto a primary importer.
@@ -73,12 +74,12 @@ open-time highlight; it does not force tree selection onto a primary importer.
 
 ## 4. Explicit non-laws
 
-| Non-law | Why |
-| ------- | --- |
-| **No file-hub mount for package open** | Pre-package-hub path (file-hub at primary importer + sticky seed) is retired |
-| **No rewriting file-hub matrix for dep view** | Package-hub is a separate projector; file-hub Imports/File law stays |
-| **No inventing File/Imports columns on package-hub** | Geometry is Export\* → External only |
-| **No treating `primaryImporterFile` as hub startId** | Metrics/tests helper only |
+| Non-law                                              | Why                                                                          |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **No file-hub mount for package open**               | Pre-package-hub path (file-hub at primary importer + sticky seed) is retired |
+| **No rewriting file-hub matrix for dep view**        | Package-hub is a separate projector; file-hub Imports/File law stays         |
+| **No inventing File/Imports columns on package-hub** | Geometry is Export\* → External only                                         |
+| **No treating `primaryImporterFile` as hub startId** | Metrics/tests helper only                                                    |
 
 ---
 

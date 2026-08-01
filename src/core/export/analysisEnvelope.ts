@@ -85,12 +85,12 @@ export type BuildAnalysisEnvelopeInput = {
 	honesty?: string;
 	/**
 	 * Host override for node_modules completeness.
-	 * Default `absent` — current hosts ignore/filter node_modules from the feed.
+	 * Default `absent` - current hosts ignore/filter node_modules from the feed.
 	 */
 	nodeModules?: AnalysisCompleteness['nodeModules'];
 	/**
 	 * CLI `--program`: createProgram enrichment pass completed (may be no-op).
-	 * Alone does **not** stamp L2 / importGraph program / aliases program —
+	 * Alone does **not** stamp L2 / importGraph program / aliases program -
 	 * need resolve or thin-L3 evidence (see programResolvedCount / thinL3).
 	 */
 	programApplied?: boolean;
@@ -105,7 +105,7 @@ export type BuildAnalysisEnvelopeInput = {
 	programResolvedAliasCount?: number;
 	/**
 	 * Thin L3: ≥1 file received exportSymbolCount from Program checker.
-	 * Only then is L3 claimed — never from export-declaration span alone.
+	 * Only then is L3 claimed - never from export-declaration span alone.
 	 * Also allows importGraph `'program'` as backend stamp when resolve count is 0.
 	 */
 	thinL3Applied?: boolean;
@@ -119,7 +119,7 @@ export type BuildAnalysisEnvelopeInput = {
 };
 
 /**
- * Alias of `pickAliasConfig` — same owner as graph build (no twin pick logic).
+ * Alias of `pickAliasConfig` - same owner as graph build (no twin pick logic).
  * Kept for envelope/public callers that prefer the detect* name.
  */
 export function detectTsconfigAlias(
@@ -168,7 +168,7 @@ export function buildAnalysisEnvelope(
 	const { graph } = input;
 	const rewrites = input.aliasRewrites;
 	const hasRewrites = Boolean(rewrites?.length);
-	// Same pick as graph build — single owner in parse/tsconfig.ts
+	// Same pick as graph build - single owner in parse/tsconfig.ts
 	const tsconfigCfg = pickAliasConfig(graph.contents);
 	const hasTsconfigPaths = Boolean(tsconfigCfg?.paths.length);
 	const tsconfigPresent = hasTsconfigFile(graph.contents);
@@ -212,7 +212,7 @@ export function buildAnalysisEnvelope(
 		capabilities.push('L1');
 	}
 	// L2: tsconfig/rewrite alias helped, or Program re-resolved ≥1 unresolved edge
-	// (thin L3 alone does not claim L2 — relative-only graphs stay L1 topology)
+	// (thin L3 alone does not claim L2 - relative-only graphs stay L1 topology)
 	if (l2Helped || programResolveHelped) {
 		capabilities.push('L2');
 	}
@@ -241,7 +241,7 @@ export function buildAnalysisEnvelope(
 		tsconfigFromProgram ??
 		(!tsconfigPresent ? 'none' : hasTsconfigPaths ? 'full' : 'partial');
 
-	// Current hosts strip/ignore node_modules — stamp absent unless host overrides.
+	// Current hosts strip/ignore node_modules - stamp absent unless host overrides.
 	const nodeModules = input.nodeModules ?? 'absent';
 
 	const packageRoots = graph.packageJsonPaths?.length

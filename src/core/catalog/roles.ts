@@ -1,6 +1,6 @@
 /**
  * Inferred file roles for agent ranking honesty.
- * Epistemic: always inferred — never presented as observed topology.
+ * Epistemic: always inferred - never presented as observed topology.
  */
 
 import type { CodeGraph, InferredFileRole } from '@core/graph/types.ts';
@@ -98,7 +98,7 @@ export function isFacade(graph: CodeGraph, path: string): boolean {
 
 /**
  * True when hotspot rankScore should be demoted (barrel or façade).
- * Single demotion factor — do not stack.
+ * Single demotion factor - do not stack.
  */
 export function isHotspotDemotedSurface(graph: CodeGraph, path: string): boolean {
 	return isFacade(graph, path) || isPureBarrel(graph, path);

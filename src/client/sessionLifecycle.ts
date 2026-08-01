@@ -1,7 +1,7 @@
 /**
  * Session lifecycle (web host): zip / demo / open / restore / reset / activate.
  *
- * Extracted from the composition root — same param-object deps pattern as
+ * Extracted from the composition root - same param-object deps pattern as
  * `exactPaintMode` and `wireUi`. Module state (`session`, `viewStack`, depth)
  * stays owned by `app.ts` via get/set injectors; no Session class / DI framework.
  */
@@ -37,7 +37,7 @@ import {
 } from './sessionStore.ts';
 import type { StickyOpenAction } from './enginePrefs.ts';
 
-/** How the session is being activated — open resets Exact; reindex preserves chrome. */
+/** How the session is being activated - open resets Exact; reindex preserves chrome. */
 export type ActivateSessionKind = 'open' | 'reindex';
 
 /**
@@ -48,7 +48,7 @@ export type DesiredOpenTier = 'program' | 'exact' | 'estimate' | 'auto-local';
 
 /**
  * Resolve open-path engine intent from session restore + sticky action.
- * Pure — does not load engines. Reindex path does not use this helper.
+ * Pure - does not load engines. Reindex path does not use this helper.
  */
 export function resolveDesiredOpenTier(
 	restorePrecision: LocPrecision | undefined,
@@ -80,7 +80,7 @@ export type SessionLifecycleDeps = {
 	getLocPrecision: () => LocPrecision;
 	/**
 	 * Cancel in-flight Program worker before graph identity changes.
-	 * Optional — hosts without Program skip.
+	 * Optional - hosts without Program skip.
 	 */
 	cancelProgramEnrichment?: () => void;
 	/** Full Exact reset (ZIP/demo/open/reset). Forces Estimate + clears spine at app layer. */
@@ -241,7 +241,7 @@ export function createSessionLifecycle(
 		deps.cancelProgramEnrichment?.();
 
 		if (kind === 'reindex') {
-			// Same project, new file set — drop stale provider/mass; keep precision chrome
+			// Same project, new file set - drop stale provider/mass; keep precision chrome
 			deps.invalidateExactProvider();
 			if (wasExact) {
 				// Gate fails closed without mount when Exact + no provider, and would
@@ -250,7 +250,7 @@ export function createSessionLifecycle(
 				deps.clearStage();
 			}
 		} else {
-			// New ZIP/demo/restore open — full Exact + spine chrome reset
+			// New ZIP/demo/restore open - full Exact + spine chrome reset
 			deps.resetExactState();
 		}
 
@@ -313,7 +313,7 @@ export function createSessionLifecycle(
 				// Generation token inside rehydrate discards stale rapid-toggle races.
 				void deps.rehydrateExactForGraph();
 			}
-			// Estimate stays Estimate — do not tryAutoExact (avoids surprise flip)
+			// Estimate stays Estimate - do not tryAutoExact (avoids surprise flip)
 			return;
 		}
 
@@ -327,7 +327,7 @@ export function createSessionLifecycle(
 			return;
 		}
 		if (desiredOpen === 'estimate') {
-			// Sticky demotion — stay Estimate; skip auto-local
+			// Sticky demotion - stay Estimate; skip auto-local
 			return;
 		}
 		// auto-local: Prefer Exact when local classic TS / host inject exists (no CDN)
@@ -358,7 +358,7 @@ export function createSessionLifecycle(
 			deps.setStatus(
 				includeTests
 					? 'No readable text files.'
-					: 'No files left after excluding tests — turn Include tests back on.',
+					: 'No files left after excluding tests - turn Include tests back on.',
 			);
 			return;
 		}
@@ -431,7 +431,7 @@ export function createSessionLifecycle(
 		const indexed = filterFilesByTestInclusion(prev.files, includeTests);
 		if (!indexed.length) {
 			deps.setStatus(
-				'No files left after excluding tests — turn Include tests back on.',
+				'No files left after excluding tests - turn Include tests back on.',
 			);
 			return;
 		}
@@ -524,7 +524,7 @@ export function createSessionLifecycle(
 			const indexed = filterFilesByTestInclusion(feed, includeTests);
 			if (!indexed.length) {
 				deps.setStatus(
-					'Remembered project has no files under current test inclusion — upload again.',
+					'Remembered project has no files under current test inclusion - upload again.',
 				);
 				return false;
 			}
@@ -558,7 +558,7 @@ export function createSessionLifecycle(
 		} catch (err) {
 			console.error('[atlas] restore failed', err);
 			clearPersistedSession();
-			deps.setStatus('Could not restore remembered project — upload again.');
+			deps.setStatus('Could not restore remembered project - upload again.');
 			return false;
 		}
 	}

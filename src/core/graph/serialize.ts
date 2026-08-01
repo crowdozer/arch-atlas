@@ -1,6 +1,6 @@
 /**
  * Pure CodeGraph ↔ JSON-transfer helpers for worker postMessage (and tests).
- * No TypeScript Program / createProgram — Maps become plain entries arrays.
+ * No TypeScript Program / createProgram - Maps become plain entries arrays.
  */
 
 import type {

@@ -1,5 +1,5 @@
 /**
- * Package-hub alluvial — dep-rooted reverse export chain.
+ * Package-hub alluvial - dep-rooted reverse export chain.
  *
  * Columns (L→R):
  *   Export hop N … → Exports → External(dep)

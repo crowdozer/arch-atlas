@@ -1,12 +1,12 @@
 /**
- * Pure agent Mermaid structure graph — path-prefix (topFolder) rollup of
+ * Pure agent Mermaid structure graph - path-prefix (topFolder) rollup of
  * runtime file→file imports. Projection only; CodeGraph remains SoR.
  *
  * Cycles: file-level runtime SCCs always listed in %% comments (so
  * within-prefix knots like physics↔weapons stay visible). Multi-prefix
  * SCCs wrap nodes in subgraphs; size-2 mutual pairs may use <--> edges.
  *
- * Containment mode (opt-in): indexed folder/file hierarchy only — no import
+ * Containment mode (opt-in): indexed folder/file hierarchy only - no import
  * edges / SCCs. Default presentation is **summary** (mirrors tree summary:
  * keep all dirs; expand leaves only when small folder or depth ≥ maxLeafDepth).
  * Full leaves require presentation=full (`--tree-full` on CLI).
@@ -369,7 +369,7 @@ export function buildAgentMermaid(input: BuildAgentMermaidInput): string {
 		input.catalog?.cycles?.runtime ??
 		catalogCycles(graph, Math.max(limit, 15)).runtime;
 
-	// Full prefix adj for SCC (before cap — force-include SCC members)
+	// Full prefix adj for SCC (before cap - force-include SCC members)
 	const fullPrefixAdj = new Map<string, string[]>();
 	for (const p of allPrefixes) fullPrefixAdj.set(p, []);
 	for (const e of rolled) {
@@ -399,7 +399,7 @@ export function buildAgentMermaid(input: BuildAgentMermaidInput): string {
 	}
 	for (const p of forceFromFileScc) {
 		// Only force if the prefix appears as a structure node (on a cross-prefix edge)
-		// OR we still want it for comment honesty — but isolated prefixes with no
+		// OR we still want it for comment honesty - but isolated prefixes with no
 		// cross edges don't appear in the graph. Keep force only when in allPrefixes.
 		if (allPrefixes.has(p)) forced.add(p);
 	}

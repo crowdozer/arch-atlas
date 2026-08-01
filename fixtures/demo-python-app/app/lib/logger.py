@@ -1,4 +1,4 @@
-"""Tiny structured logger — common fan-in leaf."""
+"""Tiny structured logger - common fan-in leaf."""
 
 
 def info(msg: str, **extra) -> None:

@@ -55,7 +55,7 @@ import B from './b.ts';
 });
 
 /**
- * L1 false-positive guards — template HTML must not become import edges;
+ * L1 false-positive guards - template HTML must not become import edges;
  * frontmatter + inline <script> real imports must (positives + negatives same source).
  */
 describe('L1 false-positive guards', () => {

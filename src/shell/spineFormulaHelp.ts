@@ -25,7 +25,7 @@ const HELP: Record<SpineFormula, SpineFormulaHelp> = {
 		id: 'fan-in',
 		title: 'Fan-in',
 		body:
-			'Ranks by direct importer count only (then module diversity as a tie-break). Answers: “Who has the most direct importers?” Includes single-folder hubs — no multi-module floor.',
+			'Ranks by direct importer count only (then module diversity as a tie-break). Answers: “Who has the most direct importers?” Includes single-folder hubs - no multi-module floor.',
 		sortKeys: 'inDegree → importerModuleCount',
 	},
 	composite: {

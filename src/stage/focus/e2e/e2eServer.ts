@@ -1,12 +1,12 @@
 /**
  * Serve built site for focus e2e via `astro preview` on an **ephemeral port**.
  *
- * Does **not** use or stop a human `astro dev` on :4321 — that may be a clean
+ * Does **not** use or stop a human `astro dev` on :4321 - that may be a clean
  * main checkout without /focus-e2e or without the focus fix. E2E always builds
  * this worktree’s dist/ when needed and previews in isolation.
  *
  * Phase 3: build is **fail-closed on freshness** (content hash of focus/stage
- * sources) — stale dist cannot green a broken binding.
+ * sources) - stale dist cannot green a broken binding.
  */
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -111,7 +111,7 @@ export function ensureFocusE2EBuild(repoRoot: string): void {
 		const page = path.join(repoRoot, 'dist/focus-e2e/index.html');
 		if (!existsSync(page)) {
 			throw new Error(
-				'ATLAS_E2E_SKIP_BUILD=1 but dist/focus-e2e missing — cannot skip',
+				'ATLAS_E2E_SKIP_BUILD=1 but dist/focus-e2e missing - cannot skip',
 			);
 		}
 		return;

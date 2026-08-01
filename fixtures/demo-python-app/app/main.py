@@ -1,4 +1,4 @@
-"""Entry — wires API routes and starts the app surface."""
+"""Entry - wires API routes and starts the app surface."""
 from app.api.routes import create_app
 from app.lib.logger import info
 from app.services.user_service import bootstrap_users

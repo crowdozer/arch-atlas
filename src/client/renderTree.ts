@@ -1,5 +1,5 @@
 /**
- * File tree paint (web Carbon shell). Injected callbacks — does not import app.ts.
+ * File tree paint (web Carbon shell). Injected callbacks - does not import app.ts.
  */
 import { fileLineCount } from '@core/index.ts';
 import {
@@ -97,7 +97,7 @@ export function createTreeRenderer(deps: TreeRenderDeps): {
 			row.setAttribute('aria-expanded', open ? 'true' : 'false');
 			row.dataset.path = node.path;
 			const dirTitle = node.unparseable
-				? `${node.path} — no import-parseable files in this folder`
+				? `${node.path} - no import-parseable files in this folder`
 				: node.path;
 			row.title = dirTitle;
 			row.innerHTML = `
@@ -129,7 +129,7 @@ export function createTreeRenderer(deps: TreeRenderDeps): {
 			return wrap;
 		}
 
-		// file — greying from parseMap / tree annotation (not ad-hoc extension checks)
+		// file - greying from parseMap / tree annotation (not ad-hoc extension checks)
 		const isSrc = node.isSource;
 		const btn = document.createElement('button');
 		btn.type = 'button';

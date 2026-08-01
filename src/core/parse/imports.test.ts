@@ -265,7 +265,7 @@ import {
 });
 
 /**
- * L1 false-positive guards — product-proven extract noise classes.
+ * L1 false-positive guards - product-proven extract noise classes.
  * Each case pairs negatives (lookalikes must not edge) with a real import
  * in the same source (prevents "strip everything" regressions).
  */

@@ -38,7 +38,7 @@ function walk(dir: string, base = dir): VirtualFile[] {
 	return out;
 }
 
-describe('P1 graph interpretation — agent-artillery-shaped laws', () => {
+describe('P1 graph interpretation - agent-artillery-shaped laws', () => {
 	const files = walk(fixtureRoot);
 	const { graph, catalog } = indexFiles(files, { catalog: { limit: 40 } });
 
@@ -102,7 +102,7 @@ describe('P1 graph interpretation — agent-artillery-shaped laws', () => {
 				x.specifier.includes('game') &&
 				x.toKind === 'file',
 		);
-		// physics has both type Game import and may share path — prefer typeOnly flag
+		// physics has both type Game import and may share path - prefer typeOnly flag
 		const typeEdge = graph.edges.find(
 			(x) =>
 				x.from === 'client/sim/physics.ts' &&

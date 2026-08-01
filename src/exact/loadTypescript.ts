@@ -5,7 +5,7 @@
  * 1. Injected module via `globalThis.__ARCH_ATLAS_TS__` or opts.inject
  * 2. Local classic: `typescript-classic` (dev alias of typescript@5.x) then
  *    `typescript` if it still exposes createSourceFile
- * 3. jsDelivr `typescript@latest` (primary CDN — classic UMD when available)
+ * 3. jsDelivr `typescript@latest` (primary CDN - classic UMD when available)
  * 4. unpkg `typescript@latest` on primary failure
  *
  * Note: TypeScript 7+ default npm export is version-only; Exact mass prefers
@@ -79,7 +79,7 @@ function coerceModule(mod: unknown): TypescriptModule | null {
 	const asNs = mod as { default?: unknown; createSourceFile?: unknown };
 	const candidate = (asNs.default ?? mod) as TypescriptModule;
 	if (isClassicTypescriptModule(candidate)) return candidate;
-	// Non-classic (TS 7 version-only) — not usable as Program engine
+	// Non-classic (TS 7 version-only) - not usable as Program engine
 	return null;
 }
 
@@ -155,7 +155,7 @@ export async function loadTypescript(
 	const version = opts.version ?? 'latest';
 	const fetchImpl = opts.fetchImpl ?? globalThis.fetch?.bind(globalThis);
 
-	// 1. Explicit inject — accept classic or any object (host may inject stub)
+	// 1. Explicit inject - accept classic or any object (host may inject stub)
 	if (opts.inject) {
 		return { ok: true, ts: opts.inject, source: 'inject' };
 	}

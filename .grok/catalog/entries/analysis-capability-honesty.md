@@ -40,12 +40,12 @@ touches:
   - dual-host-shell-stage
   - analysis-protocol-multi-host
 invariants:
-  - Estimate is Level-1 static JS/TS import topology + estimate mass — not type-aware
-  - In-tab Exact is export-declaration surface via classic createSourceFile (or text) — not LSP
+  - Estimate is Level-1 static JS/TS import topology + estimate mass - not type-aware
+  - In-tab Exact is export-declaration surface via classic createSourceFile (or text) - not LSP
   - Exact does not re-index graph topology
   - Map catalog File LOC remains whole-file; public mass / icebergs are Exact surface-ratio overlays only
   - Spines are observed topology + formula chooser (not Exact mass, not basename classifiers)
-  - VS Code host can offer real language features / multi-LSP as platform — not free tree-shake
+  - VS Code host can offer real language features / multi-LSP as platform - not free tree-shake
   - UI must not claim full LSP or bundler tree-shake for current Exact
   - Fail-closed: no silent whole-file under Exact forward surface mass
 open_questions:
@@ -64,7 +64,7 @@ rationale_quality: full
 
 # Analysis capability honesty (Estimate / Exact / VS Code)
 
-Validated product memory (conversation + implemented stack). **Advisory** —
+Validated product memory (conversation + implemented stack). **Advisory** -
 encode in UI/docs; do not treat as permission to overclaim engines.
 
 ## Problem
@@ -77,24 +77,24 @@ correctly coarse but under-documented. VS Code is imagined as full LSP + shake.
 
 One durable ladder so agents and UI copy stay honest:
 
-| Tier | Name | What it is |
-| ---- | ---- | ---------- |
-| 0 | **Estimate** | Fuzzy Level-1 static JS/TS import graph + estimate mass |
-| 1 | **Exact (in-tab)** | Export-declaration surface mass/inspect for JS/TS — **close**, not LSP |
-| 2 | **VS Code host** | Better host: workspace FS, inject provider, real language features / multi-LSP *possible* |
-| 3 | **Honest imported surface** (future) | Program/checker re-exports, usage, type-only — still not bundler |
-| 4 | **True tree-shake / shipped cost** (future) | Bundler or used-export closure — **not** “turn on LSP” |
+| Tier | Name                                        | What it is                                                                                |
+| ---- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 0    | **Estimate**                                | Fuzzy Level-1 static JS/TS import graph + estimate mass                                   |
+| 1    | **Exact (in-tab)**                          | Export-declaration surface mass/inspect for JS/TS - **close**, not LSP                    |
+| 2    | **VS Code host**                            | Better host: workspace FS, inject provider, real language features / multi-LSP _possible_ |
+| 3    | **Honest imported surface** (future)        | Program/checker re-exports, usage, type-only - still not bundler                          |
+| 4    | **True tree-shake / shipped cost** (future) | Bundler or used-export closure - **not** “turn on LSP”                                    |
 
 ## Reasoning (validated)
 
-1. **Estimate** — `extractImports` + resolve rules; whole-file / dual-side
+1. **Estimate** - `extractImports` + resolve rules; whole-file / dual-side
    importer LOC; JS/TS parse only; other langs shown unsupported.
-2. **In-tab Exact** — classic `createSourceFile` export spans ↔ import bindings;
+2. **In-tab Exact** - classic `createSourceFile` export spans ↔ import bindings;
    same graph; remount only; CDN/local/inject loader.
-3. **VS Code** — buys host power (workspace, tsserver/language features,
+3. **VS Code** - buys host power (workspace, tsserver/language features,
    multi-lang extensions). Does **not** automatically deliver product Exact
    policy or tree-shake; we still implement `ImportedSurfaceProvider` mapping.
-4. **Tree-shake** — LSP/references ≠ bundler tree-shake. Requires separate
+4. **Tree-shake** - LSP/references ≠ bundler tree-shake. Requires separate
    analysis even on extension host.
 
 ## What each tier gets right / misrepresents / misses
@@ -104,12 +104,12 @@ scorecard (kept in reference so product docs and agents share one table).
 
 ## Rejected alternatives + why
 
-| Alt | Why not |
-| --- | ------- |
-| Call Exact “LSP mode” in UI | No LSP protocol or language server session |
-| Call Exact “tree-shaken” without qualifier | Export-span only, not usage/bundler shake |
-| Assume VS Code = full shake free | Platform only; surface policy still ours |
-| Re-index graph whenever Exact loads | Topology stays Level-1 until a deliberate Program topology ship |
+| Alt                                        | Why not                                                         |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| Call Exact “LSP mode” in UI                | No LSP protocol or language server session                      |
+| Call Exact “tree-shaken” without qualifier | Export-span only, not usage/bundler shake                       |
+| Assume VS Code = full shake free           | Platform only; surface policy still ours                        |
+| Re-index graph whenever Exact loads        | Topology stays Level-1 until a deliberate Program topology ship |
 
 ## Open questions
 

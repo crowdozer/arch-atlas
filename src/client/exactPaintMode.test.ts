@@ -399,7 +399,7 @@ describe('exactPaintMode rehydrate honesty', () => {
 		expect(state.exactLoading).toBe(false);
 		expect(calls.exactLoadingAtRemount.every((v) => v === false)).toBe(true);
 		expect(calls.remount).toBeGreaterThanOrEqual(1);
-		// Open defers mid-flight persist for desired Exact — fail still saves Estimate
+		// Open defers mid-flight persist for desired Exact - fail still saves Estimate
 		expect(calls.persist).toBe(1);
 	});
 
@@ -510,7 +510,7 @@ describe('enableProgramMode orchestration', () => {
 		expect(calls.flightAtRemount.at(-1)).toBe(false);
 		expect(state.engineFailed).toBe(true);
 		expect(ensureExactForGraph).not.toHaveBeenCalled();
-		// Open defers mid-flight persist for desired Program — fail still saves
+		// Open defers mid-flight persist for desired Program - fail still saves
 		expect(calls.persist).toBe(1);
 	});
 
@@ -595,7 +595,7 @@ describe('enableProgramMode orchestration', () => {
 		state.locPrecision = 'estimate';
 		const paint = createExactPaintMode(deps);
 		runProgramEnrichment.mockResolvedValue(okProgramResult(session));
-		// Program always loads Exact mass after topology — mock so path stays settled
+		// Program always loads Exact mass after topology - mock so path stays settled
 		ensureExactForGraph.mockResolvedValue({
 			ok: true,
 			provider: { targetSurfaceMass: () => 1 },

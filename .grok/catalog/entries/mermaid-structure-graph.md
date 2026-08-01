@@ -54,7 +54,7 @@ related:
   - analysis-capability-honesty
   - analysis-protocol-multi-host
   - geometric-vs-knot-architecture
-  - "ops: .grok/reference/cycles-cheatsheet.md — circular import scan (digest SCCs vs mermaid honesty)"
+  - "ops: .grok/reference/cycles-cheatsheet.md - circular import scan (digest SCCs vs mermaid honesty)"
 realized_by:
   - src/core/export/agentMermaid.ts
   - src/core/export/agentMermaid.test.ts
@@ -93,7 +93,7 @@ diagrams that **infer** features the graph never observed.
 Automated **Mermaid** view (export and/or in-product) whose nodes and groups come
 only from:
 
-1. **Folder / path structure** (containment, packages, prefixes already in the graph), and  
+1. **Folder / path structure** (containment, packages, prefixes already in the graph), and
 2. **Observed dependency edges** (imports between those nodes).
 
 Not inferred domains, not feature classifiers, not “this looks like a hexagonal
@@ -102,20 +102,20 @@ same CodeGraph as other lenses.
 
 ## v1 decisions (landed)
 
-| Question | Decision |
-| -------- | -------- |
-| Command name | `mermaid` (alongside digest/tree/file/impact) |
-| Host / format | **CLI text export only** — plain `flowchart LR` to stdout / `--out` |
-| Grain | **`topFolder` path-prefix** rollup of runtime file→file imports (same-prefix self-loops omitted) |
-| Edge labels | Cross-prefix import **counts** |
-| Cycles | File SCCs always in `%% cycles.runtime (file SCC)` comments; multi-prefix SCCs as subgraphs; size-2 mutual pairs may use `<-->` |
-| Cap | Dependency: `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible |
-| Analysis tier | L1 Estimate topology only — not Exact mass, not Program, not domain map |
-| Hybrid expand | **Deferred** in dependency mode |
-| Containment | Opt-in `--containment`: `flowchart TB`, indexed folder/file paths only, no edges or SCCs |
-| Containment presentation | Default **`summary`** (mirrors tree summary): keep all directory nodes; expand file leaves only when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may include `(N files)`. Full leaves: `--tree-full` → `presentation=full` |
-| Containment cap | Summary: `--limit` max expanded leaves (dir skeleton always complete). Full: `--limit` max file leaves via **balanced** round-robin by top-level folder (not alphabetic global head). Headers stamp `presentation=summary\|full` |
-| `--tree-full` | Tree verbose leaves **and** mermaid containment full leaves (CLI reuses the same flag) |
+| Question                 | Decision                                                                                                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command name             | `mermaid` (alongside digest/tree/file/impact)                                                                                                                                                                                    |
+| Host / format            | **CLI text export only** - plain `flowchart LR` to stdout / `--out`                                                                                                                                                              |
+| Grain                    | **`topFolder` path-prefix** rollup of runtime file→file imports (same-prefix self-loops omitted)                                                                                                                                 |
+| Edge labels              | Cross-prefix import **counts**                                                                                                                                                                                                   |
+| Cycles                   | File SCCs always in `%% cycles.runtime (file SCC)` comments; multi-prefix SCCs as subgraphs; size-2 mutual pairs may use `<-->`                                                                                                  |
+| Cap                      | Dependency: `--limit N` max prefix nodes (default 40); SCC-related prefixes force-included when possible                                                                                                                         |
+| Analysis tier            | L1 Estimate topology only - not Exact mass, not Program, not domain map                                                                                                                                                          |
+| Hybrid expand            | **Deferred** in dependency mode                                                                                                                                                                                                  |
+| Containment              | Opt-in `--containment`: `flowchart TB`, indexed folder/file paths only, no edges or SCCs                                                                                                                                         |
+| Containment presentation | Default **`summary`** (mirrors tree summary): keep all directory nodes; expand file leaves only when folder `fileCount ≤ 8` or depth ≥ 3; dir labels may include `(N files)`. Full leaves: `--tree-full` → `presentation=full`   |
+| Containment cap          | Summary: `--limit` max expanded leaves (dir skeleton always complete). Full: `--limit` max file leaves via **balanced** round-robin by top-level folder (not alphabetic global head). Headers stamp `presentation=summary\|full` |
+| `--tree-full`            | Tree verbose leaves **and** mermaid containment full leaves (CLI reuses the same flag)                                                                                                                                           |
 
 Header comments stamp source, scope omit/presets, truncation, presentation
 (containment), and cycle honesty (dependency only) so within-prefix knots
@@ -141,27 +141,27 @@ flowchart LR
 - **Complementary, not replacement:** alluvial = mass flow corridors; heatmap =
   mass×heat; DSM = layer coupling grid; mermaid structure = **containment +
   directed coupling sketch** for small-medium grain.
-- **User constraint explicit:** “not inferred domain” — keep labeling path-true
+- **User constraint explicit:** “not inferred domain” - keep labeling path-true
   (`client/sim`, not “Gameplay Domain”).
 
 ## Rejected alternatives + why
 
-| Alternative | Why not (for this idea) |
-| ----------- | ------------------------ |
-| Inferred domain / feature continents as mermaid nodes | Violates “not inferred domain”; that’s a later classifier product |
-| Full file×file mermaid for whole repo | Hairball; unreadable; blow LLM context |
-| Mermaid as only architecture lens | Loses mass/flow/heat; keep multi-lens atlas |
-| Hand-authored architecture diagrams as product SoR | Drift; must regenerate from graph |
-| Force-directed SVG instead of mermaid for agents | Less portable in chat; mermaid is the agent-facing shape |
-| External npm package names as grain | v1 is path-prefix structure of the repo, not package ecosystem map |
+| Alternative                                           | Why not (for this idea)                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Inferred domain / feature continents as mermaid nodes | Violates “not inferred domain”; that’s a later classifier product  |
+| Full file×file mermaid for whole repo                 | Hairball; unreadable; blow LLM context                             |
+| Mermaid as only architecture lens                     | Loses mass/flow/heat; keep multi-lens atlas                        |
+| Hand-authored architecture diagrams as product SoR    | Drift; must regenerate from graph                                  |
+| Force-directed SVG instead of mermaid for agents      | Less portable in chat; mermaid is the agent-facing shape           |
+| External npm package names as grain                   | v1 is path-prefix structure of the repo, not package ecosystem map |
 
 ## Open questions (remaining)
 
 See frontmatter. Practical follow-ons:
 
-1. **Hybrid expand** — subgraphs = folders; optional file leaves under a prefix
-   (dependency mode; containment summary already expands selectively).  
-2. **In-app mermaid** — embed render in web host vs keep CLI-only.  
+1. **Hybrid expand** - subgraphs = folders; optional file leaves under a prefix
+   (dependency mode; containment summary already expands selectively).
+2. **In-app mermaid** - embed render in web host vs keep CLI-only.
 
 ## Revisit when
 

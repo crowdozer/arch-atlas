@@ -1,5 +1,5 @@
 /**
- * Focus observation harness — pure data dump of what would light / dim.
+ * Focus observation harness - pure data dump of what would light / dim.
  *
  * Layers (no Carbon mount):
  *  1. FocusPlan (logical SoR)
@@ -38,7 +38,7 @@ import {
 	type LogicalFocusGraph,
 } from './logicalFocusGraph.ts';
 
-// —— types ————————————————————————————————————————————————————————————————
+// -- types ----------------------------------------------------------------
 
 export type BandPaint = 'focus' | 'dim' | 'absent';
 
@@ -71,11 +71,11 @@ export type AppliedObservation = {
 	bands: readonly AppliedBandRow[];
 };
 
-// —— observe (plan + inventory) ————————————————————————————————————————————
+// -- observe (plan + inventory) --------------------------------------------
 
 /**
  * Build FocusPlan for a seed and classify every **drawn** band under that plan.
- * This is the primary harness entry — same keys applyFocusPlan uses when
+ * This is the primary harness entry - same keys applyFocusPlan uses when
  * Carbon `__data__.name` matches payload display names.
  */
 export function observeHubFocus(
@@ -178,7 +178,7 @@ export function assertCompleteClassification(obs: FocusObservation): void {
 	}
 }
 
-// —— MiniEl apply observation ——————————————————————————————————————————————
+// -- MiniEl apply observation ----------------------------------------------
 
 /** Minimal Element surface for applyFocusPlan / listDrawnBandsFromHolder. */
 export class HarnessEl {

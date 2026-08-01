@@ -89,15 +89,15 @@ supported-browser behavior all need acceptance coverage.
 
 ## Rejected alternatives + why
 
-1. **Prefer a dev-only Astro/Vite filesystem endpoint** — unnecessary if the
+1. **Prefer a dev-only Astro/Vite filesystem endpoint** - unnecessary if the
    browser folder path is reliable; adds another source owner and allows a
    local server process to read filesystem paths.
-2. **Run the CLI or a shell script behind such an endpoint** — adds a child
+2. **Run the CLI or a shell script behind such an endpoint** - adds a child
    process and serialization/error-handling path instead of feeding the shared
    representation directly.
-3. **Replace ZIP ingest outright** — ZIP remains useful for hosted, shared, and
+3. **Replace ZIP ingest outright** - ZIP remains useful for hosted, shared, and
    archived inputs; the decision is to converge both sources, not remove one.
-4. **Let the browser name an arbitrary local path** — browser security properly
+4. **Let the browser name an arbitrary local path** - browser security properly
    prevents this; folder access must remain user-mediated.
 
 ## Fallback

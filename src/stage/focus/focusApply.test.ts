@@ -1,5 +1,5 @@
 /**
- * FocusApply observability — D1–D5 on MiniEl post-polish fixture.
+ * FocusApply observability - D1–D5 on MiniEl post-polish fixture.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -21,7 +21,7 @@ import {
 	type FocusSeed,
 } from './logicalFocusGraph.ts';
 
-/** Minimal DOM tree for apply tests — subset of Element used by focusApply. */
+/** Minimal DOM tree for apply tests - subset of Element used by focusApply. */
 class MiniClassList {
 	private set = new Set<string>();
 	constructor(initial: string[] = []) {
@@ -297,7 +297,7 @@ describe('focusApply MiniEl matrix', () => {
 			['src/main.tsx', 'react'],
 			[
 				externalBandKey('src/main.tsx', 'react'),
-				// even if someone put the undrawn carbon key in plan — pad still never focus
+				// even if someone put the undrawn carbon key in plan - pad still never focus
 				fileBandKey('src/main.tsx', 'react'),
 			],
 		);
@@ -334,7 +334,7 @@ describe('focusApply MiniEl matrix', () => {
 		expect(carbon.style.fillOpacity).toBeUndefined();
 	});
 
-	it('D3: package reverse-path plan — carbon on path focused; off-path dim', () => {
+	it('D3: package reverse-path plan - carbon on path focused; off-path dim', () => {
 		const holder = polishedHolder();
 		// reverse-path for react from main: main lit; main→App on path; main→logger off
 		const plan = planOf(
@@ -357,7 +357,7 @@ describe('focusApply MiniEl matrix', () => {
 		);
 	});
 
-	it('D4: band-only plan — exactly one non-pad band focused', () => {
+	it('D4: band-only plan - exactly one non-pad band focused', () => {
 		const holder = polishedHolder();
 		const plan = planOf(
 			{

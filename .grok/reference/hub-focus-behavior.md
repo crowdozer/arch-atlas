@@ -1,4 +1,4 @@
-# Hub alluvial focus — behavioral matrix
+# Hub alluvial focus - behavioral matrix
 
 **Status:** foundational product law (ship `5ee2b6cf`; harness pin `e6058c97`; sticky package open; package-hub mount)  
 **Code SoR:** `src/stage/focus/logicalFocusGraph.ts` (plan),  
@@ -13,7 +13,7 @@ host wire in `src/client/app.ts` (`pendingPackageFocus` / `openPackageAsHub` /
 
 This document is the **working contract for hub focus/highlight** (hover seeds
 plus open-time sticky package seed). Geometry membership (columns, pads, rails,
-straighten) is **not** owned here — focus **consumes** payload +
+straighten) is **not** owned here - focus **consumes** payload +
 `meta.externalStraightPairs` and reconciles onto **drawn** bands after polish.
 Do not rewrite `fileHub` / `packageHub` pads to make hover easy.
 
@@ -21,10 +21,10 @@ Do not rewrite `fileHub` / `packageHub` pads to make hover easy.
 
 ## 1. Dual graph
 
-| Graph | What it is | Focus role |
-| ----- | ---------- | ---------- |
-| **LogicalFocusGraph** | Non-rail file↔file edges from payload + External edges from **pairs only** + multi-instance aliases from `nodeRef` | SoR for “connected tree” on label hover |
-| **Display graph** | Carbon `path.link` that remain painted after undraw + injected `path.atlas-alluvial-external-straight` | SoR for hit-testing and apply (focus/dim classes) |
+| Graph                 | What it is                                                                                                         | Focus role                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| **LogicalFocusGraph** | Non-rail file↔file edges from payload + External edges from **pairs only** + multi-instance aliases from `nodeRef` | SoR for “connected tree” on label hover           |
+| **Display graph**     | Carbon `path.link` that remain painted after undraw + injected `path.atlas-alluvial-external-straight`             | SoR for hit-testing and apply (focus/dim classes) |
 
 **Rails never enter the logical graph.** Names containing `in-rail` / `out-rail`
 are stripped when building edges and never appear in `activeLabels` or
@@ -37,12 +37,12 @@ connectivity for External is **`externalStraightPairs` only**.
 
 ## 2. Seed kinds
 
-| Seed | When | Product law |
-| ---- | ---- | ----------- |
-| **band** (`display: carbon \| straighten`) | Hover a drawn ribbon | That edge only; endpoint labels (+ non-multi-instance aliases) |
-| **file** | Hover a file label | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
-| **package** | Hover External package / unresolved chip **or** sticky open-time seed (§2a) | Reverse-path **union** from all pair parents of that package (§3c) |
-| **file-spine** | Hover the hub File column spine (**file-hub only**) | Same as **file** for `meta.startId` / File focus label |
+| Seed                                       | When                                                                        | Product law                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **band** (`display: carbon \| straighten`) | Hover a drawn ribbon                                                        | That edge only; endpoint labels (+ non-multi-instance aliases)                                |
+| **file**                                   | Hover a file label                                                          | Reverse∪forward on file edges; packages only if pair parent ∈ hovered∪**forward** descendants |
+| **package**                                | Hover External package / unresolved chip **or** sticky open-time seed (§2a) | Reverse-path **union** from all pair parents of that package (§3c)                            |
+| **file-spine**                             | Hover the hub File column spine (**file-hub only**)                         | Same as **file** for `meta.startId` / File focus label                                        |
 
 Band hover does **not** expand the tree of either endpoint.
 
@@ -50,12 +50,12 @@ Band hover does **not** expand the tree of either endpoint.
 
 Package focus is **not** hover-only. When the host opens a package as hub
 (catalog **Export Roots** or alluvial package/unresolved drill), it mounts
-**package-hub** — `AtlasView` `{ type: 'package-hub', packageId }` →
-`projectPackageHub` — **not** file-hub on the primary importer. After that
+**package-hub** - `AtlasView` `{ type: 'package-hub', packageId }` →
+`projectPackageHub` - **not** file-hub on the primary importer. After that
 mount it applies a **sticky default** package FocusSeed:
 
 1. Host stores **stable package/unresolved id** in `pendingPackageFocus`
-   (`{ packageId, kind }`) — not painted file-hub labels (Phase 2B). Not on
+   (`{ packageId, kind }`) - not painted file-hub labels (Phase 2B). Not on
    `AtlasView`; not persisted.
 2. On mount / remount / sticky restore, host **resolves** the mounted display
    name via `resolvePackageSeedName(packageId, payload)` (nodeRef / focus /
@@ -69,14 +69,14 @@ mount it applies a **sticky default** package FocusSeed:
    `nearestFileFocus` (underlying file-hub when present on the stack; may be
    `null` on a pure package-hub stack). Export Roots catalog chrome uses
    `selectedPackage: pendingPackageFocus.packageId`. Sticky package seed is
-   hover-restore / open-time highlight only — not “which file is selected.”
+   hover-restore / open-time highlight only - not “which file is selected.”
 
-| Interaction | Behavior |
-| ----------- | -------- |
-| **Hover** (band / file / other package / spine when present) | Temporary override via `applySeed` |
-| **mouseleave → `clearFocus`** | Restores sticky package default (not neutral, not last hover) |
-| **Ordinary file/module nav, pop, session clear** | Host clears pending label + `setDefaultSeed(null)` → neutral clear |
-| **Remount while pending** | New focus API starts `defaultSeed=null`; host re-applies sticky seed |
+| Interaction                                                  | Behavior                                                             |
+| ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| **Hover** (band / file / other package / spine when present) | Temporary override via `applySeed`                                   |
+| **mouseleave → `clearFocus`**                                | Restores sticky package default (not neutral, not last hover)        |
+| **Ordinary file/module nav, pop, session clear**             | Host clears pending label + `setDefaultSeed(null)` → neutral clear   |
+| **Remount while pending**                                    | New focus API starts `defaultSeed=null`; host re-applies sticky seed |
 
 Stage: `setDefaultSeed` / `clearFocus` restore path in
 `src/stage/focus/bindAlluvialFocus.ts`. Host: `openPackageAsHub` +
@@ -84,7 +84,7 @@ Stage: `setDefaultSeed` / `clearFocus` restore path in
 
 **Unchanged:** package membership law (§3c); **file-hub** column matrix
 ([hub-alluvial-behavior.md](./hub-alluvial-behavior.md)); file-spine seed still
-= hub file neighborhood when a File spine is drawn (file-hub only — package-hub
+= hub file neighborhood when a File spine is drawn (file-hub only - package-hub
 has no File spine).
 
 ---
@@ -119,27 +119,27 @@ focusedBands =
 **App vs main→react-dom:** hovering `App` lights reverse ancestors (e.g. `main`)
 but **does not** light packages whose only parents are reverse-only (main→react-dom).
 
-### 3b′. Multi-instance local identity (`L-instance-local`) — interim
+### 3b′. Multi-instance local identity (`L-instance-local`) - interim
 
 Hub multi-hop paints the same path at several display names (`path` and
 `path · hN`). Until **instance fingerprinting**, focus must **not** treat those
 labels as one id for membership / BFS alias expand.
 
-| Rule | Behavior |
-| ---- | -------- |
-| `expandFileAliases` | Never maps `· hN` ↔ primary (or other hops) of the same path id |
-| `nameInFocus` | Multi-instance labels: **exact** active match only |
-| Walk | Reverse/forward BFS starts only at the hovered display name (+ non-multi aliases) |
+| Rule                | Behavior                                                                          |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `expandFileAliases` | Never maps `· hN` ↔ primary (or other hops) of the same path id                   |
+| `nameInFocus`       | Multi-instance labels: **exact** active match only                                |
+| Walk                | Reverse/forward BFS starts only at the hovered display name (+ non-multi aliases) |
 
 **Codebreaker:** Buffer → `useCodebreaker · h2` lights that hop instance and its
-incident bands only — **not** Imports-column primary `useCodebreaker` or
+incident bands only - **not** Imports-column primary `useCodebreaker` or
 primary→reducer/types/utils (those attach to the primary instance). Hovering
 primary does not light hop-2 consumers (Buffer/Timer).
 
 Ship spine-shortest-path / split-induction experiments were **rolled back** so
 this single interim is the load-bearing multi-hop pin.
 
-### 3c. Package label — reverse-path law (`L-pkg-*`)
+### 3c. Package label - reverse-path law (`L-pkg-*`)
 
 ```text
 parents = pair parents of package (alias-aware)
@@ -155,7 +155,7 @@ focusedBands =
 - Exports\* nodes light **only if** they lie on a reverse path from a pair parent.
 - Sibling branches that never reach a pair parent stay dim (e.g. `logger` under
   `main` when hovering `react` via Layout/Home/useUser, unless `main` itself is
-  a parent — then only reverse from main, still not forward forks).
+  a parent - then only reverse from main, still not forward forks).
 
 When `main` **is** a pair parent of `react`, reverse from main is `{main}` only;
 forward forks like `logger` are **not** on that reverse path and stay dim.
@@ -170,7 +170,7 @@ Treat as file seed for the hub focus file (display name of File category /
 
 `nodeRef` maps display name → `{ kind, id }`. **Non-multi-instance** file labels
 that share the same `id` may still expand together. Labels matching
-`path · hN` are **instance-local** (interim — see §3b′): they do **not** expand
+`path · hN` are **instance-local** (interim - see §3b′): they do **not** expand
 to other instances of that path id.
 
 ### 3f. Rails (`L-rails`)
@@ -183,10 +183,10 @@ Never in `activeLabels` / `focusedBandKeys`. Strip at graph build.
 
 After polish (or simulated from payload + pairs):
 
-| Kind | Source | Key |
-| ---- | ------ | --- |
-| **carbon** | Payload links that are non-rail, not pad-scaffold, not pair-covered direct External attaches | `source\0target` |
-| **straighten** | Every `externalStraightPairs` entry (authoritative External display) | `ext:parent\0packageName` |
+| Kind           | Source                                                                                       | Key                       |
+| -------------- | -------------------------------------------------------------------------------------------- | ------------------------- |
+| **carbon**     | Payload links that are non-rail, not pad-scaffold, not pair-covered direct External attaches | `source\0target`          |
+| **straighten** | Every `externalStraightPairs` entry (authoritative External display)                         | `ext:parent\0packageName` |
 
 Undrawn pair Carbon links are **not** drawn bands. Apply classifies **every**
 drawn band as **focus** or **dim** (no third state). Pad-bands never focus.
@@ -197,12 +197,12 @@ Do **not** pin blue tracks with Carbon mounts or screenshots as the primary
 oracle. Use `observeHubFocus` / `observeHubFocusApplied` in
 `src/stage/focus/focusHarness.ts`:
 
-| Layer | Observable |
-| ----- | ---------- |
-| Plan | `activeLabels`, `focusedBandKeys` |
-| Drawn inventory | `listDrawnBandsFromPayload` keys |
-| Classify | every inventory band → `focus` \| `dim` |
-| Apply (MiniEl) | `atlas-alluvial-carbon-link-focus` / `-dim` on those paths |
+| Layer           | Observable                                                 |
+| --------------- | ---------------------------------------------------------- |
+| Plan            | `activeLabels`, `focusedBandKeys`                          |
+| Drawn inventory | `listDrawnBandsFromPayload` keys                           |
+| Classify        | every inventory band → `focus` \| `dim`                    |
+| Apply (MiniEl)  | `atlas-alluvial-carbon-link-focus` / `-dim` on those paths |
 
 Invariant pin (`focusHarness.test.ts`, fixture `fixtures/codebreaker-focus`):
 Buffer hover → **primary** `index→useCodebreaker` drawn band is **dim**;
@@ -213,12 +213,12 @@ Imports-column primary (L-instance-local).
 
 When MiniEl is not enough, run **real Carbon** under Playwright:
 
-| Piece | Path |
-| ----- | ---- |
-| Mount page | `/focus-e2e` (`src/pages/focus-e2e.astro`) |
-| Boot hook | `window.__ATLAS_FOCUS_E2E__` (`src/stage/focus/e2e/focusE2eBoot.ts`) |
-| Spec | `src/stage/focus/e2e/focusCarbon.e2e.test.ts` |
-| Command | `npm run test:e2e:focus` (not in default `npm test`) |
+| Piece      | Path                                                                 |
+| ---------- | -------------------------------------------------------------------- |
+| Mount page | `/focus-e2e` (`src/pages/focus-e2e.astro`)                           |
+| Boot hook  | `window.__ATLAS_FOCUS_E2E__` (`src/stage/focus/e2e/focusE2eBoot.ts`) |
+| Spec       | `src/stage/focus/e2e/focusCarbon.e2e.test.ts`                        |
+| Command    | `npm run test:e2e:focus` (not in default `npm test`)                 |
 
 Observable: `dumpBands()` reads `atlas-alluvial-carbon-link-focus` / `-dim` on
 live `path.link` after `hoverFile(Buffer)`. Same Buffer sibling invariant as §4a.
@@ -229,17 +229,17 @@ live `path.link` after `hoverFile(Buffer)`. Same Buffer sibling invariant as §4
 
 Under holder class `.ui-alluvial-label-dimming`:
 
-| Target | Focus class | Dim class / rule |
-| ------ | ----------- | ---------------- |
-| Label `g.node-group` | `ui-alluvial-label-focus` | non-focus titles → opacity 0.3 `!important` |
-| Carbon `path.link` (non-pad, non-straighten) | `atlas-alluvial-carbon-link-focus` | `atlas-alluvial-carbon-link-dim` |
-| Straighten External | `atlas-alluvial-external-straight--focus` | non-focus straighten → opacity 0.3 `!important` |
-| Pad bands | never focus | stay undrawn / pointer-events none |
+| Target                                       | Focus class                               | Dim class / rule                                |
+| -------------------------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| Label `g.node-group`                         | `ui-alluvial-label-focus`                 | non-focus titles → opacity 0.3 `!important`     |
+| Carbon `path.link` (non-pad, non-straighten) | `atlas-alluvial-carbon-link-focus`        | `atlas-alluvial-carbon-link-dim`                |
+| Straighten External                          | `atlas-alluvial-external-straight--focus` | non-focus straighten → opacity 0.3 `!important` |
+| Pad bands                                    | never focus                               | stay undrawn / pointer-events none              |
 
 Clear Carbon/polish inline `stroke-opacity` / `fill-opacity` / `opacity` on apply so CSS wins (bands are filled ribbons; dim/focus use fill-opacity parity).
 
 **Removed (post foundation):** `ui-alluvial-external-pkg-focus` blanket
-“dim entire Carbon tree” — package reverse-path plan lights the correct subset
+“dim entire Carbon tree” - package reverse-path plan lights the correct subset
 of file bands; blanket dim is no longer product law.
 
 Drill accent: `atlas-alluvial-drill-target` (unchanged; orthogonal to focus plan).
@@ -248,13 +248,13 @@ Drill accent: `atlas-alluvial-drill-target` (unchanged; orthogonal to focus plan
 
 ## 6. Explicit non-laws
 
-| Non-law | Why |
-| ------- | --- |
-| **No Carbon `sourceLinks` / `targetLinks` as product connectivity** | Poisoned by shared rails |
-| **No rails in logical focus** | Topology for depth only |
-| **No fixed-point multi-package expand** | `react-dom` → main → all packages → Layout/Home is wrong |
-| **No fileHub membership rewrite for hover** | Geometry matrix is orthogonal |
-| **No treating undrawn pair Carbon links as focus targets** | Display SoR is straighten |
+| Non-law                                                             | Why                                                      |
+| ------------------------------------------------------------------- | -------------------------------------------------------- |
+| **No Carbon `sourceLinks` / `targetLinks` as product connectivity** | Poisoned by shared rails                                 |
+| **No rails in logical focus**                                       | Topology for depth only                                  |
+| **No fixed-point multi-package expand**                             | `react-dom` → main → all packages → Layout/Home is wrong |
+| **No fileHub membership rewrite for hover**                         | Geometry matrix is orthogonal                            |
+| **No treating undrawn pair Carbon links as focus targets**          | Display SoR is straighten                                |
 
 ---
 
@@ -262,30 +262,30 @@ Drill accent: `atlas-alluvial-drill-target` (unchanged; orthogonal to focus plan
 
 Pure plan (`logicalFocusGraph.test.ts`) cites these IDs in test names:
 
-| ID | Case |
-| -- | ---- |
-| `L-band-file` | carbon `main→App` band only |
-| `L-band-ext` | straighten `main→react` only (not react-dom sibling) |
-| `L-file-main` | main label: full forward + main’s packages |
-| `L-file-app` | App: spine-shortest-path ancestors∪descendants; not logger; not main→react-dom |
-| `L-file-hook` | shared-hook shape: spine→shell→hook shortest path; co-importers dim |
-| `L-file-timer-crosscut` | Timer-like: induced halves only; index→hook cross-cut band dim |
-| `L-pkg-react` | reverse-path union from all react parents |
-| `L-pkg-react-dom` | parents of react-dom only (main); not Layout/Home unless reverse-ancestors |
-| `L-pkg-zod` | multi-parent reverse unions |
-| `L-instance-local` | multi-instance `· hN` does **not** id-alias to primary |
-| `L-spine` | File spine = file neighborhood of focus |
-| `L-rails` | rails never in activeLabels |
+| ID                      | Case                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `L-band-file`           | carbon `main→App` band only                                                    |
+| `L-band-ext`            | straighten `main→react` only (not react-dom sibling)                           |
+| `L-file-main`           | main label: full forward + main’s packages                                     |
+| `L-file-app`            | App: spine-shortest-path ancestors∪descendants; not logger; not main→react-dom |
+| `L-file-hook`           | shared-hook shape: spine→shell→hook shortest path; co-importers dim            |
+| `L-file-timer-crosscut` | Timer-like: induced halves only; index→hook cross-cut band dim                 |
+| `L-pkg-react`           | reverse-path union from all react parents                                      |
+| `L-pkg-react-dom`       | parents of react-dom only (main); not Layout/Home unless reverse-ancestors     |
+| `L-pkg-zod`             | multi-parent reverse unions                                                    |
+| `L-instance-local`      | multi-instance `· hN` does **not** id-alias to primary                         |
+| `L-spine`               | File spine = file neighborhood of focus                                        |
+| `L-rails`               | rails never in activeLabels                                                    |
 
 Apply / adapter:
 
-| ID | Case |
-| -- | ---- |
-| `D1`–`D5` | drawn band focus\|dim completeness; pad never focus; clearFocus (neutral when no default) |
-| sticky-default | `setDefaultSeed` + clearFocus restores package seed (`bindAlluvialFocus.test.ts`) |
-| `S1`–`S4` | Carbon/straighten seed mapping; rails never seeds |
+| ID             | Case                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `D1`–`D5`      | drawn band focus\|dim completeness; pad never focus; clearFocus (neutral when no default) |
+| sticky-default | `setDefaultSeed` + clearFocus restores package seed (`bindAlluvialFocus.test.ts`)         |
+| `S1`–`S4`      | Carbon/straighten seed mapping; rails never seeds                                         |
 
-Manual E5: demo-react-simple `main.tsx` — band main→App / main→logger /
+Manual E5: demo-react-simple `main.tsx` - band main→App / main→logger /
 main→react; labels main, App, logger, Home, useUser, react, react-dom, zod;
 package react reverse tree via true importers.
 

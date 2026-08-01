@@ -59,7 +59,7 @@ describe('buildAnalysisEnvelope', () => {
 
 	it('stamps L0+L1+L2 for sample-ts with tsconfig paths that resolve', () => {
 		const { graph } = indexFiles(sampleFiles, { catalog: { limit: 20 } });
-		// Ensure @/ style import exists or rely on fixture — sample uses relative.
+		// Ensure @/ style import exists or rely on fixture - sample uses relative.
 		// L2 requires alias-resolved file edges; sample-ts may only have relative.
 		const env = buildAnalysisEnvelope({ graph, exactApplied: false });
 		expect(env.protocol).toBe(ANALYSIS_PROTOCOL_ID);
@@ -71,7 +71,7 @@ describe('buildAnalysisEnvelope', () => {
 		expect(env.completeness.nodeModules).toBe('absent');
 		expect(env.capabilityDetail.mass).toBe('whole-file');
 		expect(env.capabilityDetail.aliases).toBe('tsconfig');
-		// L2 only if some edge actually resolved via alias — sample may be relative-only
+		// L2 only if some edge actually resolved via alias - sample may be relative-only
 		if (env.capabilities.includes('L2')) {
 			expect(env.capabilityDetail.importGraph).toBe('resolved');
 		} else {

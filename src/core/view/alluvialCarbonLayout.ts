@@ -1,5 +1,5 @@
 /**
- * Post-Carbon alluvial geometry — same topology Carbon uses for columns.
+ * Post-Carbon alluvial geometry - same topology Carbon uses for columns.
  *
  * Carbon Charts alluvial does **not** place columns from categoryOrder. It runs
  * d3-sankey on nodes + links, then labels each distinct x0 with the **last**
@@ -40,7 +40,7 @@ export type CarbonLayoutColumn = {
 	/** d3-sankey depth for this column. */
 	depth: number;
 	/**
-	 * Column header Carbon would paint — last non-empty category among nodes
+	 * Column header Carbon would paint - last non-empty category among nodes
 	 * at this **x0** (Carbon’s `u[x0] = y.category` overwrite).
 	 * For left align, x0 groups match depth; for justify, leaf x0 may differ.
 	 */
@@ -114,7 +114,7 @@ export function layoutAlluvialLikeCarbon(
 		(n) => (n.value ?? 0) !== 0,
 	);
 
-	// Carbon headers key by **x0** (not depth) — justify can move leaves right
+	// Carbon headers key by **x0** (not depth) - justify can move leaves right
 	const headerByX0 = new Map<number, string | undefined>();
 	const nodesByX0 = new Map<number, SkNode[]>();
 	for (const n of liveNodes) {

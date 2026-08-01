@@ -95,7 +95,7 @@ export function edgeWeightFromSet(
  * Keys with raw≤0 are skipped; if all raw≤0, split budget evenly across items.
  *
  * Previously integer largest-remainder: with budget 1 and n>1 children, n-1 got 0
- * and vanished after unlinked-node prune — topology loss under conservation.
+ * and vanished after unlinked-node prune - topology loss under conservation.
  */
 export function allocateProportional(
 	budget: number,

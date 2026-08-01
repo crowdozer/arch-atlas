@@ -77,7 +77,7 @@ export function collectExportSpansFromText(text: string): ExportSpan[] {
 		const brace = /^\s*export\s+(?:type\s+)?\{([^}]*)\}/.exec(line);
 		if (brace) {
 			const body = brace[1] ?? '';
-			// multi-line export { … } — gather until closing brace if needed
+			// multi-line export { … } - gather until closing brace if needed
 			let full = line;
 			let end = i;
 			if (!line.includes('}')) {
@@ -258,7 +258,7 @@ export function pickSpansForBindings(
 ): ExportSpan[] {
 	if (!bindings.length) return [];
 	const onlySide = bindings.every((b) => b.kind === 'side-effect');
-	// Side-effect import has no named surface — do not dump the whole export list
+	// Side-effect import has no named surface - do not dump the whole export list
 	if (onlySide) return [];
 	// namespace import: show export surface (capped)
 	if (bindings.some((b) => b.kind === 'namespace')) {

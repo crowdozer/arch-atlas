@@ -5,7 +5,7 @@
  * which are loadable in-tab this ship (typescript only), and which languages
  * stay estimate-only (missing).
  *
- * No network / no Program — hosts load engines and inject providers.
+ * No network / no Program - hosts load engines and inject providers.
  */
 
 import type { CodeGraph } from '@core/graph/types.ts';
@@ -81,7 +81,7 @@ function languageForUnsupported(path: string): MissingLanguageEngine | null {
  * Derive engines required for Exact honesty over this graph.
  * Config/text assets do not require engines.
  *
- * Typescript is required only for JS/TS / `js-ts-import` — not every
+ * Typescript is required only for JS/TS / `js-ts-import` - not every
  * `file.isSource` (Python is import-parseable but has no Exact engine).
  */
 export function requiredEngines(graph: CodeGraph): RequiredEnginesResult {
@@ -103,13 +103,13 @@ export function requiredEngines(graph: CodeGraph): RequiredEnginesResult {
 			continue;
 		}
 
-		// Python L1 Estimate — present as source, no Exact engine
+		// Python L1 Estimate - present as source, no Exact engine
 		if (kind === 'python-import' || /\.py$/i.test(path)) {
 			addMissing({ language: 'Python', engine: 'python' });
 			continue;
 		}
 
-		// Astro L1 Estimate (script islands) — Exact island surface not loadable yet
+		// Astro L1 Estimate (script islands) - Exact island surface not loadable yet
 		if (kind === 'astro-import' || /\.astro$/i.test(path)) {
 			addMissing({ language: 'Astro', engine: 'astro-ls' });
 			continue;

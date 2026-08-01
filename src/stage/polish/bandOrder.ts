@@ -95,7 +95,7 @@ function restackColumn(
 function rankOf(n: SankeyNode, nodeRank: Record<string, number>): number {
 	const name = n.name;
 	if (name && name in nodeRank) return nodeRank[name]!;
-	// Unknown (should not happen for hub peers) — park after ranked nodes
+	// Unknown (should not happen for hub peers) - park after ranked nodes
 	return Number.MAX_SAFE_INTEGER;
 }
 
@@ -114,7 +114,7 @@ function writeNodeTransformsAndLinks(holder: HTMLElement, bound: NodeEl[]): void
 	for (const { el, d } of bound) {
 		el.setAttribute('transform', `translate(${d.x0}, ${d.y0})`);
 	}
-	// Centerline paths only — ribbons rewrite next in polish pipeline
+	// Centerline paths only - ribbons rewrite next in polish pipeline
 	for (const path of holder.querySelectorAll<SVGPathElement>('path.link')) {
 		const link = readData<SankeyLink>(path);
 		if (!link?.source || !link?.target) continue;

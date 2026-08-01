@@ -99,7 +99,7 @@ export function ingestZip(buffer: ArrayBuffer): ZipIngestResult {
 			skipped++;
 			continue;
 		}
-		// Only known text extensions — never keep extensionless paths
+		// Only known text extensions - never keep extensionless paths
 		// (closes the hole that admitted directory markers as empty files).
 		if (!isTextPath(path)) {
 			skipped++;
@@ -123,7 +123,7 @@ export function ingestZip(buffer: ArrayBuffer): ZipIngestResult {
 
 	for (const { path, data } of staged) {
 		if (prefixOfOther.has(path)) {
-			// Listed both as empty "file" and via children — keep children only
+			// Listed both as empty "file" and via children - keep children only
 			skipped++;
 			continue;
 		}

@@ -458,7 +458,7 @@ describe('sessionLifecycle activate kind open vs reindex', () => {
 	it('restore with stored exact precision uses enableExactSurfaceMode (not rehydrate)', async () => {
 		const ctx = mockDeps({
 			locPrecision: 'estimate',
-			// Sticky would also say exact — restore still uses enable path
+			// Sticky would also say exact - restore still uses enable path
 			stickyAction: 'exact',
 		});
 		const life = createSessionLifecycle(ctx.deps);

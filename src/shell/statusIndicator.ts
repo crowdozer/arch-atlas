@@ -1,12 +1,12 @@
 /**
  * Carbon-style shape status presentation (shape + color + label).
- * Re-homed from Sentinel grammar — geometry only; no Sentinel domain mappers.
+ * Re-homed from Sentinel grammar - geometry only; no Sentinel domain mappers.
  *
  * ## Two axes (shape contract)
  *
- * - **lifecycle** — process / pipeline state
+ * - **lifecycle** - process / pipeline state
  *   (green circle done · half-circle progress · circle-slash fail · …).
- * - **indication** — content / severity
+ * - **indication** - content / severity
  *   (green triangle PASS · hollow yellow diamond WATCH · solid red square FAIL).
  *
  * Prefer `lifecycle()` / `indication()` over bare geometry.
@@ -68,7 +68,7 @@ export type Geometry = {
  *
  * Lifecycle failed → circle-slash (process died).
  * Indication failed → solid square (content FAIL/risk).
- * Indication cautious → **outline yellow diamond** (hollow WATCH — locked).
+ * Indication cautious → **outline yellow diamond** (hollow WATCH - locked).
  * Lifecycle cautious → outline yellow circle (not WATCH diamond).
  */
 export function geometryForAxisKind(
@@ -78,7 +78,7 @@ export function geometryForAxisKind(
 	if (axis === 'lifecycle') {
 		switch (kind) {
 			case 'stable':
-				// Process done / clear — solid green circle (not PASS triangle).
+				// Process done / clear - solid green circle (not PASS triangle).
 				return { shape: 'circle', variant: 'solid', color: 'green' };
 			case 'incomplete':
 				return { shape: 'circle-half', variant: 'solid', color: 'blue' };
@@ -87,7 +87,7 @@ export function geometryForAxisKind(
 			case 'draft':
 				return { shape: 'circle', variant: 'outline', color: 'gray' };
 			case 'cautious':
-				// Process caution — circle, not WATCH diamond.
+				// Process caution - circle, not WATCH diamond.
 				return { shape: 'circle', variant: 'outline', color: 'yellow' };
 			case 'failed':
 				return { shape: 'circle-slash', variant: 'solid', color: 'red' };
@@ -96,17 +96,17 @@ export function geometryForAxisKind(
 	// indication
 	switch (kind) {
 		case 'stable':
-			// Green up-triangle — PASS / content good.
+			// Green up-triangle - PASS / content good.
 			return { shape: 'triangle', variant: 'solid', color: 'green' };
 		case 'incomplete':
 			return { shape: 'circle-half', variant: 'solid', color: 'blue' };
 		case 'informative':
-			// Hollow blue triangle — content info.
+			// Hollow blue triangle - content info.
 			return { shape: 'triangle', variant: 'outline', color: 'blue' };
 		case 'draft':
 			return { shape: 'circle', variant: 'outline', color: 'gray' };
 		case 'cautious':
-			// ★ Hollow yellow diamond — WATCH / caution indication (locked).
+			// ★ Hollow yellow diamond - WATCH / caution indication (locked).
 			return { shape: 'diamond', variant: 'outline', color: 'yellow' };
 		case 'failed':
 			return { shape: 'square', variant: 'solid', color: 'red' };
@@ -132,7 +132,7 @@ function present(
 	return p;
 }
 
-/** Lifecycle / process state — circle family (failed → circle-slash). */
+/** Lifecycle / process state - circle family (failed → circle-slash). */
 export function lifecycle(
 	kind: StatusKind,
 	label: string,
@@ -174,7 +174,7 @@ export type LanguageChipStatusOpts = {
 	/** Program worker in flight (lifecycle incomplete). */
 	programLoading?: boolean;
 	/**
-	 * Exact ensure in flight (restore/sticky/user enable). Lifecycle incomplete —
+	 * Exact ensure in flight (restore/sticky/user enable). Lifecycle incomplete -
 	 * no Exact mass claim until provider settles.
 	 */
 	exactLoading?: boolean;
@@ -214,21 +214,21 @@ export function languageChipStatus(
 			return lifecycle(
 				'incomplete',
 				'Loading',
-				'Loading Exact… (export-surface mass — not a language server)',
+				'Loading Exact… (export-surface mass - not a language server)',
 			);
 		}
 		if (precision === 'program') {
 			return lifecycle(
 				'stable',
 				'Program',
-				'Program (createProgram topology — not LSP)',
+				'Program (createProgram topology - not LSP)',
 			);
 		}
 		if (precision === 'exact') {
 			return indication(
 				'stable',
 				'Exact',
-				'Exact (export-surface mass — not a language server)',
+				'Exact (export-surface mass - not a language server)',
 			);
 		}
 		// Estimate · Exact available for JS/TS

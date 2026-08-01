@@ -1,5 +1,5 @@
 /**
- * Type-only barrel — many type importers, zero runtime neighbors.
+ * Type-only barrel - many type importers, zero runtime neighbors.
  * Must not rank as top hotspot when runtime hubs exist.
  */
 export type { Game } from '../game';

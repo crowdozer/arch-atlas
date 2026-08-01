@@ -301,7 +301,7 @@ describe('projectFileHub demo-next-complex', () => {
 
 	/**
 	 * Single reverse hop only (max reverse BFS = 1): Exports free sources still
-	 * get cyan terminators — pad rails require radiusL≥2, but chrome does not.
+	 * get cyan terminators - pad rails require radiusL≥2, but chrome does not.
 	 * AdminFlags ← app/dashboard/page.tsx only.
 	 */
 	it('AdminFlags: single-hop Exports free source is a reverse terminator', () => {
@@ -337,7 +337,7 @@ describe('projectFileHub demo-next-complex', () => {
 
 	/**
 	 * Observability for ghost pad-rail chrome (redis Import hop 2/3).
-	 * No Carbon mount — gates payload contract only: rails exist for layout;
+	 * No Carbon mount - gates payload contract only: rails exist for layout;
 	 * terminators list reverse free sources (not rail ids).
 	 */
 	it('redis depth 3: reverse terminators + forward leaves; rails not marked', () => {
@@ -374,7 +374,7 @@ describe('projectFileHub demo-next-complex', () => {
 			expect(ref!.kind, `terminator ${t} is a file`).toBe('file');
 		}
 
-		// Forward leaves (Imports/External) — yellow chrome list
+		// Forward leaves (Imports/External) - yellow chrome list
 		const forward = payload.meta.exportTerminators ?? [];
 		expect(
 			forward.length,
@@ -591,7 +591,7 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
 		expect(cats.has('File')).toBe(true);
 		expect(cats.has('Exports')).toBe(true);
 		expect(cats.has('Export hop 2')).toBe(true);
-		// Chain is only 2 hops each way — no hop 3
+		// Chain is only 2 hops each way - no hop 3
 		expect(cats.has('Import hop 3')).toBe(false);
 		expect(cats.has('Export hop 3')).toBe(false);
 
@@ -652,7 +652,7 @@ describe('projectFileHub dual-hop radius (synthetic chain)', () => {
  * never show "Imports Imports File …".
  *
  * Package/unresolved free sources on Imports (focus + export-tree packages)
- * are excluded — they share free-source depth with reverse free sources by
+ * are excluded - they share free-source depth with reverse free sources by
  * design (category columns still place them under Imports).
  */
 function longestPathLayers(payload: AlluvialPayload): Map<number, Set<string>> {
@@ -1025,7 +1025,7 @@ describe('projectFileHub layer-consistent import headers (demo-next-complex)', (
 		)?.[0];
 		expect(redisLab, 'redis on import tree').toBeTruthy();
 
-		// Unit mass: reserve would starve files — dual-spend routes full m to
+		// Unit mass: reserve would starve files - dual-spend routes full m to
 		// file children (fractional among siblings, Phase 1B) AND keeps package
 		// residual so External still appears.
 		const loggerOut = payload.data.filter(
@@ -1183,7 +1183,7 @@ describe('projectFileHub hop overflow and folder collapse', () => {
 	/**
 	 * Barrel with uneven child LOC: hop routing must proportional-split residual
 	 * by target-loc (not equal 1s). Equal-split made every hop child hairline while
-	 * "+N more" ate mass — dump symptom on loadFeed → core/index.
+	 * "+N more" ate mass - dump symptom on loadFeed → core/index.
 	 */
 	it('import hop residual splits proportional to target-loc (not equal)', () => {
 		const heavyBody = `${'export const x = 1;\n'.repeat(80)}`;
@@ -1372,7 +1372,7 @@ describe('projectFileHub focus packages on External', () => {
 			fileOutFileDegree(graph, id) + fileOutPackageDegree(graph, id),
 		);
 		expect(total).toBe(fileInDegree(graph, id) + fileOutDegree(graph, id));
-		// API route has no reverse importers — no Exports; packages+file deps on Imports
+		// API route has no reverse importers - no Exports; packages+file deps on Imports
 		expect(fileInDegree(graph, id)).toBe(0);
 		expect(categories(payload).has('Imports')).toBe(true);
 		expect(categories(payload).has('Exports')).toBe(false);

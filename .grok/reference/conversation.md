@@ -24,7 +24,7 @@ request volume, token/monetary cost.
 ## Graph vs tree
 
 Rooted at a route it looks tree-like, but the structure is a **directed graph**.
-Shared helpers, cycles, dynamic imports, DI, callbacks — alluvial **merge bands**
+Shared helpers, cycles, dynamic imports, DI, callbacks - alluvial **merge bands**
 are the point.
 
 ## Progressive expansion UX
@@ -80,9 +80,9 @@ default categories, graph queries, recommended visualizations, smells, confidenc
 
 Epistemic layers:
 
-1. **Observed** — AST proves A imports B  
-2. **Inferred** — Prisma usage ⇒ database  
-3. **Declared** — user marks `/lib/store.ts` as infrastructure  
+1. **Observed** - AST proves A imports B
+2. **Inferred** - Prisma usage ⇒ database
+3. **Declared** - user marks `/lib/store.ts` as infrastructure
 
 Keep distinct; corrections propagate across projections.
 
@@ -91,7 +91,7 @@ Keep distinct; corrections propagate across projections.
 Tree-sitter WASM; ZIP in Web Worker; IndexedDB/OPFS for graph+source; no source
 upload; optional sanitized-graph export; adapter manifests shipped with the app.
 
-Scale/symbol resolution is the hard part — capability ladder L1→L5 (see scope).
+Scale/symbol resolution is the hard part - capability ladder L1→L5 (see scope).
 
 ## UI entry
 

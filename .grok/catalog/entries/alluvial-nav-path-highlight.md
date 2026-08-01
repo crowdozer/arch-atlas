@@ -40,10 +40,10 @@ invariants:
   - Focus/highlight must not rewrite projector geometry or mass membership
   - Selection chrome ≠ FocusPlan (trail chrome, if any, should stay orthogonal too)
 open_questions:
-  - Trail of what — click history (stack of seeds), logical reverse∪forward corridor from origin, or nav-stack view frames only?
+  - Trail of what - click history (stack of seeds), logical reverse∪forward corridor from origin, or nav-stack view frames only?
   - Persist across remounts (file-hub → package-hub → back) or only within one painted payload?
   - How does path trail relate to existing FocusPlan (band/file/package seeds) and sticky open-time package seed without double-dimming or fighting hover?
-  - Visual grammar — dim non-trail, stroke/boost trail links, ghost prior-hub labels, or shell breadcrumb outside the chart?
+  - Visual grammar - dim non-trail, stroke/boost trail links, ghost prior-hub labels, or shell breadcrumb outside the chart?
   - Single origin (entry file) vs multi-hop breadcrumb of every drill step?
   - Interaction with multi-instance labels, External straighten, rails, and residual-thin bands after drill?
   - Does purple selection already carry enough “you are here,” or is the missing cue specifically “you came from there”?
@@ -69,11 +69,11 @@ current hover seed.”
 
 Navigating alluvial bands (band click, package drill, hub remounts) can be
 **disorienting**. After one or two hops the user loses track of **where they came
-from** — which file/module/package was the prior locus, and which corridor led
+from** - which file/module/package was the prior locus, and which corridor led
 into the current view. Existing spatial memory is weak because:
 
 1. **FocusPlan is seed-relative, not history-relative.** Hover focus lights the
-   connected tree of *this* seed; leaving or remounting does not encode “the
+   connected tree of _this_ seed; leaving or remounting does not encode “the
    path I took to get here.”
 2. **Drill / open remounts change the stage.** Package-as-hub and stack pops
    replace payload geometry; sticky package seed restores a highlight on open,
@@ -99,7 +99,7 @@ rewriting membership geometry.
   Sankey/alluvial pattern and reuses stage dim/focus paint channels if designed
   carefully.
 - **Orthogonal to geometry law:** Like FocusPlan, trail chrome should **consume**
-  drawn bands + logical edges — not retcon pads, rails, or straighten pairs.
+  drawn bands + logical edges - not retcon pads, rails, or straighten pairs.
 - **Complements, does not replace:**
   - Sort stability → predictable stacking
   - FocusPlan → connectivity under cursor / sticky seed
@@ -107,13 +107,13 @@ rewriting membership geometry.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not first |
-| ----------- | ------------- |
-| Rely only on shell nav stack / back button | Restores prior *view* but does not show *which ribbon* justified the hop while still on the chart |
-| Rely only on FocusPlan hover | Answers “connected to this seed,” not “the route I took”; mouseleave restores sticky seed, not a multi-step trail |
-| Full graph overview / mini-map first | Heavier; does not fix in-chart disorientation during band-first exploration |
-| Rewrite column membership so origin always dominates mass | Geometry retcon; forbidden relative to hub matrices — chrome only |
-| Text-only breadcrumb of file paths | Useful (see `segmented-relative-path-labels`) but weak for *flow* provenance across Import/Export/External columns |
+| Alternative                                               | Why not first                                                                                                      |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Rely only on shell nav stack / back button                | Restores prior _view_ but does not show _which ribbon_ justified the hop while still on the chart                  |
+| Rely only on FocusPlan hover                              | Answers “connected to this seed,” not “the route I took”; mouseleave restores sticky seed, not a multi-step trail  |
+| Full graph overview / mini-map first                      | Heavier; does not fix in-chart disorientation during band-first exploration                                        |
+| Rewrite column membership so origin always dominates mass | Geometry retcon; forbidden relative to hub matrices - chrome only                                                  |
+| Text-only breadcrumb of file paths                        | Useful (see `segmented-relative-path-labels`) but weak for _flow_ provenance across Import/Export/External columns |
 
 ## Open questions
 
@@ -133,7 +133,7 @@ See frontmatter. Highest-load:
 - Focus harness / LogicalFocusGraph gains a durable “origin seed” or nav-stack
   bridge that makes trail cheap.
 - Multi-lens work (`interchangeable-atlas-lenses`) needs a shared focus region
-  that survives alluvial ↔ other views — trail may be a special case of that.
+  that survives alluvial ↔ other views - trail may be a special case of that.
 - Module-focus height-after-drill bugs (`module-focus-band-height-after-drill`)
   are fixed, so trail experiments are not fighting remount mass glitches.
 

@@ -1,9 +1,9 @@
 /**
- * Dual-side file hub alluvial — high-edge / barrel projection.
+ * Dual-side file hub alluvial - high-edge / barrel projection.
  *
  * **Behavioral matrix (authoritative):**
  * `.grok/reference/hub-alluvial-behavior.md`
- * Adjustments must stay **surgical** — do not retcon that matrix (or goldens)
+ * Adjustments must stay **surgical** - do not retcon that matrix (or goldens)
  * to match cascade side effects on other columns.
  *
  * Columns (L→R), category names fixed:
@@ -21,7 +21,7 @@
  *   Never reverse consumers; never package leaves.
  * - **External:** pure package/unresolved leaves (node_modules / unresolved).
  *   Display links are **parent → [in-rails] → package** (sinks). Never free
- *   sources — Carbon headers = last category at each d3-sankey depth; free-source
+ *   sources - Carbon headers = last category at each d3-sankey depth; free-source
  *   packages would share the leftmost layer with free-source export consumers.
  *   When file Imports exist, pad packages one hop past max file import dist so
  *   File→seed and File→package are not co-located (logger under External header).
@@ -44,11 +44,11 @@
  * Integer multi-parent split conserves File incident mass (accepted default).
  *
  * **Module layout (construction stages):**
- * - `hubCategories.ts` — categories, rails, display tags, hop colors
- * - `hubLinkUtils.ts` — LinkBuilder, claimName, edge weights, allocate
- * - `hubExportRings.ts` — reverse/Exports* (`addImportRings`, rails, modules)
- * - `hubImportRings.ts` — forward/Imports* (`addExportRings`, multi-instance)
- * - `hubExternalPackages.ts` — External packages, straighten pairs, forward terms
+ * - `hubCategories.ts` - categories, rails, display tags, hop colors
+ * - `hubLinkUtils.ts` - LinkBuilder, claimName, edge weights, allocate
+ * - `hubExportRings.ts` - reverse/Exports* (`addImportRings`, rails, modules)
+ * - `hubImportRings.ts` - forward/Imports* (`addExportRings`, multi-instance)
+ * - `hubExternalPackages.ts` - External packages, straighten pairs, forward terms
  *
  * Naming trap: `addImportRings` = Exports side; `addExportRings` = Imports side.
  */
@@ -118,7 +118,7 @@ export const NORMAL_DEFAULT_MAX_DEPTH = 7;
 /**
  * True when the file has both inbound and outbound edge activity.
  *
- * Client open policy no longer routes with this helper — every file open uses
+ * Client open policy no longer routes with this helper - every file open uses
  * {@link projectFileHub} (one-sided columns when only in or only out). Kept for
  * metrics/tests and callers that want an explicit “both sides” check.
  */

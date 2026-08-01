@@ -32,9 +32,9 @@ export type ProgramEnrichClientOk = {
 export type ProgramEnrichClientErr = {
 	ok: false;
 	error: string;
-	/** Cancelled by generation / terminate — not a hard failure. */
+	/** Cancelled by generation / terminate - not a hard failure. */
 	cancelled?: boolean;
-	/** Soft timeout — worker terminated; prior graph should remain. */
+	/** Soft timeout - worker terminated; prior graph should remain. */
 	timeout?: boolean;
 };
 

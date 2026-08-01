@@ -1,554 +1,627 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Button from '../components/ui/Button.astro';
-import Checkbox from '../components/ui/Checkbox.astro';
-import Search from '../components/ui/Search.astro';
-import Accordion from '../components/ui/Accordion.astro';
-import AccordionItem from '../components/ui/AccordionItem.astro';
-import Dropdown from '../components/ui/Dropdown.astro';
-import DropdownItem from '../components/ui/DropdownItem.astro';
-import Modal from '../components/ui/Modal.astro';
-import ModalHeader from '../components/ui/ModalHeader.astro';
-import ModalCloseButton from '../components/ui/ModalCloseButton.astro';
-import ModalLabel from '../components/ui/ModalLabel.astro';
-import ModalHeading from '../components/ui/ModalHeading.astro';
-import ModalBody from '../components/ui/ModalBody.astro';
-import ModalFooter from '../components/ui/ModalFooter.astro';
-import ModalFooterButton from '../components/ui/ModalFooterButton.astro';
-import FileUploader from '../components/ui/FileUploader.astro';
-import FileUploaderDropContainer from '../components/ui/FileUploaderDropContainer.astro';
-import Tag from '../components/ui/Tag.astro';
+import Layout from "../layouts/Layout.astro";
+import Button from "../components/ui/Button.astro";
+import Checkbox from "../components/ui/Checkbox.astro";
+import Search from "../components/ui/Search.astro";
+import Accordion from "../components/ui/Accordion.astro";
+import AccordionItem from "../components/ui/AccordionItem.astro";
+import Dropdown from "../components/ui/Dropdown.astro";
+import DropdownItem from "../components/ui/DropdownItem.astro";
+import Modal from "../components/ui/Modal.astro";
+import ModalHeader from "../components/ui/ModalHeader.astro";
+import ModalCloseButton from "../components/ui/ModalCloseButton.astro";
+import ModalLabel from "../components/ui/ModalLabel.astro";
+import ModalHeading from "../components/ui/ModalHeading.astro";
+import ModalBody from "../components/ui/ModalBody.astro";
+import ModalFooter from "../components/ui/ModalFooter.astro";
+import ModalFooterButton from "../components/ui/ModalFooterButton.astro";
+import FileUploader from "../components/ui/FileUploader.astro";
+import FileUploaderDropContainer from "../components/ui/FileUploaderDropContainer.astro";
+import Tag from "../components/ui/Tag.astro";
 ---
 
 <Layout title="Arch Atlas">
-	<div id="atlas-app" class="flex min-h-0 flex-1 flex-col">
-		<!-- Upload (centered, only before session) -->
-		<section id="atlas-upload" class="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
-			<h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
-				Upload a repository
-			</h1>
-			<p class="mb-4 text-sm text-zinc-400">
-				Drop a ZIP of your codebase. Analysis stays local — no remote uploads.
-			</p>
-			<div class="atlas-lang-row mb-6" aria-label="Supported languages">
-				<span class="atlas-lang-row__label">Supported languages (Estimate)</span>
-				<div class="atlas-lang-row__chips">
-					<Tag tone="teal" size="sm">TypeScript</Tag>
-					<Tag tone="teal" size="sm">JavaScript</Tag>
-					<Tag tone="teal" size="sm">Python</Tag>
-					<Tag tone="teal" size="sm">Astro</Tag>
-					<Tag tone="cool-gray" size="sm" title="Exact export surface is JS/TS only">Exact: JS/TS</Tag>
-				</div>
-			</div>
+  <div id="atlas-app" class="flex min-h-0 flex-1 flex-col">
+    <!-- Upload (centered, only before session) -->
+    <section
+      id="atlas-upload"
+      class="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6"
+    >
+      <h1 class="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
+        Upload a repository
+      </h1>
+      <p class="mb-4 text-sm text-zinc-400">
+        Drop a ZIP of your codebase. Analysis stays local - no remote uploads.
+      </p>
+      <div class="atlas-lang-row mb-6" aria-label="Supported languages">
+        <span class="atlas-lang-row__label">Supported languages (Estimate)</span
+        >
+        <div class="atlas-lang-row__chips">
+          <Tag tone="teal" size="sm">TypeScript</Tag>
+          <Tag tone="teal" size="sm">JavaScript</Tag>
+          <Tag tone="teal" size="sm">Python</Tag>
+          <Tag tone="teal" size="sm">Astro</Tag>
+          <Tag
+            tone="cool-gray"
+            size="sm"
+            title="Exact export surface is JS/TS only">Exact: JS/TS</Tag
+          >
+        </div>
+      </div>
 
-			<div class="atlas-drop-host">
-				<FileUploader class="atlas-file-uploader" labelTitle="Repository ZIP">
-					<FileUploaderDropContainer
-						id="atlas-drop"
-						class="atlas-file-drop"
-						accept=".zip,application/zip"
-						name="atlas-zip"
-					>
-						Drop a .zip here or click to choose
-					</FileUploaderDropContainer>
-				</FileUploader>
-			</div>
+      <div class="atlas-drop-host">
+        <FileUploader class="atlas-file-uploader" labelTitle="Repository ZIP">
+          <FileUploaderDropContainer
+            id="atlas-drop"
+            class="atlas-file-drop"
+            accept=".zip,application/zip"
+            name="atlas-zip"
+          >
+            Drop a .zip here or click to choose
+          </FileUploaderDropContainer>
+        </FileUploader>
+      </div>
 
-			<div class="atlas-demo mt-6">
-				<p class="atlas-section-label mb-3">Or load a built-in demo</p>
-				<div class="atlas-demo__grid">
-					<button
-						type="button"
-						id="atlas-demo-react-simple"
-						class="atlas-demo__card"
-						data-demo="react-simple"
-					>
-						<span class="atlas-demo__inner">
-							<span class="atlas-demo__heading">
-								<span class="atlas-demo__title">React app</span>
-								<Tag tone="teal" size="sm">Low complexity</Tag>
-							</span>
-							<span class="atlas-demo__blurb">
-								Vite + React Router: pages, hooks, api, shared lib. Clean layers.
-							</span>
-						</span>
-					</button>
-					<button
-						type="button"
-						id="atlas-demo-next-complex"
-						class="atlas-demo__card"
-						data-demo="next-complex"
-					>
-						<span class="atlas-demo__inner">
-							<span class="atlas-demo__heading">
-								<span class="atlas-demo__title">Next.js app</span>
-								<Tag tone="yellow" size="sm">High complexity</Tag>
-							</span>
-							<span class="atlas-demo__blurb">
-								App Router, APIs, services, DB/Redis/Stripe, legacy pages.
-							</span>
-						</span>
-					</button>
-					<button
-						type="button"
-						id="atlas-demo-spaghetti-godfile"
-						class="atlas-demo__card"
-						data-demo="spaghetti-godfile"
-					>
-						<span class="atlas-demo__inner">
-							<span class="atlas-demo__heading">
-								<span class="atlas-demo__title">Spaghetti hub</span>
-								<Tag tone="yellow" size="sm">Blast demo</Tag>
-							</span>
-							<span class="atlas-demo__blurb">
-								Deliberate cross-domain hub and reverse blast chains.
-							</span>
-						</span>
-					</button>
-					<button
-						type="button"
-						id="atlas-demo-python-app"
-						class="atlas-demo__card"
-						data-demo="python-app"
-					>
-						<span class="atlas-demo__inner">
-							<span class="atlas-demo__heading">
-								<span class="atlas-demo__title">Python app</span>
-								<Tag tone="teal" size="sm">Estimate</Tag>
-							</span>
-							<span class="atlas-demo__blurb">
-								Flask-style layers: routes → services → models + flask/requests.
-							</span>
-						</span>
-					</button>
-				</div>
-			</div>
+      <div class="atlas-demo mt-6">
+        <p class="atlas-section-label mb-3">Or load a built-in demo</p>
+        <div class="atlas-demo__grid">
+          <button
+            type="button"
+            id="atlas-demo-react-simple"
+            class="atlas-demo__card"
+            data-demo="react-simple"
+          >
+            <span class="atlas-demo__inner">
+              <span class="atlas-demo__heading">
+                <span class="atlas-demo__title">React app</span>
+                <Tag tone="teal" size="sm">Low complexity</Tag>
+              </span>
+              <span class="atlas-demo__blurb">
+                Vite + React Router: pages, hooks, api, shared lib. Clean
+                layers.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            id="atlas-demo-next-complex"
+            class="atlas-demo__card"
+            data-demo="next-complex"
+          >
+            <span class="atlas-demo__inner">
+              <span class="atlas-demo__heading">
+                <span class="atlas-demo__title">Next.js app</span>
+                <Tag tone="yellow" size="sm">High complexity</Tag>
+              </span>
+              <span class="atlas-demo__blurb">
+                App Router, APIs, services, DB/Redis/Stripe, legacy pages.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            id="atlas-demo-spaghetti-godfile"
+            class="atlas-demo__card"
+            data-demo="spaghetti-godfile"
+          >
+            <span class="atlas-demo__inner">
+              <span class="atlas-demo__heading">
+                <span class="atlas-demo__title">Spaghetti hub</span>
+                <Tag tone="yellow" size="sm">Blast demo</Tag>
+              </span>
+              <span class="atlas-demo__blurb">
+                Deliberate cross-domain hub and reverse blast chains.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            id="atlas-demo-python-app"
+            class="atlas-demo__card"
+            data-demo="python-app"
+          >
+            <span class="atlas-demo__inner">
+              <span class="atlas-demo__heading">
+                <span class="atlas-demo__title">Python app</span>
+                <Tag tone="teal" size="sm">Estimate</Tag>
+              </span>
+              <span class="atlas-demo__blurb">
+                Flask-style layers: routes → services → models + flask/requests.
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
 
-			<div class="atlas-settings mt-6">
-				<p class="atlas-section-label mb-3">Settings</p>
-				<div class="atlas-persist space-y-3">
-					<Checkbox
-						id="atlas-persist"
-						checked={true}
-						labelText="Remember this project in the browser"
-						helper-text="Saves the indexed files to localStorage. This device only."
-						class="atlas-persist"
-					/>
-					<Checkbox
-						id="atlas-engine-pref"
-						checked={true}
-						labelText="Remember preferences"
-						title="Projection chrome and language-engine precision map only; does not store multi-MB engine binaries or source in this flag."
-						class="atlas-engine-pref"
-					/>
-				</div>
-			</div>
-			<p id="atlas-upload-status" class="mt-3 text-sm text-zinc-500" role="status"></p>
-			<div id="atlas-warnings" class="mt-2 space-y-2"></div>
-		</section>
+      <div class="atlas-settings mt-6">
+        <p class="atlas-section-label mb-3">Settings</p>
+        <div class="atlas-persist space-y-3">
+          <Checkbox
+            id="atlas-persist"
+            checked={true}
+            labelText="Remember this project in the browser"
+            helper-text="Saves the indexed files to localStorage. This device only."
+            class="atlas-persist"
+          />
+          <Checkbox
+            id="atlas-engine-pref"
+            checked={true}
+            labelText="Remember preferences"
+            title="Projection chrome and language-engine precision map only; does not store multi-MB engine binaries or source in this flag."
+            class="atlas-engine-pref"
+          />
+        </div>
+      </div>
+      <p
+        id="atlas-upload-status"
+        class="mt-3 text-sm text-zinc-500"
+        role="status"
+      >
+      </p>
+      <div id="atlas-warnings" class="mt-2 space-y-2"></div>
+    </section>
 
-		<!-- Workspace: left drawer + full-bleed alluvial -->
-		<section id="atlas-workspace" class="atlas-workspace hidden min-h-0 flex-1">
-			<aside id="atlas-drawer" class="atlas-drawer" aria-label="Repository explorer">
-				<!-- Tree panel -->
-				<div class="atlas-drawer__panel atlas-drawer__panel--tree">
-					<div class="atlas-drawer__head">
-						<div class="ui-tile__label mb-0">Repository tree</div>
-						<p class="mt-1 text-[0.7rem] leading-snug text-zinc-500">
-							Folders expand · click a source file as start
-						</p>
-					</div>
-					<div class="atlas-drawer__tools">
-						<Search
-							id="atlas-tree-filter"
-							size="sm"
-							labelText="Filter paths"
-							placeholder="Filter paths…"
-							class="atlas-tree-search"
-						/>
-					</div>
-					<div id="atlas-tree" class="atlas-tree" role="navigation" aria-label="Project files"></div>
-				</div>
+    <!-- Workspace: left drawer + full-bleed alluvial -->
+    <section id="atlas-workspace" class="atlas-workspace hidden min-h-0 flex-1">
+      <aside
+        id="atlas-drawer"
+        class="atlas-drawer"
+        aria-label="Repository explorer"
+      >
+        <!-- Tree panel -->
+        <div class="atlas-drawer__panel atlas-drawer__panel--tree">
+          <div class="atlas-drawer__head">
+            <div class="ui-tile__label mb-0">Repository tree</div>
+            <p class="mt-1 text-[0.7rem] leading-snug text-zinc-500">
+              Folders expand · click a source file as start
+            </p>
+          </div>
+          <div class="atlas-drawer__tools">
+            <Search
+              id="atlas-tree-filter"
+              size="sm"
+              labelText="Filter paths"
+              placeholder="Filter paths…"
+              class="atlas-tree-search"
+            />
+          </div>
+          <div
+            id="atlas-tree"
+            class="atlas-tree"
+            role="navigation"
+            aria-label="Project files"
+          >
+          </div>
+        </div>
 
-				<!-- Catalog panel (Carbon accordion sections) -->
-				<div class="atlas-drawer__panel atlas-drawer__panel--catalog">
-					<div class="atlas-drawer__head">
-						<div class="ui-tile__label mb-0">Map catalog</div>
-						<p id="atlas-catalog-summary" class="mt-1 text-[0.7rem] leading-snug text-zinc-500"></p>
-					</div>
-					<div class="atlas-drawer__scroll atlas-catalog">
-						<Accordion
-							id="atlas-catalog-accordion"
-							class="atlas-catalog-accordion"
-							size="sm"
-							alignment="start"
-						>
-							<AccordionItem
-								id="atlas-acc-hotspots"
-								class="atlas-catalog-acc-item"
-								title="High edges"
-							>
-								<p class="atlas-catalog-hint">
-									Which files have the most import connections?
-								</p>
-								<div id="atlas-hotspots"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-complex"
-								class="atlas-catalog-acc-item"
-								title="Tree complexity"
-							>
-								<p class="atlas-catalog-hint">
-									How heavy is my outbound import surface?
-								</p>
-								<div id="atlas-complex"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-deepest"
-								class="atlas-catalog-acc-item"
-								title="Tree depth"
-							>
-								<p class="atlas-catalog-hint">
-									How deep is my dependency tree?
-								</p>
-								<div id="atlas-deepest"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-file-loc"
-								class="atlas-catalog-acc-item"
-								title="File LOC"
-							>
-								<p class="atlas-catalog-hint">
-									Which files are the largest by whole-file line count?
-								</p>
-								<div id="atlas-file-loc"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-public-mass"
-								class="atlas-catalog-acc-item"
-								title="Public mass"
-							>
-								<p class="atlas-catalog-hint" id="atlas-public-mass-hint">
-									Needs Exact (export surface) — large files where export
-									surface ≈ whole file.
-								</p>
-								<div id="atlas-public-mass"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-icebergs"
-								class="atlas-catalog-acc-item"
-								title="Icebergs"
-							>
-								<p class="atlas-catalog-hint" id="atlas-icebergs-hint">
-									Needs Exact (export surface) — large private body under a
-									smaller export surface.
-								</p>
-								<div id="atlas-icebergs"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-spines"
-								class="atlas-catalog-acc-item"
-								title="Spines"
-							>
-								<p class="atlas-catalog-hint">
-									Cross-cutting files: high direct fan-in across many modules.
-								</p>
-								<div class="atlas-spine-toolbar" id="atlas-spine-toolbar">
-									<Dropdown
-										id="atlas-spine-formula"
-										class="atlas-spine-formula"
-										size="sm"
-										hideLabel
-										labelText="Spine ranking formula"
-										titleText="Spine ranking formula"
-										value="modules-then-in"
-										aria-label="Spine ranking formula"
-									>
-										<DropdownItem value="modules-then-in"
-											>Modules then fan-in</DropdownItem
-										>
-										<DropdownItem value="fan-in">Fan-in</DropdownItem>
-										<DropdownItem value="composite">Composite</DropdownItem>
-										<DropdownItem value="share">In-share</DropdownItem>
-									</Dropdown>
-									<Button
-										type="button"
-										id="atlas-spine-formula-info"
-										class="atlas-spine-info-btn"
-										variant="ghost"
-										size="sm"
-										aria-label="Explain spine formula"
-										title="Explain selected spine formula"
-									>
-										ⓘ
-									</Button>
-								</div>
-								<div id="atlas-spines"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-blast"
-								class="atlas-catalog-acc-item"
-								title="Blast radius"
-							>
-								<p class="atlas-catalog-hint">
-									How many files sit above me if I change?
-								</p>
-								<div id="atlas-blast"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-starts"
-								class="atlas-catalog-acc-item"
-								title="Import Roots"
-							>
-								<p class="atlas-catalog-hint">Where do import chains begin?</p>
-								<div id="atlas-starts"></div>
-							</AccordionItem>
-							<AccordionItem
-								id="atlas-acc-ends"
-								class="atlas-catalog-acc-item"
-								title="Export Roots"
-							>
-								<p class="atlas-catalog-hint">Where do export chains begin?</p>
-								<div id="atlas-ends"></div>
-							</AccordionItem>
-						</Accordion>
-					</div>
-				</div>
-			</aside>
+        <!-- Catalog panel (Carbon accordion sections) -->
+        <div class="atlas-drawer__panel atlas-drawer__panel--catalog">
+          <div class="atlas-drawer__head">
+            <div class="ui-tile__label mb-0">Map catalog</div>
+            <p
+              id="atlas-catalog-summary"
+              class="mt-1 text-[0.7rem] leading-snug text-zinc-500"
+            >
+            </p>
+          </div>
+          <div class="atlas-drawer__scroll atlas-catalog">
+            <Accordion
+              id="atlas-catalog-accordion"
+              class="atlas-catalog-accordion"
+              size="sm"
+              alignment="start"
+            >
+              <AccordionItem
+                id="atlas-acc-hotspots"
+                class="atlas-catalog-acc-item"
+                title="High edges"
+              >
+                <p class="atlas-catalog-hint">
+                  Which files have the most import connections?
+                </p>
+                <div id="atlas-hotspots"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-complex"
+                class="atlas-catalog-acc-item"
+                title="Tree complexity"
+              >
+                <p class="atlas-catalog-hint">
+                  How heavy is my outbound import surface?
+                </p>
+                <div id="atlas-complex"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-deepest"
+                class="atlas-catalog-acc-item"
+                title="Tree depth"
+              >
+                <p class="atlas-catalog-hint">
+                  How deep is my dependency tree?
+                </p>
+                <div id="atlas-deepest"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-file-loc"
+                class="atlas-catalog-acc-item"
+                title="File LOC"
+              >
+                <p class="atlas-catalog-hint">
+                  Which files are the largest by whole-file line count?
+                </p>
+                <div id="atlas-file-loc"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-public-mass"
+                class="atlas-catalog-acc-item"
+                title="Public mass"
+              >
+                <p class="atlas-catalog-hint" id="atlas-public-mass-hint">
+                  Needs Exact (export surface) - large files where export
+                  surface ≈ whole file.
+                </p>
+                <div id="atlas-public-mass"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-icebergs"
+                class="atlas-catalog-acc-item"
+                title="Icebergs"
+              >
+                <p class="atlas-catalog-hint" id="atlas-icebergs-hint">
+                  Needs Exact (export surface) - large private body under a
+                  smaller export surface.
+                </p>
+                <div id="atlas-icebergs"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-spines"
+                class="atlas-catalog-acc-item"
+                title="Spines"
+              >
+                <p class="atlas-catalog-hint">
+                  Cross-cutting files: high direct fan-in across many modules.
+                </p>
+                <div class="atlas-spine-toolbar" id="atlas-spine-toolbar">
+                  <Dropdown
+                    id="atlas-spine-formula"
+                    class="atlas-spine-formula"
+                    size="sm"
+                    hideLabel
+                    labelText="Spine ranking formula"
+                    titleText="Spine ranking formula"
+                    value="modules-then-in"
+                    aria-label="Spine ranking formula"
+                  >
+                    <DropdownItem value="modules-then-in"
+                      >Modules then fan-in</DropdownItem
+                    >
+                    <DropdownItem value="fan-in">Fan-in</DropdownItem>
+                    <DropdownItem value="composite">Composite</DropdownItem>
+                    <DropdownItem value="share">In-share</DropdownItem>
+                  </Dropdown>
+                  <Button
+                    type="button"
+                    id="atlas-spine-formula-info"
+                    class="atlas-spine-info-btn"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Explain spine formula"
+                    title="Explain selected spine formula"
+                  >
+                    ⓘ
+                  </Button>
+                </div>
+                <div id="atlas-spines"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-blast"
+                class="atlas-catalog-acc-item"
+                title="Blast radius"
+              >
+                <p class="atlas-catalog-hint">
+                  How many files sit above me if I change?
+                </p>
+                <div id="atlas-blast"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-starts"
+                class="atlas-catalog-acc-item"
+                title="Import Roots"
+              >
+                <p class="atlas-catalog-hint">Where do import chains begin?</p>
+                <div id="atlas-starts"></div>
+              </AccordionItem>
+              <AccordionItem
+                id="atlas-acc-ends"
+                class="atlas-catalog-acc-item"
+                title="Export Roots"
+              >
+                <p class="atlas-catalog-hint">Where do export chains begin?</p>
+                <div id="atlas-ends"></div>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </div>
+      </aside>
 
-			<section class="atlas-stage" aria-label="Alluvial projection">
-				<div class="atlas-stage__bar">
-					<!-- Band A: title/back/caption full width (never shares a row with tools) -->
-					<div class="atlas-stage__title-band">
-						<Button
-							id="atlas-alluvial-back"
-							variant="ghost"
-							size="sm"
-							type="button"
-							class="atlas-alluvial-back hidden shrink-0"
-							aria-label="Back to previous alluvial view"
-						>
-							← Back
-						</Button>
-						<div class="atlas-stage__title-cluster">
-							<div class="ui-tile__label mb-0 atlas-stage__title">
-								Alluvial projection
-								<span id="atlas-view-type" class="atlas-stage__view-type" hidden></span>
-							</div>
-							<p id="atlas-alluvial-caption" class="truncate text-sm text-zinc-400">
-								Select a start to project modules → code.
-							</p>
-						</div>
-					</div>
-					<!-- Band B: projection tools (wrap under pressure; right-aligned) -->
-					<div class="atlas-stage__controls">
-						<div class="atlas-stage__control-group">
-							<span class="atlas-stage__control-label" id="atlas-depth-label">Depth</span>
-							<Dropdown
-								id="atlas-max-depth"
-								class="atlas-stage__depth"
-								size="sm"
-								hideLabel
-								labelText="Depth"
-								titleText="Viz depth: hop stages (tree maps) or leaf budget (hub / reverse). Scan stays unbounded."
-								value="7"
-								aria-labelledby="atlas-depth-label"
-							>
-								<DropdownItem value="1">1</DropdownItem>
-								<DropdownItem value="2">2</DropdownItem>
-								<DropdownItem value="3">3</DropdownItem>
-								<DropdownItem value="4">4</DropdownItem>
-								<DropdownItem value="5">5</DropdownItem>
-								<DropdownItem value="6">6</DropdownItem>
-								<DropdownItem value="7">7</DropdownItem>
-								<DropdownItem value="8">8</DropdownItem>
-								<DropdownItem value="10">10</DropdownItem>
-								<DropdownItem value="12">12</DropdownItem>
-							</Dropdown>
-						</div>
-						<div class="atlas-stage__control-group">
-							<span class="atlas-stage__control-label" id="atlas-weight-label">Weight</span>
-							<Dropdown
-								id="atlas-weight-axis"
-								class="atlas-stage__weight"
-								size="sm"
-								hideLabel
-								labelText="Weight"
-								titleText="Band width: edges, file LOC, or import export-surface (Exact). Not bundler tree-shake."
-								value="target-loc"
-								aria-labelledby="atlas-weight-label"
-							>
-								<DropdownItem value="import-edges">Import Edges</DropdownItem>
-								<DropdownItem value="importer-loc">Importer file LOC</DropdownItem>
-								<DropdownItem value="target-loc">Imported LOC</DropdownItem>
-								<DropdownItem value="imported-loc">Export surface (Exact)</DropdownItem>
-							</Dropdown>
-						</div>
-						<div class="atlas-stage__control-group">
-							<span class="atlas-stage__control-label" id="atlas-precision-label"
-								>Precision</span
-							>
-							<Dropdown
-								id="atlas-loc-precision"
-								class="atlas-stage__precision"
-								size="sm"
-								hideLabel
-								labelText="Precision"
-								titleText="Estimate = whole-file LOC. Exact = JS/TS export-declaration surface (not a language server). Program = createProgram re-resolve (topology; not LSP)."
-								value="estimate"
-								aria-labelledby="atlas-precision-label"
-							>
-								<DropdownItem value="estimate">Estimate</DropdownItem>
-								<DropdownItem value="exact">Exact (export surface)</DropdownItem>
-								<DropdownItem value="program">Program (createProgram resolve)</DropdownItem>
-							</Dropdown>
-						</div>
-						<div class="atlas-stage__control-group">
-							<span class="atlas-stage__control-label" id="atlas-band-sort-label"
-								>Band order</span
-							>
-							<Dropdown
-								id="atlas-band-sort"
-								class="atlas-stage__band-sort"
-								size="sm"
-								hideLabel
-								labelText="Band order"
-								titleText="In-column stack (payload + polish lock). Name = alpha + overflow last (prior default / unsorted feel). Node size = whole-file LOC."
-								value="name"
-								aria-labelledby="atlas-band-sort-label"
-							>
-								<DropdownItem value="name">Name</DropdownItem>
-								<DropdownItem value="node">Node size</DropdownItem>
-							</Dropdown>
-						</div>
-						<div class="atlas-stage__control-group atlas-stage__control-group--tests">
-							<Checkbox
-								id="atlas-include-tests"
-								class="atlas-include-tests"
-								labelText="Include tests"
-								title="When off, drop *.test/spec, __tests__, __mocks__ from the index. Does not change CLI defaults."
-							/>
-						</div>
-						{
-							/* Dev-only: dump payload + Carbon layout to .atlas-debug/ */
-							import.meta.env.DEV && (
-								<div class="atlas-stage__control-group">
-									<button
-										id="atlas-debug-dump"
-										type="button"
-										class="atlas-stage__mode-btn"
-										title="Dev: write payload + Carbon geometry to .atlas-debug/alluvial-latest.json (POST /api/debug/alluvial-dump). 500 outside dev."
-									>
-										Dump chart
-									</button>
-								</div>
-							)
-						}
-						<div
-							id="atlas-interaction-mode"
-							class="atlas-stage__mode"
-							role="group"
-							aria-label="Click mode"
-						>
-							<!-- Native buttons: aria-pressed must live on the focusable control (cds-button shadow does not forward it). -->
-							<button
-								id="atlas-mode-drill"
-								type="button"
-								class="atlas-stage__mode-btn is-active"
-								data-mode="drill"
-								aria-pressed="true"
-							>
-								Drill
-							</button>
-							<button
-								id="atlas-mode-inspect"
-								type="button"
-								class="atlas-stage__mode-btn"
-								data-mode="inspect"
-								aria-pressed="false"
-							>
-								Inspect
-							</button>
-						</div>
-					</div>
-				</div>
-				<div
-					id="atlas-alluvial"
-					class="ui-carbon-chart atlas-stage__chart"
-					data-carbon-chart="alluvial"
-				>
-					<!-- holder recreated on each mount (Carbon Charts destroy/reuse safety) -->
-				</div>
-			</section>
-		</section>
-	</div>
+      <section class="atlas-stage" aria-label="Alluvial projection">
+        <div class="atlas-stage__bar">
+          <!-- Band A: title/back/caption full width (never shares a row with tools) -->
+          <div class="atlas-stage__title-band">
+            <Button
+              id="atlas-alluvial-back"
+              variant="ghost"
+              size="sm"
+              type="button"
+              class="atlas-alluvial-back hidden shrink-0"
+              aria-label="Back to previous alluvial view"
+            >
+              ← Back
+            </Button>
+            <div class="atlas-stage__title-cluster">
+              <div class="ui-tile__label mb-0 atlas-stage__title">
+                Alluvial projection
+                <span id="atlas-view-type" class="atlas-stage__view-type" hidden
+                ></span>
+              </div>
+              <p
+                id="atlas-alluvial-caption"
+                class="truncate text-sm text-zinc-400"
+              >
+                Select a start to project modules → code.
+              </p>
+            </div>
+          </div>
+          <!-- Band B: projection tools (wrap under pressure; right-aligned) -->
+          <div class="atlas-stage__controls">
+            <div class="atlas-stage__control-group">
+              <span class="atlas-stage__control-label" id="atlas-depth-label"
+                >Depth</span
+              >
+              <Dropdown
+                id="atlas-max-depth"
+                class="atlas-stage__depth"
+                size="sm"
+                hideLabel
+                labelText="Depth"
+                titleText="Viz depth: hop stages (tree maps) or leaf budget (hub / reverse). Scan stays unbounded."
+                value="7"
+                aria-labelledby="atlas-depth-label"
+              >
+                <DropdownItem value="1">1</DropdownItem>
+                <DropdownItem value="2">2</DropdownItem>
+                <DropdownItem value="3">3</DropdownItem>
+                <DropdownItem value="4">4</DropdownItem>
+                <DropdownItem value="5">5</DropdownItem>
+                <DropdownItem value="6">6</DropdownItem>
+                <DropdownItem value="7">7</DropdownItem>
+                <DropdownItem value="8">8</DropdownItem>
+                <DropdownItem value="10">10</DropdownItem>
+                <DropdownItem value="12">12</DropdownItem>
+              </Dropdown>
+            </div>
+            <div class="atlas-stage__control-group">
+              <span class="atlas-stage__control-label" id="atlas-weight-label"
+                >Weight</span
+              >
+              <Dropdown
+                id="atlas-weight-axis"
+                class="atlas-stage__weight"
+                size="sm"
+                hideLabel
+                labelText="Weight"
+                titleText="Band width: edges, file LOC, or import export-surface (Exact). Not bundler tree-shake."
+                value="target-loc"
+                aria-labelledby="atlas-weight-label"
+              >
+                <DropdownItem value="import-edges">Import Edges</DropdownItem>
+                <DropdownItem value="importer-loc"
+                  >Importer file LOC</DropdownItem
+                >
+                <DropdownItem value="target-loc">Imported LOC</DropdownItem>
+                <DropdownItem value="imported-loc"
+                  >Export surface (Exact)</DropdownItem
+                >
+              </Dropdown>
+            </div>
+            <div class="atlas-stage__control-group">
+              <span
+                class="atlas-stage__control-label"
+                id="atlas-precision-label">Precision</span
+              >
+              <Dropdown
+                id="atlas-loc-precision"
+                class="atlas-stage__precision"
+                size="sm"
+                hideLabel
+                labelText="Precision"
+                titleText="Estimate = whole-file LOC. Exact = JS/TS export-declaration surface (not a language server). Program = createProgram re-resolve (topology; not LSP)."
+                value="estimate"
+                aria-labelledby="atlas-precision-label"
+              >
+                <DropdownItem value="estimate">Estimate</DropdownItem>
+                <DropdownItem value="exact">Exact (export surface)</DropdownItem
+                >
+                <DropdownItem value="program"
+                  >Program (createProgram resolve)</DropdownItem
+                >
+              </Dropdown>
+            </div>
+            <div class="atlas-stage__control-group">
+              <span
+                class="atlas-stage__control-label"
+                id="atlas-band-sort-label">Band order</span
+              >
+              <Dropdown
+                id="atlas-band-sort"
+                class="atlas-stage__band-sort"
+                size="sm"
+                hideLabel
+                labelText="Band order"
+                titleText="In-column stack (payload + polish lock). Name = alpha + overflow last (prior default / unsorted feel). Node size = whole-file LOC."
+                value="name"
+                aria-labelledby="atlas-band-sort-label"
+              >
+                <DropdownItem value="name">Name</DropdownItem>
+                <DropdownItem value="node">Node size</DropdownItem>
+              </Dropdown>
+            </div>
+            <div
+              class="atlas-stage__control-group atlas-stage__control-group--tests"
+            >
+              <Checkbox
+                id="atlas-include-tests"
+                class="atlas-include-tests"
+                labelText="Include tests"
+                title="When off, drop *.test/spec, __tests__, __mocks__ from the index. Does not change CLI defaults."
+              />
+            </div>
+            {
+              /* Dev-only: dump payload + Carbon layout to .atlas-debug/ */
+              import.meta.env.DEV && (
+                <div class="atlas-stage__control-group">
+                  <button
+                    id="atlas-debug-dump"
+                    type="button"
+                    class="atlas-stage__mode-btn"
+                    title="Dev: write payload + Carbon geometry to .atlas-debug/alluvial-latest.json (POST /api/debug/alluvial-dump). 500 outside dev."
+                  >
+                    Dump chart
+                  </button>
+                </div>
+              )
+            }
+            <div
+              id="atlas-interaction-mode"
+              class="atlas-stage__mode"
+              role="group"
+              aria-label="Click mode"
+            >
+              <!-- Native buttons: aria-pressed must live on the focusable control (cds-button shadow does not forward it). -->
+              <button
+                id="atlas-mode-drill"
+                type="button"
+                class="atlas-stage__mode-btn is-active"
+                data-mode="drill"
+                aria-pressed="true"
+              >
+                Drill
+              </button>
+              <button
+                id="atlas-mode-inspect"
+                type="button"
+                class="atlas-stage__mode-btn"
+                data-mode="inspect"
+                aria-pressed="false"
+              >
+                Inspect
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          id="atlas-alluvial"
+          class="ui-carbon-chart atlas-stage__chart"
+          data-carbon-chart="alluvial"
+        >
+          <!-- holder recreated on each mount (Carbon Charts destroy/reuse safety) -->
+        </div>
+      </section>
+    </section>
+  </div>
 
-	<Modal id="atlas-inspect-modal" class="atlas-inspect-modal" size="lg" aria-label="Import evidence">
-		<ModalHeader class="atlas-inspect-modal__header">
-			<ModalCloseButton />
-			<ModalLabel id="atlas-inspect-label">Import evidence · estimate</ModalLabel>
-			<ModalHeading id="atlas-inspect-heading">Import evidence</ModalHeading>
-		</ModalHeader>
-		<ModalBody class="atlas-inspect-modal__body">
-			<div id="atlas-inspect-body" class="atlas-inspect"></div>
-		</ModalBody>
-		<ModalFooter>
-			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-inspect-close">
-				Close
-			</ModalFooterButton>
-		</ModalFooter>
-	</Modal>
+  <Modal
+    id="atlas-inspect-modal"
+    class="atlas-inspect-modal"
+    size="lg"
+    aria-label="Import evidence"
+  >
+    <ModalHeader class="atlas-inspect-modal__header">
+      <ModalCloseButton />
+      <ModalLabel id="atlas-inspect-label"
+        >Import evidence · estimate</ModalLabel
+      >
+      <ModalHeading id="atlas-inspect-heading">Import evidence</ModalHeading>
+    </ModalHeader>
+    <ModalBody class="atlas-inspect-modal__body">
+      <div id="atlas-inspect-body" class="atlas-inspect"></div>
+    </ModalBody>
+    <ModalFooter>
+      <ModalFooterButton
+        kind="primary"
+        data-modal-primary-focus
+        id="atlas-inspect-close"
+      >
+        Close
+      </ModalFooterButton>
+    </ModalFooter>
+  </Modal>
 
-	<!-- Spine formula help (selected ranking mode) -->
-	<Modal
-		id="atlas-spine-formula-modal"
-		class="atlas-spine-formula-modal"
-		size="sm"
-		aria-label="Spine formula"
-	>
-		<ModalHeader class="atlas-spine-formula-modal__header">
-			<ModalCloseButton />
-			<ModalLabel id="atlas-spine-formula-label">Spine ranking</ModalLabel>
-			<ModalHeading id="atlas-spine-formula-heading">Spine formula</ModalHeading>
-		</ModalHeader>
-		<ModalBody class="atlas-spine-formula-modal__body-host">
-			<p id="atlas-spine-formula-body" class="atlas-spine-formula-modal__body"></p>
-			<p id="atlas-spine-formula-keys" class="atlas-spine-formula-modal__keys"></p>
-			<p id="atlas-spine-formula-honesty" class="atlas-spine-formula-modal__honesty"></p>
-		</ModalBody>
-		<ModalFooter>
-			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-spine-formula-close">
-				Close
-			</ModalFooterButton>
-		</ModalFooter>
-	</Modal>
+  <!-- Spine formula help (selected ranking mode) -->
+  <Modal
+    id="atlas-spine-formula-modal"
+    class="atlas-spine-formula-modal"
+    size="sm"
+    aria-label="Spine formula"
+  >
+    <ModalHeader class="atlas-spine-formula-modal__header">
+      <ModalCloseButton />
+      <ModalLabel id="atlas-spine-formula-label">Spine ranking</ModalLabel>
+      <ModalHeading id="atlas-spine-formula-heading">Spine formula</ModalHeading
+      >
+    </ModalHeader>
+    <ModalBody class="atlas-spine-formula-modal__body-host">
+      <p id="atlas-spine-formula-body" class="atlas-spine-formula-modal__body">
+      </p>
+      <p id="atlas-spine-formula-keys" class="atlas-spine-formula-modal__keys">
+      </p>
+      <p
+        id="atlas-spine-formula-honesty"
+        class="atlas-spine-formula-modal__honesty"
+      >
+      </p>
+    </ModalBody>
+    <ModalFooter>
+      <ModalFooterButton
+        kind="primary"
+        data-modal-primary-focus
+        id="atlas-spine-formula-close"
+      >
+        Close
+      </ModalFooterButton>
+    </ModalFooter>
+  </Modal>
 
-	<!-- Notices: Exact load failure, mixed-language partial Exact, other host messages -->
-	<Modal
-		id="atlas-unavailable-modal"
-		class="atlas-unavailable-modal"
-		size="xs"
-		alert
-		aria-label="Feature notice"
-	>
-		<ModalHeader>
-			<ModalCloseButton />
-			<ModalLabel id="atlas-unavailable-label">Not available</ModalLabel>
-			<ModalHeading id="atlas-unavailable-heading">Not available</ModalHeading>
-		</ModalHeader>
-		<ModalBody>
-			<p id="atlas-unavailable-body" class="atlas-unavailable-modal__body-text">
-				This option is not implemented at Level-1.
-			</p>
-		</ModalBody>
-		<ModalFooter>
-			<ModalFooterButton kind="primary" data-modal-primary-focus id="atlas-unavailable-close">
-				OK
-			</ModalFooterButton>
-		</ModalFooter>
-	</Modal>
+  <!-- Notices: Exact load failure, mixed-language partial Exact, other host messages -->
+  <Modal
+    id="atlas-unavailable-modal"
+    class="atlas-unavailable-modal"
+    size="xs"
+    alert
+    aria-label="Feature notice"
+  >
+    <ModalHeader>
+      <ModalCloseButton />
+      <ModalLabel id="atlas-unavailable-label">Not available</ModalLabel>
+      <ModalHeading id="atlas-unavailable-heading">Not available</ModalHeading>
+    </ModalHeader>
+    <ModalBody>
+      <p id="atlas-unavailable-body" class="atlas-unavailable-modal__body-text">
+        This option is not implemented at Level-1.
+      </p>
+    </ModalBody>
+    <ModalFooter>
+      <ModalFooterButton
+        kind="primary"
+        data-modal-primary-focus
+        id="atlas-unavailable-close"
+      >
+        OK
+      </ModalFooterButton>
+    </ModalFooter>
+  </Modal>
 
-	<script>
-		import '../client/app.ts';
-	</script>
+  <script>
+    import "../client/app.ts";
+  </script>
 </Layout>

@@ -51,7 +51,7 @@ describe('buildAgentMermaid', () => {
 	});
 
 	it('same-prefix cycle → comment lists file SCC; no multi-prefix SCC noise', () => {
-		// client/sim/physics ↔ client/sim/weapons — both topFolder client/sim
+		// client/sim/physics ↔ client/sim/weapons - both topFolder client/sim
 		const graph = buildGraph(
 			files([
 				[
@@ -75,7 +75,7 @@ describe('buildAgentMermaid', () => {
 		expect(text).toMatch(/cycles\.runtime \(file SCC\):/);
 		expect(text).toMatch(/client\/sim\/physics\.ts/);
 		expect(text).toMatch(/client\/sim\/weapons\.ts/);
-		// Within-prefix cycle collapses — no multi-prefix SCC for sim alone
+		// Within-prefix cycle collapses - no multi-prefix SCC for sim alone
 		expect(text).toMatch(/\(none multi-prefix\)|prefix SCC\): \(none/);
 		// Honesty note present
 		expect(text).toMatch(/within-prefix file cycles/);
@@ -231,7 +231,7 @@ describe('buildAgentMermaid', () => {
 	});
 
 	it('containment summary keeps late folders when early folders are dense', () => {
-		// 10 files under a/ (dense) + one under z/ — summary must still show z
+		// 10 files under a/ (dense) + one under z/ - summary must still show z
 		const entries: Array<[string, string]> = [];
 		for (let i = 0; i < 10; i++) {
 			entries.push([`a/f${i}.ts`, `export const a${i} = ${i};\n`]);

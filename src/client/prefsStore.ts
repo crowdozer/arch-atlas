@@ -2,7 +2,7 @@
  * Composable sticky UI preferences (localStorage).
  *
  * - Shared opt-in gate: splash **Remember preferences**
- *   (`arch-atlas:engine-pref-enabled` — stable key; also gates engine prefs)
+ *   (`arch-atlas:engine-pref-enabled` - stable key; also gates engine prefs)
  * - Projection / chrome controls: register via {@link defineControlPref};
  *   all slots share one JSON map under {@link CONTROL_PREFS_KEY}
  *
@@ -13,7 +13,7 @@
 export const PREFS_ENABLED_KEY = 'arch-atlas:engine-pref-enabled';
 export const CONTROL_PREFS_KEY = 'arch-atlas:control-prefs:v1';
 
-/** @deprecated alias — same key as {@link PREFS_ENABLED_KEY} */
+/** @deprecated alias - same key as {@link PREFS_ENABLED_KEY} */
 export const ENGINE_PREF_ENABLED_KEY = PREFS_ENABLED_KEY;
 
 export type ControlPrefDef<T> = {

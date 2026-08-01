@@ -1,7 +1,7 @@
 ---
 id: analysis-protocol-multi-host
 kind: decision
-state: partial  # P0–P2 landed; P3+ open
+state: partial # P0–P2 landed; P3+ open
 authority: normative
 provenance: user
 
@@ -43,7 +43,7 @@ touches:
   - exact-surface-mode-futures
   - dual-host-shell-stage
 invariants:
-  - One CodeGraph IR and analysis protocol across hosts — no three independent analyzers
+  - One CodeGraph IR and analysis protocol across hosts - no three independent analyzers
   - src/core stays pure (no DOM, vscode, fetch)
   - Every result should report capabilities actually available
   - L1 syntax must never be marketed as L3 semantic analysis
@@ -68,21 +68,21 @@ realized_by:
   - 59f7674
   - 305c49d
   - eda4bb3
-  - fcd2cb2  # Ship A P0 honesty
-  - b1c8b35  # protocol docs
-  - 7792882  # Ship B P1 graph interpretation
-  - 2859d22  # Ship B czar fixes
-  - c1767c2  # Ship C protocol envelope
-  - 587926b  # Ship C pickAliasConfig single owner
-  - 41889f8  # P3 createProgram
-  - 49c6cf0  # P3 L2 stamp honesty
-  - 8708a72  # P4 browser Program worker
-  - 609807c  # P4 chrome honesty fixes
+  - fcd2cb2 # Ship A P0 honesty
+  - b1c8b35 # protocol docs
+  - 7792882 # Ship B P1 graph interpretation
+  - 2859d22 # Ship B czar fixes
+  - c1767c2 # Ship C protocol envelope
+  - 587926b # Ship C pickAliasConfig single owner
+  - 41889f8 # P3 createProgram
+  - 49c6cf0 # P3 L2 stamp honesty
+  - 8708a72 # P4 browser Program worker
+  - 609807c # P4 chrome honesty fixes
 superseded_by: null
 rationale_quality: full
 ---
 
-# Analysis protocol — multi-host capability direction
+# Analysis protocol - multi-host capability direction
 
 ## Problem
 
@@ -108,21 +108,21 @@ reference first; browser ports the same seam; extension stays thin.
 - Graph SoR + pure core already match dual-host; protocol makes capability
   honest across hosts.
 - Agent packs need interpretation + stamps more than more bins.
-- Program in browser is valuable but expensive — prove IR + CLI Program first.
+- Program in browser is valuable but expensive - prove IR + CLI Program first.
 - Tree-sitter and LSP are correct as **breadth** and **enrichment**, not as
   “one graph to rule all languages.”
 - Phases P0–P6 give ship-sized slices without multi-PR redesign theater.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not |
-| ----------- | ------- |
-| Three host-specific analyzers | Divergent IR, divergent honesty, untestable |
-| Browser Program before pack/protocol | High cost before agent signal laws |
-| LSP as primary architecture builder | Query API ≠ complete graph; overclaims easy |
-| Tree-sitter as universal semantics | Syntax only; stamp L1 |
-| More ranking bins without edge/role/resolve | Confident noise (artillery lesson) |
-| Claiming current Exact re-indexes graph | False; honesty ladder forbids |
+| Alternative                                 | Why not                                     |
+| ------------------------------------------- | ------------------------------------------- |
+| Three host-specific analyzers               | Divergent IR, divergent honesty, untestable |
+| Browser Program before pack/protocol        | High cost before agent signal laws          |
+| LSP as primary architecture builder         | Query API ≠ complete graph; overclaims easy |
+| Tree-sitter as universal semantics          | Syntax only; stamp L1                       |
+| More ranking bins without edge/role/resolve | Confident noise (artillery lesson)          |
+| Claiming current Exact re-indexes graph     | False; honesty ladder forbids               |
 
 ## Open questions
 
@@ -144,13 +144,13 @@ direction; phases partial (P0 residuals + P1+ open).
 
 ## Ship order (summary)
 
-| Ship | Phase | Focus |
-| ---- | ----- | ----- |
-| A | P0 | Residual honesty (LOC names, unsupported null, truncation shape, file-lens caps) |
-| B | P1 | Graph interpretation (alias rewrite, unresolved kinds, SCC, boundary, scope presets) + synthetic goldens |
-| C | P2 | Analysis envelope + portable artifact |
-| D | P3 | CLI TypeScript Program |
-| E | P4 | Browser Program worker |
-| F+ | P5–P6 | Tree-sitter breadth; VS Code thin host; LSP enrich |
+| Ship | Phase | Focus                                                                                                    |
+| ---- | ----- | -------------------------------------------------------------------------------------------------------- |
+| A    | P0    | Residual honesty (LOC names, unsupported null, truncation shape, file-lens caps)                         |
+| B    | P1    | Graph interpretation (alias rewrite, unresolved kinds, SCC, boundary, scope presets) + synthetic goldens |
+| C    | P2    | Analysis envelope + portable artifact                                                                    |
+| D    | P3    | CLI TypeScript Program                                                                                   |
+| E    | P4    | Browser Program worker                                                                                   |
+| F+   | P5–P6 | Tree-sitter breadth; VS Code thin host; LSP enrich                                                       |
 
 Detail and acceptance laws: reference doc.

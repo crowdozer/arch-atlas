@@ -99,7 +99,7 @@ let session: Session | null = null;
  * ## Navigation model
  * `viewStack` is the sole owner of “where we are.” Session `startId` (tree /
  * catalog selection + persist) is **derived** as the nearest file-hub frame on
- * the stack — never updated as a parallel lifecycle. All stack mutations go
+ * the stack - never updated as a parallel lifecycle. All stack mutations go
  * through {@link navigateReplace} / {@link navigatePush} / {@link navigatePop},
  * which commit chrome via {@link commitNavigation}.
  */
@@ -122,7 +122,7 @@ let bandSort: BandSortMode = 'name';
 /**
  * Imported-surface honesty: estimate (Level-1) vs exact (export-surface provider).
  * Exact / export-surface weight entry loads engines and installs {@link surfaceProvider}.
- * Not a language server — classic createSourceFile export spans.
+ * Not a language server - classic createSourceFile export spans.
  */
 let locPrecision: LocPrecision = 'estimate';
 /**
@@ -134,12 +134,12 @@ let surfaceProvider: ImportedSurfaceProvider | null = null;
 let exactEnableInFlight = false;
 /**
  * Exact ensure pending while chrome has not yet settled to Exact (or failed).
- * Language chips: lifecycle incomplete — no Exact mass claim without provider.
+ * Language chips: lifecycle incomplete - no Exact mass claim without provider.
  * Cleared on settle / fail / full Exact reset.
  */
 let exactLoading = false;
 /**
- * Last Exact/Program enable failed/demoted — language chip fail indication.
+ * Last Exact/Program enable failed/demoted - language chip fail indication.
  * Cleared on success, user Estimate, or full Exact reset.
  */
 let engineFailed = false;
@@ -166,7 +166,7 @@ let depthUserSet = false;
 let interactionMode: InteractionMode = 'drill';
 /**
  * When false, drop test-like paths from the index (`isTestPath`).
- * Default false (web only) — CLI still includes tests unless --omit.
+ * Default false (web only) - CLI still includes tests unless --omit.
  * Sticky via projection prefs when Remember preferences is on.
  */
 let includeTests = false;
@@ -404,7 +404,7 @@ const exact = createExactPaintMode({
 	getSurfaceProvider: () => surfaceProvider,
 	setSurfaceProvider: (p) => {
 		surfaceProvider = p;
-		// New provider / graph surface — rebuild mass map on next paint
+		// New provider / graph surface - rebuild mass map on next paint
 		exportSurfaceLocCache = null;
 	},
 	getLocPrecision: () => locPrecision,
@@ -762,7 +762,7 @@ function openPackageAsHub(
 		setStatus(`No importers for ${label}`);
 		return;
 	}
-	// Durable identity only — painted label may not survive remount (Phase 2B)
+	// Durable identity only - painted label may not survive remount (Phase 2B)
 	pendingPackageFocus = { packageId, kind };
 	const view: AtlasView = { type: 'package-hub', packageId };
 	packageOpenInFlight = true;
@@ -773,7 +773,7 @@ function openPackageAsHub(
 	} finally {
 		packageOpenInFlight = false;
 	}
-	// Push sameView early-return skips commit — still update sticky package seed.
+	// Push sameView early-return skips commit - still update sticky package seed.
 	if (!navigated && pendingPackageFocus) {
 		applyPendingPackageFocus();
 		const seedName =
@@ -862,7 +862,7 @@ function remountCurrentView(): void {
 	const view = currentView();
 	if (!view || !session) return;
 	const mounted = mountAlluvialGated(payloadForView(view));
-	// New focus API starts defaultSeed=null — re-apply sticky package if still pending.
+	// New focus API starts defaultSeed=null - re-apply sticky package if still pending.
 	if (mounted && pendingPackageFocus) applyPendingPackageFocus();
 	paintCatalog();
 }
@@ -982,7 +982,7 @@ wireUi({
 	},
 	/**
 	 * Persist Depth / Weight / Band order / Include tests under Remember preferences.
-	 * Reconcile the gate with the splash checkbox when Carbon has upgraded —
+	 * Reconcile the gate with the splash checkbox when Carbon has upgraded -
 	 * static HTML `checked` can disagree with LS before whenDefined sync.
 	 */
 	persistProjectionPrefs: () => {

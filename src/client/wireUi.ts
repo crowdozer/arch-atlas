@@ -1,7 +1,7 @@
 /**
  * Web host control wiring (Carbon listeners + demos + filter + resize).
  * Extracted from the composition root; behavior-preserving. Session bag and
- * navigation stay in `app.ts` — this module only binds DOM events.
+ * navigation stay in `app.ts` - this module only binds DOM events.
  */
 
 import type { BandSortMode, LocPrecision, WeightAxis } from '@core/index.ts';
@@ -312,7 +312,7 @@ export function wireUi(deps: WireUiDeps): void {
 			deps.syncInteractionModeUi();
 			setStatus(
 				deps.getInteractionMode() === 'inspect'
-					? 'Inspect mode — click for import evidence'
+					? 'Inspect mode - click for import evidence'
 					: 'Drill mode',
 			);
 		});

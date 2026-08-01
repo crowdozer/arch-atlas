@@ -1,6 +1,6 @@
 /**
  * Level-1 static import extraction from Python source text.
- * Observed only — no type resolution, importlib, or site-packages.
+ * Observed only - no type resolution, importlib, or site-packages.
  * Hand-rolled (not Tree-sitter). Best-effort comment/string strip.
  */
 
@@ -170,7 +170,7 @@ export function extractPythonImports(source: string): ExtractedImport[] {
 		});
 	};
 
-	// from REL import BODY — REL is dots + optional dotted name
+	// from REL import BODY - REL is dots + optional dotted name
 	const fromRe = /\bfrom\s+([.\w]+)\s+import\s+/g;
 	let m: RegExpExecArray | null;
 	while ((m = fromRe.exec(cleaned)) !== null) {
@@ -215,7 +215,7 @@ export function extractPythonImports(source: string): ExtractedImport[] {
 	// import a, b as c, d.e
 	const importRe = /^\s*import\s+([^\n#]+)/gm;
 	while ((m = importRe.exec(cleaned)) !== null) {
-		// Skip if this line is part of from-import (already handled) — `import` after from
+		// Skip if this line is part of from-import (already handled) - `import` after from
 		// is not matched by this because from-lines start with `from`.
 		const list = m[1]!;
 		for (const raw of list.split(',')) {

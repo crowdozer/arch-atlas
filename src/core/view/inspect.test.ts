@@ -239,7 +239,7 @@ export type WeaponType = 'laser';
 		const util = graph.edges.find((e) => e.specifier.includes('util'))!;
 		const massOnly = {
 			targetSurfaceMass: () => 2,
-			// no importedSurface / callSites — withhold, do not invent estimate surface
+			// no importedSurface / callSites - withhold, do not invent estimate surface
 		};
 		const [ev] = evidenceForEdges(graph, [util], 'exact', massOnly);
 		expect(ev!.import.text).toContain('util');

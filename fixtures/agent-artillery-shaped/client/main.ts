@@ -2,7 +2,7 @@ import type { Game } from '../game';
 import { createGame, step } from '../game';
 import { createPhysics, integrate } from './sim/public';
 import { getConfig } from '../config';
-// Deep import past public façade — boundary crossing
+// Deep import past public façade - boundary crossing
 import { createWeapon } from './sim/weapons';
 // Alias-style import (resolved via tsconfig or --alias rewrite)
 import { formatTick } from '@/modules/artillery/client/util';

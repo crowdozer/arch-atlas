@@ -1,4 +1,4 @@
-"""User service — owns in-memory roster."""
+"""User service - owns in-memory roster."""
 from app.lib.logger import info
 from app.models.user import User
 

@@ -1,5 +1,5 @@
 /**
- * Focus harness — detects the codebreaker sibling-path over-light class and
+ * Focus harness - detects the codebreaker sibling-path over-light class and
  * pins alleviation (Buffer hover: Buffer→hook→deps focus; index→hook dim).
  *
  * Success criteria for ship e6058c97:
@@ -96,7 +96,7 @@ describe('focus harness (drawn-band observability)', () => {
 		).toBe(true);
 	});
 
-	it('DETECT+ALLEVIATE: Buffer hover — hop instance only; primary Imports hook dim', () => {
+	it('DETECT+ALLEVIATE: Buffer hover - hop instance only; primary Imports hook dim', () => {
 		const obs = observeHubFocus(payload, { kind: 'file', name: BUFFER });
 		assertCompleteClassification(obs);
 
@@ -108,11 +108,11 @@ describe('focus harness (drawn-band observability)', () => {
 
 		// L-instance-local: primary Imports useCodebreaker stays off
 		expect(obs.activeLabels.includes(HOOK)).toBe(false);
-		// primary→deps attach to primary instance — not activated via hop alias
+		// primary→deps attach to primary instance - not activated via hop alias
 		expect(obs.activeLabels.includes(REDUCER)).toBe(false);
 		expect(obs.activeLabels.includes(TYPES)).toBe(false);
 
-		// —— forbidden: Imports-column primary index→useCodebreaker ——————————
+		// -- forbidden: Imports-column primary index→useCodebreaker ----------
 		expect(
 			hasFocusedDrawnEdge(obs, INDEX, HOOK),
 			'must NOT focus primary index→useCodebreaker',

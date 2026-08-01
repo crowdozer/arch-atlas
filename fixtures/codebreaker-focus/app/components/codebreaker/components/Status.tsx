@@ -91,7 +91,7 @@ const idleMessages = [
   "The firewall's not going to take a coffee break, but we will if you don't get moving!",
   "What are you waiting for? An invitation from the server? Let's go!",
   "If you wait any longer, even the antivirus will get bored!",
-  "Don't make me put up an 'Under Construction' GIF — start the hack!",
+  "Don't make me put up an 'Under Construction' GIF - start the hack!",
   "You do know that 'idle hands are the devil's playground,' right? Get to work!",
   "In the time it's taking you to start, I could've solved a CAPTCHA! Twice!",
   "Do you need a 'Ready, Set, Hack!' countdown, or what?",

@@ -46,7 +46,7 @@ export function horizontalLinkPath(
 /**
  * Closed filled ribbon: top cubic at y − w/2, bottom cubic reverse at y + w/2.
  *
- * Mass lives in path area (fill), not stroke-width offset of a centerline —
+ * Mass lives in path area (fill), not stroke-width offset of a centerline -
  * avoids evolute cusps when width ≈ node height and |Δy| is large.
  *
  * @see horizontalLinkPath for the thin/reference centerline form

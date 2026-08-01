@@ -1,6 +1,6 @@
 /**
  * Hierarchical file tree for repository explorer.
- * Pure — no DOM.
+ * Pure - no DOM.
  */
 
 export type FileTreeNode = {

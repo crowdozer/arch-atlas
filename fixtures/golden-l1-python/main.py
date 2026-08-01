@@ -1,4 +1,4 @@
-"""L1 entry — absolute package import + stdlib bare."""
+"""L1 entry - absolute package import + stdlib bare."""
 from pkg.a import run
 import os
 

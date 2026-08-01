@@ -79,35 +79,35 @@ User keeps one focus (file, package, feature, catalog hotspot) and moves across
 lenses. Four coordinated views (target shape, not a mandate to build all at
 once):
 
-| Lens | Role |
-| ---- | ---- |
-| **Atlas** | Hierarchical mass map + switchable heat (see `hierarchical-heatmap-lens`) |
-| **Flow** | Alluvial (already signature) |
-| **Matrix** | Dependency Structure Matrix (see `dependency-structure-matrix`) |
+| Lens          | Role                                                                        |
+| ------------- | --------------------------------------------------------------------------- |
+| **Atlas**     | Hierarchical mass map + switchable heat (see `hierarchical-heatmap-lens`)   |
+| **Flow**      | Alluvial (already signature)                                                |
+| **Matrix**    | Dependency Structure Matrix (see `dependency-structure-matrix`)             |
 | **Evolution** | Diff / churn / co-change (see `git-architectural-time-machine`; host-gated) |
 
 Geographic **UX metaphor** (not a 3D city renderer):
 
-| Metaphor | Meaning |
-| -------- | ------- |
-| Continent | subsystem / package / inferred domain region |
-| City / district | folder or feature cluster |
-| Building mass | LOC or export-surface mass |
-| Highway | high-mass import corridor (alluvial band width) |
-| Heat / storm | risk or activity layer (color, not geometry) |
+| Metaphor        | Meaning                                         |
+| --------------- | ----------------------------------------------- |
+| Continent       | subsystem / package / inferred domain region    |
+| City / district | folder or feature cluster                       |
+| Building mass   | LOC or export-surface mass                      |
+| Highway         | high-mass import corridor (alluvial band width) |
+| Heat / storm    | risk or activity layer (color, not geometry)    |
 
 ## Reasoning
 
 - Confirmed product posture already separates **graph SoR** from **projections**
   (`scope.md`, preamble). Multi-lens is the natural extension of catalog → view.
-- Level-1 already supplies edges, LOC, hotspots, blast radius, weight axes —
+- Level-1 already supplies edges, LOC, hotspots, blast radius, weight axes -
   enough for Phase A heat + clustered matrix without Git.
 - User signal (research session): city/continent metaphor, heatmaps, and matrix
   are preferred ports; alluvial band width already reads as highway traffic.
 - Selection continuity is higher leverage than “twenty chart types”: without it,
   each view feels like a separate report.
 
-### Phase A (static, no Git) — highest near-term signal
+### Phase A (static, no Git) - highest near-term signal
 
 1. Heat as first-class metric layer on existing mass (treemap and/or paint).
 2. Package- or path-prefix DSM with cell → inspect.
@@ -121,14 +121,14 @@ Geographic **UX metaphor** (not a 3D city renderer):
 
 ## Rejected alternatives + why
 
-| Alternative | Why not (now) |
-| ----------- | ------------- |
-| Software City / 3D buildings | Relationships hard to follow; metaphor > literal city renderer |
-| Force-directed “also a graph” as second lens | Hairball; fights topology-centric atlas claim |
-| Collection of independent chart pages | Loses selection continuity; chart zoo |
-| Architectural “weather” cosplay without metrics | Cosmetic sediment; vocabulary only after real scores exist |
-| Embedding-first semantic entropy as MVP heat | Local-first + honesty cost; static coupling heat first |
-| Replacing alluvial with treemap | Alluvial remains signature flow language |
+| Alternative                                     | Why not (now)                                                  |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| Software City / 3D buildings                    | Relationships hard to follow; metaphor > literal city renderer |
+| Force-directed “also a graph” as second lens    | Hairball; fights topology-centric atlas claim                  |
+| Collection of independent chart pages           | Loses selection continuity; chart zoo                          |
+| Architectural “weather” cosplay without metrics | Cosmetic sediment; vocabulary only after real scores exist     |
+| Embedding-first semantic entropy as MVP heat    | Local-first + honesty cost; static coupling heat first         |
+| Replacing alluvial with treemap                 | Alluvial remains signature flow language                       |
 
 ## Open questions
 
@@ -147,4 +147,4 @@ before web UI lands those projections.
 
 Synthesized from shared design chat (“Graph Visualization Tools”) +
 `/research` port analysis against Arch Atlas scope and Level-1 code. Design
-memory only — not product law until user elevates.
+memory only - not product law until user elevates.

@@ -38,7 +38,7 @@ touches:
   - dual-host-shell-stage catalog plan
 invariants:
   - Graph (CodeGraph) remains SoR; polish only mutates Carbon DOM projections
-  - Hub alluvial geometry matrix / field notes stay surgical — rename must not retcon law
+  - Hub alluvial geometry matrix / field notes stay surgical - rename must not retcon law
   - Pure helpers that do not need document stay extractable; DOM polish stays out of src/core
 open_questions:
   - How many exports stay public vs become module-private once only polish facade is needed?
@@ -94,8 +94,8 @@ name no longer described what it did.
 - Agents and humans misread the file as dead packing leftover or "top of chart
   only," which blocked dual-host **stage** extraction and correct ownership.
 
-The test file `alluvialTopPack.test.ts` was **not** dead either — large geometry
-law suite for straighten/rails/terminators — but inherited the same misleading
+The test file `alluvialTopPack.test.ts` was **not** dead either - large geometry
+law suite for straighten/rails/terminators - but inherited the same misleading
 name.
 
 ## Intent
@@ -108,44 +108,44 @@ name.
 
 ## Reasoning
 
-| Observation | Implication |
-| ----------- | ----------- |
-| Only `polishAlluvialHolder` is the web host facade | Rename should center the **polish** concept, not "topPack" |
-| Dual-host catalog wants shared **stage** in browser + webview | Natural home after extract: `src/stage/…`, not forever under `client/` |
-| Many exports are test-facing pure pieces | Split may keep pure planners (`planExternalStraightBands`) importable; DOM mutation stays stage-private |
-| Hub field notes / geometry matrix are load-bearing | Surgical rename/split only — no matrix retcon |
-| `app.ts` already god-controller | Do not merge polish into `app.ts`; extract *out* of misleading name |
+| Observation                                                   | Implication                                                                                             |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Only `polishAlluvialHolder` is the web host facade            | Rename should center the **polish** concept, not "topPack"                                              |
+| Dual-host catalog wants shared **stage** in browser + webview | Natural home after extract: `src/stage/…`, not forever under `client/`                                  |
+| Many exports are test-facing pure pieces                      | Split may keep pure planners (`planExternalStraightBands`) importable; DOM mutation stays stage-private |
+| Hub field notes / geometry matrix are load-bearing            | Surgical rename/split only - no matrix retcon                                                           |
+| `app.ts` already god-controller                               | Do not merge polish into `app.ts`; extract _out_ of misleading name                                     |
 
 **Name decision (resolved this land):**
 
-| Candidate | Outcome |
-| --------- | ------- |
-| `alluvialPolish` (package under `src/client/`) | **Chosen** — matches `polishAlluvialHolder`; split landed under client |
-| `hubAlluvialPolish.ts` | Not used |
-| `stage/alluvialMountPolish.ts` | Deferred — no `src/stage` this PR |
-| `carbonAlluvialPostprocess.ts` | Not used |
+| Candidate                                      | Outcome                                                                |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| `alluvialPolish` (package under `src/client/`) | **Chosen** - matches `polishAlluvialHolder`; split landed under client |
+| `hubAlluvialPolish.ts`                         | Not used                                                               |
+| `stage/alluvialMountPolish.ts`                 | Deferred - no `src/stage` this PR                                      |
+| `carbonAlluvialPostprocess.ts`                 | Not used                                                               |
 
 **Split (landed under `src/client/alluvialPolish/`):**
 
-- `labels.ts` — truncate  
-- `rails.ts` — undraw pads  
-- `externalStraighten.ts` — plan + paint  
-- `terminators.ts`  
-- `fileSpine.ts` — center  
-- `fileChrome.ts` — highlight, icon, export recolor  
-- `sankeyDom.ts` — shared Carbon DOM helpers  
+- `labels.ts` - truncate
+- `rails.ts` - undraw pads
+- `externalStraighten.ts` - plan + paint
+- `terminators.ts`
+- `fileSpine.ts` - center
+- `fileChrome.ts` - highlight, icon, export recolor
+- `sankeyDom.ts` - shared Carbon DOM helpers
 - Facade: `polish.ts` → `polishAlluvialHolder`; package barrel `index.ts`
 
 ## Rejected alternatives + why
 
-1. **Delete as dead code** — false; on every hub mount and focus e2e.  
-2. **Leave name, only document** — still misleads retrieval and dual-host stage
-   ownership; user asked rename.  
-3. **Absorb into `app.ts`** — worsens client god controller; opposite of dual-host.  
-4. **Move pure geometry into `src/core`** — DOM/`__data__` Carbon surgery is
-   host/stage; core stays pure graph. Only pure plan helpers *might* move if
-   they stay document-free and shared (optional later).  
-5. **Big-bang dual-host + rename + matrix edit** — scope blowup; prior dual-host
+1. **Delete as dead code** - false; on every hub mount and focus e2e.
+2. **Leave name, only document** - still misleads retrieval and dual-host stage
+   ownership; user asked rename.
+3. **Absorb into `app.ts`** - worsens client god controller; opposite of dual-host.
+4. **Move pure geometry into `src/core`** - DOM/`__data__` Carbon surgery is
+   host/stage; core stays pure graph. Only pure plan helpers _might_ move if
+   they stay document-free and shared (optional later).
+5. **Big-bang dual-host + rename + matrix edit** - scope blowup; prior dual-host
    ship aborted when over-wide. Prefer rename/split PR(s) then stage extract.
 
 ## Current call graph (evidence after land)
@@ -167,7 +167,7 @@ displayInventory.ts
 ## Open questions (remaining)
 
 - Public export surface: keep geometry helpers exported for tests only, or
-  colocate tests with private modules?  
+  colocate tests with private modules?
 - Dual-host catalog still owns **when** to move `alluvialPolish` under `src/stage`.
 
 **Resolved this land:** name=`alluvialPolish` package under `src/client/`;
@@ -176,14 +176,14 @@ split by concern; no `src/stage` in this PR.
 ## Revisit when
 
 - Dual-host stage extract starts → link `realized_by` from `dual-host-shell-stage`;
-  may move package path without reopening rename rationale.  
-- Product drops Carbon postprocess → supersede or reject with note.  
+  may move package path without reopening rename rationale.
+- Product drops Carbon postprocess → supersede or reject with note.
 - Geometry matrix rewrite (unlikely) would force revisit of split boundaries.
 
 ## Provenance
 
 - User: name is misleading; client rendering godfile; `/catalog` for refactoring
-  and renaming; later ship land rename+split.  
+  and renaming; later ship land rename+split.
 - Agent: confirmed live production path (not dead code); related dual-host stage
-  ownership and godfile/topology ideas.  
+  ownership and godfile/topology ideas.
 - Land evidence: `266dfe9` / merge `9181841` on main.

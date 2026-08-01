@@ -3,7 +3,7 @@
  *
  * Extracted from the composition root: enable / disable / auto-local / reset.
  * Injected deps keep module state ownership in `app.ts` (no session framework).
- * Engine load lives in host-shared `@exact` — this module is web paint/chrome only.
+ * Engine load lives in host-shared `@exact` - this module is web paint/chrome only.
  * Program (createProgram) topology enrich is async via Web Worker (P4).
  */
 
@@ -51,7 +51,7 @@ export type ExactPaintModeDeps = {
 	setExactEnableInFlight: (v: boolean) => void;
 	/**
 	 * Exact ensure in flight while chrome is still Estimate (or rehydrate).
-	 * Language chips show lifecycle incomplete — not Exact mass claim.
+	 * Language chips show lifecycle incomplete - not Exact mass claim.
 	 * Cleared on settle / fail / full reset.
 	 */
 	setExactLoading?: (v: boolean) => void;
@@ -175,8 +175,8 @@ type InstallExactOpts = {
 	/** Status while ensureExact is in flight. */
 	loadingStatus: string;
 	/**
-	 * `force-target-loc` — enable path (Exact always pairs with target-loc mass).
-	 * `preserve` — reindex rehydrate keeps weightAxis chrome.
+	 * `force-target-loc` - enable path (Exact always pairs with target-loc mass).
+	 * `preserve` - reindex rehydrate keeps weightAxis chrome.
 	 */
 	weight: 'force-target-loc' | 'preserve';
 	/**
@@ -253,7 +253,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		});
 		deps.remountCurrentView();
 		deps.setStatus(opts.msg);
-		// Open defers mid-flight persist for desired Exact — fail must still write
+		// Open defers mid-flight persist for desired Exact - fail must still write
 		// Estimate so Remember project is not left with no session blob.
 		deps.persistSessionIfEnabled?.();
 	}
@@ -330,13 +330,13 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			deps.openUnavailableModal({
 				label: 'Export surface (partial)',
 				heading: 'Only JavaScript/TypeScript use Exact',
-				body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings — not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
+				body: `Export-surface mass applies to JS/TS import edges only (export declarations matched to bindings - not a full language server). Other languages in this project (${langs}) stay on estimate until engines exist.`,
 			});
 		}
 
 		const srcNote = engineSrcNote(result.source);
 		const suffix = opts.statusSuffix ?? '';
-		// Sticky Exact for open/demo/restore (skip reindex rehydrate — chrome already sticky)
+		// Sticky Exact for open/demo/restore (skip reindex rehydrate - chrome already sticky)
 		if (opts.weight === 'force-target-loc') {
 			const sess = deps.getSession();
 			if (sess) recordPrecisionPreference(sess.graph, 'exact');
@@ -446,7 +446,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 
 	/**
 	 * Default Exact **on** when a local/injected analysis engine is already available.
-	 * Never triggers CDN download — production web stays estimate until user opts in.
+	 * Never triggers CDN download - production web stays estimate until user opts in.
 	 * Silent no-op when local classic TS is missing (dev without dep, pure CDN hosts).
 	 */
 	async function tryAutoExactWhenLocalAvailable(): Promise<void> {
@@ -487,7 +487,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 			deps.setWeightAxis('target-loc');
 			if (precEl) deps.syncPrecisionDropdown(precEl, 'exact');
 			if (weightEl) deps.syncWeightDropdown(weightEl, 'target-loc');
-			// No mixed-language modal on auto — user can still open Exact explicitly later
+			// No mixed-language modal on auto - user can still open Exact explicitly later
 			deps.remountCurrentView();
 			const view = deps.currentView();
 			const base = view ? statusForView(view) : 'Project open';
@@ -553,7 +553,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		deps.setLocPrecision('program');
 		if (precEl) deps.syncPrecisionDropdown(precEl, 'program');
 		deps.setStatus('Program: loading TypeScript engine in worker…');
-		// Clear prior alluvial immediately — do not leave stale chart during enrich.
+		// Clear prior alluvial immediately - do not leave stale chart during enrich.
 		deps.showStageLoading('Building Program topology…');
 		// Language chips: incomplete glyph while flight is true (no full remount).
 		deps.refreshCatalogChrome?.();
@@ -576,7 +576,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 				if (result.cancelled) {
 					// Supersede / cancel: remount prior graph if session still open so
 					// the user is not stuck on the loading placeholder. New open clears
-					// session then remounts on its own path — skip if session gone.
+					// session then remounts on its own path - skip if session gone.
 					if (deps.getSession()) {
 						remountSettled();
 					}
@@ -587,10 +587,10 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 				// Fail chip only when demoted to Estimate (restored Exact still honest Exact)
 				deps.setEngineFailed(deps.getLocPrecision() === 'estimate');
 				deps.setStatus(
-					`Program unavailable — ${result.error} · graph left at L1 (not LSP)`,
+					`Program unavailable - ${result.error} · graph left at L1 (not LSP)`,
 				);
 				remountSettled();
-				// Open defers mid-flight persist for desired Program — fail settle still writes
+				// Open defers mid-flight persist for desired Program - fail settle still writes
 				deps.persistSessionIfEnabled?.();
 				return;
 			}
@@ -657,7 +657,7 @@ export function createExactPaintMode(deps: ExactPaintModeDeps): ExactPaintMode {
 		exactGraphGeneration += 1;
 		deps.setSurfaceProvider(null);
 		deps.setExactEnableInFlight(false);
-		// Symmetric with flight clear — stale rehydrate may skip finally clear
+		// Symmetric with flight clear - stale rehydrate may skip finally clear
 		clearExactLoading();
 	}
 

@@ -1,4 +1,4 @@
-/** L1 entry — relative, package, type-only, worker query. */
+/** L1 entry - relative, package, type-only, worker query. */
 import { util } from './lib/util';
 import type { UtilResult } from './lib/util';
 import { z } from 'zod';

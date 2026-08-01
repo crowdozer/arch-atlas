@@ -59,7 +59,7 @@ export function displayHubCategory(category: string): string {
 	return category;
 }
 
-/** Cyan hop gradient (Imports / left) — closer to File is brighter. */
+/** Cyan hop gradient (Imports / left) - closer to File is brighter. */
 export function importHopColor(dist: number, maxDist: number): string {
 	const t = dist / Math.max(maxDist, 1);
 	if (t > 0.75) return CHART_PALETTE.importHopFar;
@@ -68,7 +68,7 @@ export function importHopColor(dist: number, maxDist: number): string {
 	return CHART_PALETTE.importHopNear;
 }
 
-/** Yellow hop gradient (Exports / right) — closer to File is brighter. */
+/** Yellow hop gradient (Exports / right) - closer to File is brighter. */
 export function exportHopColor(dist: number, maxDist: number): string {
 	const t = dist / Math.max(maxDist, 1);
 	if (t > 0.75) return TEAL.exportOther;

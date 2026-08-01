@@ -1,6 +1,6 @@
 /**
  * Read-only snapshot of Carbon/d3-sankey layout from a mounted holder.
- * For agent/debug analysis — not used in production paint path.
+ * For agent/debug analysis - not used in production paint path.
  */
 
 import { readData, type SankeyLink, type SankeyNode } from './polish/sankeyDom.ts';
@@ -109,7 +109,7 @@ export function dumpCarbonRender(holder: HTMLElement | null): CarbonRenderDump |
 		const text = (t.textContent ?? '').trim();
 		// Carbon column titles are often short category labels
 		if (text && text.length < 40 && !headers.includes(text)) {
-			// Keep only likely headers (heuristic) — also include all if few texts
+			// Keep only likely headers (heuristic) - also include all if few texts
 			headers.push(text);
 		}
 	}

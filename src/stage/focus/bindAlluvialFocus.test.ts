@@ -3,7 +3,7 @@
  * clearFocus restores default when set; otherwise clears to neutral.
  *
  * Sticky restore asserts plan identity (seed + activeLabels + focusedBandKeys),
- * not only holder dimming — file and package seeds both dim the mini holder.
+ * not only holder dimming - file and package seeds both dim the mini holder.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -170,7 +170,7 @@ describe('AlluvialFocusApi default seed', () => {
 		expect(holder.classList.contains(CLASS_DIMMING)).toBe(true);
 		expectPlanMatchesPackage(lastAppliedPlan(), expectedPkg);
 
-		// Hover override (file seed) — last applied must be the file plan
+		// Hover override (file seed) - last applied must be the file plan
 		appliedPlans.length = 0;
 		api.applySeed(fileSeed, null);
 		expect(holder.classList.contains(CLASS_DIMMING)).toBe(true);

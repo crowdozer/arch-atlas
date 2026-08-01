@@ -1,6 +1,6 @@
 /**
  * Level-1 static import extraction from JS/TS source text.
- * Observed only — no type resolution. Not a language server.
+ * Observed only - no type resolution. Not a language server.
  */
 
 import type { ExtractedImport, ImportBinding } from '@core/graph/types.ts';
@@ -127,7 +127,7 @@ export function parseImportClause(clause: string | undefined | null): ImportBind
 	const ns = c.match(/^\*\s+as\s+([A-Za-z_$][\w$]*)$/);
 	if (ns) return [{ kind: 'namespace', local: ns[1]! }];
 
-	// export * from — no local bindings in the exporting file for callsite scan
+	// export * from - no local bindings in the exporting file for callsite scan
 	if (c === '*' || c.startsWith('*')) return [{ kind: 'side-effect' }];
 
 	const bindings: ImportBinding[] = [];
@@ -274,7 +274,7 @@ function nextImportKeywordOutsideStrings(s: string, from: number): number {
  * Brace-aware static `import` / `import type` extraction.
  * Handles multi-line `import { … }\nfrom '…'` without latching on `from` inside braces.
  * Dynamic `import(` is left to the dynRe pass.
- * Keyword search is string-aware — does not latch `import` inside quotes/templates.
+ * Keyword search is string-aware - does not latch `import` inside quotes/templates.
  */
 function scanStaticImports(
 	cleaned: string,
@@ -295,7 +295,7 @@ function scanStaticImports(
 		const afterImport = idx + 6;
 		let j = skipWs(cleaned, afterImport);
 
-		// Dynamic import( — leave to dynRe
+		// Dynamic import( - leave to dynRe
 		if (j < n && cleaned[j] === '(') {
 			i = afterImport;
 			continue;
@@ -464,14 +464,14 @@ export function extractImports(source: string): ExtractedImport[] {
 		push(m[3]!, 'export', m.index, bindings, typeOnly);
 	}
 
-	// require('x') — binding lives on the left-hand side; not extracted here
+	// require('x') - binding lives on the left-hand side; not extracted here
 	const requireRe = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = requireRe.exec(cleaned)) !== null) {
 		if (!isCodeIndexOutsideStrings(cleaned, m.index)) continue;
 		push(m[1]!, 'require', m.index, [{ kind: 'side-effect' }]);
 	}
 
-	// import('x') dynamic — string literal only
+	// import('x') dynamic - string literal only
 	const dynRe = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 	while ((m = dynRe.exec(cleaned)) !== null) {
 		if (!isCodeIndexOutsideStrings(cleaned, m.index)) continue;

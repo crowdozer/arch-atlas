@@ -1,5 +1,5 @@
 /**
- * Phase 3: Carbon event adapter — dispatch real CustomEvent detail shapes
+ * Phase 3: Carbon event adapter - dispatch real CustomEvent detail shapes
  * through bindHubAlluvialFocusEvents (not applySeed alone).
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';

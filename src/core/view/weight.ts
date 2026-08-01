@@ -3,8 +3,8 @@
  * Graph edges stay unweighted; projectors call edgeWeight per edge.
  *
  * Imported-surface precision:
- * - estimate — whole-file target LOC (no Program/LSP); labeled as estimate
- * - exact — requires {@link ImportedSurfaceProvider}; fails closed when absent
+ * - estimate - whole-file target LOC (no Program/LSP); labeled as estimate
+ * - exact - requires {@link ImportedSurfaceProvider}; fails closed when absent
  *   (no silent fallback to estimate numbers). Under exact + target-loc,
  *   mass comes from `surface.targetSurfaceMass` (null → 1, never whole-file).
  */
@@ -44,11 +44,11 @@ const DEFAULT_AXIS: WeightAxis = 'target-loc';
 const DEFAULT_PRECISION: LocPrecision = 'estimate';
 
 export const EXACT_NOT_IMPLEMENTED_MESSAGE =
-	'Exact export-surface mass requires the JS/TS analysis engine (classic TypeScript AST — not a language server). Enable Precision → Exact (export surface) or Weight → Export surface after the engine loads, or inject a provider.';
+	'Exact export-surface mass requires the JS/TS analysis engine (classic TypeScript AST - not a language server). Enable Precision → Exact (export surface) or Weight → Export surface after the engine loads, or inject a provider.';
 
 /** Provider present but export surface could not be resolved for this edge. */
 export const EXACT_SURFACE_UNRESOLVED_MESSAGE =
-	'Export surface not resolved for imported bindings (Exact — no silent whole-file fallback).';
+	'Export surface not resolved for imported bindings (Exact - no silent whole-file fallback).';
 
 /** Axes that claim imported-surface size (not raw edge counts or importer file size). */
 export function axisNeedsImportedSurface(axis: WeightAxis): boolean {
@@ -184,7 +184,7 @@ export function hubReverseEdgeWeight(
 }
 
 /**
- * Carbon `units` string for the axis (honest names — see UI Weight dropdown).
+ * Carbon `units` string for the axis (honest names - see UI Weight dropdown).
  * Under exact + target-loc, labels surface honesty (not whole-file).
  */
 export function unitsForAxis(

@@ -1,4 +1,4 @@
-/** Legacy bridge — re-exports domain bits so hub can pull everything. */
+/** Legacy bridge - re-exports domain bits so hub can pull everything. */
 import type { Money } from '../domain/money';
 import { zero } from '../domain/money';
 import type { User } from '../domain/user';

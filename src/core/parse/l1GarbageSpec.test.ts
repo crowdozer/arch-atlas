@@ -225,7 +225,7 @@ describe('collectGarbageExternals', () => {
 	});
 
 	it('does not treat file-edge specifier retention as garbage', () => {
-		// File edges are out of scope — only package/unresolved
+		// File edges are out of scope - only package/unresolved
 		const g = miniGraph({
 			edges: [
 				{

@@ -306,7 +306,7 @@ export function resolveSpecifier(
 	}
 
 	// js-ts pre-resolve normalize only (resource-query-strip PathRuleFamily).
-	// Not universal — PHP/C/etc. must not inherit this blindly.
+	// Not universal - PHP/C/etc. must not inherit this blindly.
 	const cleaned = hasRule(family, 'resource-query-strip')
 		? stripSpecifierResourceSuffix(specifier)
 		: specifier;

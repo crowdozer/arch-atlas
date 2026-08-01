@@ -1,7 +1,7 @@
 /**
  * Real TypeScript `createProgram` over a feed VFS (CLI / host-shared Exact layer).
  *
- * Distinct from `tsProgramProvider` (createSourceFile export spans only) —
+ * Distinct from `tsProgramProvider` (createSourceFile export spans only) -
  * this builds a CompilerHost + Program for L2 module resolution and thin L3
  * export-symbol counts. Not pure core (may read default lib from disk).
  *

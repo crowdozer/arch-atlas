@@ -12,13 +12,13 @@ without Sentinel product domain and **without** Sentinel’s emerald brand.
 
 ## Brand & chrome (locked for agents)
 
-| Role | Source | Notes |
-| ---- | ------ | ----- |
-| Shell base | Zinc steps on `--cds-background` / `--cds-layer-*` / text / border | Dark **g100 only** today — no light theme |
-| Brand interactive | **Teal** (`--cds-interactive`, `--cds-background-brand`, button-primary) | **Not** Sentinel emerald; do not re-brand to emerald |
-| Active selection | Purple product tokens `--atlas-select*` | Selection chrome ≠ brand teal; File spine / package terminators use select |
-| Status / severity | `--cds-status-*` CDS presets | PASS/FAIL/WATCH never brand teal |
-| Support | Aliases status (`--cds-support-*` → `var(--cds-status-*)`) | Sentinel support→status pattern |
+| Role              | Source                                                                   | Notes                                                                      |
+| ----------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Shell base        | Zinc steps on `--cds-background` / `--cds-layer-*` / text / border       | Dark **g100 only** today - no light theme                                  |
+| Brand interactive | **Teal** (`--cds-interactive`, `--cds-background-brand`, button-primary) | **Not** Sentinel emerald; do not re-brand to emerald                       |
+| Active selection  | Purple product tokens `--atlas-select*`                                  | Selection chrome ≠ brand teal; File spine / package terminators use select |
+| Status / severity | `--cds-status-*` CDS presets                                             | PASS/FAIL/WATCH never brand teal                                           |
+| Support           | Aliases status (`--cds-support-*` → `var(--cds-status-*)`)               | Sentinel support→status pattern                                            |
 
 Shell grammar also lives one line in [scope.md](./scope.md) (design language);
 this file owns the **token layers**.
@@ -37,40 +37,40 @@ CSS call sites → var(--cds-*) / var(--atlas-*)
 TS chart/SVG → chartPalette hex        must match CSS token values; no getComputedStyle in core
 ```
 
-| Layer | Owner file | Owns |
-| ----- | ---------- | ---- |
-| FOUC gate | `src/styles/carbon-fouc.css` | `cds-*:not(:defined)` hide until CE register |
-| g100 dump | `src/styles/carbon-g100.css` | Stock Carbon g100 token table — do not product-edit |
-| Bridge + product tokens | `src/styles/atlas-bridge.css` | Zinc/teal CDS overrides, `--atlas-*`, support aliases |
-| Product component CSS | `src/styles/components/product.css` | Shell, chart, catalog, inspect, splash (post-bridge rules) |
-| Theme barrel | `src/styles/carbon-theme.css` | Ordered `@import` only (FOUC → g100 → bridge → product) |
-| Entry | `src/styles/global.css` | Tailwind + carbon-theme barrel + motion |
-| Chart hex mirror | `src/core/view/chartPalette.ts` | Carbon `color.scale` + SVG (scale, hops, spine, ribbon fallbacks) |
-| Status geometry | `src/shell/statusIndicator.ts` | Shape + `--cds-status-*` via `statusColorCssVar` |
+| Layer                   | Owner file                          | Owns                                                              |
+| ----------------------- | ----------------------------------- | ----------------------------------------------------------------- |
+| FOUC gate               | `src/styles/carbon-fouc.css`        | `cds-*:not(:defined)` hide until CE register                      |
+| g100 dump               | `src/styles/carbon-g100.css`        | Stock Carbon g100 token table - do not product-edit               |
+| Bridge + product tokens | `src/styles/atlas-bridge.css`       | Zinc/teal CDS overrides, `--atlas-*`, support aliases             |
+| Product component CSS   | `src/styles/components/product.css` | Shell, chart, catalog, inspect, splash (post-bridge rules)        |
+| Theme barrel            | `src/styles/carbon-theme.css`       | Ordered `@import` only (FOUC → g100 → bridge → product)           |
+| Entry                   | `src/styles/global.css`             | Tailwind + carbon-theme barrel + motion                           |
+| Chart hex mirror        | `src/core/view/chartPalette.ts`     | Carbon `color.scale` + SVG (scale, hops, spine, ribbon fallbacks) |
+| Status geometry         | `src/shell/statusIndicator.ts`      | Shape + `--cds-status-*` via `statusColorCssVar`                  |
 
 **Canonical hex for product tokens lives in the CSS bridge.** `CHART_PALETTE` must stay in lockstep for values that also paint in CSS. Import **hop** ladders are TS-only (no CSS hop tokens); terminator/drill CSS cousins share mid/near cyan steps only.
 
-Historical scale export `TEAL` re-exports a subset of `CHART_PALETTE` for minimal churn — prefer `CHART_PALETTE` at new call sites.
+Historical scale export `TEAL` re-exports a subset of `CHART_PALETTE` for minimal churn - prefer `CHART_PALETTE` at new call sites.
 
-Do **not** land a second TS palette (`palette.ts`) or a parallel `atlas-tokens.css` — single bridge + `chartPalette` only.
+Do **not** land a second TS palette (`palette.ts`) or a parallel `atlas-tokens.css` - single bridge + `chartPalette` only.
 
 ## Direction tokens (import / export UI)
 
-| Token | Typical use |
-| ----- | ----------- |
-| `--atlas-import` | Inspect form-tri import markers; aliases brand teal (`--cds-interactive`) — **not** `--cds-status-blue` |
-| `--atlas-export` | Export bands, form-tri export markers, outbound catalog yellow chips |
-| `--atlas-export-pkg` / `--atlas-export-other` | Deeper export hop yellow ladder (mirrors `CHART_PALETTE` / `TEAL`) |
-| `--atlas-import-term*` / `--atlas-export-term*` | Alluvial terminator chrome (contrast wraps) |
+| Token                                           | Typical use                                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--atlas-import`                                | Inspect form-tri import markers; aliases brand teal (`--cds-interactive`) - **not** `--cds-status-blue` |
+| `--atlas-export`                                | Export bands, form-tri export markers, outbound catalog yellow chips                                    |
+| `--atlas-export-pkg` / `--atlas-export-other`   | Deeper export hop yellow ladder (mirrors `CHART_PALETTE` / `TEAL`)                                      |
+| `--atlas-import-term*` / `--atlas-export-term*` | Alluvial terminator chrome (contrast wraps)                                                             |
 
 ## Selection purple (`--atlas-select*`)
 
-| Token | Typical use |
-| ----- | ----------- |
-| `--atlas-select` | Labels / icons on zinc |
-| `--atlas-select-strong` | Borders, alluvial stroke, File spine stroke (`CHART_PALETTE.selectStrong`) |
-| `--atlas-select-deep` | Filled spine bar |
-| `--atlas-select-soft` / `--atlas-select-ring` | Tile wash / focus ring |
+| Token                                         | Typical use                                                                |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| `--atlas-select`                              | Labels / icons on zinc                                                     |
+| `--atlas-select-strong`                       | Borders, alluvial stroke, File spine stroke (`CHART_PALETTE.selectStrong`) |
+| `--atlas-select-deep`                         | Filled spine bar                                                           |
+| `--atlas-select-soft` / `--atlas-select-ring` | Tile wash / focus ring                                                     |
 
 `--cds-status-purple` is aligned to `--atlas-select-strong` (`#a78bfa`) so status purple and selection chrome do not drift.
 
@@ -84,10 +84,10 @@ Do **not** land a second TS palette (`palette.ts`) or a parallel `atlas-tokens.c
 
 Carbon **g100** on `.cds--chart-holder[data-carbon-theme=g100]` sets:
 
-| Token | g100 chart-holder value | Meaning for alluvial defaults |
-| ----- | ----------------------- | ----------------------------- |
-| `--cds-layer-inverse-absolute` | `#ffffff` | White label chip |
-| `--cds-layer-01-absolute` | `#000000` | Black label text |
+| Token                          | g100 chart-holder value | Meaning for alluvial defaults |
+| ------------------------------ | ----------------------- | ----------------------------- |
+| `--cds-layer-inverse-absolute` | `#ffffff`               | White label chip              |
+| `--cds-layer-01-absolute`      | `#000000`               | Black label text              |
 
 Atlas paints **light text on dark zinc chips**. Do **not** drive `rect.node-text-bg` from `--cds-layer-inverse-absolute` (resolves to white under the holder). Chart also forces `--cds-layer-01: transparent` on `.ui-carbon-chart`, so shell layer tokens are unusable for chips.
 
@@ -95,7 +95,7 @@ Atlas paints **light text on dark zinc chips**. Do **not** drive `rect.node-text
 
 ## Shade modification (heatmap precedent)
 
-Prefer **`color-mix`** or opacity on existing status/product tokens when a wash is needed — do not invent new hues per surface.
+Prefer **`color-mix`** or opacity on existing status/product tokens when a wash is needed - do not invent new hues per surface.
 
 Example (yellow caution chips): `color-mix(in srgb, var(--cds-status-yellow) 28%, #000)`.
 
@@ -111,13 +111,13 @@ Full heatmap / severity-ramp helpers are **not** landed yet; when a consumer app
 
 ## Code map
 
-| Concern | Path |
-| ------- | ---- |
-| Theme barrel (compat) | `src/styles/carbon-theme.css` |
-| FOUC gate | `src/styles/carbon-fouc.css` |
-| g100 dump | `src/styles/carbon-g100.css` |
-| Palette bridge | `src/styles/atlas-bridge.css` |
-| Product components | `src/styles/components/product.css` |
-| Global entry | `src/styles/global.css` |
-| Chart hex | `src/core/view/chartPalette.ts` |
-| Status presentation | `src/shell/statusIndicator.ts` |
+| Concern               | Path                                |
+| --------------------- | ----------------------------------- |
+| Theme barrel (compat) | `src/styles/carbon-theme.css`       |
+| FOUC gate             | `src/styles/carbon-fouc.css`        |
+| g100 dump             | `src/styles/carbon-g100.css`        |
+| Palette bridge        | `src/styles/atlas-bridge.css`       |
+| Product components    | `src/styles/components/product.css` |
+| Global entry          | `src/styles/global.css`             |
+| Chart hex             | `src/core/view/chartPalette.ts`     |
+| Status presentation   | `src/shell/statusIndicator.ts`      |

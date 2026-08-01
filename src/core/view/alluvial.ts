@@ -4,7 +4,7 @@
  *
  * Flow unit: one observed package/unresolved import edge in the reachable set.
  * Links are conserved through intermediate file leaves.
- * Path folders are never hop stages — only file labels (or +N more).
+ * Path folders are never hop stages - only file labels (or +N more).
  * Direct package imports by the start go Imports → File.
  */
 
@@ -28,7 +28,7 @@ import {
 
 export type { WeightAxis, LocPrecision };
 
-/** Chart scale colors — owned by `chartPalette.ts` (must match carbon-theme). */
+/** Chart scale colors - owned by `chartPalette.ts` (must match carbon-theme). */
 export { CHART_PALETTE, TEAL } from '@core/view/chartPalette.ts';
 import { TEAL } from '@core/view/chartPalette.ts';
 
@@ -56,7 +56,7 @@ export function topFolder(path: string): string {
 }
 
 /**
- * Display labels for file paths — full path (unique by definition).
+ * Display labels for file paths - full path (unique by definition).
  * Chart polish right-truncates long paths for fit; hover keeps the full string.
  */
 export function uniqueFileLabels(paths: string[]): Map<string, string> {
@@ -88,12 +88,12 @@ export function isOverflowNodeName(name: string): boolean {
  * In-column band stack order (global mode for all columns).
  *
  * Product-live (UI):
- * - `name` — alpha + overflow last + rails after real (prior / default order)
- * - `node` — whole-file LOC (Estimate); packages/buckets 0
+ * - `name` - alpha + overflow last + rails after real (prior / default order)
+ * - `node` - whole-file LOC (Estimate); packages/buckets 0
  *
  * API / experiment only (not in product dropdown; host parse maps to name):
- * - `flow` — thickest leaving ribbon first (max outbound link value)
- * - `flow-target` — thickest arriving ribbon first (max inbound link value)
+ * - `flow` - thickest leaving ribbon first (max outbound link value)
+ * - `flow-target` - thickest arriving ribbon first (max inbound link value)
  */
 export type BandSortMode = 'name' | 'flow' | 'flow-target' | 'node';
 
@@ -154,7 +154,7 @@ export function incidentBandMass(
 
 /**
  * Node self-mass: whole-file LOC for file refs (`graph.contents`).
- * Packages / modules / buckets → 0 (no file body). Estimate LOC only — not Exact
+ * Packages / modules / buckets → 0 (no file body). Estimate LOC only - not Exact
  * export-surface (that would need a surface provider; honesty stays with Weight).
  */
 export function nodeBandMass(
@@ -241,7 +241,7 @@ export function buildAlluvialPayload(args: {
 	/** In-column band order; default name (alpha + overflow last, rails after real). */
 	bandSort?: BandSortMode;
 	/**
-	 * Needed for `bandSort: 'node'` (file LOC). Optional — without it node mode
+	 * Needed for `bandSort: 'node'` (file LOC). Optional - without it node mode
 	 * ranks files as 0 (name tie-break only).
 	 */
 	graph?: CodeGraph | null;
@@ -382,8 +382,8 @@ export function normalizeAlluvialRailLabel(name: string): string {
 
 /**
  * Classify pad-rail node ids used for sankey layer alignment.
- * - `in`  — import free-source scaffolding (ghost bars/bands hide)
- * - `out` — export intermediate mass carriers (bands stay painted)
+ * - `in`  - import free-source scaffolding (ghost bars/bands hide)
+ * - `out` - export intermediate mass carriers (bands stay painted)
  * Matches ZWSP names and value-suffixed tooltip forms.
  */
 export function alluvialRailKind(name: string): AlluvialRailKind | null {
@@ -570,7 +570,7 @@ function escapeTooltipText(s: string): string {
  * Build alluvial from a start file. Returns null if start missing or no flow.
  *
  * Columns L→R: Imports → Hop 1 (importer files) → File
- * Path folders are never intermediate stages — only file leaves (or +N more).
+ * Path folders are never intermediate stages - only file leaves (or +N more).
  * Labels match multi-hop / hub: Imports + File (not Ends/Modules/Code).
  */
 export function projectAlluvial(
@@ -621,7 +621,7 @@ export function projectAlluvial(
 
 	for (const e of graph.edges) {
 		if (!reachable.has(e.from)) continue;
-		// Architecture ends only — not files, not feed-omitted
+		// Architecture ends only - not files, not feed-omitted
 		if (e.toKind !== 'package' && e.toKind !== 'unresolved') continue;
 
 		const label =

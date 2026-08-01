@@ -26,7 +26,7 @@ export function drillTargetFromNode(
 }
 
 /**
- * Line click drill target — same priority as host handleLineClick:
+ * Line click drill target - same priority as host handleLineClick:
  * file target → package/unresolved/module source → package/unresolved/module
  * target → file source.
  *

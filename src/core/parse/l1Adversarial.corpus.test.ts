@@ -5,7 +5,7 @@
  * Demos are fair corpus inputs (not L1 minimize SoT). Golden-l1-* also re-run
  * explicitly (belt-and-suspenders with goldenL1.integration.test.ts).
  *
- * If this fails: fix extract/resolve root cause — do not weaken l1GarbageSpec.
+ * If this fails: fix extract/resolve root cause - do not weaken l1GarbageSpec.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';

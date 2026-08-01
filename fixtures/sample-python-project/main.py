@@ -1,4 +1,4 @@
-"""Entry — absolute package import."""
+"""Entry - absolute package import."""
 from pkg.a import run
 import os
 

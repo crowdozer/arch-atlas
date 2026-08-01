@@ -1,6 +1,6 @@
 /**
  * Built-in demo repos (fixtures on disk, bundled via Vite raw import).
- * Buttons on the upload step load these as VirtualFile[] — no ZIP required.
+ * Buttons on the upload step load these as VirtualFile[] - no ZIP required.
  */
 import type { VirtualFile } from '@core/graph/types.ts';
 
@@ -21,7 +21,7 @@ export const DEMO_OPTIONS: DemoMeta[] = [
 	{
 		id: 'react-simple',
 		title: 'React (low complexity)',
-		blurb: 'Vite + React Router toy app — clean pages → hooks → api layers.',
+		blurb: 'Vite + React Router toy app - clean pages → hooks → api layers.',
 		complexity: 'low',
 	},
 	{
@@ -39,7 +39,7 @@ export const DEMO_OPTIONS: DemoMeta[] = [
 	{
 		id: 'python-app',
 		title: 'Python app (Estimate)',
-		blurb: 'Layered Flask-style toy — routes → services → models + external packages.',
+		blurb: 'Layered Flask-style toy - routes → services → models + external packages.',
 		complexity: 'low',
 	},
 ];
@@ -120,7 +120,7 @@ export function loadDemoFiles(id: DemoId): VirtualFile[] {
 	if (!entry) throw new Error(`Unknown demo: ${id}`);
 	const files = toVirtualFiles(entry.modules, entry.marker);
 	if (!files.length) {
-		throw new Error(`Demo "${id}" produced zero files — check fixture paths / glob.`);
+		throw new Error(`Demo "${id}" produced zero files - check fixture paths / glob.`);
 	}
 	return files;
 }

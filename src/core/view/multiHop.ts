@@ -18,13 +18,13 @@
  * labels. If packages link straight into every hop distance, two files at the
  * same BFS distance can land in different columns (both titled "Hop 2").
  *
- * Fix — layer-consistent topology (no SVG post-process):
+ * Fix - layer-consistent topology (no SVG post-process):
  * - Hop column for BFS distance d is sankey layer (maxFileDist − d + 1).
  * - File→file edges only between consecutive distances (d → d−1 → … → File).
  * - Package→file edges are *padded* through shared hop rails so the path
  *   length into a dist-d file is always (maxFileDist − d + 1).
  *
- * Folders are never stages — hop nodes are files (+ overflow).
+ * Folders are never stages - hop nodes are files (+ overflow).
  */
 
 import {
@@ -218,7 +218,7 @@ export function projectMultiHopAlluvial(
 		filesAtStage.set(d, list);
 	}
 
-	// Package mass per file (rank hop leaves by mass, not alpha — matches projectAlluvial)
+	// Package mass per file (rank hop leaves by mass, not alpha - matches projectAlluvial)
 	const filePkgMass = new Map<string, number>();
 	for (const imps of endToImporters.values()) {
 		for (const { file, w } of imps) {
@@ -447,7 +447,7 @@ export function projectMultiHopAlluvial(
 
 	for (const [name, meta] of displayMeta) {
 		if (!usedNames.has(name)) continue;
-		// Hide rail labels — zero-width name, still holds column/layer
+		// Hide rail labels - zero-width name, still holds column/layer
 		const isRail = name.startsWith('\u200b·rail');
 		nodeMeta.set(name, {
 			category: meta.category,

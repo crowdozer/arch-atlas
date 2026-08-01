@@ -5,7 +5,7 @@
  * ## Navigation model
  * `viewStack` is the sole owner of “where we are.” Session `startId` (tree /
  * catalog selection + persist) is **derived** as the nearest file-hub frame on
- * the stack — never updated as a parallel lifecycle.
+ * the stack - never updated as a parallel lifecycle.
  */
 import { HUB_DEFAULT_MAX_DEPTH } from '@core/index.ts';
 

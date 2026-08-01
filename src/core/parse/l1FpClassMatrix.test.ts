@@ -202,7 +202,7 @@ import Layout from '../layouts/Layout.astro';
 				expect(edge?.toKind).toBe('file');
 			},
 			astro: () => {
-				// Same resolve family — relative ?worker strips
+				// Same resolve family - relative ?worker strips
 				const files = new Set(['src/w.ts', 'src/p.astro']);
 				const r = resolveSpecifier(
 					'src/p.astro',
@@ -307,7 +307,7 @@ describe('L1 FP class matrix (admitted languages)', () => {
 });
 
 /**
- * Light lex soup — deterministic comment/string wrappers around import lookalikes.
+ * Light lex soup - deterministic comment/string wrappers around import lookalikes.
  * Cap ~20–40 cases; no fast-check dependency.
  */
 describe('L1 lex soup (light)', () => {

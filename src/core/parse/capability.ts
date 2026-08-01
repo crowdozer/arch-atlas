@@ -1,7 +1,7 @@
 /**
  * Level-1 parse capability classification.
  * Single map of what the import extractor can handle vs display-only / config.
- * Not a language server — extension- and role-based only.
+ * Not a language server - extension- and role-based only.
  */
 
 import type { FileParseKind } from '@core/graph/types.ts';
@@ -61,7 +61,7 @@ export function classifyFileParse(path: string): FileParseInfo {
 		return {
 			importParseable: false,
 			kind: 'config',
-			note: 'Config/manifest — not import-parsed',
+			note: 'Config/manifest - not import-parsed',
 		};
 	}
 	if (UNSUPPORTED_SOURCE_EXT.test(path)) {
@@ -75,7 +75,7 @@ export function classifyFileParse(path: string): FileParseInfo {
 		return {
 			importParseable: false,
 			kind: 'text',
-			note: 'Text asset — no import parser',
+			note: 'Text asset - no import parser',
 		};
 	}
 	return {

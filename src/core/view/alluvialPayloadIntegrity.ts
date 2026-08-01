@@ -2,7 +2,7 @@
  * Aggressive AlluvialPayload integrity oracle (test / czar gate).
  *
  * Test-owned: projectors do not call this at runtime. One shared surface for
- * file-hub, package-hub, module-focus, and catalog smoke — do not fork
+ * file-hub, package-hub, module-focus, and catalog smoke - do not fork
  * projector-named copies.
  *
  * Structure-hard checks only (unique names, endpoints, values, coverage).
@@ -35,7 +35,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 	const pairs = payload.meta?.externalStraightPairs ?? [];
 	const focus = payload.meta?.focus;
 
-	// —— unique node names ————————————————————————————————————————————————
+	// -- unique node names ------------------------------------------------
 	const nameCounts = new Map<string, number>();
 	for (const n of nodes) {
 		nameCounts.set(n.name, (nameCounts.get(n.name) ?? 0) + 1);
@@ -48,7 +48,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 
 	const nameSet = new Set(nameCounts.keys());
 
-	// —— visible category + rank + color + nodeRef coverage ——————————————
+	// -- visible category + rank + color + nodeRef coverage --------------
 	for (const n of nodes) {
 		if (!n.name) {
 			issues.push('empty node name');
@@ -71,7 +71,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 		}
 	}
 
-	// —— link endpoints, self-links, values ——————————————————————————————
+	// -- link endpoints, self-links, values ------------------------------
 	for (const l of data) {
 		const { source, target, value } = l;
 		if (source === target) {
@@ -91,7 +91,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 		// Exactly one node per endpoint name (already enforced by unique names + membership)
 	}
 
-	// —— focus label resolves ————————————————————————————————————————————
+	// -- focus label resolves --------------------------------------------
 	if (!focus || typeof focus.label !== 'string' || !focus.label) {
 		issues.push('meta.focus.label missing');
 	} else if (!nameSet.has(focus.label)) {
@@ -100,7 +100,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 		issues.push(`meta.focus.label is a rail "${focus.label}"`);
 	}
 
-	// —— externalStraightPairs resolve + positive widths ————————————————
+	// -- externalStraightPairs resolve + positive widths ----------------
 	for (const p of pairs) {
 		if (!p.parent || !p.packageName) {
 			issues.push('externalStraightPair missing parent or packageName');
@@ -124,7 +124,7 @@ export function collectAlluvialPayloadIntegrityIssues(
 		}
 	}
 
-	// —— rails: bucket-only in nodeRef; not seedable package/file ids ————
+	// -- rails: bucket-only in nodeRef; not seedable package/file ids ----
 	for (const n of nodes) {
 		if (!isAlluvialRailName(n.name)) continue;
 		const ref = nodeRef[n.name];

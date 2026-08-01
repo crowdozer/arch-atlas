@@ -150,7 +150,7 @@ export function createHubAlluvialFocus(
 			});
 		}
 
-		// All node chips (files, packages, modules) — not External-only
+		// All node chips (files, packages, modules) - not External-only
 		for (const g of holder.querySelectorAll<SVGGElement>('g.node-group')) {
 			if (g.dataset.atlasNodeBound === '1') continue;
 			g.dataset.atlasNodeBound = '1';

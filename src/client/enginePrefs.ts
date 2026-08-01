@@ -3,7 +3,7 @@
  *
  * Stores a map LanguageFamily → LocPrecision. Opt-in is the shared splash
  * **Remember preferences** gate ({@link readPrefsEnabled} / prefsStore).
- * Does **not** cache multi-MB TypeScript compiler blobs — engines still load
+ * Does **not** cache multi-MB TypeScript compiler blobs - engines still load
  * via inject / local classic / CDN as today when Exact/Program is applied.
  */
 import {

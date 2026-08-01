@@ -172,7 +172,7 @@ export function savePersistedSession(session: SessionSnapshot): SaveResult {
 		return {
 			ok: false,
 			reason: quota
-				? 'localStorage full — session not saved (try a smaller ZIP or turn off remember).'
+				? 'localStorage full - session not saved (try a smaller ZIP or turn off remember).'
 				: `Could not save session: ${msg}`,
 		};
 	}

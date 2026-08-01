@@ -2,7 +2,7 @@
  * Imports* (forward / file-deps) multi-instance rings.
  *
  * **Naming trap (keep names):** `addExportRings` builds the **right** side
- * (Imports / Import hop N) — outbound file deps only, multi-instance dual-path.
+ * (Imports / Import hop N) - outbound file deps only, multi-instance dual-path.
  * Packages land later as External sinks. See hub-alluvial-behavior.md / E1.
  */
 
@@ -182,7 +182,7 @@ export function addExportRings(
 			}
 		}
 	}
-	// Non-seed files only on longest path (not edge-expanded) — rare orphans
+	// Non-seed files only on longest path (not edge-expanded) - rare orphans
 	for (const [path, rawD] of dist) {
 		if (rawD < 1 || path === fileId || fileSeed.has(path)) continue;
 		const d = Math.min(rawD, radiusR);
@@ -196,7 +196,7 @@ export function addExportRings(
 	const display = new Map<string, string>(); // ik → label
 	const keptByDist = new Map<number, string[]>(); // dist → paths kept
 	const mass = new Map<string, number>(); // ik → mass
-	/** Mass that reached each path (any instance) — used to build reserved residual. */
+	/** Mass that reached each path (any instance) - used to build reserved residual. */
 	const arrivedByPath = new Map<string, number>();
 	const noteArrived = (path: string, w: number) => {
 		if (w <= 0) return;
@@ -273,7 +273,7 @@ export function addExportRings(
 		for (const f of kept) {
 			const base = pathLabels.get(f) ?? f;
 			// Any second+ hop instance of a path needs a distinct label
-			// (seed extras and multi-hop non-seeds — avoid claimName "· file")
+			// (seed extras and multi-hop non-seeds - avoid claimName "· file")
 			const hasShallower = [...Array(d).keys()].some(
 				(sd) => sd >= 1 && display.has(ik(f, sd)),
 			);
@@ -310,7 +310,7 @@ export function addExportRings(
 	// Reserve package budget first, then **proportional-split** the remainder by
 	// parent→child edge weight (target-loc / exact surface / …). Equal split made
 	// wide barrels (core/index) paint every hop child as 1 while "+N more" ate the
-	// rest — ranking already used edge weight; routing must match. Kirchhoff when
+	// rest - ranking already used edge weight; routing must match. Kirchhoff when
 	// mass can cover packages + files. Scarce dual-spend: if reserve would starve
 	// all file children, route full m to files AND keep package residual so
 	// unit-weight edges still show External packages.
@@ -343,7 +343,7 @@ export function addExportRings(
 			const pkgReserve = takePkgReserve(f, m);
 			let fileMass = m - pkgReserve;
 			// Scarce dual-spend: unit (or tight) mass would leave file children
-			// with nothing after package reserve — route full arrived to files
+			// with nothing after package reserve - route full arrived to files
 			// while residual still claims pkgReserve via residualMass map.
 			if (fileMass === 0 && targets.length > 0 && m > 0) {
 				fileMass = m;
@@ -394,7 +394,7 @@ export function addExportRings(
 	}
 
 	// Packages: one tree entry per path → shallowest kept instance (packages collapse).
-	// Residual = reserved package share min(arrived, rawPkg) — not full arrived —
+	// Residual = reserved package share min(arrived, rawPkg) - not full arrived -
 	// matching reserve-then-route (scarce dual-spend still yields residual > 0).
 	const tree = new Map<string, { lab: string; dist: number }>();
 	const residualMass = new Map<string, number>();
@@ -419,7 +419,7 @@ export function addExportRings(
 		const arrived = arrivedByPath.get(f) ?? 0;
 		if (arrived <= 0) continue;
 		const pkgR = Math.min(arrived, rawPkgWeight(f));
-		// Always record reserved share (0 when no package outs — spend skips it).
+		// Always record reserved share (0 when no package outs - spend skips it).
 		residualMass.set(f, pkgR);
 	}
 	// silence unused longest map when multi-instance fully covers

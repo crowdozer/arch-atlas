@@ -1,6 +1,6 @@
 /**
  * ImportedSurfaceProvider backed by classic TypeScript (`createSourceFile`)
- * over graph.contents (virtual VFS). Host-shared (`src/exact/`) — never imported from pure core.
+ * over graph.contents (virtual VFS). Host-shared (`src/exact/`) - never imported from pure core.
  *
  * Mass policy (v1, honest + coarse):
  * 1. Prefer classic TS AST export spans when `ts.createSourceFile` is available
@@ -225,7 +225,7 @@ export function collectExportSpansFromTs(
 			}
 		}
 
-		// export * as ns from '…' — exportClause.name on namespace export
+		// export * as ns from '…' - exportClause.name on namespace export
 		if (node.exportClause?.name && !node.exportClause.elements) {
 			const n = node.exportClause.name.text;
 			if (n) push(n, 'named', node.pos, node.end);
@@ -286,7 +286,7 @@ export function createTsProgramProvider(
 				astUsed.set(path, true);
 				return astSpans;
 			}
-			// AST available but empty exports — still trust AST (no silent whole-file)
+			// AST available but empty exports - still trust AST (no silent whole-file)
 			if (astSpans) {
 				spanCache.set(path, astSpans);
 				astUsed.set(path, true);

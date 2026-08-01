@@ -1,4 +1,4 @@
-"""Route handlers — depend on services, not models directly."""
+"""Route handlers - depend on services, not models directly."""
 from flask import Flask, jsonify, request
 
 from app.lib.logger import info

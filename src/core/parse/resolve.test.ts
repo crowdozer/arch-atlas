@@ -139,13 +139,13 @@ describe('resolveSpecifier tilde-prefix', () => {
 		expect(r).toEqual({ kind: 'file', path: 'lib/x.ts' });
 	});
 
-	it('returns unresolved for ~/missing — never package ~', () => {
+	it('returns unresolved for ~/missing - never package ~', () => {
 		const r = resolveSpecifier('src/a.ts', '~/missing', emptyFiles, null);
 		expect(r).toEqual({ kind: 'unresolved', specifier: '~/missing' });
 		expect(r).not.toMatchObject({ kind: 'package' });
 	});
 
-	it('returns unresolved for bare ~ — never package ~', () => {
+	it('returns unresolved for bare ~ - never package ~', () => {
 		const r = resolveSpecifier('src/a.ts', '~', emptyFiles, null);
 		expect(r).toEqual({ kind: 'unresolved', specifier: '~' });
 	});

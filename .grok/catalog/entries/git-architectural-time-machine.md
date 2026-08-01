@@ -3,7 +3,7 @@ id: git-architectural-time-machine
 kind: idea
 state: active
 authority: exploratory
-# Partial land: CLI two-ref topology impact (agent-impact.v1) only — not full Evolution
+# Partial land: CLI two-ref topology impact (agent-impact.v1) only - not full Evolution
 provenance: mixed
 
 scope:
@@ -69,24 +69,24 @@ notes but not a host-ready model.
 
 When a host can see `.git`, Arch Atlas gains an **Evolution** dimension:
 
-| Signal | Why it matters |
-| ------ | -------------- |
-| Line-age / survival | Median line age ≠ last-touch; distinguishes stable vs rewritten mass |
-| Churn overlay | Age without activity is ambiguous |
-| Co-change edges | Empirical coupling invisible to imports |
-| Architecture diff (two refs) | PR-scale “shape change,” not only LOC delta |
-| Playback with detected events | Narrative of corridors forming / god-modules emerging |
+| Signal                        | Why it matters                                                       |
+| ----------------------------- | -------------------------------------------------------------------- |
+| Line-age / survival           | Median line age ≠ last-touch; distinguishes stable vs rewritten mass |
+| Churn overlay                 | Age without activity is ambiguous                                    |
+| Co-change edges               | Empirical coupling invisible to imports                              |
+| Architecture diff (two refs)  | PR-scale “shape change,” not only LOC delta                          |
+| Playback with detected events | Narrative of corridors forming / god-modules emerging                |
 
 Static × historical composites (names only; not specs): fossil map, fault map,
 knowledge map, migration map.
 
 Strongest **initial** Git features if prioritized later:
 
-1. Line-age heatmap  
-2. Churn overlay  
-3. Co-change edges  
-4. Architecture diff between two refs  
-5. Event-aware historical playback  
+1. Line-age heatmap
+2. Churn overlay
+3. Co-change edges
+4. Architecture diff between two refs
+5. Event-aware historical playback
 
 ## Reasoning
 
@@ -94,19 +94,19 @@ Strongest **initial** Git features if prioritized later:
   forcing Git into browser ZIP MVP.
 - Dual-host reality: CLI and future VS Code see checkouts; web ZIP often does not.
 - Co-change is one of the highest **differentiating** ideas vs dep viewers, but
-  expensive and host-specific — catalog now so Phase A static work does not
+  expensive and host-specific - catalog now so Phase A static work does not
   invent a dead-end model that cannot accept historical edges later.
 - Epistemic honesty: co-change and blame aggregates are **Inferred** / historical
   evidence, never presented as AST-observed imports.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not |
-| ----------- | ------- |
-| Git required for any heatmap | Blocks Level-1 static heat; wrong capability ladder |
-| Commit-by-commit playback as primary UI | Noise; prefer change-points / tags / releases |
-| Remote history analysis service | Fights local-first default |
-| Shipping Evolution before heatmap/matrix | Higher host cost; weaker on pure ZIP demos |
+| Alternative                              | Why not                                             |
+| ---------------------------------------- | --------------------------------------------------- |
+| Git required for any heatmap             | Blocks Level-1 static heat; wrong capability ladder |
+| Commit-by-commit playback as primary UI  | Noise; prefer change-points / tags / releases       |
+| Remote history analysis service          | Fights local-first default                          |
+| Shipping Evolution before heatmap/matrix | Higher host cost; weaker on pure ZIP demos          |
 
 ## Open questions
 

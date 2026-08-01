@@ -85,7 +85,7 @@ function writeNodeTransformsAndLinks(holder: HTMLElement, bound: NodeEl[]): void
 
 /**
  * Optional hub File vertical centering on a mounted Carbon alluvial.
- * Does not top-pack columns — Carbon keeps its own column anchors.
+ * Does not top-pack columns - Carbon keeps its own column anchors.
  *
  * (Formerly `topPackAlluvialHolder`.)
  */

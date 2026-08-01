@@ -1,4 +1,4 @@
-"""Module a — relative sibling + bare external package."""
+"""Module a - relative sibling + bare external package."""
 from . import b as sibling_b
 from pkg.b import helper
 import requests

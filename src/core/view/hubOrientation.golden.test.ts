@@ -1,10 +1,10 @@
 /**
- * Golden hub orientation / cascade purity — product hard law.
+ * Golden hub orientation / cascade purity - product hard law.
  *
  * Full behavioral matrix (columns, seeds, External sinks, rails, Carbon geometry):
  * `.grok/reference/hub-alluvial-behavior.md`
  * Do **not** weaken these goldens to absorb cascade side effects from unrelated
- * alluvial tweaks — surgical product changes only; update matrix + goldens together.
+ * alluvial tweaks - surgical product changes only; update matrix + goldens together.
  *
  * Catalog of reported failure modes (ship 527e0b9a + 85382541 + errors.ts):
  *
@@ -17,9 +17,9 @@
  * | E | any multi-hop | Import cascade absorbing export candidates (or reverse) | Cascades are pure each way |
  *
  * Hard rules (apply at every hop / any hub focus):
- * 1. **Imports / Import hop k** — only what the focus **imports** (outbound files).
- * 2. **Exports / Export hop k** — only what **imports from** the focus (inbound).
- * 3. **External** — package/unresolved sinks only (never free sources; never files).
+ * 1. **Imports / Import hop k** - only what the focus **imports** (outbound files).
+ * 2. **Exports / Export hop k** - only what **imports from** the focus (inbound).
+ * 3. **External** - package/unresolved sinks only (never free sources; never files).
  *
  * Goldens assert **category membership + graph honesty** (A→B means A imports B),
  * matching Carbon column categories used by the payload builder.
@@ -139,7 +139,7 @@ function directFileDeps(graph: CodeGraph, focusId: string): Set<string> {
 describe('hub orientation hard law (golden catalog)', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-next-complex')));
 
-	describe('Case D — errors.ts consumers are Exports, not Imports', () => {
+	describe('Case D - errors.ts consumers are Exports, not Imports', () => {
 		const focusId = 'src/lib/http/errors.ts';
 		const consumers = [
 			'src/services/inventoryService.ts',
@@ -181,7 +181,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 		});
 	});
 
-	describe('Case C — redis.ts deps Imports, consumers Exports', () => {
+	describe('Case C - redis.ts deps Imports, consumers Exports', () => {
 		const focusId = 'src/lib/redis.ts';
 
 		it('logger (file dep) on Imports; ioredis (package) on External', () => {
@@ -204,7 +204,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 
 		it('post-Carbon: logger under Imports header; ioredis under External (not co-located)', () => {
 			const payload = hub(graph, focusId);
-			// Hub must request left align — Carbon default justify snaps leaf files right
+			// Hub must request left align - Carbon default justify snaps leaf files right
 			expect(payload.options.alluvial.nodeAlignment).toBe('left');
 			const layout = layoutAlluvialLikeCarbon(payload);
 			const loggerLabs = labelsForFile(payload, 'src/lib/logger.ts');
@@ -252,7 +252,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 		});
 	});
 
-	describe('Case A+B — stripe route packages on Imports, not Export hops', () => {
+	describe('Case A+B - stripe route packages on Imports, not Export hops', () => {
 		const focusId = 'app/api/webhooks/stripe/route.ts';
 
 		it('next (focus package import) on External', () => {
@@ -295,7 +295,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 		});
 	});
 
-	describe('Case E — cascade purity membership', () => {
+	describe('Case E - cascade purity membership', () => {
 		it('no Export* file node is a direct file dep of focus (outbound)', () => {
 			const focusId = 'src/lib/redis.ts';
 			const payload = hub(graph, focusId);
@@ -348,7 +348,7 @@ describe('hub orientation hard law (golden catalog)', () => {
 	});
 });
 
-describe('hub orientation hard law — demo-react-simple UserCard', () => {
+describe('hub orientation hard law - demo-react-simple UserCard', () => {
 	const { graph } = indexFiles(walk(path.join(fixturesRoot, 'demo-react-simple')));
 	const focusId = 'src/components/UserCard.tsx';
 

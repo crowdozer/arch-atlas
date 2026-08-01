@@ -227,7 +227,7 @@ describe('fileLongestDistances → hub radius (Phase 1A)', () => {
 		const hop3 = payload!.options.alluvial.nodes.filter(
 			(n) => n.category === 'Import hop 3',
 		);
-		// Before 1A maxHops=2 capped radius — no hop-3 column. After: a/b multi-instances.
+		// Before 1A maxHops=2 capped radius - no hop-3 column. After: a/b multi-instances.
 		expect(hop3.length).toBeGreaterThan(0);
 		// c may still be absent under unit-mass scarce fan-out (Phase 1B)
 	});

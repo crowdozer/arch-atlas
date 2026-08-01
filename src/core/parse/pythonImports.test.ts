@@ -111,7 +111,7 @@ __import__("x")
 });
 
 /**
- * L1 false-positive guards — product-proven extract noise classes.
+ * L1 false-positive guards - product-proven extract noise classes.
  * Each case pairs negatives (comment/string lookalikes) with real imports
  * in the same source (prevents "strip everything" regressions).
  */

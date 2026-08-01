@@ -76,7 +76,7 @@ describe('runCli', () => {
 		const parsed = JSON.parse(logs.join(''));
 		expect(parsed.schema).toBe('arch-atlas.agent-digest.v1');
 		expect(parsed.scope?.exactRequested).toBe(true);
-		// Applied if engine loads; else estimate with warning — either is exit 0
+		// Applied if engine loads; else estimate with warning - either is exit 0
 		if (parsed.analysis.tier === 'exact') {
 			expect(parsed.scope.exactApplied).toBe(true);
 			expect(parsed.analysis.locMetric).toBe('export-surface');
@@ -189,7 +189,7 @@ describe('runCli', () => {
 	});
 
 	it('mermaid --containment default summary shows multi-folder shape', async () => {
-		// agent-artillery-shaped has client/, scripts/, types/ + root files —
+		// agent-artillery-shaped has client/, scripts/, types/ + root files -
 		// summary must orient across folders, not alphabet-starve to one prefix.
 		capture();
 		const code = await runCli([
@@ -237,7 +237,7 @@ describe('runCli', () => {
 
 	it('digest --omit fixtures drops fixture paths from repo-root style tree', async () => {
 		// Walk parent that contains this fixture under fixtures/… only when
-		// invoked on a synthetic layout via fixtureDir's parent — use fixtureDir
+		// invoked on a synthetic layout via fixtureDir's parent - use fixtureDir
 		// itself with omit of src to prove flag wiring (path still indexes).
 		capture();
 		const code = await runCli([
@@ -333,7 +333,7 @@ describe('runCli', () => {
 			/Program/i.test(w),
 		);
 		expect(programWarn).toBe(true);
-		// Soft-fail path: may not load Program — then no program stamps
+		// Soft-fail path: may not load Program - then no program stamps
 		const ig = parsed.analysis?.capabilityDetail?.importGraph;
 		if (ig === 'program') {
 			// L2 ok via existing tsconfig alias (not forced by zero program resolves)

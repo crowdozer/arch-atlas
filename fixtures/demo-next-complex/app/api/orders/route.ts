@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(req: Request) {
 	const session = await requireSession();
 	const body = OrderCreateSchema.parse(await req.json());
-	// API layer calls stripe directly (bypass billing service) — intentional mess
+	// API layer calls stripe directly (bypass billing service) - intentional mess
 	const payment = await chargeCustomer(session.stripeCustomerId, body.totalCents);
 	const order = await createOrder(session.userId, body, payment.id);
 	logger.info('api.orders.create', { orderId: order.id, paymentId: payment.id });

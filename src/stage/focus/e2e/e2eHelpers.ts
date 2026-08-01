@@ -44,7 +44,7 @@ export async function hoverFileApplySeed(
 	}, name);
 }
 
-/** @deprecated use hoverFilePhysical — kept name for call-site clarity in older tests */
+/** @deprecated use hoverFilePhysical - kept name for call-site clarity in older tests */
 export async function hoverFileInBrowser(
 	page: Page,
 	name: string,

@@ -54,7 +54,7 @@ topology/triage blocker; register for a later surgical focus/nav pass.
 On `/?scene=label-collision` (module focus for folder `react`):
 
 1. Initial alluvial band(s) render **full size**.
-2. Click the **package** end `react` / `react · package` (the dep — not the
+2. Click the **package** end `react` / `react · package` (the dep - not the
    local module spine / `react/index.ts` tree path).
 3. Band(s) go **thin**.
 4. Click back toward the module / `react/index.ts` does **not** restore full
@@ -79,12 +79,12 @@ No rewrite of hub mass matrices; surgical focus/lifecycle fix only.
 
 Likely layers (diagnose before patching):
 
-| Hypothesis | Why plausible |
-| ---------- | ------------- |
-| **A. FocusPlan chrome** | Package seed dims/thins bands; clear/remount fails to reset plan when returning to module focus. Orthogonal to projector mass (hub-focus-behavior). |
-| **B. View remount mass** | Drill opens package-hub or reprojects with different weight axis/mass; “back” lands on module with wrong stack frame or partial remount. |
+| Hypothesis                   | Why plausible                                                                                                                                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A. FocusPlan chrome**      | Package seed dims/thins bands; clear/remount fails to reset plan when returning to module focus. Orthogonal to projector mass (hub-focus-behavior).                                                                                                            |
+| **B. View remount mass**     | Drill opens package-hub or reprojects with different weight axis/mass; “back” lands on module with wrong stack frame or partial remount.                                                                                                                       |
 | **C. claimName / seed name** | After 2A, package painted name is `react · package`; sticky or default seed still uses bare `react` (or reverse) so restore hits zero bands / odd geometry. Related to **2B** sticky identity, but user path is module ends → package, not file-hub collision. |
-| **D. Residual / dual paint** | Stage holds previous payload height or Carbon height string while links shrink; polish/height not recomputed on seed clear. |
+| **D. Residual / dual paint** | Stage holds previous payload height or Carbon height string while links shrink; polish/height not recomputed on seed clear.                                                                                                                                    |
 
 **Triage priority:** low. Topology packets (1A/1B/2A) remain closed for this
 symptom. Do not fold into Phase 2B unless repro proves painted-label sticky is
@@ -102,12 +102,12 @@ the same owner; 2B is file-hub → package-hub remount, this may be module-only.
 
 ## Rejected alternatives + why
 
-1. **Retcon module-focus mass law to “always full height under focus”** — hides
+1. **Retcon module-focus mass law to “always full height under focus”** - hides
    whether the bug is focus chrome vs projection; focus law says do not rewrite
    geometry to green hover.
-2. **Treat as Phase 2A regression and reopen claimName** — 2A fixed self-links;
+2. **Treat as Phase 2A regression and reopen claimName** - 2A fixed self-links;
    this is restore/height after click, not initial identity overwrite.
-3. **Ignore because “minor”** — still confuses users on the insight scene meant
+3. **Ignore because “minor”** - still confuses users on the insight scene meant
    to prove collision safety; catalog so it is not lost between triage ships.
 
 ## Open questions

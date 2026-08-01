@@ -89,7 +89,7 @@ describe('codebreaker hub focus (integration)', () => {
 			),
 		).toBe(true);
 		expect(plan.activeLabels.has(HOOK)).toBe(false);
-		// deps hang off primary instance — not activated via #N id alias
+		// deps hang off primary instance - not activated via #N id alias
 		expect(plan.activeLabels.has(REDUCER)).toBe(false);
 
 		for (const sib of [TIMER, FAQ, GAME, SEQ, STATUS]) {
@@ -112,7 +112,7 @@ describe('codebreaker hub focus (integration)', () => {
 		const plan = planFocus(g, { kind: 'file', name: HOOK });
 		expect(plan.activeLabels.has(HOOK)).toBe(true);
 		expect(plan.activeLabels.has(INDEX)).toBe(true);
-		// hop consumers import #N, not primary — stay dim under instance-local
+		// hop consumers import #N, not primary - stay dim under instance-local
 		for (const sib of [BUFFER, TIMER, FAQ, GAME, SEQ, STATUS]) {
 			expect(plan.activeLabels.has(sib), `hop consumer ${sib}`).toBe(false);
 		}

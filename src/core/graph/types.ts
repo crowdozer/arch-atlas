@@ -1,5 +1,5 @@
 /**
- * Level-1 CodeGraph types — durable system of record for Arch Atlas MVP.
+ * Level-1 CodeGraph types - durable system of record for Arch Atlas MVP.
  * Views and catalog are projections over this model.
  */
 
@@ -40,7 +40,7 @@ export type GraphNode = FileNode | PackageNode;
 
 /**
  * Local names introduced by an import clause (Level-1 parse; not type-checked).
- * Used for estimate callsites / evidence — not for exact tree-shaken surface.
+ * Used for estimate callsites / evidence - not for exact tree-shaken surface.
  */
 export type ImportBinding =
 	| { kind: 'named'; imported: string; local: string }
@@ -270,7 +270,7 @@ export type CatalogFileLoc = {
 	surfaceLoc?: number;
 	/**
 	 * Thin L3 (Program path only): count of checker export symbols for this file.
-	 * Not publicMemberLoc / not full API surface — optional additive stamp.
+	 * Not publicMemberLoc / not full API surface - optional additive stamp.
 	 */
 	exportSymbolCount?: number;
 	outDegree: number;
@@ -309,7 +309,7 @@ export type SpineFormula =
 
 /**
  * Cross-cutting dependency plane: high direct fan-in + importer module diversity.
- * Observed import graph + stable path folders (topFolder) — not a basename classifier.
+ * Observed import graph + stable path folders (topFolder) - not a basename classifier.
  */
 export type CatalogSpine = {
 	id: string;
@@ -526,7 +526,7 @@ export type AlluvialPayload = {
 		tooltip: { enabled: boolean };
 	};
 	meta: {
-		/** File focus only — start file path. */
+		/** File focus only - start file path. */
 		startId?: string;
 		focus: AlluvialFocus;
 		/** Display node name → kind + id for drill resolution. */
@@ -563,7 +563,7 @@ export type AlluvialPayload = {
 		bandSort?: 'name' | 'flow' | 'flow-target' | 'node';
 		/**
 		 * Whole-file LOC per display name (files only; non-files omitted or 0).
-		 * Stage rewrites Carbon `(value)` → `(↑|↓flow, n)`. Estimate LOC —
+		 * Stage rewrites Carbon `(value)` → `(↑|↓flow, n)`. Estimate LOC -
 		 * not Exact export-surface.
 		 */
 		labelLoc?: Record<string, number>;

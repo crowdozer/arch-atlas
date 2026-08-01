@@ -6,7 +6,7 @@
  * - Optional thin L3: per-file `exportSymbolCount` via checker.getExportsOfModule
  *
  * Soft-fail: callers catch; this module throws only on hard programmer errors.
- * Pure core is not imported for createProgram — only graph types + clone/patch.
+ * Pure core is not imported for createProgram - only graph types + clone/patch.
  */
 
 import type { CodeGraph, ImportEdge } from '@core/graph/types.ts';

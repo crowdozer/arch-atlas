@@ -13,7 +13,7 @@ body.cds--g100 {
   font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
-/* UI shell — zinc header with teal product name.
+/* UI shell - zinc header with teal product name.
  * Carbon cds-header defaults to position:fixed (covers the next sibling).
  * Keep it in document flow so the workspace sub-bar (Clear session) stays visible.
  */
@@ -27,7 +27,7 @@ cds-header.atlas-header,
   --cds-text-secondary: #a1a1aa;
   --cds-link-primary: #fafafa;
   --cds-link-primary-hover: #2dd4bf;
-  /* Carbon :host(cds-header) is position:fixed + inset 0 — must beat shadow cascade */
+  /* Carbon :host(cds-header) is position:fixed + inset 0 - must beat shadow cascade */
   position: relative !important;
   inset: auto !important;
   z-index: 10;
@@ -77,7 +77,7 @@ cds-header-name.ui-header-name::part(prefix) {
   color: var(--cds-text-primary, #fafafa);
 }
 
-/* Tiles — Carbon layer surface, square corners (g100 / product shell) */
+/* Tiles - Carbon layer surface, square corners (g100 / product shell) */
 .ui-tile,
 cds-tile.ui-tile {
   display: block;
@@ -87,11 +87,22 @@ cds-tile.ui-tile {
   color: var(--cds-text-primary, #fafafa);
 }
 
-.ui-tile--padding-sm { padding: 0.75rem; }
-.ui-tile--padding-md { padding: 1rem; }
-.ui-tile--padding-lg { padding: 1.25rem; }
-.ui-tile--dashed { border-style: dashed; border-color: var(--cds-layer-03, #3f3f46); }
-.ui-tile--muted { opacity: 0.65; }
+.ui-tile--padding-sm {
+  padding: 0.75rem;
+}
+.ui-tile--padding-md {
+  padding: 1rem;
+}
+.ui-tile--padding-lg {
+  padding: 1.25rem;
+}
+.ui-tile--dashed {
+  border-style: dashed;
+  border-color: var(--cds-layer-03, #3f3f46);
+}
+.ui-tile--muted {
+  opacity: 0.65;
+}
 
 .ui-tile__label {
   font-size: 0.7rem;
@@ -102,7 +113,7 @@ cds-tile.ui-tile {
 }
 
 /*
- * Tags — host-level fixes for Carbon cds-tag.
+ * Tags - host-level fixes for Carbon cds-tag.
  * Default sm height (1.125rem) clips label glyphs; open the host box so text
  * sits clear of the pill radius everywhere tags appear (splash, catalog, subbar).
  */
@@ -124,17 +135,21 @@ cds-tag {
   vertical-align: middle;
 }
 
-/* Product export yellow (Carbon has no type=yellow) — outbound direction chips */
+/* Product export yellow (Carbon has no type=yellow) - outbound direction chips */
 cds-tag.ui-tag--yellow {
-  background-color: color-mix(in srgb, var(--atlas-export, #eab308) 28%, #000) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--atlas-export, #eab308) 28%,
+    #000
+  ) !important;
   color: var(--atlas-export, #eab308) !important;
 }
 
 /* Carbon charts on zinc */
 .ui-carbon-chart .cds--cc--chart-wrapper,
 .ui-carbon-chart .cds--chart-holder,
-.ui-carbon-chart [class*='chart-holder'],
-.ui-carbon-chart [class*='chart-wrapper'] {
+.ui-carbon-chart [class*="chart-holder"],
+.ui-carbon-chart [class*="chart-wrapper"] {
   background: transparent !important;
 }
 
@@ -153,7 +168,7 @@ cds-tag.ui-tag--yellow {
 
 /* Beat Carbon theme absolute-layer flip on the chart holder itself. */
 .ui-carbon-chart .cds--chart-holder,
-.ui-carbon-chart [class*='chart-holder'] {
+.ui-carbon-chart [class*="chart-holder"] {
   --cds-layer-01-absolute: #e4e4e7;
   --cds-layer-inverse-absolute: #18181b;
 }
@@ -190,7 +205,7 @@ cds-tag.ui-tag--yellow {
    * Zinc-900 chip under light labels. Do NOT use --cds-layer-inverse-absolute:
    * Carbon g100 sets that to #ffffff on .cds--chart-holder[data-carbon-theme=g100]
    * (white chip + black text). Chart also forces --cds-layer-01 transparent, so
-   * shell layer tokens are unusable here — pin zinc-900 explicitly.
+   * shell layer tokens are unusable here - pin zinc-900 explicitly.
    */
   fill: rgb(24 24 27 / 0.92) !important;
   stroke: none;
@@ -211,7 +226,10 @@ cds-tag.ui-tag--yellow {
   stroke-width: 2.5px !important;
 }
 
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-file-spine rect.node-text-bg {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-file-spine
+  rect.node-text-bg {
   fill: color-mix(
     in srgb,
     var(--atlas-select-deep, #5b21b6) 92%,
@@ -228,7 +246,7 @@ cds-tag.ui-tag--yellow {
 
 /*
  * Drill-target label (hover): cyan chip for the row a click would open.
- * Exclude active File spine — purple selection wins there.
+ * Exclude active File spine - purple selection wins there.
  */
 .ui-carbon-chart
   .cds--cc--alluvial
@@ -287,10 +305,13 @@ cds-tag.ui-tag--yellow {
   fill: none !important;
 }
 .ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail text.node-text,
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-rail g[id*='alluvial-node-title'] {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-rail
+  g[id*="alluvial-node-title"] {
   display: none !important;
 }
-/* Import free-source scaffold ribbons only — not export out-rail mass.
+/* Import free-source scaffold ribbons only - not export out-rail mass.
  * Bands are filled ribbons (mass in fill); zero fill-opacity + stroke-opacity. */
 .ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-pad-band,
 .ui-carbon-chart .cds--cc--alluvial path.link.atlas-alluvial-rail-link {
@@ -301,7 +322,7 @@ cds-tag.ui-tag--yellow {
 }
 
 /*
- * Hub terminators — contrast with column family (not same-family fill):
+ * Hub terminators - contrast with column family (not same-family fill):
  * - .atlas-alluvial-terminator = **yellow** wrap → Imports* file leaves (cyan side)
  * - .atlas-alluvial-package-terminator = **purple** wrap → External packages (node_modules)
  * - .atlas-alluvial-export-terminator = **cyan** wrap → Exports* free sources (yellow side)
@@ -317,41 +338,62 @@ cds-tag.ui-tag--yellow {
   font-weight: 600 !important;
   fill: var(--atlas-export-term-text, #fde68a) !important;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-terminator rect.node-text-bg {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-terminator
+  rect.node-text-bg {
   stroke: var(--atlas-export-term-bg-stroke, #ca8a04) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }
 
 /* Cyan wrap on yellow export columns (reverse free sources) */
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-export-terminator
+  rect.node {
   stroke: var(--atlas-import-term-stroke, #22d3ee) !important;
   stroke-width: 2.5px !important;
   stroke-opacity: 1 !important;
   paint-order: stroke fill;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator text.node-text {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-export-terminator
+  text.node-text {
   font-weight: 600 !important;
   fill: var(--atlas-import-term-text, #a5f3fc) !important;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-export-terminator rect.node-text-bg {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-export-terminator
+  rect.node-text-bg {
   stroke: var(--atlas-import-term-bg-stroke, #06b6d4) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
 }
 
 /* Purple wrap for package / node_modules terminators (External leaves) */
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-package-terminator
+  rect.node {
   stroke: var(--atlas-select-strong, #a78bfa) !important;
   stroke-width: 2.5px !important;
   stroke-opacity: 1 !important;
   paint-order: stroke fill;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator text.node-text {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-package-terminator
+  text.node-text {
   font-weight: 600 !important;
   fill: var(--atlas-select, #c4b5fd) !important;
 }
-.ui-carbon-chart .cds--cc--alluvial .atlas-alluvial-package-terminator rect.node-text-bg {
+.ui-carbon-chart
+  .cds--cc--alluvial
+  .atlas-alluvial-package-terminator
+  rect.node-text-bg {
   stroke: var(--atlas-select-strong, #a78bfa) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 0.9 !important;
@@ -370,14 +412,14 @@ cds-tag.ui-tag--yellow {
  * Label focus: client sets opacity on title groups during ribbon/node hover
  * (Carbon only dims path.link). Smooth the transition. Port of Sentinel.
  */
-.ui-carbon-chart .cds--cc--alluvial g[id*='alluvial-node-title'] {
+.ui-carbon-chart .cds--cc--alluvial g[id*="alluvial-node-title"] {
   transition: opacity 120ms ease;
 }
 
 /*
  * Hub focus class contract (SoR: .grok/reference/hub-focus-behavior.md §5).
  * Holder gets .ui-alluvial-label-dimming while a FocusPlan is active.
- * Classes applied by src/stage/focus/focusApply.ts — not Carbon sourceLinks.
+ * Classes applied by src/stage/focus/focusApply.ts - not Carbon sourceLinks.
  *
  * | Target        | Focus                              | Dim                                      |
  * |---------------|------------------------------------|------------------------------------------|
@@ -386,14 +428,16 @@ cds-tag.ui-tag--yellow {
  * | straighten    | .atlas-alluvial-external-straight--focus | non-focus straighten 0.3           |
  * | pad-band      | never focus                        | undrawn (pointer-events none)            |
  *
- * No .ui-alluvial-external-pkg-focus blanket tree-dim — package reverse-path
+ * No .ui-alluvial-external-pkg-focus blanket tree-dim - package reverse-path
  * plan lights the correct file bands (LogicalFocusGraph).
  */
 /* External straighten: filled ribbons (pointer-events on fill area) */
 .ui-carbon-chart path.link.atlas-alluvial-external-straight,
 .ui-carbon-chart__holder path.link.atlas-alluvial-external-straight {
   pointer-events: fill;
-  transition: fill-opacity 120ms ease, stroke-opacity 120ms ease;
+  transition:
+    fill-opacity 120ms ease,
+    stroke-opacity 120ms ease;
 }
 .ui-alluvial-label-dimming
   path.link.atlas-alluvial-external-straight:not(
@@ -411,14 +455,16 @@ cds-tag.ui-tag--yellow {
 /* Label chips: class-driven so Carbon cannot re-brighten unfocused titles */
 .ui-alluvial-label-dimming
   g.node-group:not(.ui-alluvial-label-focus)
-  g[id*='alluvial-node-title'] {
+  g[id*="alluvial-node-title"] {
   opacity: 0.3 !important;
 }
-.ui-alluvial-label-dimming g.node-group.ui-alluvial-label-focus g[id*='alluvial-node-title'] {
+.ui-alluvial-label-dimming
+  g.node-group.ui-alluvial-label-focus
+  g[id*="alluvial-node-title"] {
   opacity: 1 !important;
 }
 
-/* Carbon file→file ribbons — FocusPlan both-ends / reverse-path subset.
+/* Carbon file→file ribbons - FocusPlan both-ends / reverse-path subset.
  * Mass is fill (rewriteLinkRibbons); keep stroke-opacity for residual stroke. */
 .ui-alluvial-label-dimming path.link.atlas-alluvial-carbon-link-dim {
   fill-opacity: 0.3 !important;
@@ -429,7 +475,7 @@ cds-tag.ui-tag--yellow {
   stroke-opacity: 0.95 !important;
 }
 
-/* Back is now cds-button ghost — keep layout + hide when at root */
+/* Back is now cds-button ghost - keep layout + hide when at root */
 .atlas-alluvial-back {
   margin-top: 0.15rem;
   flex-shrink: 0;
@@ -439,7 +485,7 @@ cds-tag.ui-tag--yellow {
   display: none !important;
 }
 
-/* —— Workspace shell: left drawer + full-bleed stage —— */
+/* -- Workspace shell: left drawer + full-bleed stage -- */
 /* Base is flex when visible; .hidden (two-class) beats Tailwind .hidden alone
    and the old always-none rule that blocked upload reveal. */
 .atlas-workspace {
@@ -588,7 +634,7 @@ cds-search.atlas-tree-search {
   gap: 0.45rem;
 }
 
-/* Exact AtlasView.type — softer than the uppercase title */
+/* Exact AtlasView.type - softer than the uppercase title */
 .atlas-stage__view-type {
   font-size: 0.7rem;
   font-weight: 400;
@@ -652,7 +698,7 @@ cds-search.atlas-tree-search {
 
 /*
  * Carbon form-items default to flex: 1 1 auto + column layout.
- * Fixed field widths — sized for honest labels (Export surface / Exact …)
+ * Fixed field widths - sized for honest labels (Export surface / Exact …)
  * so selected text is not clipped in the closed trigger.
  */
 cds-dropdown.atlas-stage__weight,
@@ -694,7 +740,7 @@ cds-dropdown.atlas-stage__precision,
   align-self: center;
 }
 
-/* Compact segmented Drill|Inspect — native <button> so aria-pressed is on the focusable control */
+/* Compact segmented Drill|Inspect - native <button> so aria-pressed is on the focusable control */
 .atlas-stage__mode {
   display: inline-flex;
   flex: 0 0 auto;
@@ -753,7 +799,7 @@ button.atlas-stage__mode-btn:focus-visible {
   z-index: 1;
 }
 
-/* Active selection — purple (house selection accent, not brand teal) */
+/* Active selection - purple (house selection accent, not brand teal) */
 button.atlas-stage__mode-btn.is-active {
   background: var(--atlas-select-soft, rgb(139 92 246 / 0.18));
   color: var(--atlas-select-strong, #a78bfa);
@@ -776,7 +822,7 @@ cds-dropdown.atlas-stage__precision {
 }
 
 /* Inspect modal: ensure header/body padding (Carbon host styles can miss light DOM) */
-/* Unavailable feature alert — thinner than sm, more airy padding */
+/* Unavailable feature alert - thinner than sm, more airy padding */
 .atlas-unavailable-modal::part(dialog) {
   max-inline-size: 18rem; /* ~288px; Carbon xs is still wide on some builds */
   inline-size: min(18rem, calc(100vw - 2rem));
@@ -985,7 +1031,7 @@ cds-inline-notification.atlas-inspect__banner {
   font-variant-numeric: tabular-nums;
 }
 
-/* Non-direction path chips (surface note, symbol) — not form markers */
+/* Non-direction path chips (surface note, symbol) - not form markers */
 .atlas-inspect__meta-chip {
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -994,9 +1040,9 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 /*
- * Import/export form markers — Carbon status triangles (ui-status-indicator).
+ * Import/export form markers - Carbon status triangles (ui-status-indicator).
  * Glyphs point up; rotate so import → right (inbound), export → left (outbound).
- * Colors: brand teal import / alluvial yellow export (direction tokens — not status-*).
+ * Colors: brand teal import / alluvial yellow export (direction tokens - not status-*).
  */
 .atlas-inspect__form-tri.ui-status-indicator {
   flex-shrink: 0;
@@ -1018,7 +1064,7 @@ cds-inline-notification.atlas-inspect__banner {
 }
 
 .atlas-inspect__form-tri--export {
-  /* Alluvial export yellow (direction token — not status-yellow) */
+  /* Alluvial export yellow (direction token - not status-yellow) */
   --ui-status-color: var(--atlas-export, #eab308);
   color: var(--atlas-export, #eab308);
 }
@@ -1085,7 +1131,7 @@ cds-inline-notification.atlas-inspect__banner {
 
 /*
  * min-height: auto (flex default) lets Carbon’s SVG content force the holder
- * taller than the stage — chart runs off the bottom of the screen. Force
+ * taller than the stage - chart runs off the bottom of the screen. Force
  * shrink-to-fit; chart height is set in px from available stage space.
  *
  * Padding clears hanging entry labels (config.ts (186), + N more) without
@@ -1104,8 +1150,8 @@ cds-inline-notification.atlas-inspect__banner {
 
 .atlas-stage__holder .cds--chart-holder,
 .atlas-stage__holder .cds--cc--chart-wrapper,
-.atlas-stage__holder [class*='chart-holder'],
-.atlas-stage__holder [class*='chart-wrapper'] {
+.atlas-stage__holder [class*="chart-holder"],
+.atlas-stage__holder [class*="chart-wrapper"] {
   max-height: 100%;
   /* Let labels paint into holder padding; stage still clips viewport */
   overflow: visible;
@@ -1288,11 +1334,11 @@ cds-inline-notification.atlas-inspect__banner {
   flex: 1;
 }
 
-/* File LOC caption after name — cyan, caption size, readable (not greyed out) */
+/* File LOC caption after name - cyan, caption size, readable (not greyed out) */
 .atlas-tree__loc {
   flex-shrink: 0;
   margin-left: 0.15rem;
-  font-size: 0.6875rem; /* ~11px — slightly under tree 13px body */
+  font-size: 0.6875rem; /* ~11px - slightly under tree 13px body */
   line-height: 1.2;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -1319,7 +1365,7 @@ cds-inline-notification.atlas-inspect__banner {
   font-variant-numeric: tabular-nums;
 }
 
-/* Catalog list tiles — square corners (match ui-tile / Carbon shell) */
+/* Catalog list tiles - square corners (match ui-tile / Carbon shell) */
 .atlas-list-btn {
   display: block;
   width: 100%;
@@ -1468,7 +1514,7 @@ cds-inline-notification.atlas-warning-notification {
   color: var(--cds-text-placeholder, #71717a);
 }
 
-/* Spine formula toolbar — single row: dropdown + ghost info (no field label) */
+/* Spine formula toolbar - single row: dropdown + ghost info (no field label) */
 .atlas-spine-toolbar {
   display: flex;
   flex-wrap: nowrap;
@@ -1504,7 +1550,7 @@ cds-button.atlas-spine-info-btn,
   color: var(--cds-border-interactive, #2dd4bf);
   align-self: center;
 }
-/* Ghost label padding is start-heavy (icon slot reserved on the end) — center the glyph */
+/* Ghost label padding is start-heavy (icon slot reserved on the end) - center the glyph */
 cds-button.atlas-spine-info-btn::part(button) {
   box-sizing: border-box;
   display: inline-flex;
@@ -1520,7 +1566,7 @@ cds-button.atlas-spine-info-btn::part(button) {
   letter-spacing: 0;
 }
 
-/* Spine formula help modal — match inspect/unavailable air + zinc type */
+/* Spine formula help modal - match inspect/unavailable air + zinc type */
 .atlas-spine-formula-modal cds-modal-header,
 .atlas-spine-formula-modal__header {
   display: block;
@@ -1578,7 +1624,7 @@ cds-button.atlas-spine-info-btn::part(button) {
   color: var(--cds-text-placeholder, #71717a);
 }
 
-/* Carbon accordion in drawer — g100 + zinc shell */
+/* Carbon accordion in drawer - g100 + zinc shell */
 .atlas-catalog-accordion {
   width: 100%;
   --cds-layer: #18181b;
@@ -1619,7 +1665,7 @@ cds-button.atlas-spine-info-btn::part(button) {
   }
 }
 
-/* Carbon file uploader drop area — zinc layer + teal focus */
+/* Carbon file uploader drop area - zinc layer + teal focus */
 .atlas-drop-host,
 .atlas-file-uploader,
 cds-file-uploader.atlas-file-uploader {
@@ -1709,7 +1755,7 @@ cds-checkbox.atlas-persist {
   min-width: 0;
 }
 
-/* Built-in demo cards — button host, Carbon tile layer (square, no radius) */
+/* Built-in demo cards - button host, Carbon tile layer (square, no radius) */
 .atlas-demo__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1739,7 +1785,9 @@ cds-checkbox.atlas-persist {
   cursor: pointer;
   font: inherit;
   overflow: visible;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 
 .atlas-demo__card:hover {
@@ -1798,7 +1846,7 @@ cds-checkbox.atlas-persist {
   font-weight: 600;
 }
 
-/* List empty states — muted Carbon secondary text */
+/* List empty states - muted Carbon secondary text */
 .atlas-catalog .text-xs.text-zinc-600 {
   color: var(--cds-text-secondary, #71717a);
 }

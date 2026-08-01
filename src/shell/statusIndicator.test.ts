@@ -17,7 +17,7 @@ describe('statusIndicator geometry (Sentinel re-home)', () => {
 		});
 	});
 
-	it('indication cautious = hollow yellow diamond (WATCH — locked)', () => {
+	it('indication cautious = hollow yellow diamond (WATCH - locked)', () => {
 		expect(geometryForAxisKind('indication', 'cautious')).toEqual({
 			shape: 'diamond',
 			variant: 'outline',

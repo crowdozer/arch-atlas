@@ -3,7 +3,7 @@ import { query } from '../../../src/lib/db/client';
 import { getRedis } from '../../../src/lib/redis';
 import { logger } from '../../../src/lib/logger';
 
-/** Leftover Pages Router route — still imported by ops tooling. */
+/** Leftover Pages Router route - still imported by ops tooling. */
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
 	const redis = getRedis();
 	try {

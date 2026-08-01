@@ -10,19 +10,19 @@ Agents: start here, then load playbooks from the preamble.
 1. **Orientation / status:** [`.grok/pm/NOW.md`](.grok/pm/NOW.md) (now-map SoR).
    Do not reconstruct from README Status, AGENTS residuals, or catalog tours.
    Program order: [`.grok/reference/roadmap.md`](.grok/reference/roadmap.md).
-2. [README.md](README.md) — what this is and how to run it
-3. [.grok/reference/scope.md](.grok/reference/scope.md) — product intent, draft contracts
-4. [.grok/reference/conversation.md](.grok/reference/conversation.md) — design conversation (source vision)
-5. Project overlay: [.grok/skills/_shared/preamble.md](.grok/skills/_shared/preamble.md)
-6. **Hub alluvial work (file-hub):** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) — column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
-7. **Package-hub geometry:** [.grok/reference/hub-package-hub-behavior.md](.grok/reference/hub-package-hub-behavior.md) — Export hop\* → Exports → External; package open is package-hub (not file-hub on primary importer)
-8. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) — try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
-9. **Hub focus / highlight:** [.grok/reference/hub-focus-behavior.md](.grok/reference/hub-focus-behavior.md) — LogicalFocusGraph FocusPlan (band-only, file reverse∪forward, package reverse-path + sticky open seed); selection chrome ≠ FocusPlan; orthogonal to geometry matrices
-10. **Analysis protocol (canonical multi-host L0–L4):** [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md) — one IR, capability stamps, ship phases; catalog [analysis-protocol-multi-host](.grok/catalog/entries/analysis-protocol-multi-host.md)
-11. **Analysis honesty (Estimate / Exact / VS Code today):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) — do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
-12. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) — two-ref import-graph impact; read order for large JSON; ship research / czar recipes
-13. **Cycle scan (circular imports):** [.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md) — `digest` `catalog.cycles` enumerates SCCs; `mermaid` is structure + honesty comments (not full audit)
-14. **Color / Carbon tokens:** [.grok/reference/carbon-tokens.md](.grok/reference/carbon-tokens.md) — zinc+teal brand (not emerald), purple selection, status CDS presets, g100 → bridge → `--atlas-*` → `chartPalette`
+2. [README.md](README.md) - what this is and how to run it
+3. [.grok/reference/scope.md](.grok/reference/scope.md) - product intent, draft contracts
+4. [.grok/reference/conversation.md](.grok/reference/conversation.md) - design conversation (source vision)
+5. Project overlay: [.grok/skills/\_shared/preamble.md](.grok/skills/_shared/preamble.md)
+6. **Hub alluvial work (file-hub):** [.grok/reference/hub-alluvial-behavior.md](.grok/reference/hub-alluvial-behavior.md) - column / mass matrix; **surgical fixes only** (do not rewrite the matrix to match cascade drift)
+7. **Package-hub geometry:** [.grok/reference/hub-package-hub-behavior.md](.grok/reference/hub-package-hub-behavior.md) - Export hop\* → Exports → External; package open is package-hub (not file-hub on primary importer)
+8. **Hub alluvial field notes:** [.grok/reference/hub-alluvial-field-notes.md](.grok/reference/hub-alluvial-field-notes.md) - try/fail log (Carbon geometry, pads, straighten, terminators); diagnose before retconning
+9. **Hub focus / highlight:** [.grok/reference/hub-focus-behavior.md](.grok/reference/hub-focus-behavior.md) - LogicalFocusGraph FocusPlan (band-only, file reverse∪forward, package reverse-path + sticky open seed); selection chrome ≠ FocusPlan; orthogonal to geometry matrices
+10. **Analysis protocol (canonical multi-host L0–L4):** [.grok/reference/analysis-protocol.md](.grok/reference/analysis-protocol.md) - one IR, capability stamps, ship phases; catalog [analysis-protocol-multi-host](.grok/catalog/entries/analysis-protocol-multi-host.md)
+11. **Analysis honesty (Estimate / Exact / VS Code today):** [.grok/reference/analysis-honesty.md](.grok/reference/analysis-honesty.md) - do not claim LSP or bundler tree-shake; CLI digest Exact default is export-surface only (`surfaceLoc` ≠ public API)
+12. **Impact CLI (topology delta):** [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) - two-ref import-graph impact; read order for large JSON; ship research / czar recipes
+13. **Cycle scan (circular imports):** [.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md) - `digest` `catalog.cycles` enumerates SCCs; `mermaid` is structure + honesty comments (not full audit)
+14. **Color / Carbon tokens:** [.grok/reference/carbon-tokens.md](.grok/reference/carbon-tokens.md) - zinc+teal brand (not emerald), purple selection, status CDS presets, g100 → bridge → `--atlas-*` → `chartPalette`
 
 ## Role skills
 
@@ -30,36 +30,36 @@ Agents: start here, then load playbooks from the preamble.
 `~/git-personal/dotfiles/grok/skills/` via `~/.grok/config.toml` `[skills].paths`.
 This repo does **not** fork `engineer` / `czar` / `docu` / `research` / `ship`.
 
-| Command | Role |
-| ------- | ---- |
-| `/engineer` | Implementation |
-| `/czar` | Review branch, test gates, recommend merge |
-| `/docu` | Docs only — reference, overlays, README, AGENTS |
-| `/research` | Read-only codebase questions |
-| `/ship` | End-to-end: research → plan → engineer → czar → docs |
-| `/catalog` | Register design memory under `.grok/catalog/entries/` |
-| `/redeploy` | Optional Vercel no-op bump |
+| Command     | Role                                                  |
+| ----------- | ----------------------------------------------------- |
+| `/engineer` | Implementation                                        |
+| `/czar`     | Review branch, test gates, recommend merge            |
+| `/docu`     | Docs only - reference, overlays, README, AGENTS       |
+| `/research` | Read-only codebase questions                          |
+| `/ship`     | End-to-end: research → plan → engineer → czar → docs  |
+| `/catalog`  | Register design memory under `.grok/catalog/entries/` |
+| `/redeploy` | Optional Vercel no-op bump                            |
 
-| Overlay (repo) | Purpose |
-| -------------- | ------- |
-| [.grok/skills/_shared/preamble.md](.grok/skills/_shared/preamble.md) | Stack, contracts, playbook index |
-| [.grok/skills/git-commits.md](.grok/skills/git-commits.md) | Commit **scopes** for this repo |
+| Overlay (repo)                                                        | Purpose                          |
+| --------------------------------------------------------------------- | -------------------------------- |
+| [.grok/skills/\_shared/preamble.md](.grok/skills/_shared/preamble.md) | Stack, contracts, playbook index |
+| [.grok/skills/git-commits.md](.grok/skills/git-commits.md)            | Commit **scopes** for this repo  |
 
 Commits: [.grok/skills/git-commits.md](.grok/skills/git-commits.md)
 
 ## Scripts (common)
 
-| Command | Purpose |
-| ------- | ------- |
-| `npm run dev` | Astro dev server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm test` | Vitest core unit tests |
-| `npm run astro` | Astro CLI passthrough |
-| `npm run atlas -- <cmd> …` | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (default topFolder rollup + file SCC `%%` honesty; `--containment` for indexed path hierarchy, summary default / `--tree-full` full leaves). |
-| `npm run atlas -- mermaid <dir\|zip> …` | Pasteable Mermaid structure graph: default `flowchart LR` dependency rollup with cycle honesty; opt-in `--containment` emits `flowchart TB` indexed folders/files with no edges/SCCs (default **summary** presentation; `--tree-full` for full leaves with balanced `--limit`). **Not** the primary cycle enumerator — see cycles cheatsheet |
-| `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md) |
-| `arch-atlas` (bin) | Same CLI via `package.json` bin → `src/cli/bin.mjs` |
+| Command                                                 | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                                           | Astro dev server                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `npm run build`                                         | Production build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `npm run preview`                                       | Preview production build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `npm test`                                              | Vitest core unit tests                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `npm run astro`                                         | Astro CLI passthrough                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `npm run atlas -- <cmd> …`                              | Agent CLI lens (`digest` / `tree` / `file` / `mermaid` / `impact`; see README). **Digest defaults Exact** export-surface mass; optional **`--program`** / web Precision **Program** (worker) createProgram (`--estimate` opt-out; `--exact`/`--exact-local` fail-closed). Tree default is summary (`--tree-full` for leaves). Mermaid is plain flowchart text (default topFolder rollup + file SCC `%%` honesty; `--containment` for indexed path hierarchy, summary default / `--tree-full` full leaves). |
+| `npm run atlas -- mermaid <dir\|zip> …`                 | Pasteable Mermaid structure graph: default `flowchart LR` dependency rollup with cycle honesty; opt-in `--containment` emits `flowchart TB` indexed folders/files with no edges/SCCs (default **summary** presentation; `--tree-full` for full leaves with balanced `--limit`). **Not** the primary cycle enumerator - see cycles cheatsheet                                                                                                                                                               |
+| `npm run atlas -- impact . --base <ref> --head <ref> …` | Two-ref import-topology impact (`arch-atlas.agent-impact.v1`); cheatsheet: [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md)                                                                                                                                                                                                                                                                                                                                                    |
+| `arch-atlas` (bin)                                      | Same CLI via `package.json` bin → `src/cli/bin.mjs`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### Impact / atlas workflow (architecture-affecting ships)
 
@@ -68,26 +68,26 @@ Global role pack wires arch-atlas (soft-fail if missing): see
 [.grok/reference/impact-cheatsheet.md](.grok/reference/impact-cheatsheet.md), and
 [.grok/reference/cycles-cheatsheet.md](.grok/reference/cycles-cheatsheet.md).
 
-- **Research:** architecture-heavy → `digest` and/or `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`); **5–10 lines** via cheatsheet **read order** — never paste full JSON. **Circular imports?** → `digest` `catalog.cycles` (+ optional `mermaid` sketch); do not treat mermaid diagram alone as the full SCC list.
+- **Research:** architecture-heavy → `digest` and/or `impact` (e.g. `--base main --head HEAD --omit fixtures --out /tmp/atlas-impact.json`); **5–10 lines** via cheatsheet **read order** - never paste full JSON. **Circular imports?** → `digest` `catalog.cycles` (+ optional `mermaid` sketch); do not treat mermaid diagram alone as the full SCC list.
 - **Czar:** after `git diff` stats, `impact` as **supplemental** topology signal (flow clobber / blast movers); not a merge gate alone; still run tests. Cycle-focused review: digest cycles on head if needed.
-- **Engineer:** awareness only — not primary toolkit.
+- **Engineer:** awareness only - not primary toolkit.
 - **Confirmable CLI bugs:** `/catalog` in this repo (investigation + repro).
 
 ## Code areas (current layout)
 
-| Area | Path / focus |
-| ---- | ------------ |
-| Graph / parse / catalog | `src/core/` (pure TS; Vitest) — agent builders in `export/agentDigest.ts`, `export/agentImpact.ts`, `export/agentMermaid.ts` |
-| Host-shared Exact | `src/exact/` via `@exact` — export-surface engine load + provider (CDN/local OK); **not** pure core; CLI + web share this |
-| Agent CLI host | `src/cli/` — dir/ZIP feed + git-ref archive (`impact`) + `digest`/`tree`/`file`/`mermaid`/`impact` lens; Exact via `@exact` (no `src/client/` imports) |
-| Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` — no DOM/Carbon/chart |
-| Alluvial stage | `src/stage/` via `@stage` — Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height |
-| Web client workspace | `src/client/` — composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `sessionLifecycle.ts`, `wireUi.ts` — no `@carbon/charts` |
-| Astro app shell | `src/pages/`, `src/layouts/` |
-| UI / Carbon | `src/components/ui/`, `src/styles/` |
+| Area                                          | Path / focus                                                                                                                                                                                                                        |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Graph / parse / catalog                       | `src/core/` (pure TS; Vitest) - agent builders in `export/agentDigest.ts`, `export/agentImpact.ts`, `export/agentMermaid.ts`                                                                                                        |
+| Host-shared Exact                             | `src/exact/` via `@exact` - export-surface engine load + provider (CDN/local OK); **not** pure core; CLI + web share this                                                                                                           |
+| Agent CLI host                                | `src/cli/` - dir/ZIP feed + git-ref archive (`impact`) + `digest`/`tree`/`file`/`mermaid`/`impact` lens; Exact via `@exact` (no `src/client/` imports)                                                                              |
+| Pure shell (nav, captions, project, controls) | `src/shell/` via `@shell` - no DOM/Carbon/chart                                                                                                                                                                                     |
+| Alluvial stage                                | `src/stage/` via `@stage` - Carbon mount (`createAlluvialStage`), `polish/`, `focus/`, drill/clicks/height                                                                                                                          |
+| Web client workspace                          | `src/client/` - composition root `app.ts` (host injectors + nav + `wireUi`); paint: `dom.ts`, `renderTree.ts`, `renderCatalog.ts`, `inspectModal.ts`, `exactPaintMode.ts`, `sessionLifecycle.ts`, `wireUi.ts` - no `@carbon/charts` |
+| Astro app shell                               | `src/pages/`, `src/layouts/`                                                                                                                                                                                                        |
+| UI / Carbon                                   | `src/components/ui/`, `src/styles/`                                                                                                                                                                                                 |
 
 **Hosts:** web (`src/client/`) + agent CLI (`src/cli/`) landed. **Not yet landed:**
-`extension/` (VS Code host). Dual-host plan remains **partial** — shell + stage
+`extension/` (VS Code host). Dual-host plan remains **partial** - shell + stage
 web-in-process + CLI injector; extension / webview message loop not. See
 [dual-host-shell-stage](.grok/catalog/entries/dual-host-shell-stage.md).
 
@@ -98,5 +98,5 @@ invariants win over provisional file layout. See global personality in
 `~/git-personal/dotfiles/grok/skills/_shared/personality.md`.
 
 **UI design language:** track **Sentinel** (Carbon wrappers, zinc/**teal** shell,
-alluvial/Sankey as signature visual; **purple** = active selection) — do not fork
+alluvial/Sankey as signature visual; **purple** = active selection) - do not fork
 Sentinel product domain or copy wholesale; re-home the visual/UX grammar here as needed.

@@ -13,7 +13,7 @@ import {
 } from './externalStraighten.ts';
 import { readData } from './sankeyDom.ts';
 
-/** Prefer {@link isInRailName} — import free-source pad labels. */
+/** Prefer {@link isInRailName} - import free-source pad labels. */
 export function isImportRailLabel(name: string): boolean {
 	return isInRailName(name);
 }

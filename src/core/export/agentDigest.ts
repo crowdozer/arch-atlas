@@ -1,6 +1,6 @@
 /**
  * Pure agent-facing projections over CodeGraph + MapCatalog.
- * No FS / process — hosts (CLI, future injectors) call these after indexHostFeed.
+ * No FS / process - hosts (CLI, future injectors) call these after indexHostFeed.
  */
 
 import { buildMassBins } from '@core/catalog/massBins.ts';
@@ -46,9 +46,9 @@ export const AGENT_FILE_SCHEMA = 'arch-atlas.agent-file.v1' as const;
 export const ANALYSIS_HONESTY =
 	'Level-1 static import graph (JS/TS + Python); not LSP / not tree-shake';
 
-/** Exact (export surface) honesty — same product contract as web Precision Exact. */
+/** Exact (export surface) honesty - same product contract as web Precision Exact. */
 export const ANALYSIS_HONESTY_EXACT =
-	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); surfaceLoc / exportDeclarationLoc = export-declaration span coverage (not public-API member surface); Python/Astro stay estimate mass (surfaceSupport unsupported — never 0-surface icebergs); not LSP / not bundler tree-shake';
+	'Level-1 import graph + export-declaration surface LOC for JS/TS (classic TS AST or text fallback); surfaceLoc / exportDeclarationLoc = export-declaration span coverage (not public-API member surface); Python/Astro stay estimate mass (surfaceSupport unsupported - never 0-surface icebergs); not LSP / not bundler tree-shake';
 
 /** Note folded into analysis when Exact mass bins are present. */
 export const SURFACE_METRIC_NOTE =
@@ -62,7 +62,7 @@ export type AgentDigestSource = {
 
 /**
  * Scope preset name stamped when CLI `--scope` expands heuristics.
- * Ship B CLI: `full` (default) | `product` only — do not advertise unwired modes.
+ * Ship B CLI: `full` (default) | `product` only - do not advertise unwired modes.
  */
 export type AgentScopePreset = 'full' | 'product';
 
@@ -89,7 +89,7 @@ export type AgentDigestScope = {
 	presets?: AgentScopePreset[];
 	/**
 	 * Alias rewrites applied at graph build (CLI `--alias`).
-	 * Additive honesty stamp — not a second resolver.
+	 * Additive honesty stamp - not a second resolver.
 	 */
 	aliasRewrites?: AgentAliasRewrite[];
 };
@@ -129,7 +129,7 @@ export type AgentDigestCatalog = {
 	/** Downwind import reach ranking (wire name kept for compat). */
 	complex: CatalogComplex[];
 	/**
-	 * Honesty alias of complex — downwind import reach (not cyclomatic complexity).
+	 * Honesty alias of complex - downwind import reach (not cyclomatic complexity).
 	 */
 	downwindReach: CatalogComplex[];
 	deepest: CatalogDeep[];
@@ -137,7 +137,7 @@ export type AgentDigestCatalog = {
 	/** Reverse-reach consumers ranking (wire name kept for compat). */
 	blastRadius: CatalogBlast[];
 	/**
-	 * Honesty alias of blastRadius — reverse-reach file count (cycle-sensitive).
+	 * Honesty alias of blastRadius - reverse-reach file count (cycle-sensitive).
 	 */
 	reverseReach: CatalogBlast[];
 	/** Public-mass files (Exact surface ratio); empty under estimate. */
@@ -241,7 +241,7 @@ export type BuildAgentDigestInput = {
 	generatedAt?: string;
 	/**
 	 * When set, digest uses Exact honesty and re-ranks fileLoc by export-surface
-	 * LOC (graph topology / other bins unchanged — Exact is not a re-index).
+	 * LOC (graph topology / other bins unchanged - Exact is not a re-index).
 	 */
 	exact?: AgentExactSurfaceInput;
 	/** Optional scope stamp (CLI omit / Exact flags). */
@@ -324,7 +324,7 @@ export type AgentFileCatalogHits = {
 };
 
 /**
- * File-lens capability stamp — topology neighbors + catalog hits only.
+ * File-lens capability stamp - topology neighbors + catalog hits only.
  * Exact mass is not available on the `file` command.
  */
 export type AgentFileLensCapabilities = {
@@ -788,7 +788,7 @@ export function buildAgentTree(input: {
 }
 
 /**
- * Compact per-file report: degrees, catalog hits, import neighbors — no source dump.
+ * Compact per-file report: degrees, catalog hits, import neighbors - no source dump.
  * Exact mass is not available on this lens (see analysis.fileLens).
  */
 export function buildAgentFileReport(input: {

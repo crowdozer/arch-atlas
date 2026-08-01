@@ -1,5 +1,5 @@
 /**
- * Map catalog paint (web Carbon shell). Injected callbacks — does not import app.ts.
+ * Map catalog paint (web Carbon shell). Injected callbacks - does not import app.ts.
  */
 import {
 	ICEBERG_MAX_RATIO,
@@ -48,7 +48,7 @@ export type CatalogPaintOpts = {
 	locPrecision?: LocPrecision;
 	/** Program worker in flight (lifecycle incomplete on JS/TS chips). */
 	programLoading?: boolean;
-	/** Exact ensure in flight (lifecycle incomplete — no Exact mass claim yet). */
+	/** Exact ensure in flight (lifecycle incomplete - no Exact mass claim yet). */
 	exactLoading?: boolean;
 	/** Exact/Program enable failed → indication failed on loadable languages. */
 	engineFailed?: boolean;
@@ -382,7 +382,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			if (!list.length) {
 				publicMassHost.innerHTML = massExactReady
 					? `<p class="text-xs text-zinc-600">No public-mass files under current floors (whole ≥ ${MIN_WHOLE}, ratio ≥ ${PUBLIC_MIN_RATIO}).</p>`
-					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) — ratio of exported lines to whole file.</p>`;
+					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) - ratio of exported lines to whole file.</p>`;
 			}
 		}
 
@@ -409,7 +409,7 @@ export function createCatalogRenderer(deps: CatalogRenderDeps): {
 			if (!list.length) {
 				icebergsHost.innerHTML = massExactReady
 					? `<p class="text-xs text-zinc-600">No iceberg files under current floors (whole ≥ ${MIN_WHOLE}, ratio ≤ ${ICEBERG_MAX_RATIO}, private ≥ ${MIN_PRIVATE}).</p>`
-					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) — large private body under smaller export surface.</p>`;
+					: `<p class="text-xs text-zinc-600">Needs Exact (export surface) - large private body under smaller export surface.</p>`;
 			}
 		}
 

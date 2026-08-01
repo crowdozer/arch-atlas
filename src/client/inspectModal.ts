@@ -1,6 +1,6 @@
 /**
  * Inspect + unavailable modal paint (web Carbon shell).
- * Injected deps — does not import app.ts. Evidence from @core.
+ * Injected deps - does not import app.ts. Evidence from @core.
  */
 import {
 	EXACT_NOT_IMPLEMENTED_MESSAGE,
@@ -48,7 +48,7 @@ export type DirectionKind = 'import' | 'export' | 'mixed';
  * Direction marker for an observed edge form.
  * - import / require / dynamic → right-facing blue triangle (inbound)
  * - export → left-facing yellow triangle (outbound; product export color)
- * - mixed → purple solid circle (indeterminate — both directions)
+ * - mixed → purple solid circle (indeterminate - both directions)
  * Carbon triangle glyphs point up; rotation is applied via CSS class.
  */
 export type FormDirectionMarker = {
@@ -127,7 +127,7 @@ export function accordionDirectionKind(ev: ImportEvidence): DirectionKind {
  * - Focus is the **target** of an import-family edge → **export** (someone
  *   imports us; e.g. `main.tsx` → `App.tsx` while inspecting App).
  * - Focus is the target of an export-from edge → still export-family chrome
- *   (re-export of our bindings) — treat as export.
+ *   (re-export of our bindings) - treat as export.
  * - No focus / unmatched → form fallback.
  */
 export function perspectiveDirectionKind(
@@ -284,7 +284,7 @@ export function formatInspectMetaLabel(counts: {
 /** Status presentation for direction chrome (color/rotate via host class). */
 function directionTriStatus(marker: FormDirectionMarker): StatusPresentation {
 	if (marker.direction === 'mixed') {
-		// Indeterminate purple dot (solid circle — not PASS triangle).
+		// Indeterminate purple dot (solid circle - not PASS triangle).
 		return {
 			kind: 'incomplete',
 			axis: 'indication',
@@ -403,10 +403,10 @@ export function callsitesTitle(
 	surfaceLive: boolean,
 ): string {
 	if (claimPrecision !== 'exact') {
-		return 'Possible callsites (estimate — name scan, not type-checked)';
+		return 'Possible callsites (estimate - name scan, not type-checked)';
 	}
 	return surfaceLive
-		? 'Callsites (name scan in importer — not type-checked)'
+		? 'Callsites (name scan in importer - not type-checked)'
 		: 'Callsites (export surface unavailable)';
 }
 
@@ -457,7 +457,7 @@ function createAccordionTitleEl(
 	const host = document.createElement('span');
 	host.setAttribute('slot', 'title');
 	host.className = 'atlas-inspect__accordion-title';
-	// Compact glyph only — path text carries the rest
+	// Compact glyph only - path text carries the rest
 	host.appendChild(
 		createDirectionMarkerEl(direction, {
 			showLabel: false,
@@ -531,7 +531,7 @@ function appendEvidenceSections(
 	}
 	parent.appendChild(codeSec);
 
-	// Callsites (surface-claim precision — Program+mass remaps to exact)
+	// Callsites (surface-claim precision - Program+mass remaps to exact)
 	const callSec = document.createElement('div');
 	callSec.className = 'atlas-inspect__section';
 	const callH = document.createElement('div');
@@ -723,7 +723,7 @@ export function createInspectModals(deps: InspectModalDeps): {
 			openInspectModal(
 				name,
 				[],
-				'Aggregate buckets have no single import statement — drill or pick a concrete node.',
+				'Aggregate buckets have no single import statement - drill or pick a concrete node.',
 			);
 			return;
 		}

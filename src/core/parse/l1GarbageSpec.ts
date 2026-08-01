@@ -1,11 +1,11 @@
 /**
- * L1 garbage-specifier grammar — **test invariant helper, not a production filter**.
+ * L1 garbage-specifier grammar - **test invariant helper, not a production filter**.
  *
  * Used by adversarial suite tests after `buildGraph` to assert package names and
  * non-path-like unresolved specs are not extract false-positives (`|`, code soup,
  * empty junk, leftover `?`/`#` on package ids).
  *
- * Do **not** call from `build.ts` / `resolve.ts` / extract — real cure for FPs is
+ * Do **not** call from `build.ts` / `resolve.ts` / extract - real cure for FPs is
  * extract/resolve honesty; this module only asserts.
  */
 
@@ -38,7 +38,7 @@ export type GarbageHit = {
 
 /**
  * Path-like unresolved specs are valid misses (relative/alias/tilde/python-dot),
- * not false packages — skip package-name grammar for these.
+ * not false packages - skip package-name grammar for these.
  */
 export function isPathLikeUnresolvedSpecifier(spec: string): boolean {
 	const s = spec.trim();
@@ -54,7 +54,7 @@ export function isPathLikeUnresolvedSpecifier(spec: string): boolean {
 }
 
 /**
- * Hard denylist — known extract FP classes and pathological package ids.
+ * Hard denylist - known extract FP classes and pathological package ids.
  * Historic product classes: `|` (union form field), `[{ kind:` soup.
  */
 export function isKnownGarbageSpecifier(spec: string): boolean {
@@ -209,7 +209,7 @@ export function formatGarbageHits(hits: GarbageHit[]): string {
 		.join('\n');
 }
 
-/** Assert helper for tests — throws Error with listing when hits present. */
+/** Assert helper for tests - throws Error with listing when hits present. */
 export function assertGraphNoGarbageExternal(graph: CodeGraph): void {
 	const hits = collectGarbageExternals(graph);
 	if (hits.length > 0) {

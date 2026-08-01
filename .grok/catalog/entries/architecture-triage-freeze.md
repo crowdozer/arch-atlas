@@ -48,24 +48,24 @@ hub/types/barrels.
 
 ## Phase 1 (landed this ship)
 
-| Target | Action |
-| ------ | ------ |
-| Exact placement | `src/exact/` + `@exact`; CLI/web share; no CDN in core |
-| Thin `app.ts` | `exactPaintMode.ts` + `wireUi.ts` extracts; composition root stays |
-| Hub / types / barrels | **Freeze** — document only |
+| Target                | Action                                                             |
+| --------------------- | ------------------------------------------------------------------ |
+| Exact placement       | `src/exact/` + `@exact`; CLI/web share; no CDN in core             |
+| Thin `app.ts`         | `exactPaintMode.ts` + `wireUi.ts` extracts; composition root stays |
+| Hub / types / barrels | **Freeze** - document only                                         |
 
 ## Phase 2-A (landed)
 
-| Target | Action |
-| ------ | ------ |
-| Session lifecycle | `src/client/sessionLifecycle.ts` — zip/demo/open/restore/reset/activate via param-object deps; viewStack ownership stays in `app.ts` |
+| Target            | Action                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Session lifecycle | `src/client/sessionLifecycle.ts` - zip/demo/open/restore/reset/activate via param-object deps; viewStack ownership stays in `app.ts` |
 
 ## Deferred
 
-| Phase | Work |
-| ----- | ---- |
-| 2 (remainder) | Hub helper dedupe only with goldens |
-| 3+ | Dual projector deprecate if product picks one; `types.ts` split when churn forced; public API docs for agents |
+| Phase         | Work                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| 2 (remainder) | Hub helper dedupe only with goldens                                                                           |
+| 3+            | Dual projector deprecate if product picks one; `types.ts` split when churn forced; public API docs for agents |
 
 ## Do not
 

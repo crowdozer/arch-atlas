@@ -253,7 +253,7 @@ export function statementSpan(
 	}
 
 	// Incomplete / exotic: fall back to first line only (prior behavior) when
-	// the progressive join never matched — avoids dumping unrelated body.
+	// the progressive join never matched - avoids dumping unrelated body.
 	const first = lines[startLine - 1] ?? '';
 	if (first.trim()) {
 		return { text: first, startLine, endLine: startLine };
@@ -547,7 +547,7 @@ export function edgesForNode(graph: CodeGraph, ref: AlluvialNodeRef): ImportEdge
 		return graph.edges.filter((e) => edgeMatchesPackage(e, ref.id));
 	}
 	if (ref.kind === 'module') {
-		// No peer set without a focus file — use key heuristics (incl. deepen keys).
+		// No peer set without a focus file - use key heuristics (incl. deepen keys).
 		return graph.edges.filter(
 			(e) => e.toKind !== 'file' && inModule(e.from, ref.id),
 		);

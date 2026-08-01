@@ -22,7 +22,7 @@ export type EnsureExactSource =
 	| 'jsdelivr'
 	| 'unpkg'
 	| 'cached'
-	/** Graph has no JS/TS — null-mass provider for manual Exact only. */
+	/** Graph has no JS/TS - null-mass provider for manual Exact only. */
 	| 'empty';
 
 export type EnsureExactResult =
@@ -92,7 +92,7 @@ export async function ensureExactForGraph(
 	}
 
 	// No JS/TS in graph: Exact surface still needs a provider for gate, but
-	// mass will be package/null — install a null-mass provider so gate opens
+	// mass will be package/null - install a null-mass provider so gate opens
 	// when user forces Exact; missing languages already listed.
 	if (!engines.loadable.includes('typescript')) {
 		const empty: ImportedSurfaceProvider = {
@@ -120,7 +120,7 @@ export async function ensureExactForGraph(
 }
 
 /**
- * Ensure Exact using only inject / local classic / cache — **never CDN**.
+ * Ensure Exact using only inject / local classic / cache - **never CDN**.
  * Prefer for default-on when the analysis engine is already on-device.
  */
 export async function ensureExactLocalOnly(

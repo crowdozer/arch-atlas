@@ -24,7 +24,7 @@ export type SessionProgramMeta = {
 /**
  * Active workspace session after index/restore.
  * `expanded` is UI tree fold state (web host today; portable as string paths).
- * `startId` is **derived** from the nav stack nearest file-hub — not a parallel
+ * `startId` is **derived** from the nav stack nearest file-hub - not a parallel
  * navigation owner (see app commitNavigation / shell atlasView helpers).
  * `files` is the full host feed (pre test-filter) for re-index when inclusion toggles.
  */

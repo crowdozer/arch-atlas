@@ -24,7 +24,7 @@ export type HostFileFeed = {
 	files: VirtualFile[];
 };
 
-/** Graph SoR + map catalog — single result shape for host feed and `indexFiles`. */
+/** Graph SoR + map catalog - single result shape for host feed and `indexFiles`. */
 export type IndexResult = {
 	graph: CodeGraph;
 	catalog: MapCatalog;

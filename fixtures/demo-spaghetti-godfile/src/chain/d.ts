@@ -1,4 +1,4 @@
-/** Chain leaf — deep reverse blast target. */
+/** Chain leaf - deep reverse blast target. */
 import type { Money } from '../domain/money';
 import { formatMoney, zero } from '../domain/money';
 

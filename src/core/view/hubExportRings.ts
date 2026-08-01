@@ -3,7 +3,7 @@
  *
  * **Naming trap (keep names):** `addImportRings`, `ensureImportRails`,
  * `padImportRailsInto`, `addImportModules` build the **left** side
- * (Exports / Export hop N) — reverse inbound importers only.
+ * (Exports / Export hop N) - reverse inbound importers only.
  * See `.grok/reference/hub-alluvial-behavior.md` §2 / field notes E1.
  */
 
@@ -41,7 +41,7 @@ import { hubReverseEdgeWeight } from '@core/view/weight.ts';
  * Outer hops ranked by connectivity into the kept inner ring.
  *
  * Returns display names of reverse free sources (no kept outer reverse parent)
- * — hub terminators for cyan polish chrome. Includes single-hop Exports leaves
+ * - hub terminators for cyan polish chrome. Includes single-hop Exports leaves
  * (no pad) and multi-hop free sources (padded when d < radiusL).
  */
 export function addImportRings(
@@ -200,7 +200,7 @@ export function addImportRings(
 	// Reverse free sources = no kept outer reverse parent (export-tree dead-ends).
 	// Multi-hop: pad short free sources so BFS dist shares one sankey column.
 	// Single-hop (radiusL === 1): still mark Exports free sources for cyan chrome
-	// (e.g. AdminFlags ← dashboard only — no Export hop 2, previously skipped).
+	// (e.g. AdminFlags ← dashboard only - no Export hop 2, previously skipped).
 	const receivesOuter = new Set<string>();
 	if (radiusL >= 2) {
 		ensureImportRails(nodeMeta, nodeRef, radiusL);

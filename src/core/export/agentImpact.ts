@@ -1,6 +1,6 @@
 /**
  * Pure agent-facing import-topology impact between two indexed graphs.
- * Delta-first projection — no dual digests, no raw source.
+ * Delta-first projection - no dual digests, no raw source.
  * Hosts (CLI git archive) materialize refs; core only diffs IndexResults.
  */
 
@@ -50,7 +50,7 @@ export type AgentImpactDegreeMover = {
 	inDegreeHead: number;
 	outDegreeBase: number;
 	outDegreeHead: number;
-	/** max(|Δin|, |Δout|) — ranking key */
+	/** max(|Δin|, |Δout|) - ranking key */
 	deltaScore: number;
 };
 
@@ -60,7 +60,7 @@ export type AgentImpactBlastMover = {
 	reverseReachHead: number;
 	reverseMaxHopsBase: number;
 	reverseMaxHopsHead: number;
-	/** |Δ reverseReachFiles| — ranking key */
+	/** |Δ reverseReachFiles| - ranking key */
 	deltaScore: number;
 };
 
@@ -335,7 +335,7 @@ export function buildAgentImpact(input: BuildAgentImpactInput): AgentImpact {
 		);
 	}
 
-	// P2 envelope from head graph (delta lens; topology-only — never Exact mass)
+	// P2 envelope from head graph (delta lens; topology-only - never Exact mass)
 	const envelope = buildAnalysisEnvelope({
 		graph: headG,
 		exactApplied: false,

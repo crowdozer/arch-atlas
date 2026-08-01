@@ -83,7 +83,7 @@ function totalValue(payload: AlluvialPayload): number {
 
 /**
  * Conserved mass for a reverse / subject-on-left view: outflow from the focus
- * node (not sum of all hop links — multi-hop double-counts in totalValue).
+ * node (not sum of all hop links - multi-hop double-counts in totalValue).
  */
 function focusOutflow(payload: AlluvialPayload): number {
 	const focusName = payload.meta.focus.label;
@@ -107,7 +107,7 @@ function focusOutflow(payload: AlluvialPayload): number {
 
 /**
  * Intermediate columns: sum(in) === sum(out) for nodes that both receive and emit.
- * Dual-hub focus is exempt — left in-mass and right out-mass are independent.
+ * Dual-hub focus is exempt - left in-mass and right out-mass are independent.
  * Import-tree files that emit structural package mass (file → External package)
  * may have out > in; External packages themselves are sinks.
  * Rails and overflow buckets skip balance.
@@ -169,7 +169,7 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 	for (const name of new Set([...out.keys(), ...inn.keys()])) {
 		if (focusNames.has(name)) continue;
 		// Overflow / aggregate buckets may under-draw under multi-parent
-		// split (accepted hub default) — skip intermediate balance for them.
+		// split (accepted hub default) - skip intermediate balance for them.
 		if (name.startsWith('(') || name.startsWith('+')) continue;
 		if (isPackageLike(name)) continue;
 		if (isAlluvialRailName(name)) continue; // pad scaffolding
@@ -177,7 +177,7 @@ function assertColumnConservation(payload: AlluvialPayload, label: string) {
 		const hasIn = (inn.get(name) ?? 0) > 0;
 		const hasOut = (out.get(name) ?? 0) > 0;
 		if (hasIn && hasOut) {
-			// Fractional shares (Phase 1B) — allow float epsilon on Kirchhoff
+			// Fractional shares (Phase 1B) - allow float epsilon on Kirchhoff
 			expect(
 				inn.get(name),
 				`${label}: ${name} (${categories.get(name)}) in`,

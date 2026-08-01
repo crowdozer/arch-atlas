@@ -1,5 +1,5 @@
 /**
- * Pure FocusPlan matrix — cites hub-focus-behavior.md case IDs (L-*).
+ * Pure FocusPlan matrix - cites hub-focus-behavior.md case IDs (L-*).
  * Fixtures: projectFileHub on demo-react-simple (main / App hubs).
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -147,7 +147,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 	const mainGraph = buildLogicalFocusGraph(mainPayload);
 	const appGraph = buildLogicalFocusGraph(appPayload);
 
-	it('L-band-file: hover carbon main→App — only that band; labels {main,App}', () => {
+	it('L-band-file: hover carbon main→App - only that band; labels {main,App}', () => {
 		const plan = planFocus(mainGraph, {
 			kind: 'band',
 			source: MAIN,
@@ -168,7 +168,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		);
 	});
 
-	it('L-band-ext: hover straighten main→react — only that ext key; not react-dom sibling', () => {
+	it('L-band-ext: hover straighten main→react - only that ext key; not react-dom sibling', () => {
 		const plan = planFocus(mainGraph, {
 			kind: 'band',
 			source: MAIN,
@@ -187,7 +187,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		expect(plan.activeLabels.has('react-dom')).toBe(false);
 	});
 
-	it('L-file-main: hover main — forward tree + main’s packages; reverse self', () => {
+	it('L-file-main: hover main - forward tree + main’s packages; reverse self', () => {
 		const plan = planFocus(mainGraph, { kind: 'file', name: MAIN });
 		assertNoRails(plan);
 		assertFocusedBandsSubsetOfLogical(mainGraph, plan);
@@ -214,7 +214,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		);
 	});
 
-	it('L-file-app: hover App — ancestors∪descendants; not logger; not main→react-dom', () => {
+	it('L-file-app: hover App - ancestors∪descendants; not logger; not main→react-dom', () => {
 		const plan = planFocus(mainGraph, { kind: 'file', name: APP });
 		assertNoRails(plan);
 		assertFocusedBandsSubsetOfLogical(mainGraph, plan);
@@ -228,9 +228,9 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 		expect(plan.activeLabels.has('src/components/Layout.tsx')).toBe(true);
 		expect(plan.activeLabels.has('src/hooks/useUser.ts')).toBe(true);
 		expect(plan.activeLabels.has('src/types.ts')).toBe(true);
-		// sibling of App under main — out
+		// sibling of App under main - out
 		expect(plan.activeLabels.has('src/lib/logger.ts')).toBe(false);
-		// packages of App∪forward only — not main-only react-dom
+		// packages of App∪forward only - not main-only react-dom
 		expect(plan.activeLabels.has('react')).toBe(true); // via Layout/Home/useUser
 		expect(plan.activeLabels.has('react-router-dom')).toBe(true); // App/Layout
 		expect(plan.activeLabels.has('zod')).toBe(true);
@@ -311,7 +311,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 
 		expect(plan.activeLabels.has('react-dom')).toBe(true);
 		expect(plan.activeLabels.has(MAIN)).toBe(true);
-		// reverse from main only — no Layout/Home
+		// reverse from main only - no Layout/Home
 		expect(plan.activeLabels.has('src/components/Layout.tsx')).toBe(false);
 		expect(plan.activeLabels.has('src/pages/Home.tsx')).toBe(false);
 		expect(plan.activeLabels.has(APP)).toBe(false);
@@ -417,7 +417,7 @@ describe('LogicalFocusGraph matrix (demo-react-simple)', () => {
 			expect(plan.activeLabels.has(rail)).toBe(false);
 		}
 
-		// payload may contain rails — graph must not
+		// payload may contain rails - graph must not
 		const payloadRails = mainPayload.data.filter(
 			(l) => isAlluvialRailName(l.source) || isAlluvialRailName(l.target),
 		);
@@ -502,7 +502,7 @@ describe('LogicalFocusGraph L-instance-local (multi-hop instances)', () => {
 		expect(plan.focusedBandKeys.has(fileBandKey(BUFFER, HOOK_H2))).toBe(true);
 	});
 
-	it('hover Buffer lights hop instance only — not primary hook cascade', () => {
+	it('hover Buffer lights hop instance only - not primary hook cascade', () => {
 		const graph = makeDualHookGraph();
 		const plan = planFocus(graph, { kind: 'file', name: BUFFER });
 		assertNoRails(plan);

@@ -70,9 +70,9 @@ Utils         ·      ·      ·     ·
 
 Useful interactions (ladder, not one PR):
 
-1. Auto order by path prefix or inferred layer.  
-2. Cell weight (edges / mass); click → exact import evidence.  
-3. Highlight cycles and illegal edges when rules exist.  
+1. Auto order by path prefix or inferred layer.
+2. Cell weight (edges / mass); click → exact import evidence.
+3. Highlight cycles and illegal edges when rules exist.
 4. Later: reorder axes to **propose** desired architecture and list violations
    (“move DB below domain → show every violating edge”).
 
@@ -83,16 +83,16 @@ Useful interactions (ladder, not one PR):
 - Complements flow (alluvial = corridor narrative; matrix = structure).
 - User research preference: matrix view is a liked port.
 - Killer reorder interaction is high value but **modeling UX**, not required for
-  first matrix land — ship read-only clustered DSM first.
+  first matrix land - ship read-only clustered DSM first.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not |
-| ----------- | ------- |
-| Whole-repo file×file matrix as default | N² unreadable; start package / top-N / layer |
-| Matrix as only architecture view | Loses path narrative; keep alluvial signature |
-| Chord diagrams as substitute | Fine for few subsystems; matrix scales better for layers |
-| Rules engine required before any matrix | Rules can wait; observed coupling grid is useful alone |
+| Alternative                             | Why not                                                  |
+| --------------------------------------- | -------------------------------------------------------- |
+| Whole-repo file×file matrix as default  | N² unreadable; start package / top-N / layer             |
+| Matrix as only architecture view        | Loses path narrative; keep alluvial signature            |
+| Chord diagrams as substitute            | Fine for few subsystems; matrix scales better for layers |
+| Rules engine required before any matrix | Rules can wait; observed coupling grid is useful alone   |
 
 ## Open questions
 

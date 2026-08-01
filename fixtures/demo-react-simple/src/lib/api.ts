@@ -7,7 +7,7 @@ const UsersSchema = z.array(UserSchema);
 
 export async function fetchUsers(): Promise<User[]> {
 	logger.info('fetchUsers');
-	// Demo stub — not a real network call
+	// Demo stub - not a real network call
 	const raw = [
 		{ id: '1', name: 'Ada', email: 'ada@example.com' },
 		{ id: '2', name: 'Grace', email: 'grace@example.com' },

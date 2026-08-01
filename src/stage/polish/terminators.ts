@@ -7,7 +7,7 @@ import { readData } from './sankeyDom.ts';
 
 /**
  * Mark reverse free-source pad targets (Exports* free sources, left).
- * CSS: **cyan** wrap — contrast on yellow export columns (not yellow-on-yellow).
+ * CSS: **cyan** wrap - contrast on yellow export columns (not yellow-on-yellow).
  * Does not override File purple spine.
  */
 export function markAlluvialTerminators(

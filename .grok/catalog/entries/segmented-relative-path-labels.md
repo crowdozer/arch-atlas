@@ -32,11 +32,11 @@ touches:
   - graph file ids as tree paths
 invariants: []
 open_questions:
-  - What is the "current node" for relative walk — focus file, selected tree folder, view-stack package, or alluvial File spine id?
+  - What is the "current node" for relative walk - focus file, selected tree folder, view-stack package, or alluvial File spine id?
   - Segment model: re-split string paths vs store segments on FileTreeNode and reuse?
-  - Pretty label grammar — `../lib/foo.ts`, `src › lib › foo.ts`, or elided mid-walk (`src/…/foo.ts`)?
+  - Pretty label grammar - `../lib/foo.ts`, `src › lib › foo.ts`, or elided mid-walk (`src/…/foo.ts`)?
   - Does this wait on a dedicated resolve layer, or can partial tree-known paths ship first?
-  - Multi-instance hub labels (`path · hN`) — relative walk from primary path only?
+  - Multi-instance hub labels (`path · hN`) - relative walk from primary path only?
 related:
   - dual-host-shell-stage
   - alluvial-top-pack-rename-split
@@ -48,7 +48,7 @@ rationale_quality: full
 # Segmented relative path labels (tree-aware path walk)
 
 Exploratory UX idea from user. **Depends on** intelligent path resolution that
-maps imports/ids to real files **without LSP** — not a request to implement
+maps imports/ids to real files **without LSP** - not a request to implement
 resolution here.
 
 ## Problem
@@ -56,7 +56,7 @@ resolution here.
 - File identity is a full path string; UI often shows either **full path**
   (noisy, truncates badly) or **basename only** (collides, loses hierarchy).
 - Naive `path.split('/')` is not the same as **segments that exist in the
-  indexed tree** — resolution failures, virtual roots, and package externals
+  indexed tree** - resolution failures, virtual roots, and package externals
   make string splits lie.
 - Once resolve-to-tree works, labels still need a **context-sensitive** display:
   from the node the user is looking at, not a fixed repo-root dump.
@@ -70,7 +70,7 @@ resolution here.
    folder) so the label encodes a short **path walk** rather than a global
    absolute string.
 3. Prefer **pretty, walk-reflecting labels** (readable segment steps) over raw
-   full paths or bare basenames — same identity, better local context.
+   full paths or bare basenames - same identity, better local context.
 
 ## Reasoning
 
@@ -85,18 +85,18 @@ resolution here.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not (for now) |
-| ----------- | ----------------- |
-| Always show full path from repo root | Clutters hub/catalog; fails on long monorepos; ignores current-node context |
-| Basename-only forever | Cheap, but ambiguous under duplicate names; wastes tree structure once resolve works |
+| Alternative                          | Why not (for now)                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Always show full path from repo root | Clutters hub/catalog; fails on long monorepos; ignores current-node context                    |
+| Basename-only forever                | Cheap, but ambiguous under duplicate names; wastes tree structure once resolve works           |
 | String-split without tree membership | Segments may not match indexed tree (virtual prefixes, unresolved imports, case/normalization) |
-| LSP-backed path display first | Product default remains level-1 static / local-first; idea is explicitly **sans-LSP** |
-| Ship pretty labels before resolve | Labels would invent walks for unresolved edges — wrong product signal |
+| LSP-backed path display first        | Product default remains level-1 static / local-first; idea is explicitly **sans-LSP**          |
+| Ship pretty labels before resolve    | Labels would invent walks for unresolved edges - wrong product signal                          |
 
 ## Open questions
 
 - **Current node** definition across tree click, catalog row, alluvial focus,
-  and inspect drawer — one API or surface-specific?
+  and inspect drawer - one API or surface-specific?
 - Label grammar and accessibility (`title` = full path, visible = relative walk).
 - Interaction with existing right-truncate / multi-instance (`· hN`) polish.
 - Whether package/external nodes get a different relative grammar than files.

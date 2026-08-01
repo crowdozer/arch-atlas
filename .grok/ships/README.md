@@ -1,15 +1,15 @@
-# `.grok/ships` — frontier / ship audit memory
+# `.grok/ships` - frontier / ship audit memory
 
 **Architectural queue memory**, not operational process state.
 
 Full contract: global
 `~/git-personal/dotfiles/grok/skills/_shared/frontier-review.md`.
 
-| Lives here (git) | Does **not** live here |
-| ---------------- | ---------------------- |
-| `frontier-review.md` + thin `meta.json` per id | Feature worktrees (`wt/`) |
-| Pending / done / skipped review markers | Full `/ship` `run_dir`, events, patches |
-| Thin ship audit identity (branch, subject) | Absolute-path resume `state.json` |
+| Lives here (git)                               | Does **not** live here                  |
+| ---------------------------------------------- | --------------------------------------- |
+| `frontier-review.md` + thin `meta.json` per id | Feature worktrees (`wt/`)               |
+| Pending / done / skipped review markers        | Full `/ship` `run_dir`, events, patches |
+| Thin ship audit identity (branch, subject)     | Absolute-path resume `state.json`       |
 
 ## Layout
 

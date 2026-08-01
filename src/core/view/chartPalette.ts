@@ -1,5 +1,5 @@
 /**
- * Chart / SVG hex palette — pure-core owner for Carbon `color.scale` + SVG paint.
+ * Chart / SVG hex palette - pure-core owner for Carbon `color.scale` + SVG paint.
  *
  * Carbon Charts need concrete colors (no CSS vars). Hex here is the sole TS source
  * for scale / hop / spine / ribbon fallbacks. Values that also paint in CSS must
@@ -14,7 +14,7 @@
 
 /** Canonical chart palette (all scale / hop / spine / fallback roles). */
 export const CHART_PALETTE = {
-	/* Brand teal — match --cds-interactive / --cds-background-brand / button-primary */
+	/* Brand teal - match --cds-interactive / --cds-background-brand / button-primary */
 	start: '#14b8a6', // teal-500 = --cds-interactive
 	module: '#2dd4bf', // teal-400 = --cds-border-interactive / focus
 	package: '#0d9488', // teal-600 = brand / ribbon fallback
@@ -22,13 +22,13 @@ export const CHART_PALETTE = {
 	unresolved: '#f59e0b', // amber
 	other: '#71717a', // zinc-500 = --cds-text-placeholder
 
-	/** Export / outbound hub bands — yellow complements teal importers. */
+	/** Export / outbound hub bands - yellow complements teal importers. */
 	export: '#eab308', // yellow-500 = --atlas-export
 	exportPkg: '#ca8a04', // yellow-600 = --atlas-export-pkg
 	exportOther: '#a16207', // yellow-700 = --atlas-export-other
 
 	/**
-	 * Import cyan hop ladder (Imports / left) — closer to File is brighter.
+	 * Import cyan hop ladder (Imports / left) - closer to File is brighter.
 	 * CSS cousins (not hop paint): --atlas-import-term-bg-stroke / drill-strong
 	 * share the mid/near steps for terminators + drill chips only.
 	 */
@@ -47,7 +47,7 @@ export const CHART_PALETTE = {
 	exportFree: '#06b6d4', // cyan-500
 	exportFreeOther: '#0e7490', // cyan-700
 
-	/** Purple selection — match --atlas-select-strong / File spine. */
+	/** Purple selection - match --atlas-select-strong / File spine. */
 	selectStrong: '#a78bfa',
 
 	/** Default ribbon / link stroke when no node color is available. */

@@ -60,9 +60,9 @@ rationale_quality: full
 
 # Geometric architecture vs AI knots (alluvial as topology feedback)
 
-Conversation direction: why AI-produced systems feel wrong despite solid edges, and why a weighted alluvial import graph can give agents the missing global perception—and eventually an architectural loss function.
+Conversation direction: why AI-produced systems feel wrong despite solid edges, and why a weighted alluvial import graph can give agents the missing global perception-and eventually an architectural loss function.
 
-**Landed so far (partial, thin catalog only):** Level-1 map catalog surfaces reverse **blast radius** ranks (`catalogBlastRadius`) plus a deliberate **Spaghetti hub** demo fixture. A multi-signal **godfile candidates** bin was tried and **removed** (opinionated / noisy). This is **not** an agent loss function, topology-diff after edit, betweenness/weighted findings schema, or full geometric thesis productized—exploratory idea still mostly open.
+**Landed so far (partial, thin catalog only):** Level-1 map catalog surfaces reverse **blast radius** ranks (`catalogBlastRadius`) plus a deliberate **Spaghetti hub** demo fixture. A multi-signal **godfile candidates** bin was tried and **removed** (opinionated / noisy). This is **not** an agent loss function, topology-diff after edit, betweenness/weighted findings schema, or full geometric thesis productized-exploratory idea still mostly open.
 
 ## Problem
 
@@ -72,14 +72,14 @@ AI-generated (and AI-refactored) code tends to collapse into a **low-energy comp
 - Surface area grows; global shape weakens.
 - The system becomes a **knot**: every strand is securely tied to the next, but nobody decided what the finished knot should look like.
 
-Agents reading a repo file-by-file only experience **local connection validity**. Greps answer “where is this symbol referenced?” They do not answer responsibility concentration, boundary leakage, competing centers, or change blast radius. Without aggregate topology, agents minimize displacement and accrete another valid path—preserving the knot.
+Agents reading a repo file-by-file only experience **local connection validity**. Greps answer “where is this symbol referenced?” They do not answer responsibility concentration, boundary leakage, competing centers, or change blast radius. Without aggregate topology, agents minimize displacement and accrete another valid path-preserving the knot.
 
 “Complexity” is often misnamed: AI code can have **low architectural complexity** (few deliberate abstractions) and **high incidental complexity** (adapters, pass-throughs, duplicated representations, compatibility paths).
 
 ## Intent
 
 1. **Vocabulary / agent stance:** treat good architecture as **system topology**, not merely working edges. Prefer **geometric** shape: planes as boundaries, directional dependencies, concept centers, shared axes, distinct lifecycle stages, mental rotatability. Treat **architectural prohibition** (what cannot connect) as a first-class design tool.
-2. **Product direction for Arch Atlas:** the alluvial import graph (with weights) should become an **architectural feedback instrument**, not only a human explorer—especially when projected to machine-readable findings agents can reason over, and when regenerated as a **before/after topology diff** after a proposed change.
+2. **Product direction for Arch Atlas:** the alluvial import graph (with weights) should become an **architectural feedback instrument**, not only a human explorer-especially when projected to machine-readable findings agents can reason over, and when regenerated as a **before/after topology diff** after a proposed change.
 
 Short formulations to preserve:
 
@@ -119,30 +119,30 @@ Aggregate-graph defects (when edges are fine):
 
 An alluvial import graph turns architecture into an **explicit spatial object**:
 
-| Question | Grep / sequential read | Alluvial topology |
-| -------- | ---------------------- | ----------------- |
-| Symbol usage | strong | weak |
-| Responsibility concentration | weak | strong |
-| Mediators between subsystems | weak | strong |
-| Dependency direction reversals | weak | strong |
-| Boundary leakage | weak | strong |
-| Pass-through plumbing | weak | strong |
-| Competing concept centers | weak | strong |
-| Reconverging parallel paths | weak | strong |
-| Change blast radius / gravity | weak | strong (with weight) |
+| Question                       | Grep / sequential read | Alluvial topology    |
+| ------------------------------ | ---------------------- | -------------------- |
+| Symbol usage                   | strong                 | weak                 |
+| Responsibility concentration   | weak                   | strong               |
+| Mediators between subsystems   | weak                   | strong               |
+| Dependency direction reversals | weak                   | strong               |
+| Boundary leakage               | weak                   | strong               |
+| Pass-through plumbing          | weak                   | strong               |
+| Competing concept centers      | weak                   | strong               |
+| Reconverging parallel paths    | weak                   | strong               |
+| Change blast radius / gravity  | weak                   | strong (with weight) |
 
 **Import weight** matters: unweighted graphs treat every edge as equal. Weight exposes architectural gravity (fan-in infrastructure vs god-module; fan-out composition root vs responsibility sink; thick cross-boundary bands vs thin leakage; reconvergence as duplicated transforms).
 
 Interpretation must use **role + direction**, not size alone:
 
-| Shape | Possible healthy | Possible problem |
-| ----- | ---------------- | ---------------- |
-| High fan-in | Stable shared primitive | Grab-bag utility |
-| High fan-out | Composition root | Godfile |
-| Thick layer-to-layer flow | Deliberate pipeline | Missing boundary |
-| Many cross-layer bands | Legitimate domain integration | Dependency leakage |
-| Narrow waist | Good canonical interface | Fragile bottleneck |
-| Parallel flows | Separate domains | Duplicate representations |
+| Shape                     | Possible healthy              | Possible problem          |
+| ------------------------- | ----------------------------- | ------------------------- |
+| High fan-in               | Stable shared primitive       | Grab-bag utility          |
+| High fan-out              | Composition root              | Godfile                   |
+| Thick layer-to-layer flow | Deliberate pipeline           | Missing boundary          |
+| Many cross-layer bands    | Legitimate domain integration | Dependency leakage        |
+| Narrow waist              | Good canonical interface      | Fragile bottleneck        |
+| Parallel flows            | Separate domains              | Duplicate representations |
 
 ### Agent-facing projection
 
@@ -162,7 +162,7 @@ Humans judge the visual; agents need derived statements, e.g.:
 }
 ```
 
-Suspicion is multi-signal: high fan-in **and** fan-out **and** betweenness **and** multi-domain touch **without** being a declared composition root—not “large.”
+Suspicion is multi-signal: high fan-in **and** fan-out **and** betweenness **and** multi-domain touch **without** being a declared composition root-not “large.”
 
 ### Architectural loss function (aspirational loop)
 
@@ -179,17 +179,17 @@ Compare before/after:
 - Did a narrow waist get cleaner or more overloaded?
 - Did a godfile shrink, or scatter into coupled mini-godfiles?
 
-Tests: behavior survived. Graph: shape improved. That attacks low-energy completion—the agent sees what the new edge does to **whole geometry**.
+Tests: behavior survived. Graph: shape improved. That attacks low-energy completion-the agent sees what the new edge does to **whole geometry**.
 
 ## Rejected alternatives + why
 
-| Alternative | Why not (for now) |
-| ----------- | ----------------- |
-| Treat “largest node = bad” as the godfile rule | Size without role/direction false-positives stable primitives and composition roots |
-| Rely on greps / sequential file reads alone for architecture | Local observations cannot recover aggregate topology or gravity |
-| Optimize only for connection validity / green tests | Produces correct knots with weak global shape and high incidental complexity |
-| Pure visual alluvial for agents without machine projection | Images help humans; agents need structured findings they can score and cite |
-| Force heavy abstractions on every AI edit | Geometry is about topology and prohibition, not abstraction count; premature layers can also be knotty |
+| Alternative                                                  | Why not (for now)                                                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Treat “largest node = bad” as the godfile rule               | Size without role/direction false-positives stable primitives and composition roots                    |
+| Rely on greps / sequential file reads alone for architecture | Local observations cannot recover aggregate topology or gravity                                        |
+| Optimize only for connection validity / green tests          | Produces correct knots with weak global shape and high incidental complexity                           |
+| Pure visual alluvial for agents without machine projection   | Images help humans; agents need structured findings they can score and cite                            |
+| Force heavy abstractions on every AI edit                    | Geometry is about topology and prohibition, not abstraction count; premature layers can also be knotty |
 
 ## Open questions
 
@@ -210,4 +210,4 @@ Tests: behavior survived. Graph: shape improved. That attacks low-energy complet
 
 ## Source
 
-User conversation direction (geometric vs knotty AI code; alluvial import graph as architectural insight and agent feedback). Not elevated to product law—exploratory memory only.
+User conversation direction (geometric vs knotty AI code; alluvial import graph as architectural insight and agent feedback). Not elevated to product law-exploratory memory only.

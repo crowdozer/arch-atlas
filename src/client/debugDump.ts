@@ -1,7 +1,7 @@
 /**
  * Dev-only alluvial debug dump: payload + Carbon layout + host controls.
  * POSTs to Vite middleware `/api/debug/alluvial-dump` (writes `.atlas-debug/`).
- * Outside dev the endpoint 500s / is absent — button is not mounted in prod HTML.
+ * Outside dev the endpoint 500s / is absent - button is not mounted in prod HTML.
  */
 
 import type { AlluvialPayload } from '@core/graph/types.ts';
