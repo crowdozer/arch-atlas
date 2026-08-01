@@ -513,6 +513,19 @@ cds-tag.ui-tag--yellow {
   min-height: 0;
 }
 
+/* Desktop: body always fills the drawer; mobile toggle is off-stage */
+.atlas-drawer-toggle {
+  display: none;
+}
+
+.atlas-drawer__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
 .atlas-drawer__panel {
   display: flex;
   flex-direction: column;
@@ -1732,17 +1745,108 @@ cds-button.atlas-spine-info-btn::part(button) {
   margin-bottom: 0;
 }
 
+/* Mobile shell: ≤900px — full-height Workspace Settings disclosure */
 @media (max-width: 900px) {
   .atlas-workspace {
     flex-direction: column;
+    /* Fill main under header + workspace sub-bar */
+    flex: 1 1 auto;
+    min-height: 0;
   }
+
   .atlas-drawer {
     width: 100%;
+    min-width: 0;
     max-width: none;
-    max-height: 45vh;
+    max-height: none;
     border-inline-end: 0;
     border-block-end: 1px solid var(--cds-layer-02, #27272a);
   }
+
+  /* Collapsed: only the Workspace Settings disclosure bar */
+  .atlas-drawer[data-drawer-open='false'] {
+    flex: 0 0 auto;
+  }
+
+  /* Open: take remaining height below nav + sub-bar (stage yields) */
+  .atlas-drawer[data-drawer-open='true'] {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .atlas-workspace:has(.atlas-drawer[data-drawer-open='true']) .atlas-stage {
+    flex: 0 0 0;
+    min-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  .atlas-workspace:has(.atlas-drawer[data-drawer-open='false']) .atlas-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    visibility: visible;
+  }
+
+  /* Big disclosure row (Agent Pack–like chrome; not cds-button) */
+  .atlas-drawer-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-block-end: 1px solid var(--cds-border-subtle-00, #27272a);
+    background: var(--cds-layer-01, #18181b);
+    color: var(--cds-text-primary, #fafafa);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: start;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .atlas-drawer-toggle:hover {
+    background: var(--cds-layer-hover-01, #27272a);
+  }
+
+  .atlas-drawer-toggle:focus-visible {
+    outline: 2px solid var(--cds-focus, #2dd4bf);
+    outline-offset: -2px;
+  }
+
+  .atlas-drawer-toggle__label {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .atlas-drawer-toggle__icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    color: var(--cds-icon-primary, #fafafa);
+  }
+
+  .atlas-drawer-toggle__icon svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
+  }
+
+  .atlas-drawer[data-drawer-open='false'] .atlas-drawer__body {
+    display: none;
+  }
+
+  .atlas-drawer[data-drawer-open='true'] .atlas-drawer__body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .atlas-stage__holder {
     min-height: 0;
   }

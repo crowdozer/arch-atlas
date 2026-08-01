@@ -332,6 +332,18 @@ export function wireUi(deps: WireUiDeps): void {
 		void deps.dumpAlluvialDebug?.();
 	});
 
+	// Mobile (≤900px) Workspace Settings drawer disclosure; desktop CSS ignores open state
+	const drawer = $('atlas-drawer');
+	const drawerToggle = $('atlas-drawer-toggle');
+	if (drawer && drawerToggle) {
+		drawerToggle.addEventListener('click', () => {
+			const open = drawer.getAttribute('data-drawer-open') === 'true';
+			const next = !open;
+			drawer.setAttribute('data-drawer-open', next ? 'true' : 'false');
+			drawerToggle.setAttribute('aria-expanded', next ? 'true' : 'false');
+		});
+	}
+
 	// Map catalog panel disclosure (default open; body indent unchanged)
 	const catalogPanel = $('atlas-catalog-panel');
 	const catalogToggle = $('atlas-catalog-toggle');

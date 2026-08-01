@@ -2,6 +2,7 @@
 import { toString } from "@carbon/icon-helpers";
 import ChevronDown16 from "@carbon/icons/es/chevron--down/16.js";
 import DocumentDownload16 from "@carbon/icons/es/document--download/16.js";
+import SettingsAdjust16 from "@carbon/icons/es/settings--adjust/16.js";
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/ui/Button.astro";
 import Checkbox from "../components/ui/Checkbox.astro";
@@ -30,6 +31,11 @@ const agentPackIconSvg = toString(
 /** Chevron for Map catalog panel disclosure (default open). */
 const catalogChevronSvg = toString(
   ChevronDown16 as Parameters<typeof toString>[0],
+).replace("<svg", '<svg aria-hidden="true" focusable="false"');
+
+/** Settings adjust — mobile Workspace Settings drawer disclosure (icon right). */
+const workspaceSettingsIconSvg = toString(
+  SettingsAdjust16 as Parameters<typeof toString>[0],
 ).replace("<svg", '<svg aria-hidden="true" focusable="false"');
 ---
 
@@ -180,7 +186,24 @@ const catalogChevronSvg = toString(
         id="atlas-drawer"
         class="atlas-drawer"
         aria-label="Repository explorer"
+        data-drawer-open="false"
       >
+        <!-- Mobile (≤900px): disclosure chrome; desktop: hidden via CSS -->
+        <button
+          type="button"
+          id="atlas-drawer-toggle"
+          class="atlas-drawer-toggle"
+          aria-expanded="false"
+          aria-controls="atlas-drawer-body"
+        >
+          <span class="atlas-drawer-toggle__label">Workspace Settings</span>
+          <span
+            class="atlas-drawer-toggle__icon"
+            aria-hidden="true"
+            set:html={workspaceSettingsIconSvg}
+          />
+        </button>
+        <div id="atlas-drawer-body" class="atlas-drawer__body">
         <!-- Tree panel -->
         <div class="atlas-drawer__panel atlas-drawer__panel--tree">
           <div class="atlas-drawer__head">
@@ -393,6 +416,7 @@ const catalogChevronSvg = toString(
               Agent Pack
             </Button>
           </div>
+        </div>
         </div>
       </aside>
 
