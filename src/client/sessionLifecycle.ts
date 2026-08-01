@@ -135,6 +135,14 @@ export type SessionLifecycleDeps = {
 	 * land on the scene open recipe (module / package-hub sticky path).
 	 */
 	applyInsightSceneOpen?: (scene: InsightScene) => void;
+	/**
+	 * Best-effort feed label for Agent Pack digest `source` (zip basename /
+	 * demo id / scene id). Host-only; not Session schema.
+	 */
+	setSourceLabel?: (label: {
+		kind: 'directory' | 'zip';
+		path: string;
+	}) => void;
 };
 
 export type SessionLifecycle = {
@@ -401,6 +409,7 @@ export function createSessionLifecycle(
 					? open.fileId
 					: null;
 			const isOmittedPath = sceneOmitMatcher(scene.omitPathPrefixes);
+			deps.setSourceLabel?.({ kind: 'directory', path: `scene:${id}` });
 			openFromFiles(files, {
 				statusPrefix: `Scene ${id} ·`,
 				warnings: [
@@ -485,6 +494,7 @@ export function createSessionLifecycle(
 			const buf = await file.arrayBuffer();
 			deps.setStatus('Unpacking ZIP…');
 			const { files, skipped, warnings } = ingestZip(buf);
+			deps.setSourceLabel?.({ kind: 'zip', path: file.name });
 			openFromFiles(files, {
 				warnings: [
 					...warnings,
@@ -502,6 +512,7 @@ export function createSessionLifecycle(
 		try {
 			deps.setStatus(`Loading demo “${id}”…`);
 			const files = loadDemoFiles(id);
+			deps.setSourceLabel?.({ kind: 'directory', path: `demo:${id}` });
 			openFromFiles(files, {
 				statusPrefix: `Demo ${id} ·`,
 				warnings: [`Loaded built-in demo: ${id}`],
@@ -539,6 +550,8 @@ export function createSessionLifecycle(
 					expanded.add(p);
 				}
 			}
+			// Restore has no zip/demo name; honest placeholder for Agent Pack source
+			deps.setSourceLabel?.({ kind: 'zip', path: 'browser-session' });
 			activateSession(
 				{
 					graph,
@@ -570,6 +583,7 @@ export function createSessionLifecycle(
 		deps.setDepthUserSet(false);
 		deps.setVizMaxDepth(HUB_DEFAULT_MAX_DEPTH);
 		deps.resetExactState();
+		deps.setSourceLabel?.({ kind: 'zip', path: 'browser-session' });
 		clearPersistedSession();
 		deps.clearStage();
 		deps.updateCaption(null);
