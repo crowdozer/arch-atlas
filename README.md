@@ -9,14 +9,13 @@ JavaScript (Level-1: files, imports, packages).
 
 ## Status
 
-**MVP vertical slice (Level-1).** Upload a TS/JS ZIP → file tree + map catalog
-(starts/ends, hotspots, **file LOC** whole-file, **blast radius**, **spines**,
-Exact-only **public mass** / **icebergs**, suggested views) → file-hub traversal
-alluvial (catalog only picks the start file). Stack: **Astro + TypeScript**, pure
-core under `src/core/`, client index in `src/client/`.
+**Orientation SoR:** [`.grok/pm/NOW.md`](.grok/pm/NOW.md). Program index:
+[`.grok/reference/roadmap.md`](.grok/reference/roadmap.md). Do not keep a
+multi-row progress / Status / Roadmap table here.
 
-UI design language tracks **Sentinel** grammar (Carbon, zinc shell) with
-**teal** interactive brand — not emerald.
+Shipped-behavior and how-to stay in this README (Level-1 MVP, CLI, honesty
+ladder). UI design language tracks **Sentinel** grammar (Carbon, zinc shell)
+with **teal** interactive brand — not emerald.
 
 ## Setup
 
