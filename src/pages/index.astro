@@ -211,20 +211,6 @@ const agentPackIconSvg = toString(
             >
             </p>
           </div>
-          <div class="atlas-drawer__tools">
-            <Button
-              type="button"
-              id="atlas-agent-pack-download"
-              class="atlas-agent-pack-btn"
-              variant="secondary"
-              size="sm"
-              title="Download agent digest (CLI digest parity; no source text)"
-              aria-label="Download Agent Pack"
-            >
-              <Fragment set:html={agentPackIconSvg} />
-              Agent Pack
-            </Button>
-          </div>
           <div class="atlas-drawer__scroll atlas-catalog">
             <Accordion
               id="atlas-catalog-accordion"
@@ -361,6 +347,21 @@ const agentPackIconSvg = toString(
                 <div id="atlas-ends"></div>
               </AccordionItem>
             </Accordion>
+          </div>
+          <!-- Last chrome in the shell drawer: Agent Pack under catalog accordion -->
+          <div class="atlas-drawer__foot">
+            <Button
+              type="button"
+              id="atlas-agent-pack-download"
+              class="atlas-agent-pack-btn"
+              variant="secondary"
+              size="sm"
+              title="Download agent digest (CLI digest parity; no source text)"
+              aria-label="Download Agent Pack"
+            >
+              <Fragment set:html={agentPackIconSvg} />
+              Agent Pack
+            </Button>
           </div>
         </div>
       </aside>

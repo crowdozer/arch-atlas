@@ -540,13 +540,18 @@ cds-tag.ui-tag--yellow {
   flex-shrink: 0;
 }
 
-/* Map catalog: full-width Agent Pack download (CLI digest parity) */
-.atlas-drawer__panel--catalog .atlas-drawer__tools {
+/* Sticky bottom of catalog panel (last item in shell drawer) */
+.atlas-drawer__foot {
+  flex-shrink: 0;
+  margin-block-start: auto;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-block-start: 1px solid var(--cds-border-subtle-00, #27272a);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
+/* Full-width Agent Pack download (CLI digest parity) */
 cds-button.atlas-agent-pack-btn {
   width: 100%;
   max-inline-size: 100%;
