@@ -97,6 +97,15 @@ route views may look tree-like but must not assume a true tree.
 - When adding UI chrome, prefer Sentinel-like Carbon wrapper discipline (no raw
   `cds-*` in pages once wrappers exist) and zinc/emerald brand shell.
 
+### State-docs ban
+
+Do **not** leave project-state narrative, active-plan docs, or README Status /
+Roadmap / Progress sections outside **`.grok/pm/NOW.md`**,
+**`.grok/reference/roadmap.md`**, and **`.grok/catalog/entries/*`**.
+**Carve-out:** honest shipped-behavior, contracts, and how-to docs. Intent
+mid-work belongs in the assumption gate / commit body — not new status
+markdown. Orientation SoR is [`.grok/pm/NOW.md`](../../pm/NOW.md) when present.
+
 ### Resist AI helper accretion
 
 Semantic domain names do **not** make structurally identical code distinct.
