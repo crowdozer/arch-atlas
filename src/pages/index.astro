@@ -33,7 +33,7 @@ const catalogChevronSvg = toString(
   ChevronDown16 as Parameters<typeof toString>[0],
 ).replace("<svg", '<svg aria-hidden="true" focusable="false"');
 
-/** Settings adjust — mobile Workspace Settings drawer disclosure (icon right). */
+/** Settings adjust — mobile Repo Navigation drawer disclosure (icon right). */
 const workspaceSettingsIconSvg = toString(
   SettingsAdjust16 as Parameters<typeof toString>[0],
 ).replace("<svg", '<svg aria-hidden="true" focusable="false"');
@@ -188,7 +188,7 @@ const workspaceSettingsIconSvg = toString(
         aria-label="Repository explorer"
         data-drawer-open="false"
       >
-        <!-- Mobile (≤900px): disclosure chrome; desktop: hidden via CSS -->
+        <!-- Mobile (≤900px): Repo Navigation disclosure; desktop: hidden via CSS -->
         <button
           type="button"
           id="atlas-drawer-toggle"
@@ -196,7 +196,7 @@ const workspaceSettingsIconSvg = toString(
           aria-expanded="false"
           aria-controls="atlas-drawer-body"
         >
-          <span class="atlas-drawer-toggle__label">Workspace Settings</span>
+          <span class="atlas-drawer-toggle__label">Repo Navigation</span>
           <span
             class="atlas-drawer-toggle__icon"
             aria-hidden="true"

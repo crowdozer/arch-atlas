@@ -1745,7 +1745,7 @@ cds-button.atlas-spine-info-btn::part(button) {
   margin-bottom: 0;
 }
 
-/* Mobile shell: ≤900px — full-height Workspace Settings disclosure */
+/* Mobile shell: ≤900px — full-height Repo Navigation disclosure */
 @media (max-width: 900px) {
   .atlas-workspace {
     flex-direction: column;
@@ -1763,7 +1763,7 @@ cds-button.atlas-spine-info-btn::part(button) {
     border-block-end: 1px solid var(--cds-layer-02, #27272a);
   }
 
-  /* Collapsed: only the Workspace Settings disclosure bar */
+  /* Collapsed: only the Repo Navigation disclosure bar */
   .atlas-drawer[data-drawer-open='false'] {
     flex: 0 0 auto;
   }

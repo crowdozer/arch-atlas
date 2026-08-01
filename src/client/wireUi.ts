@@ -332,7 +332,7 @@ export function wireUi(deps: WireUiDeps): void {
 		void deps.dumpAlluvialDebug?.();
 	});
 
-	// Mobile (≤900px) Workspace Settings drawer disclosure; desktop CSS ignores open state
+	// Mobile (≤900px) Repo Navigation drawer disclosure; desktop CSS ignores open state
 	const drawer = $('atlas-drawer');
 	const drawerToggle = $('atlas-drawer-toggle');
 	if (drawer && drawerToggle) {
